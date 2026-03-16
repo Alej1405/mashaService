@@ -212,7 +212,7 @@ class AccountPlanSeeder extends Seeder
 
         foreach ($accounts as $account) {
             AccountPlan::updateOrCreate(
-                ['company_id' => null, 'code' => $account['code']],
+                ['empresa_id' => null, 'code' => $account['code']],
                 $account
             );
         }

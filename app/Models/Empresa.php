@@ -1,0 +1,135 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Filament\Models\Contracts\HasName;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Filament\Models\Contracts\HasTenants;
+use Filament\Models\Contracts\HasDefaultTenant;
+use Filament\Panel;
+use Illuminate\Support\Facades\Auth;
+
+class Empresa extends Model implements HasName
+{
+    protected $table = 'empresas';
+    protected $fillable = ['name', 'email', 'slug', 'activo', 'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica'];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Empresa $empresa) {
+            if (empty($empresa->slug)) {
+                $empresa->slug = \Illuminate\Support\Str::slug($empresa->name);
+            }
+        });
+    }
+
+    public static function getTenantRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    public function getFilamentName(): string
+    {
+        return $this->name;
+    }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'empresa_id');
+    }
+
+    public function accountPlans(): HasMany
+    {
+        return $this->hasMany(AccountPlan::class, 'empresa_id');
+    }
+
+    public function suppliers(): HasMany
+    {
+        return $this->hasMany(Supplier::class, 'empresa_id');
+    }
+
+    public function measurementUnits(): HasMany
+    {
+        return $this->hasMany(MeasurementUnit::class, 'empresa_id');
+    }
+
+    public function inventoryItems(): HasMany
+    {
+        return $this->hasMany(InventoryItem::class, 'empresa_id');
+    }
+
+    public function inventoryItemFiles(): HasMany
+    {
+        return $this->hasMany(InventoryItemFile::class, 'empresa_id');
+    }
+
+    public function journalEntries(): HasMany
+    {
+        return $this->hasMany(JournalEntry::class, 'empresa_id');
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(Purchase::class, 'empresa_id');
+    }
+
+    /**
+     * Relaciones del Módulo de Ventas
+     */
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'empresa_id');
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class, 'empresa_id');
+    }
+
+    /**
+     * Relaciones del Módulo de Manufactura (Producción)
+     */
+    public function productionOrders(): HasMany
+    {
+        return $this->hasMany(ProductionOrder::class, 'empresa_id');
+    }
+
+    /**
+     * Relaciones del Módulo de Finanzas
+     */
+    public function bankAccounts(): HasMany
+    {
+        return $this->hasMany(BankAccount::class, 'empresa_id');
+    }
+
+    /**
+     * Relaciones del Módulo de Tesorería
+     */
+    public function cashRegisters(): HasMany
+    {
+        return $this->hasMany(CashRegister::class, 'empresa_id');
+    }
+
+    public function cashSessions(): HasMany
+    {
+        return $this->hasMany(CashSession::class, 'empresa_id');
+    }
+
+    public function cashMovements(): HasMany
+    {
+        return $this->hasMany(CashMovement::class, 'empresa_id');
+    }
+
+    public function creditCards(): HasMany
+    {
+        return $this->hasMany(CreditCard::class, 'empresa_id');
+    }
+
+    public function creditCardMovements(): HasMany
+    {
+        return $this->hasMany(CreditCardMovement::class, 'empresa_id');
+    }
+}

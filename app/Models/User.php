@@ -4,17 +4,19 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Filament\Models\Contracts\HasTenants;
+use Filament\Models\Contracts\HasDefaultTenant;
 use Spatie\Permission\Traits\HasRoles;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Log;
 
-class User extends Authenticatable implements HasTenants
+class User extends Authenticatable implements HasTenants, HasDefaultTenant
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasRoles;
@@ -22,10 +24,9 @@ class User extends Authenticatable implements HasTenants
     public function getTenants(Panel $panel): Collection
     {
         if ($this->hasRole('super_admin')) {
-            return Company::all();
+            return Empresa::where('activo', true)->get();
         }
-
-        return $this->companies;
+        return Collection::wrap($this->empresa);
     }
 
     public function canAccessTenant(Model $tenant): bool
@@ -33,13 +34,20 @@ class User extends Authenticatable implements HasTenants
         if ($this->hasRole('super_admin')) {
             return true;
         }
-
-        return $this->companies->contains($tenant);
+        return $this->empresa_id === $tenant->id;
     }
 
-    public function companies(): BelongsToMany
+    public function getDefaultTenant(Panel $panel): ?Model
     {
-        return $this->belongsToMany(Company::class);
+        if ($this->hasRole('super_admin')) {
+       		 return $this->empresa ?? \App\Models\Empresa::first();
+    	}
+    	return $this->empresa;
+    }
+
+    public function empresa(): BelongsTo
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
     /**
@@ -48,6 +56,7 @@ class User extends Authenticatable implements HasTenants
      * @var list<string>
      */
     protected $fillable = [
+        'empresa_id',
         'name',
         'email',
         'password',

@@ -17,7 +17,7 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $tenantOwnershipRelationshipName = 'companies';
+    protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
 
@@ -41,6 +41,13 @@ class UserResource extends Resource
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(255),
+                Forms\Components\Select::make('empresa_id')
+                    ->label('Empresa')
+                    ->relationship('empresa', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->helperText('Empresa a la que pertenece el usuario'),
                 Forms\Components\TextInput::make('password')
                     ->label('Contraseña')
                     ->password()

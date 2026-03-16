@@ -2,13 +2,25 @@
 
 namespace App\Traits;
 
-use App\Models\Company;
+use App\Models\Empresa;
+use App\Models\Scopes\EmpresaScope;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 trait HasEmpresa
 {
-    public function company(): BelongsTo
+    public static function bootHasEmpresa(): void
     {
-        return $this->belongsTo(Company::class);
+        static::addGlobalScope(new EmpresaScope);
+        
+        static::creating(function ($model) {
+            if (auth()->check() && empty($model->empresa_id)) {
+                $model->empresa_id = auth()->user()->empresa_id;
+            }
+        });
+    }
+
+    public function empresa(): BelongsTo
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 }

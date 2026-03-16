@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('account_plans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->nullable()->constrained('companies')->onDelete('cascade');
+            $table->foreignId('empresa_id')->nullable()->constrained('empresas')->onDelete('cascade');
             $table->string('code');
             $table->string('name');
             $table->enum('type', ['activo', 'pasivo', 'patrimonio', 'ingreso', 'costo', 'gasto']);
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->unique(['company_id', 'code']);
+            $table->unique(['empresa_id', 'code']);
         });
     }
 

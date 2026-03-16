@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('companies', function (Blueprint $table) {
+        Schema::table('empresas', function (Blueprint $table) {
             $table->boolean('tiene_logistica')->default(false);
             $table->boolean('tiene_comercio_exterior')->default(false);
             $table->boolean('tipo_operacion_productos')->default(true);
@@ -25,7 +25,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('companies', function (Blueprint $table) {
+        Schema::table('empresas', function (Blueprint $table) {
             $table->dropColumn([
                 'tiene_logistica',
                 'tiene_comercio_exterior',

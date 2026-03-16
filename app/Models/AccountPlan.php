@@ -13,7 +13,7 @@ class AccountPlan extends Model
     use HasEmpresa;
 
     protected $fillable = [
-        'company_id',
+        'empresa_id',
         'code',
         'name',
         'type',

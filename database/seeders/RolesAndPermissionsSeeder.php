@@ -10,18 +10,53 @@ class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Create roles safely
-        Role::firstOrCreate(['name' => 'super_admin']);
-        Role::firstOrCreate(['name' => 'admin']);
-        Role::firstOrCreate(['name' => 'user']);
+        // Create core roles
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
+        $admin      = Role::firstOrCreate(['name' => 'admin_empresa']);
+        $contador   = Role::firstOrCreate(['name' => 'contador']);
+        $inventario = Role::firstOrCreate(['name' => 'inventario']);
+
+        // Define permissions
+        $permissions = [
+            'reportes.ver',
+            'reportes.exportar',
+            'proveedores.ver',
+            'proveedores.crear',
+            'proveedores.editar',
+            'proveedores.eliminar',
+            'inventario.ver',
+            'inventario.crear',
+            'inventario.editar',
+            'inventario.eliminar',
+        ];
+
+        foreach ($permissions as $permission) {
+            \Spatie\Permission\Models\Permission::firstOrCreate(['name' => $permission]);
+        }
+
+        // Assign permissions to roles
+        $admin->syncPermissions($permissions);
+        
+        $contador->syncPermissions([
+            'reportes.ver',
+            'reportes.exportar',
+            'proveedores.ver',
+            'inventario.ver',
+        ]);
+
+        $inventario->syncPermissions([
+            'proveedores.ver',
+            'inventario.ver',
+            'inventario.crear',
+            'inventario.editar',
+        ]);
 
         // Assign super_admin role to the initial admin user
-        $admin = User::where('email', 'admin@mashaec.net')->first();
-        if ($admin) {
-            $admin->assignRole('super_admin');
+        $adminUser = User::where('email', 'admin@mashaec.net')->first();
+        if ($adminUser) {
+            $adminUser->assignRole('super_admin');
         }
     }
 }

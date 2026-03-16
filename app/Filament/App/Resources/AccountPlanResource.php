@@ -15,7 +15,7 @@ class AccountPlanResource extends Resource
 {
     protected static ?string $model = AccountPlan::class;
 
-    protected static ?string $tenantOwnershipRelationshipName = 'company';
+    protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
     protected static ?string $navigationIcon = 'heroicon-o-list-bullet';
     protected static ?string $modelLabel = 'Plan de Cuentas';

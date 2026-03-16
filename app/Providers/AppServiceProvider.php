@@ -19,6 +19,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \App\Models\Company::observe(\App\Observers\CompanyObserver::class);
+        \App\Models\Empresa::observe(\App\Observers\EmpresaObserver::class);
+        \App\Models\Purchase::observe(\App\Observers\PurchaseObserver::class);
+        \App\Models\InventoryMovement::observe(\App\Observers\InventoryMovementObserver::class);
+        \App\Models\Sale::observe(\App\Observers\SaleObserver::class);
+        \App\Models\ProductionOrder::observe(\App\Observers\ProductionOrderObserver::class);
+        \App\Models\CashMovement::observe(\App\Observers\CashMovementObserver::class);
+
+        \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
+            return $user->hasRole('super_admin') ? true : null;
+        });
+
+        \Illuminate\Support\Facades\Gate::define('view-reports', function ($user) {
+            return $user->hasRole('super_admin') || $user->hasPermissionTo('reportes.ver');
+        });
     }
 }

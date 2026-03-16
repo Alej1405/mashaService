@@ -1,0 +1,129 @@
+/* 
+ * AURA GLASS MANUAL ENGINER (v3)
+ * Recreación premium del efecto Aura Glass para Filament v3
+ */
+
+:root {
+    --aura-bg: #030712;
+    --aura-surface: rgba(17, 24, 39, 0.45);
+    --aura-surface-active: rgba(30, 41, 59, 0.6);
+    --aura-border: rgba(255, 255, 255, 0.08);
+    --aura-border-hover: rgba(99, 102, 241, 0.4);
+    --aura-indigo: #6366f1;
+    --aura-indigo-soft: rgba(99, 102, 241, 0.15);
+    --aura-violet: #8b5cf6;
+    --aura-blur: blur(24px);
+    --aura-radius: 16px;
+    --aura-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base */
+body.fi-body {
+    background: radial-gradient(circle at 0% 0%, #1e1b4b 0%, var(--aura-bg) 50%, #0f172a 100%) !important;
+    background-attachment: fixed !important;
+}
+
+/* Sidebar */
+.fi-sidebar {
+    background: rgba(3, 7, 18, 0.7) !important;
+    backdrop-filter: var(--aura-blur) !important;
+    -webkit-backdrop-filter: var(--aura-blur) !important;
+    border-right: 1px solid var(--aura-border) !important;
+}
+
+.fi-sidebar-item-button {
+    border-radius: 12px !important;
+    margin: 2px 8px !important;
+    transition: var(--aura-transition) !important;
+}
+
+.fi-sidebar-item-button:hover {
+    background: var(--aura-indigo-soft) !important;
+    color: #fff !important;
+}
+
+.fi-sidebar-item-button.fi-active {
+    background: linear-gradient(135deg, var(--aura-indigo), var(--aura-violet)) !important;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Topbar */
+.fi-topbar {
+    background: rgba(3, 7, 18, 0.3) !important;
+    backdrop-filter: var(--aura-blur) !important;
+    -webkit-backdrop-filter: var(--aura-blur) !important;
+    border-bottom: 1px solid var(--aura-border) !important;
+}
+
+/* Cards & Sections */
+.fi-section,
+.fi-card,
+.fi-ta-ctn,
+.fi-modal-window,
+.fi-dropdown-panel,
+.fi-wi-stats-overview-stat {
+    background: var(--aura-surface) !important;
+    backdrop-filter: var(--aura-blur) !important;
+    -webkit-backdrop-filter: var(--aura-blur) !important;
+    border: 1px solid var(--aura-border) !important;
+    border-radius: var(--aura-radius) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+    transition: var(--aura-transition) !important;
+}
+
+.fi-section:hover, .fi-card:hover {
+    border-color: var(--aura-border-hover) !important;
+}
+
+/* Tables */
+.fi-ta-header-cell {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: #94a3b8 !important;
+    font-size: 0.7rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+}
+
+.fi-ta-row:hover {
+    background: var(--aura-surface-active) !important;
+}
+
+/* Inputs */
+.fi-input, .fi-select-input, .fi-textarea {
+    background: rgba(15, 23, 42, 0.3) !important;
+    border: 1px solid var(--aura-border) !important;
+    border-radius: 12px !important;
+    color: #fff !important;
+    transition: var(--aura-transition) !important;
+}
+
+.fi-input:focus {
+    border-color: var(--aura-indigo) !important;
+    box-shadow: 0 0 0 3px var(--aura-indigo-soft) !important;
+}
+
+/* Buttons */
+.fi-btn-primary {
+    background: linear-gradient(135deg, var(--aura-indigo), var(--aura-violet)) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4) !important;
+}
+
+.fi-btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--aura-indigo); }
+
+
+/* Ocultar toggle de tema (dark/light/system) */
+.fi-theme-switcher {
+    display: none !important;
+}
