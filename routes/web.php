@@ -6,30 +6,44 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Empresa;
 
 Route::get('/', function () {
-    return redirect('/app/login');
+    return redirect('/login');
 });
 
-Route::get('/app', function () {
+Route::get('/login', function () {
     $user = Auth::user();
-    
+
     if (!$user) {
-        return redirect('/app/login');
-    }
-    
-    // Si es super_admin y no tiene empresa asignada, intentar redirigir a la primera empresa activa
-    if ($user instanceof \App\Models\User && $user->hasRole('super_admin') && !$user->empresa_id) {
-        $firstEmpresa = Empresa::where('activo', true)->first();
-        if ($firstEmpresa) {
-            return redirect("/app/{$firstEmpresa->slug}");
-        }
+        return redirect('/pro/login');
     }
 
-    // Redirigir al panel de administración si no hay empresa vinculada (evita bucles o 404)
-    if (!$user->empresa_id || !$user->empresa) {
+    return redirect('/panel');
+});
+
+Route::get('/panel', function () {
+    $user = Auth::user();
+
+    if (!$user) {
+        return redirect('/pro/login');
+    }
+
+    if ($user->hasRole('super_admin')) {
         return redirect('/admin');
     }
-    
-    return redirect("/app/{$user->empresa->slug}");
+
+    $empresa = $user->empresa;
+
+    if (!$empresa) {
+        return redirect('/pro/login');
+    }
+
+    $plan = $empresa->plan ?? 'basic';
+    $slug = $empresa->slug;
+
+    return match ($plan) {
+        'enterprise' => redirect("/enterprise/{$slug}"),
+        'pro'        => redirect("/pro/{$slug}"),
+        default      => redirect("/basic/{$slug}"),
+    };
 });
 
 Route::get('/fichas/download/{file}', function ($file) {

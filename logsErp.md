@@ -1,4 +1,17 @@
 ---
+## 📅 16 de Marzo, 2026 — SAVEPOINT: Informes + Exportaciones Supercias
+
+### ESTADO GUARDADO ANTES DE IMPLEMENTAR PLANES DE SUSCRIPCIÓN
+
+- Balance General cuadrado ✅ ($5,000 activos = $5,000 patrimonio)
+- Todos los informes con botones Imprimir + Exportar Excel (formato Supercias)
+- Exports creados: `BalanceGeneralExport`, `EstadoResultadosExport`, `FlujoCajaExport`, `LibroDiarioExport`, `LibroMayorExport`
+- Asiento apertura bancaria ID=11: DEBE 1.1.01.03 $5,000 / HABER 3.1.01 $5,000
+- CreditCard DINERS → cuenta 2.1.02.03 "Tarjetas de crédito por pagar"
+- BankSeeder: 113 instituciones Ecuador
+- **REGLA NUEVA**: No tocar flujo contable. Solo implementar sistema de planes.
+
+---
 ## 📅 16 de Marzo, 2026
 
 ### MÓDULO REGISTRO DE EMPRESA — Campos de identificación legal

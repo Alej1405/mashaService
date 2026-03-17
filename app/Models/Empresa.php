@@ -15,7 +15,14 @@ use Illuminate\Support\Facades\Auth;
 class Empresa extends Model implements HasName
 {
     protected $table = 'empresas';
-    protected $fillable = ['name', 'email', 'slug', 'activo', 'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica'];
+    protected $fillable = [
+        'name', 'email', 'slug', 'activo',
+        'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
+        // Plan de suscripción
+        'plan',
+        // Credenciales Mailgun (por empresa)
+        'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
+    ];
 
     protected static function booted(): void
     {

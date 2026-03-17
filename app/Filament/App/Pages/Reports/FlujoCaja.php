@@ -30,6 +30,36 @@ class FlujoCaja extends Page implements HasForms
     public float $total_salidas = 0;
     public float $total_saldo_final = 0;
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            \Filament\Actions\Action::make('print')
+                ->label('Imprimir')
+                ->icon('heroicon-m-printer')
+                ->color('gray')
+                ->extraAttributes(['onclick' => 'window.print()']),
+            \Filament\Actions\Action::make('exportarExcelAction')
+                ->label('Exportar Excel')
+                ->icon('heroicon-m-table-cells')
+                ->color('success')
+                ->action('exportarExcel'),
+        ];
+    }
+
+    public function exportarExcel()
+    {
+        $tenant = Filament::getTenant();
+
+        $export = new \App\Exports\FlujoCajaExport(
+            empresaId:     $tenant->id,
+            fechaDesde:    $this->fecha_desde,
+            fechaHasta:    $this->fecha_hasta,
+            nombreEmpresa: $tenant->name,
+        );
+
+        return $export->download('FlujoCaja_' . $this->fecha_desde . '_' . $this->fecha_hasta . '.xlsx');
+    }
+
     public function mount()
     {
         $this->fecha_desde = now()->startOfYear()->toDateString();

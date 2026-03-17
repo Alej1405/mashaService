@@ -6,6 +6,7 @@ use App\Models\Empresa;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Pages\Tenancy\RegisterTenant;
@@ -76,6 +77,18 @@ class RegisterEmpresa extends RegisterTenant
                     ->label('¿A qué se dedica la empresa?')
                     ->required()
                     ->rows(2),
+
+                Select::make('plan')
+                    ->label('Plan de suscripción')
+                    ->options([
+                        'basic'      => 'Basic — Dashboard Mailing',
+                        'pro'        => 'Pro — ERP Completo',
+                        'enterprise' => 'Enterprise — Todo incluido',
+                    ])
+                    ->default('pro')
+                    ->required()
+                    ->native(false)
+                    ->helperText('Puedes cambiar el plan desde el panel de administración.'),
             ]);
     }
 

@@ -7,11 +7,9 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -19,16 +17,19 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Illuminate\Support\HtmlString;
+use Filament\Navigation\MenuItem;
+use Filament\Facades\Filament;
 
-class AppPanelProvider extends PanelProvider
+class ProPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->id('app')
-            ->path('app')
+            ->id('pro')
+            ->path('pro')
             ->login()
             ->tenant(Empresa::class, slugAttribute: 'slug')
+            ->tenantProfile(\App\Filament\Pages\Tenancy\EditEmpresaProfile::class)
             ->colors([
                 'primary'   => Color::Indigo,
                 'gray'      => Color::Slate,
@@ -54,15 +55,26 @@ class AppPanelProvider extends PanelProvider
                 fn (): string => view('filament.loading')->render(),
             )
             ->discoverResources(
-                in: app_path('Filament/App/Resources'), 
+                in: app_path('Filament/App/Resources'),
                 for: 'App\\Filament\\App\\Resources'
             )
             ->discoverPages(
-               in: app_path('Filament/App/Pages'), 
-               for: 'App\\Filament\\App\\Pages'
+                in: app_path('Filament/App/Pages'),
+                for: 'App\\Filament\\App\\Pages'
             )
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,
+            ])
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label('Panel Mailing')
+                    ->icon('heroicon-o-envelope')
+                    ->url(fn (): string => '/basic/' . (Filament::getTenant()?->slug ?? '')),
+                MenuItem::make()
+                    ->label('Panel Enterprise')
+                    ->icon('heroicon-o-star')
+                    ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? ''))
+                    ->visible(fn (): bool => \App\Helpers\PlanHelper::can('enterprise')),
             ])
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,
@@ -71,6 +83,7 @@ class AppPanelProvider extends PanelProvider
                 \App\Filament\App\Widgets\StockBajoWidget::class,
                 \App\Filament\App\Widgets\TopProductosWidget::class,
                 \App\Filament\App\Widgets\FlujoCajaWidget::class,
+                \App\Filament\App\Widgets\EstadoResultadosWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

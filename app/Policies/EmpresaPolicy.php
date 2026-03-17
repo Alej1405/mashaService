@@ -21,7 +21,7 @@ class EmpresaPolicy
      */
     public function view(User $user, Empresa $empresa): bool
     {
-        return $user->hasRole('super_admin') || $user->empresas->contains($empresa);
+        return $user->hasRole('super_admin') || $user->empresa_id === $empresa->id;
     }
 
     /**
@@ -37,7 +37,7 @@ class EmpresaPolicy
      */
     public function update(User $user, Empresa $empresa): bool
     {
-        return $user->hasRole('super_admin') || $user->empresas->contains($empresa);
+        return $user->hasRole('super_admin') || $user->empresa_id === $empresa->id;
     }
 
     /**

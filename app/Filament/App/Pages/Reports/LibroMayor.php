@@ -33,6 +33,45 @@ class LibroMayor extends Page implements HasTable, HasForms
     public ?string $fecha_desde = null;
     public ?string $fecha_hasta = null;
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            \Filament\Actions\Action::make('print')
+                ->label('Imprimir')
+                ->icon('heroicon-m-printer')
+                ->color('gray')
+                ->extraAttributes(['onclick' => 'window.print()']),
+            \Filament\Actions\Action::make('exportarExcelAction')
+                ->label('Exportar Excel')
+                ->icon('heroicon-m-table-cells')
+                ->color('success')
+                ->action('exportarExcel'),
+        ];
+    }
+
+    public function exportarExcel()
+    {
+        if (! $this->account_plan_id) {
+            \Filament\Notifications\Notification::make()
+                ->title('Selecciona una cuenta antes de exportar.')
+                ->warning()
+                ->send();
+            return;
+        }
+
+        $tenant = Filament::getTenant();
+
+        $export = new \App\Exports\LibroMayorExport(
+            empresaId:     $tenant->id,
+            accountPlanId: $this->account_plan_id,
+            fechaDesde:    $this->fecha_desde,
+            fechaHasta:    $this->fecha_hasta,
+            nombreEmpresa: $tenant->name,
+        );
+
+        return $export->download('LibroMayor_' . ($this->fecha_desde ?? 'todo') . '.xlsx');
+    }
+
     public function mount(): void
     {
         $this->fecha_desde = now()->startOfYear()->toDateString();

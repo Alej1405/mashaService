@@ -35,6 +35,37 @@ class LibroDiario extends Page implements HasTable, HasForms
     public ?string $fecha_hasta = null;
     public ?string $tipo = null;
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            \Filament\Actions\Action::make('print')
+                ->label('Imprimir')
+                ->icon('heroicon-m-printer')
+                ->color('gray')
+                ->extraAttributes(['onclick' => 'window.print()']),
+            \Filament\Actions\Action::make('exportarExcelAction')
+                ->label('Exportar Excel')
+                ->icon('heroicon-m-table-cells')
+                ->color('success')
+                ->action('exportarExcel'),
+        ];
+    }
+
+    public function exportarExcel()
+    {
+        $tenant = Filament::getTenant();
+
+        $export = new \App\Exports\LibroDiarioExport(
+            empresaId:     $tenant->id,
+            fechaDesde:    $this->fecha_desde,
+            fechaHasta:    $this->fecha_hasta,
+            tipo:          $this->tipo,
+            nombreEmpresa: $tenant->name,
+        );
+
+        return $export->download('LibroDiario_' . ($this->fecha_desde ?? 'todo') . '.xlsx');
+    }
+
     public function mount(): void
     {
         $this->fecha_desde = now()->startOfYear()->toDateString();

@@ -64,6 +64,24 @@ Observers registrados en `AppServiceProvider`: `EmpresaObserver`, `PurchaseObser
 
 Spatie Permission (`spatie/laravel-permission`). El rol `super_admin` bypasea todos los gates. Gate `view-reports` requiere `super_admin` o permiso `reportes.ver`.
 
+### Sistema de planes de suscripción
+
+La columna `plan` en `Empresa` controla el acceso a módulos: `basic` | `pro` | `enterprise`.
+
+- **Helper**: `\App\Helpers\PlanHelper::can('pro')` → compara niveles (basic=1, pro=2, enterprise=3).
+- **Regla obligatoria**: Todo Resource o Page nuevo del panel App **debe** incluir:
+  ```php
+  public static function canAccess(): bool
+  {
+      return \App\Helpers\PlanHelper::can('pro');
+  }
+  ```
+- **Plan basic**: Solo ve `MailgunDashboard` (grupo "Mailing"). Sin acceso a módulos ERP.
+- **Plan pro**: Acceso completo al ERP (contabilidad, inventario, compras, ventas, manufactura, tesorería, informes).
+- **Plan enterprise**: Funcionalidades futuras (actualmente igual que pro).
+- **Configuración Mailgun por empresa**: en `/app/{slug}/profile` (EditEmpresaProfile). Campos: `mailgun_api_key`, `mailgun_domain`, `mailgun_from_email`, `mailgun_from_name`.
+- **Regla crítica**: **NO tocar** `AccountingService`, Observers ni flujo contable al modificar planes.
+
 ## Idioma
 
 Responde siempre en español sin excepción.

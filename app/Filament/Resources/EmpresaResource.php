@@ -104,6 +104,22 @@ class EmpresaResource extends Resource
                             ->columnSpanFull(),
                     ])->columns(2),
 
+                Forms\Components\Section::make('Plan de Suscripción')
+                    ->description('Define el plan que determina las funcionalidades disponibles para esta empresa.')
+                    ->icon('heroicon-o-credit-card')
+                    ->schema([
+                        Forms\Components\Select::make('plan')
+                            ->label('Plan activo')
+                            ->options([
+                                'basic'      => 'Basic — Solo Dashboard Mailing',
+                                'pro'        => 'Pro — ERP Completo',
+                                'enterprise' => 'Enterprise — Todo incluido',
+                            ])
+                            ->default('pro')
+                            ->required()
+                            ->native(false),
+                    ]),
+
                 Forms\Components\Section::make('Configuración de Módulos Operativos')
                     ->description('Active los módulos que correspondan al tipo de operación de la empresa.')
                     ->schema([
@@ -130,6 +146,19 @@ class EmpresaResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\BadgeColumn::make('plan')
+                    ->label('Plan')
+                    ->colors([
+                        'gray'    => 'basic',
+                        'info'    => 'pro',
+                        'warning' => 'enterprise',
+                    ])
+                    ->formatStateUsing(fn($state) => match($state) {
+                        'basic'      => 'Basic',
+                        'pro'        => 'Pro',
+                        'enterprise' => 'Enterprise',
+                        default      => $state,
+                    }),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
