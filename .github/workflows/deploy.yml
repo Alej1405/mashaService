@@ -1,0 +1,55 @@
+name: Deploy Mashaec ERP
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy vía SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 138.68.45.117
+          username: alej1405mc
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/erp.mashaec.net
+
+            php artisan down --retry=60
+
+            PREV_COMMIT=$(git rev-parse HEAD)
+            echo $PREV_COMMIT > /tmp/mashaec_prev_commit
+
+            git pull origin main
+
+            composer install --no-dev --optimize-autoloader
+            npm ci
+            npm run build
+
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:clear
+            php artisan filament:assets
+            php artisan queue:restart
+
+            php artisan up
+
+      - name: Rollback si falla
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 138.68.45.117
+          username: alej1405mc
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /var/www/erp.mashaec.net
+            PREV=$(cat /tmp/mashaec_prev_commit)
+            git reset --hard $PREV
+            composer install --no-dev --optimize-autoloader
+            php artisan config:cache
+            php artisan up
+            echo "ROLLBACK ejecutado al commit $PREV"
+
