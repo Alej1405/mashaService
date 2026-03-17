@@ -20,7 +20,7 @@ class Empresa extends Model implements HasName
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
         // Plan de suscripción
         'plan',
-        // Credenciales Mailgun (por empresa)
+        // Credenciales del servicio de correo (por empresa)
         'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
     ];
 
@@ -138,5 +138,10 @@ class Empresa extends Model implements HasName
     public function creditCardMovements(): HasMany
     {
         return $this->hasMany(CreditCardMovement::class, 'empresa_id');
+    }
+
+    public function mailTemplates(): HasMany
+    {
+        return $this->hasMany(\App\Models\MailTemplate::class, 'empresa_id');
     }
 }

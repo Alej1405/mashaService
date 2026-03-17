@@ -6,17 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Empresa;
 
 Route::get('/', function () {
-    return redirect('/login');
-});
-
-Route::get('/login', function () {
-    $user = Auth::user();
-
-    if (!$user) {
-        return redirect('/pro/login');
-    }
-
-    return redirect('/panel');
+    return redirect('/app/login');
 });
 
 Route::get('/panel', function () {

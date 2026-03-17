@@ -4,10 +4,10 @@ namespace App\Filament\Pages\Tenancy;
 
 use App\Helpers\PlanHelper;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Form;
 use Filament\Pages\Tenancy\EditTenantProfile;
+use Filament\Facades\Filament;
 use Illuminate\Support\HtmlString;
 
 class EditEmpresaProfile extends EditTenantProfile
@@ -20,7 +20,6 @@ class EditEmpresaProfile extends EditTenantProfile
     public function form(Form $form): Form
     {
         $plan    = PlanHelper::current();
-        $color   = PlanHelper::color($plan);
         $label   = PlanHelper::label($plan);
 
         $badgeHtml = "<span style='display:inline-block;padding:2px 10px;border-radius:9999px;font-size:0.75rem;font-weight:700;
@@ -34,9 +33,21 @@ class EditEmpresaProfile extends EditTenantProfile
                 default      => '#374151',
             } . ";'>{$label}</span>";
 
+        $empresa       = Filament::getTenant();
+        $mailingActivo = ! empty($empresa->mailgun_api_key) && ! empty($empresa->mailgun_domain);
+
+        $mailingHtml = $mailingActivo
+            ? "<span style='display:inline-flex;align-items:center;gap:6px;color:#059669;font-weight:600;font-size:0.875rem;'>
+                <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='currentColor' style='width:16px;height:16px;'><path stroke-linecap='round' stroke-linejoin='round' d='M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z'/></svg>
+                Servicio de correo activo
+              </span>"
+            : "<span style='display:inline-flex;align-items:center;gap:6px;color:#d97706;font-weight:600;font-size:0.875rem;'>
+                <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='currentColor' style='width:16px;height:16px;'><path stroke-linecap='round' stroke-linejoin='round' d='M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z'/></svg>
+                Servicio de correo no configurado — contacta al administrador
+              </span>";
+
         return $form
             ->schema([
-                // ── Información del plan ────────────────────────────────────
                 Section::make('Plan de Suscripción')
                     ->description('Tu plan actual determina los módulos disponibles.')
                     ->schema([
@@ -46,37 +57,14 @@ class EditEmpresaProfile extends EditTenantProfile
                     ])
                     ->collapsible(),
 
-                // ── Integración Mailgun ─────────────────────────────────────
-                Section::make('Integración Mailgun')
-                    ->description('Configura tus credenciales de Mailgun para envío de correos desde esta empresa.')
+                Section::make('Servicio de correo')
+                    ->description('El estado del servicio de envío de correos para tu empresa.')
                     ->icon('heroicon-o-envelope')
                     ->schema([
-                        TextInput::make('mailgun_api_key')
-                            ->label('API Key')
-                            ->password()
-                            ->revealable()
-                            ->placeholder('key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-                            ->helperText('Encuéntrala en mailgun.com → Account → API Keys.')
-                            ->maxLength(255),
-
-                        TextInput::make('mailgun_domain')
-                            ->label('Dominio')
-                            ->placeholder('mg.tudominio.com')
-                            ->helperText('El dominio verificado en tu cuenta de Mailgun.')
-                            ->maxLength(255),
-
-                        TextInput::make('mailgun_from_email')
-                            ->label('Email de origen')
-                            ->email()
-                            ->placeholder('no-reply@tudominio.com')
-                            ->maxLength(255),
-
-                        TextInput::make('mailgun_from_name')
-                            ->label('Nombre de origen')
-                            ->placeholder('Mi Empresa')
-                            ->maxLength(255),
-                    ])
-                    ->columns(2),
+                        Placeholder::make('mailing_estado')
+                            ->label('Estado')
+                            ->content(new HtmlString($mailingHtml)),
+                    ]),
             ]);
     }
 }

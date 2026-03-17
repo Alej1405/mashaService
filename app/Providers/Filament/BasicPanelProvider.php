@@ -26,8 +26,8 @@ class BasicPanelProvider extends PanelProvider
     {
         return $panel
             ->id('basic')
-            ->path('basic')
-            ->login()
+            ->path('app')
+            ->login(\App\Filament\Auth\Login::class)
             ->tenant(Empresa::class, slugAttribute: 'slug')
             ->tenantProfile(\App\Filament\Pages\Tenancy\EditEmpresaProfile::class)
             ->colors([
@@ -54,9 +54,12 @@ class BasicPanelProvider extends PanelProvider
                 'panels::body.start',
                 fn (): string => view('filament.loading')->render(),
             )
+            ->resources([
+                \App\Filament\App\Resources\MailTemplateResource::class,
+            ])
             ->pages([
                 \App\Filament\Basic\Pages\Dashboard::class,
-                \App\Filament\Basic\Pages\MailgunDashboard::class,
+                \App\Filament\Basic\Pages\MailingDashboard::class,
             ])
             ->userMenuItems([
                 MenuItem::make()
@@ -68,6 +71,7 @@ class BasicPanelProvider extends PanelProvider
                     ->label('Panel Enterprise')
                     ->icon('heroicon-o-star')
                     ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? ''))
+
                     ->visible(fn (): bool => \App\Helpers\PlanHelper::can('enterprise')),
             ])
             ->widgets([

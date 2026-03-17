@@ -49,9 +49,9 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
 
     public function canAccessTenant(Model $tenant): bool
     {
-        // El plan de la empresa debe ser suficiente para el panel solicitado
-        $panelId     = request()->segment(1);
-        $panelLevel  = self::PLAN_LEVELS[$panelId] ?? 1;
+        // El path 'app' corresponde al plan 'basic'
+        $pathToLevel = ['app' => 1, 'pro' => 2, 'enterprise' => 3];
+        $panelLevel  = $pathToLevel[request()->segment(1)] ?? 1;
         $tenantLevel = self::PLAN_LEVELS[$tenant->plan ?? 'basic'] ?? 1;
 
         if ($tenantLevel < $panelLevel) {

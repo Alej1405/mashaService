@@ -3,7 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Models\Empresa;
-use Filament\Http\Middleware\Authenticate;
+use App\Http\Middleware\FilamentAuthenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -27,7 +27,6 @@ class ProPanelProvider extends PanelProvider
         return $panel
             ->id('pro')
             ->path('pro')
-            ->login()
             ->tenant(Empresa::class, slugAttribute: 'slug')
             ->tenantProfile(\App\Filament\Pages\Tenancy\EditEmpresaProfile::class)
             ->colors([
@@ -69,7 +68,7 @@ class ProPanelProvider extends PanelProvider
                 MenuItem::make()
                     ->label('Panel Mailing')
                     ->icon('heroicon-o-envelope')
-                    ->url(fn (): string => '/basic/' . (Filament::getTenant()?->slug ?? '')),
+                    ->url(fn (): string => '/app/' . (Filament::getTenant()?->slug ?? '')),
                 MenuItem::make()
                     ->label('Panel Enterprise')
                     ->icon('heroicon-o-star')
@@ -97,7 +96,7 @@ class ProPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
-                Authenticate::class,
+                FilamentAuthenticate::class,
             ]);
     }
 }
