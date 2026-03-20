@@ -11,9 +11,12 @@ use Filament\Models\Contracts\HasTenants;
 use Filament\Models\Contracts\HasDefaultTenant;
 use Filament\Panel;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\HasApiTokens;
 
 class Empresa extends Model implements HasName
 {
+    use HasApiTokens;
+
     protected $table = 'empresas';
     protected $fillable = [
         'name', 'email', 'slug', 'activo',
