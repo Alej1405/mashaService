@@ -61,6 +61,27 @@ Route::get('/mailing/contacts/template', function () {
     ]);
 })->name('mailing.contacts.template');
 
+// ── Preview carta de presentación ────────────────────────────────────────
+Route::get('/carta-preview/{slug}', function (string $slug) {
+    if (! Auth::check()) abort(403);
+
+    $empresa = Empresa::where('slug', $slug)->firstOrFail();
+
+    if (Auth::user()->empresa_id !== $empresa->id && ! Auth::user()->hasRole('super_admin')) {
+        abort(403);
+    }
+
+    $carta    = \App\Models\CartaPresentacion::withoutGlobalScopes()->where('empresa_id', $empresa->id)->first();
+    $servicios = \App\Models\CmsService::withoutGlobalScopes()->where('empresa_id', $empresa->id)->where('activo', true)->orderBy('sort_order')->get();
+    $contacto  = \App\Models\CmsContact::withoutGlobalScopes()->where('empresa_id', $empresa->id)->first();
+
+    if (! $carta) {
+        return '<p style="font-family:sans-serif;color:#888;padding:40px;text-align:center;">Guarda la carta primero para ver la vista previa.</p>';
+    }
+
+    return view('emails.carta-presentacion', compact('empresa', 'carta', 'servicios', 'contacto'));
+})->name('carta.preview');
+
 Route::get('/fichas/download/{file}', function ($file) {
     if (!Auth::check()) {
         abort(403);

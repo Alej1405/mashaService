@@ -80,6 +80,8 @@ class BasicPanelProvider extends PanelProvider
                 \App\Filament\App\Pages\Cms\CmsContactPage::class,
                 // API
                 \App\Filament\App\Pages\ApiDocsPage::class,
+                // Carta de Presentación
+                \App\Filament\App\Pages\CartaPresentacionPage::class,
             ])
             ->userMenuItems([
                 MenuItem::make()

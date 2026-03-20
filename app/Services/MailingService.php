@@ -196,6 +196,45 @@ class MailingService
     }
 
     /**
+     * Envía HTML arbitrario a un destinatario.
+     * Usa SMTP si está configurado, de lo contrario usa Mailgun.
+     */
+    public function sendRawEmail(string $to, string $toName, string $subject, string $html): array
+    {
+        if ($this->hasSmtp()) {
+            return $this->sendViaSMTP($to, $toName, $subject, $html);
+        }
+
+        if (! $this->isConfigured()) {
+            return ['success' => false, 'message' => 'No hay credenciales configuradas.'];
+        }
+
+        $from = ! empty($this->fromEmail) ? $this->fromEmail : "noreply@{$this->domain}";
+        $name = ! empty($this->fromName) ? $this->fromName : $this->empresa->name;
+
+        try {
+            $response = $this->client()
+                ->asForm()
+                ->post("{$this->baseUrl}/{$this->domain}/messages", [
+                    'from'    => "{$name} <{$from}>",
+                    'to'      => $toName ? "{$toName} <{$to}>" : $to,
+                    'subject' => $subject,
+                    'html'    => $html,
+                    'text'    => strip_tags($html),
+                ]);
+
+            if ($response->successful()) {
+                return ['success' => true, 'message' => 'Correo enviado a ' . $to];
+            }
+
+            $errMsg = $response->json('message') ?? "Error HTTP {$response->status()}";
+            return ['success' => false, 'message' => "No se pudo enviar: {$errMsg}"];
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    /**
      * Envía un correo de prueba al email indicado.
      * Usa SMTP si está configurado, de lo contrario usa Mailgun.
      */
