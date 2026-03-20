@@ -91,7 +91,7 @@
       </table>
 
       {{-- Servicios --}}
-      @if($servicios->count())
+      @if($carta->mostrar_servicios && $servicios->count())
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
           <tr>
             <td style="padding-bottom:20px;">
@@ -145,6 +145,7 @@
       </table>
 
       {{-- ── Equipo ──────────────────────────────────────────────────────── --}}
+      @if($carta->mostrar_equipo)
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;">
         <tr>
           <td style="padding-bottom:16px;">
@@ -186,6 +187,7 @@
           </tr>
         @endif
       </table>
+      @endif {{-- mostrar_equipo --}}
 
       {{-- Cierre --}}
       <p style="margin:0 0 36px;color:{{ $carta->color_texto }};font-size:14px;line-height:1.9;">
@@ -222,6 +224,7 @@
   </tr>
 
   {{-- ── CONTACTO ────────────────────────────────────────────────────────── --}}
+  @if($carta->mostrar_contacto)
   <tr>
     <td style="background-color:#f8f9fa;border:1px solid #f0f0f0;border-top:none;padding:24px 48px;">
       @if(! $contacto)
@@ -296,6 +299,7 @@
       @endif
     </td>
   </tr>
+  @endif {{-- mostrar_contacto --}}
 
   {{-- ── FOOTER ──────────────────────────────────────────────────────────── --}}
   <tr>

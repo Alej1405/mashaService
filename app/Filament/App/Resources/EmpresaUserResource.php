@@ -17,6 +17,7 @@ use Illuminate\Support\HtmlString;
 class EmpresaUserResource extends Resource
 {
     protected static ?string $model = User::class;
+    protected static ?string $tenantRelationshipName = 'users';
 
     protected static ?string $navigationIcon   = 'heroicon-o-users';
     protected static ?string $navigationLabel  = 'Usuarios';

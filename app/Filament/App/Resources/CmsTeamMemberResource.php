@@ -14,6 +14,8 @@ class CmsTeamMemberResource extends Resource
 {
     protected static ?string $model = CmsTeamMember::class;
 
+    protected static ?string $tenantRelationshipName = 'cmsTeamMembers';
+
     protected static ?string $navigationIcon   = 'heroicon-o-user-group';
     protected static ?string $navigationLabel  = 'Equipo';
     protected static ?string $navigationGroup  = 'CMS';

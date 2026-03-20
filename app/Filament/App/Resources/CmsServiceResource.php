@@ -14,6 +14,8 @@ class CmsServiceResource extends Resource
 {
     protected static ?string $model = CmsService::class;
 
+    protected static ?string $tenantRelationshipName = 'cmsServices';
+
     protected static ?string $navigationIcon   = 'heroicon-o-briefcase';
     protected static ?string $navigationLabel  = 'Servicios';
     protected static ?string $navigationGroup  = 'CMS';

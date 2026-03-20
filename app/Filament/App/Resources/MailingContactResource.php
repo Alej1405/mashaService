@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Storage;
 class MailingContactResource extends Resource
 {
     protected static ?string $model = MailingContact::class;
+    protected static ?string $tenantRelationshipName = 'mailingContacts';
 
     protected static ?string $navigationIcon   = 'heroicon-o-users';
     protected static ?string $navigationLabel  = 'Contactos';
@@ -46,7 +47,13 @@ class MailingContactResource extends Resource
                             ->email()
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true),
+                            ->unique(
+                                table: 'mailing_contacts',
+                                column: 'email',
+                                modifyRuleUsing: fn ($rule) => $rule->where('empresa_id', Filament::getTenant()->id),
+                                ignoreRecord: true,
+                            )
+                            ->validationMessages(['unique' => 'Este correo ya existe en tu lista de contactos.']),
                     ]),
 
                 Forms\Components\Grid::make(2)
@@ -149,7 +156,9 @@ class MailingContactResource extends Resource
                         $skipped  = 0;
 
                         foreach ($contacts as $contact) {
-                            $exists = MailingContact::where('email', $contact['email'])->exists();
+                            $exists = MailingContact::where('empresa_id', $empresa->id)
+                                ->where('email', $contact['email'])
+                                ->exists();
 
                             if (! $exists) {
                                 MailingContact::create([

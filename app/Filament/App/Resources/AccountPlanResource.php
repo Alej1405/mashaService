@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 class AccountPlanResource extends Resource
 {
     protected static ?string $model = AccountPlan::class;
+    protected static ?string $tenantRelationshipName = 'accountPlans';
 
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 

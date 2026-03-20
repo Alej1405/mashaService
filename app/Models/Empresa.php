@@ -156,4 +156,44 @@ class Empresa extends Model implements HasName
     {
         return $this->hasMany(\App\Models\MailTemplate::class, 'empresa_id');
     }
+
+    public function cmsTeamMembers(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsTeamMember::class, 'empresa_id');
+    }
+
+    public function cmsFaqs(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsFaq::class, 'empresa_id');
+    }
+
+    public function cmsServices(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsService::class, 'empresa_id');
+    }
+
+    public function cmsClientLogos(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsClientLogo::class, 'empresa_id');
+    }
+
+    public function cmsTestimonials(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsTestimonial::class, 'empresa_id');
+    }
+
+    public function cmsPosts(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsPost::class, 'empresa_id');
+    }
+
+    public function mailingContacts(): HasMany
+    {
+        return $this->hasMany(\App\Models\MailingContact::class, 'empresa_id');
+    }
+
+    public function mailCampaigns(): HasMany
+    {
+        return $this->hasMany(\App\Models\MailCampaign::class, 'empresa_id');
+    }
 }

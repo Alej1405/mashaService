@@ -17,6 +17,7 @@ use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -71,18 +72,21 @@ class CartaPresentacionPage extends Page implements HasForms
             . "\n\nAtentamente,";
 
         return [
-            'asunto'           => 'Carta de Presentación — ' . $empresa->name,
-            'saludo'           => 'Estimado/a,',
-            'intro'            => $intro,
-            'servicios_titulo' => 'Nuestros servicios',
-            'cierre'           => $cierre,
-            'firma_nombre'     => $empresa->name,
-            'firma_cargo'      => 'Equipo Comercial',
-            'color_primario'   => '#1e3a5f',
-            'color_acento'     => '#e8a045',
-            'color_texto'      => '#2d2d2d',
-            'color_fondo'      => '#f5f7fa',
-            'template'         => 'ejecutivo',
+            'asunto'            => 'Carta de Presentación — ' . $empresa->name,
+            'saludo'            => 'Estimado/a,',
+            'intro'             => $intro,
+            'servicios_titulo'  => 'Nuestros servicios',
+            'mostrar_servicios' => true,
+            'mostrar_equipo'    => true,
+            'mostrar_contacto'  => true,
+            'cierre'            => $cierre,
+            'firma_nombre'      => $empresa->name,
+            'firma_cargo'       => 'Equipo Comercial',
+            'color_primario'    => '#1e3a5f',
+            'color_acento'      => '#e8a045',
+            'color_texto'       => '#2d2d2d',
+            'color_fondo'       => '#f5f7fa',
+            'template'          => 'ejecutivo',
         ];
     }
 
@@ -134,6 +138,26 @@ class CartaPresentacionPage extends Page implements HasForms
                             ->label('Cargo / Área'),
                     ])
                     ->columns(2),
+
+                Section::make('Secciones visibles')
+                    ->description('Activa o desactiva cada bloque de la carta.')
+                    ->schema([
+                        Toggle::make('mostrar_servicios')
+                            ->label('Mostrar sección de servicios')
+                            ->default(true)
+                            ->live(),
+
+                        Toggle::make('mostrar_equipo')
+                            ->label('Mostrar sección de equipo')
+                            ->default(true)
+                            ->live(),
+
+                        Toggle::make('mostrar_contacto')
+                            ->label('Mostrar sección de contacto')
+                            ->default(true)
+                            ->live(),
+                    ])
+                    ->columns(3),
 
                 Section::make('Template')
                     ->description('Selecciona el diseño de la carta.')
@@ -239,7 +263,7 @@ class CartaPresentacionPage extends Page implements HasForms
                 })
                 ->action(function () {
                     $empresa  = Filament::getTenant();
-                    $carta    = CartaPresentacion::withoutGlobalScopes()->where('empresa_id', $empresa->id)->first();
+                    $carta    = $this->cartaFromForm($empresa);
                     $contacts = MailingContact::withoutGlobalScopes()
                         ->where('empresa_id', $empresa->id)
                         ->where('active', true)
@@ -277,7 +301,7 @@ class CartaPresentacionPage extends Page implements HasForms
                 ->color('success')
                 ->action(function () {
                     $empresa = Filament::getTenant();
-                    $carta   = CartaPresentacion::withoutGlobalScopes()->where('empresa_id', $empresa->id)->first();
+                    $carta   = $this->cartaFromForm($empresa);
                     $html    = $this->buildHtml($empresa, $carta);
 
                     $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
@@ -292,10 +316,22 @@ class CartaPresentacionPage extends Page implements HasForms
 
     // ── Helpers privados ────────────────────────────────────────────────────
 
+    private function cartaFromForm($empresa): CartaPresentacion
+    {
+        $carta = CartaPresentacion::withoutGlobalScopes()
+            ->firstOrNew(['empresa_id' => $empresa->id]);
+
+        if (! empty($this->data)) {
+            $carta->fill($this->data);
+        }
+
+        return $carta;
+    }
+
     private function enviar(string $email, string $prefijo = ''): array
     {
         $empresa = Filament::getTenant();
-        $carta   = CartaPresentacion::withoutGlobalScopes()->where('empresa_id', $empresa->id)->first();
+        $carta   = $this->cartaFromForm($empresa);
         $html    = $this->buildHtml($empresa, $carta);
         $service = new MailingService($empresa);
 

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class MeasurementUnitResource extends Resource
 {
     protected static ?string $model = MeasurementUnit::class;
+    protected static ?string $tenantRelationshipName = 'measurementUnits';
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
     protected static ?string $navigationGroup = 'Inventario';

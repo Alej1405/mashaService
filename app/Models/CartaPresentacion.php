@@ -17,6 +17,9 @@ class CartaPresentacion extends Model
         'saludo',
         'intro',
         'servicios_titulo',
+        'mostrar_servicios',
+        'mostrar_equipo',
+        'mostrar_contacto',
         'cierre',
         'firma_nombre',
         'firma_cargo',
@@ -25,5 +28,11 @@ class CartaPresentacion extends Model
         'color_texto',
         'color_fondo',
         'template',
+    ];
+
+    protected $casts = [
+        'mostrar_servicios' => 'boolean',
+        'mostrar_equipo'    => 'boolean',
+        'mostrar_contacto'  => 'boolean',
     ];
 }

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class InventoryItemResource extends Resource
 {
     protected static ?string $model = InventoryItem::class;
+    protected static ?string $tenantRelationshipName = 'inventoryItems';
 
     protected static ?string $navigationIcon = 'heroicon-o-cube';
     protected static ?string $navigationGroup = 'Inventario';

@@ -14,6 +14,8 @@ class CmsTestimonialResource extends Resource
 {
     protected static ?string $model = CmsTestimonial::class;
 
+    protected static ?string $tenantRelationshipName = 'cmsTestimonials';
+
     protected static ?string $navigationIcon   = 'heroicon-o-chat-bubble-left-right';
     protected static ?string $navigationLabel  = 'Testimonios';
     protected static ?string $navigationGroup  = 'CMS';

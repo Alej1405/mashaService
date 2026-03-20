@@ -14,6 +14,8 @@ class CmsClientLogoResource extends Resource
 {
     protected static ?string $model = CmsClientLogo::class;
 
+    protected static ?string $tenantRelationshipName = 'cmsClientLogos';
+
     protected static ?string $navigationIcon   = 'heroicon-o-building-storefront';
     protected static ?string $navigationLabel  = 'Clientes';
     protected static ?string $navigationGroup  = 'CMS';

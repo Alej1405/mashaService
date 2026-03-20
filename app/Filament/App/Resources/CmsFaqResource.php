@@ -14,6 +14,8 @@ class CmsFaqResource extends Resource
 {
     protected static ?string $model = CmsFaq::class;
 
+    protected static ?string $tenantRelationshipName = 'cmsFaqs';
+
     protected static ?string $navigationIcon  = 'heroicon-o-question-mark-circle';
     protected static ?string $navigationLabel = 'Preguntas frecuentes';
     protected static ?string $navigationGroup = 'CMS';

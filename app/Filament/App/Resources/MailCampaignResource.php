@@ -19,6 +19,7 @@ use Illuminate\Support\HtmlString;
 class MailCampaignResource extends Resource
 {
     protected static ?string $model = MailCampaign::class;
+    protected static ?string $tenantRelationshipName = 'mailCampaigns';
 
     protected static ?string $navigationIcon   = 'heroicon-o-paper-airplane';
     protected static ?string $navigationLabel  = 'Campañas';

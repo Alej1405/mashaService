@@ -15,6 +15,8 @@ class CmsPostResource extends Resource
 {
     protected static ?string $model = CmsPost::class;
 
+    protected static ?string $tenantRelationshipName = 'cmsPosts';
+
     protected static ?string $navigationIcon   = 'heroicon-o-newspaper';
     protected static ?string $navigationLabel  = 'Noticias';
     protected static ?string $navigationGroup  = 'CMS';

@@ -27,6 +27,7 @@ use App\Filament\App\Resources\InventoryItemResource;
 class ProductionOrderResource extends Resource
 {
     protected static ?string $model = ProductionOrder::class;
+    protected static ?string $tenantRelationshipName = 'productionOrders';
 
     protected static ?string $navigationIcon = 'heroicon-o-cog';
     

@@ -27,6 +27,7 @@ use App\Filament\App\Resources\InventoryItemResource;
 class SaleResource extends Resource
 {
     protected static ?string $model = Sale::class;
+    protected static ?string $tenantRelationshipName = 'sales';
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationGroup = 'Ventas';

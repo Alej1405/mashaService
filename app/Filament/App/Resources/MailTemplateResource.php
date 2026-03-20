@@ -18,6 +18,7 @@ use Illuminate\Support\HtmlString;
 class MailTemplateResource extends Resource
 {
     protected static ?string $model = MailTemplate::class;
+    protected static ?string $tenantRelationshipName = 'mailTemplates';
 
     protected static ?string $navigationIcon   = 'heroicon-o-document-text';
     protected static ?string $navigationLabel  = 'Plantillas';
