@@ -2,25 +2,76 @@
 
 namespace App\Services;
 
+use App\Mail\EmpresaPlainMail;
 use App\Models\Empresa;
 use App\Models\MailTemplate;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class MailingService
 {
-    private string $apiKey;
-    private string $domain;
-    private string $fromEmail;
-    private string $fromName;
-    private string $baseUrl = 'https://api.mailgun.net/v3';
+    private Empresa $empresa;
+    private string  $apiKey;
+    private string  $domain;
+    private string  $fromEmail;
+    private string  $fromName;
+    private ?string $logoUrl;
+    private string  $baseUrl = 'https://api.mailgun.net/v3';
 
     public function __construct(Empresa $empresa)
     {
+        $this->empresa   = $empresa;
         $this->apiKey    = $empresa->mailgun_api_key ?? '';
         $this->domain    = $empresa->mailgun_domain ?? '';
         $this->fromEmail = $empresa->mailgun_from_email ?? '';
         $this->fromName  = $empresa->mailgun_from_name ?? $empresa->name;
+        $this->logoUrl   = $empresa->logo_path
+            ? Storage::disk('public')->url($empresa->logo_path)
+            : null;
+    }
+
+    /** Devuelve true si la empresa tiene SMTP configurado. */
+    public function hasSmtp(): bool
+    {
+        return ! empty($this->empresa->smtp_host) && ! empty($this->empresa->smtp_username);
+    }
+
+    /**
+     * Envía un correo HTML usando el SMTP configurado por la empresa.
+     * Retorna array con 'success' y 'message'.
+     */
+    private function sendViaSMTP(string $to, string $toName, string $subject, string $html): array
+    {
+        $fromEmail = ! empty($this->empresa->smtp_from_email)
+            ? $this->empresa->smtp_from_email
+            : $this->empresa->smtp_username;
+
+        $fromName = ! empty($this->empresa->smtp_from_name)
+            ? $this->empresa->smtp_from_name
+            : $this->empresa->name;
+
+        config([
+            'mail.mailers.empresa_smtp' => [
+                'transport'  => 'smtp',
+                'host'       => $this->empresa->smtp_host,
+                'port'       => $this->empresa->smtp_port ?? 587,
+                'encryption' => $this->empresa->smtp_encryption ?? 'tls',
+                'username'   => $this->empresa->smtp_username,
+                'password'   => $this->empresa->smtp_password,
+            ],
+        ]);
+
+        try {
+            Mail::mailer('empresa_smtp')
+                ->to($toName ? "{$toName} <{$to}>" : $to)
+                ->send(new EmpresaPlainMail($subject, $html, $fromEmail, $fromName));
+
+            return ['success' => true, 'message' => 'Correo enviado a ' . $to];
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Error SMTP: ' . $e->getMessage()];
+        }
     }
 
     public function isConfigured(): bool
@@ -146,9 +197,21 @@ class MailingService
 
     /**
      * Envía un correo de prueba al email indicado.
+     * Usa SMTP si está configurado, de lo contrario usa Mailgun.
      */
     public function sendTestEmail(string $to, string $toName = ''): array
     {
+        $logoImg = $this->logoUrl
+            ? "<div style='text-align:center;margin-bottom:16px;'><img src='{$this->logoUrl}' alt='Logo' style='max-height:60px;max-width:200px;object-fit:contain;'></div>"
+            : '';
+
+        $html = $logoImg
+            . '<p>Si recibes este correo, el <strong>servicio de correo está correctamente configurado</strong> en tu empresa <em>Mashaec ERP</em>. ✅</p>';
+
+        if ($this->hasSmtp()) {
+            return $this->sendViaSMTP($to, $toName, 'Correo de prueba — Mashaec ERP', $html);
+        }
+
         if (! $this->isConfigured()) {
             return ['success' => false, 'message' => 'No hay credenciales configuradas.'];
         }
@@ -164,7 +227,7 @@ class MailingService
                     'to'      => $toName ? "{$toName} <{$to}>" : $to,
                     'subject' => 'Correo de prueba — Mashaec ERP',
                     'text'    => 'Si recibes este correo, el servicio de correo está correctamente configurado en tu empresa Mashaec ERP.',
-                    'html'    => '<p>Si recibes este correo, el <strong>servicio de correo está correctamente configurado</strong> en tu empresa <em>Mashaec ERP</em>. ✅</p>',
+                    'html'    => $html,
                 ]);
 
             if ($response->successful()) {
@@ -181,14 +244,10 @@ class MailingService
 
     /**
      * Envía una plantilla de correo con variables de ejemplo sustituidas.
+     * Usa SMTP si está configurado, de lo contrario usa Mailgun.
      */
     public function sendTemplateTest(string $to, MailTemplate $template): array
     {
-        if (! $this->isConfigured()) {
-            return ['success' => false, 'message' => 'No hay credenciales configuradas.'];
-        }
-
-        $from = ! empty($this->fromEmail) ? $this->fromEmail : "noreply@{$this->domain}";
         $name = ! empty($this->fromName) ? $this->fromName : 'Mashaec ERP';
 
         $sampleVars = [
@@ -201,8 +260,18 @@ class MailingService
             '{{portal}}'   => '#',
         ];
 
-        $html    = str_replace(array_keys($sampleVars), array_values($sampleVars), $template->toHtml());
-        $subject = str_replace(array_keys($sampleVars), array_values($sampleVars), $template->subject);
+        $html    = str_replace(array_keys($sampleVars), array_values($sampleVars), $template->toHtml($this->logoUrl));
+        $subject = '[PRUEBA] ' . str_replace(array_keys($sampleVars), array_values($sampleVars), $template->subject);
+
+        if ($this->hasSmtp()) {
+            return $this->sendViaSMTP($to, '', $subject, $html);
+        }
+
+        if (! $this->isConfigured()) {
+            return ['success' => false, 'message' => 'No hay credenciales configuradas.'];
+        }
+
+        $from = ! empty($this->fromEmail) ? $this->fromEmail : "noreply@{$this->domain}";
 
         try {
             $response = $this->client()
@@ -210,7 +279,7 @@ class MailingService
                 ->post("{$this->baseUrl}/{$this->domain}/messages", [
                     'from'    => "{$name} <{$from}>",
                     'to'      => $to,
-                    'subject' => '[PRUEBA] ' . $subject,
+                    'subject' => $subject,
                     'html'    => $html,
                     'text'    => strip_tags($html),
                 ]);
@@ -251,7 +320,7 @@ class MailingService
         $htmlTemplate = str_replace(
             ['{{nombre}}', '{{empresa}}', '{{email}}', '{{fecha}}', '{{numero}}', '{{url}}', '{{portal}}'],
             ['%recipient.nombre%', '%recipient.empresa%', '%recipient.email%', '%recipient.fecha%', '%recipient.numero%', '%recipient.url%', '%recipient.portal%'],
-            $template->toHtml()
+            $template->toHtml($this->logoUrl)
         );
 
         $subjectTemplate = str_replace(

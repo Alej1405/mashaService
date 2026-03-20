@@ -17,6 +17,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $admin      = Role::firstOrCreate(['name' => 'admin_empresa']);
         $contador   = Role::firstOrCreate(['name' => 'contador']);
         $inventario = Role::firstOrCreate(['name' => 'inventario']);
+        $marketing  = Role::firstOrCreate(['name' => 'marketing']);
 
         // Define permissions
         $permissions = [
@@ -30,6 +31,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'inventario.crear',
             'inventario.editar',
             'inventario.eliminar',
+            // Mailing
+            'mailing.ver',
+            'mailing.contactos.gestionar',
+            'mailing.plantillas.gestionar',
+            'mailing.campanas.gestionar',
         ];
 
         foreach ($permissions as $permission) {
@@ -38,7 +44,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Assign permissions to roles
         $admin->syncPermissions($permissions);
-        
+
         $contador->syncPermissions([
             'reportes.ver',
             'reportes.exportar',
@@ -51,6 +57,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'inventario.ver',
             'inventario.crear',
             'inventario.editar',
+        ]);
+
+        // Marketing: solo acceso al módulo mailing (panel básico)
+        $marketing->syncPermissions([
+            'mailing.ver',
+            'mailing.contactos.gestionar',
+            'mailing.plantillas.gestionar',
+            'mailing.campanas.gestionar',
         ]);
 
         // Assign super_admin role to the initial admin user

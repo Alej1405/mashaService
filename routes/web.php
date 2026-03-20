@@ -26,13 +26,19 @@ Route::get('/panel', function () {
         return redirect('/pro/login');
     }
 
-    $plan = $empresa->plan ?? 'basic';
     $slug = $empresa->slug;
+
+    // El rol marketing siempre va al panel básico (mailing)
+    if ($user->hasRole('marketing')) {
+        return redirect("/app/{$slug}");
+    }
+
+    $plan = $empresa->plan ?? 'basic';
 
     return match ($plan) {
         'enterprise' => redirect("/enterprise/{$slug}"),
         'pro'        => redirect("/pro/{$slug}"),
-        default      => redirect("/basic/{$slug}"),
+        default      => redirect("/app/{$slug}"),
     };
 });
 

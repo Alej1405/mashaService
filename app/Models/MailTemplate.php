@@ -36,9 +36,9 @@ class MailTemplate extends Model
 
     /**
      * Genera el HTML completo con CSS inline listo para enviar por correo.
-     * No se permiten imágenes — solo tipografía, colores y contenido de texto.
+     * Si se provee $logoUrl se inserta el logo de la empresa encima del encabezado.
      */
-    public function toHtml(): string
+    public function toHtml(?string $logoUrl = null): string
     {
         $fontStack = match ($this->font_family) {
             'Inter'        => "'Inter', Arial, sans-serif",
@@ -53,6 +53,17 @@ class MailTemplate extends Model
         $bg       = $this->background_color ?? '#f3f4f6';
         $contentBg = $this->content_background_color ?? '#ffffff';
         $textColor = $this->text_color ?? '#374151';
+
+        // Sección de logo de la empresa
+        $logoHtml = '';
+        if (! empty($logoUrl)) {
+            $logoHtml = "
+            <tr>
+              <td style=\"background-color:{$contentBg};padding:24px 40px 0;text-align:center;\">
+                <img src=\"{$logoUrl}\" alt=\"Logo\" style=\"max-height:64px;max-width:200px;object-fit:contain;\">
+              </td>
+            </tr>";
+        }
 
         // Sección de encabezado
         $headerHtml = '';
@@ -109,6 +120,7 @@ class MailTemplate extends Model
       <td align="center" style="padding:40px 16px;">
         <table width="600" cellpadding="0" cellspacing="0" border="0"
                style="max-width:600px;width:100%;background-color:{$contentBg};border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+          {$logoHtml}
           {$headerHtml}
           <tr>
             <td style="padding:40px;color:{$textColor};font-size:{$fontSize};line-height:1.75;">

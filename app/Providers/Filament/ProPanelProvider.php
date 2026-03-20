@@ -38,7 +38,11 @@ class ProPanelProvider extends PanelProvider
                 'info'      => Color::Sky,
             ])
             ->font('Inter')
-            ->brandName('Mashaec ERP')
+            ->brandName(fn (): string => Filament::getTenant()?->name ?? 'Mashaec ERP')
+            ->brandLogo(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
+                : null)
+            ->brandLogoHeight('2rem')
             ->darkMode(true)
             ->profile(isSimple: false)
             ->renderHook(
@@ -97,6 +101,7 @@ class ProPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 FilamentAuthenticate::class,
+                \App\Http\Middleware\EnsureNotMarketingRole::class,
             ]);
     }
 }

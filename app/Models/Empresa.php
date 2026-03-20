@@ -20,8 +20,17 @@ class Empresa extends Model implements HasName
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
         // Plan de suscripción
         'plan',
-        // Credenciales del servicio de correo (por empresa)
+        // Credenciales Mailgun (por empresa)
         'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
+        // Logo de la empresa
+        'logo_path',
+        // Credenciales SMTP personalizadas (por empresa)
+        'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password',
+        'smtp_encryption', 'smtp_from_email', 'smtp_from_name',
+    ];
+
+    protected $casts = [
+        'smtp_port' => 'integer',
     ];
 
     protected static function booted(): void

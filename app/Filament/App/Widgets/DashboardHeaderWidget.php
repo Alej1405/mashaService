@@ -2,9 +2,10 @@
 
 namespace App\Filament\App\Widgets;
 
-use Filament\Widgets\Widget;
-use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
+use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class DashboardHeaderWidget extends Widget
 {
@@ -29,22 +30,30 @@ class DashboardHeaderWidget extends Widget
 
     protected function getViewData(): array
     {
-        $user = auth()->user();
+        $user    = Auth::user();
+        $empresa = \Filament\Facades\Filament::getTenant();
+
+        abort_if(! $user instanceof \App\Models\User, 403);
+        abort_if(! $empresa instanceof \App\Models\Empresa, 404);
+
         $hora = now()->hour;
-        
+
         $saludo = match(true) {
-            $hora >= 6 && $hora < 12 => 'Buenos días',
+            $hora >= 6 && $hora < 12  => 'Buenos días',
             $hora >= 12 && $hora < 19 => 'Buenas tardes',
-            default => 'Buenas noches',
+            default                   => 'Buenas noches',
         };
 
         Carbon::setLocale('es');
         $fechaLarga = now()->translatedFormat('l, d \d\e F \d\e Y');
 
+        $logoPath = $empresa->logo_path;
+
         return [
-            'saludo' => $saludo . ', ' . $user->name,
+            'saludo'     => $saludo . ', ' . $user->name,
             'fechaActual' => ucfirst($fechaLarga),
-            'tenant' => \Filament\Facades\Filament::getTenant()->slug,
+            'tenant'     => $empresa->slug,
+            'logoUrl'    => $logoPath ? Storage::url($logoPath) : null,
         ];
     }
 }

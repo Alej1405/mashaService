@@ -39,7 +39,11 @@ class BasicPanelProvider extends PanelProvider
                 'info'      => Color::Sky,
             ])
             ->font('Inter')
-            ->brandName('Mashaec ERP')
+            ->brandName(fn (): string => Filament::getTenant()?->name ?? 'Mashaec ERP')
+            ->brandLogo(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
+                : null)
+            ->brandLogoHeight('2rem')
             ->darkMode(true)
             ->profile(isSimple: false)
             ->renderHook(
@@ -58,10 +62,22 @@ class BasicPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\MailTemplateResource::class,
                 \App\Filament\App\Resources\MailingContactResource::class,
                 \App\Filament\App\Resources\MailCampaignResource::class,
+                \App\Filament\App\Resources\EmpresaUserResource::class,
+                // CMS
+                \App\Filament\App\Resources\CmsServiceResource::class,
+                \App\Filament\App\Resources\CmsTeamMemberResource::class,
+                \App\Filament\App\Resources\CmsClientLogoResource::class,
+                \App\Filament\App\Resources\CmsTestimonialResource::class,
+                \App\Filament\App\Resources\CmsFaqResource::class,
+                \App\Filament\App\Resources\CmsPostResource::class,
             ])
             ->pages([
                 \App\Filament\Basic\Pages\Dashboard::class,
                 \App\Filament\Basic\Pages\MailingDashboard::class,
+                // CMS — secciones únicas
+                \App\Filament\App\Pages\Cms\CmsHeroPage::class,
+                \App\Filament\App\Pages\Cms\CmsAboutPage::class,
+                \App\Filament\App\Pages\Cms\CmsContactPage::class,
             ])
             ->userMenuItems([
                 MenuItem::make()

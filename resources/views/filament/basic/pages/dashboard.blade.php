@@ -12,7 +12,7 @@
 
     <div class="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <p class="text-2xl font-black text-white leading-tight">{{ $saludo }}</p>
+            <p class="text-2xl font-black text-slate-400 leading-tight">{{ $saludo }}</p>
             <p class="text-sm text-slate-400 mt-1">{{ $fecha }}</p>
             <div class="flex items-center gap-2 mt-3">
                 <span class="text-xs font-semibold text-slate-300 bg-slate-700/60 px-3 py-1 rounded-full">
@@ -54,12 +54,12 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════
-     KPIs — 4 tarjetas
+        KPIs — 4 tarjetas
 ══════════════════════════════════════════════════════════════ --}}
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="flex flex-4 flex-row gap-4 justify-center w-full">
 
     {{-- Entregados --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
         <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Entregados</span>
             <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
@@ -82,7 +82,7 @@
     </div>
 
     {{-- Tasa de entrega --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
         <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Entrega</span>
             <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -106,7 +106,7 @@
     </div>
 
     {{-- Apertura --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
         <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Aperturas</span>
             <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center">
@@ -129,7 +129,7 @@
     </div>
 
     {{-- Plantillas --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
         <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Plantillas</span>
             <div class="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
@@ -151,7 +151,7 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════
-     CONTENIDO PRINCIPAL — Eventos + Acciones rápidas
+    CONTENIDO PRINCIPAL — Eventos + Acciones rápidas
 ══════════════════════════════════════════════════════════════ --}}
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -164,7 +164,7 @@
             </div>
             @if($configurado)
             <a href="{{ \App\Filament\Basic\Pages\MailingDashboard::getUrl(tenant: \Filament\Facades\Filament::getTenant()) }}"
-               class="text-xs font-semibold text-indigo-500 hover:text-indigo-600 transition-colors">
+                class="text-xs font-semibold text-indigo-500 hover:text-indigo-600 transition-colors">
                 Ver todo →
             </a>
             @endif
