@@ -78,6 +78,8 @@ class BasicPanelProvider extends PanelProvider
                 \App\Filament\App\Pages\Cms\CmsHeroPage::class,
                 \App\Filament\App\Pages\Cms\CmsAboutPage::class,
                 \App\Filament\App\Pages\Cms\CmsContactPage::class,
+                // API
+                \App\Filament\App\Pages\ApiDocsPage::class,
             ])
             ->userMenuItems([
                 MenuItem::make()
