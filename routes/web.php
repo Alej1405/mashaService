@@ -79,7 +79,11 @@ Route::get('/carta-preview/{slug}', function (string $slug) {
         return '<p style="font-family:sans-serif;color:#888;padding:40px;text-align:center;">Guarda la carta primero para ver la vista previa.</p>';
     }
 
-    return view('emails.carta-presentacion', compact('empresa', 'carta', 'servicios', 'contacto'));
+    $template = in_array($carta->template, ['ejecutivo', 'vanguardia', 'elite'])
+        ? $carta->template
+        : 'ejecutivo';
+
+    return view("emails.carta-templates.{$template}", compact('empresa', 'carta', 'servicios', 'contacto'));
 })->name('carta.preview');
 
 Route::get('/fichas/download/{file}', function ($file) {

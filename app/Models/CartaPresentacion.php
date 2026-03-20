@@ -24,5 +24,6 @@ class CartaPresentacion extends Model
         'color_acento',
         'color_texto',
         'color_fondo',
+        'template',
     ];
 }

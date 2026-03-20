@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -81,6 +82,7 @@ class CartaPresentacionPage extends Page implements HasForms
             'color_acento'     => '#e8a045',
             'color_texto'      => '#2d2d2d',
             'color_fondo'      => '#f5f7fa',
+            'template'         => 'ejecutivo',
         ];
     }
 
@@ -132,6 +134,22 @@ class CartaPresentacionPage extends Page implements HasForms
                             ->label('Cargo / Área'),
                     ])
                     ->columns(2),
+
+                Section::make('Template')
+                    ->description('Selecciona el diseño de la carta.')
+                    ->schema([
+                        Radio::make('template')
+                            ->label('')
+                            ->options([
+                                'ejecutivo'  => 'Ejecutivo — Minimalismo refinado con franja de acento y servicios numerados',
+                                'vanguardia' => 'Vanguardia — Header en degradé diagonal, servicios con numeración bold',
+                                'elite'      => 'Élite — Diseño oscuro premium con detalles dorados y elementos geométricos',
+                            ])
+                            ->default('ejecutivo')
+                            ->required()
+                            ->columnSpanFull()
+                            ->live(),
+                    ]),
 
                 Section::make('Colores')
                     ->description('Personaliza los colores del template.')
@@ -305,7 +323,11 @@ class CartaPresentacionPage extends Page implements HasForms
             ->where('empresa_id', $empresa->id)
             ->first();
 
-        return view('emails.carta-presentacion', compact('empresa', 'carta', 'servicios', 'contacto'))->render();
+        $template = in_array($carta->template, ['ejecutivo', 'vanguardia', 'elite'])
+            ? $carta->template
+            : 'ejecutivo';
+
+        return view("emails.carta-templates.{$template}", compact('empresa', 'carta', 'servicios', 'contacto'))->render();
     }
 
     public function getViewData(): array
