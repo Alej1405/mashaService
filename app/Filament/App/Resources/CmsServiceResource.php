@@ -44,6 +44,20 @@ class CmsServiceResource extends Resource
                     ->maxLength(500)
                     ->columnSpanFull(),
 
+                Forms\Components\Repeater::make('caracteristicas')
+                    ->label('Características del servicio')
+                    ->schema([
+                        Forms\Components\TextInput::make('texto')
+                            ->label('Característica')
+                            ->required()
+                            ->maxLength(200)
+                            ->placeholder('Ej: Entrega en 24 horas'),
+                    ])
+                    ->addActionLabel('Agregar característica')
+                    ->defaultItems(0)
+                    ->collapsible()
+                    ->columnSpanFull(),
+
                 Forms\Components\TextInput::make('icono')
                     ->label('Ícono (emoji o nombre heroicon)')
                     ->placeholder('🚚  ó  heroicon-o-truck')

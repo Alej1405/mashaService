@@ -12,8 +12,8 @@ class CmsService extends Model
     protected $table = 'cms_services';
 
     protected $fillable = [
-        'empresa_id', 'titulo', 'descripcion', 'icono', 'imagen', 'sort_order', 'activo',
+        'empresa_id', 'titulo', 'descripcion', 'caracteristicas', 'icono', 'imagen', 'sort_order', 'activo',
     ];
 
-    protected $casts = ['activo' => 'boolean', 'sort_order' => 'integer'];
+    protected $casts = ['activo' => 'boolean', 'sort_order' => 'integer', 'caracteristicas' => 'array'];
 }

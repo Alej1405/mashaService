@@ -85,11 +85,12 @@ class CmsController extends Controller
             ->orderBy('sort_order')
             ->get()
             ->map(fn ($s) => [
-                'id'          => $s->id,
-                'titulo'      => $s->titulo,
-                'descripcion' => $s->descripcion,
-                'icono'       => $s->icono,
-                'imagen'      => $this->imageUrl($s->imagen),
+                'id'               => $s->id,
+                'titulo'           => $s->titulo,
+                'descripcion'      => $s->descripcion,
+                'caracteristicas'  => $s->caracteristicas ?? [],
+                'icono'            => $s->icono,
+                'imagen'           => $this->imageUrl($s->imagen),
             ]);
 
         return response()->json($services);
@@ -268,7 +269,7 @@ class CmsController extends Controller
                 'numeros'          => $about->numeros          ?? [],
                 'caracteristicas'  => $about->caracteristicas  ?? [],
             ] : null,
-            'servicios' => CmsService::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($s) => ['titulo' => $s->titulo, 'descripcion' => $s->descripcion, 'icono' => $s->icono, 'imagen' => $this->imageUrl($s->imagen)]),
+            'servicios' => CmsService::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($s) => ['id' => $s->id, 'titulo' => $s->titulo, 'descripcion' => $s->descripcion, 'caracteristicas' => $s->caracteristicas ?? [], 'icono' => $s->icono, 'imagen' => $this->imageUrl($s->imagen)]),
             'equipo' => CmsTeamMember::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($m) => ['nombre' => $m->nombre, 'cargo' => $m->cargo, 'bio' => $m->bio, 'foto' => $this->imageUrl($m->foto)]),
             'clientes' => CmsClientLogo::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($c) => ['nombre' => $c->nombre, 'logo' => $this->imageUrl($c->logo), 'url' => $c->url]),
             'testimonios' => CmsTestimonial::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($t) => ['autor_nombre' => $t->autor_nombre, 'autor_cargo' => $t->autor_cargo, 'autor_empresa' => $t->autor_empresa, 'autor_foto' => $this->imageUrl($t->autor_foto), 'contenido' => $t->contenido, 'estrellas' => $t->estrellas]),

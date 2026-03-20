@@ -120,11 +120,12 @@ export const NosotrosSchema = z.object({
 }).nullable()
 
 export const ServicioSchema = z.object({
-  id:          z.number(),
-  titulo:      z.string(),
-  descripcion: nullable(z.string()),
-  icono:       nullable(z.string()),
-  imagen:      nullable(z.string().url()),
+  id:              z.number(),
+  titulo:          z.string(),
+  descripcion:     nullable(z.string()),
+  caracteristicas: z.array(z.object({ texto: z.string() })),
+  icono:           nullable(z.string()),
+  imagen:          nullable(z.string().url()),
 })
 
 export const MiembroEquipoSchema = z.object({
