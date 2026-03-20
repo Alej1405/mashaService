@@ -12,7 +12,7 @@
         <span class="text-gray-300 dark:text-gray-600">·</span>
 
         <div class="flex items-center gap-1.5">
-            <x-heroicon-o-text-cursor-input class="w-3.5 h-3.5"/>
+            <x-heroicon-o-cursor-arrow-rays class="w-3.5 h-3.5"/>
             <span>{{ $template->font_family }}, {{ $template->base_font_size }}px</span>
         </div>
 
