@@ -29,6 +29,14 @@ jobs:
             npm ci
             npm run build
 
+            PENDING=$(php artisan migrate:status --no-ansi 2>/dev/null | grep -c 'Pending' || true)
+            if [ "$PENDING" -gt 0 ]; then
+              echo "Ejecutando $PENDING migración(es) pendiente(s)..."
+              php artisan migrate --force
+            else
+              echo "No hay migraciones pendientes."
+            fi
+
             php artisan config:cache
             php artisan route:cache
             php artisan view:clear

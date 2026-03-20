@@ -36,6 +36,25 @@ Route::get('/panel', function () {
     };
 });
 
+// ── Plantilla CSV para importación de contactos de mailing ────────────────
+Route::get('/mailing/contacts/template', function () {
+    if (! Auth::check()) {
+        abort(403);
+    }
+
+    $csv = implode("\n", [
+        'nombre,email,telefono,notas',
+        'Juan Pérez,juan.perez@ejemplo.com,+506-8888-1234,Cliente frecuente',
+        'María González,maria.gonzalez@ejemplo.com,,Contacto nuevo',
+        'Empresa ABC,contacto@empresaabc.com,+506-2222-3333,Proveedor',
+    ]);
+
+    return response($csv, 200, [
+        'Content-Type'        => 'text/csv; charset=UTF-8',
+        'Content-Disposition' => 'attachment; filename="plantilla_contactos_mailing.csv"',
+    ]);
+})->name('mailing.contacts.template');
+
 Route::get('/fichas/download/{file}', function ($file) {
     if (!Auth::check()) {
         abort(403);

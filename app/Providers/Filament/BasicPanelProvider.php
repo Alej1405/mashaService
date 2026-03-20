@@ -56,6 +56,8 @@ class BasicPanelProvider extends PanelProvider
             )
             ->resources([
                 \App\Filament\App\Resources\MailTemplateResource::class,
+                \App\Filament\App\Resources\MailingContactResource::class,
+                \App\Filament\App\Resources\MailCampaignResource::class,
             ])
             ->pages([
                 \App\Filament\Basic\Pages\Dashboard::class,

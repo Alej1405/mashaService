@@ -227,6 +227,178 @@ class MailingService
         }
     }
 
+    /**
+     * Envía un correo masivo a múltiples destinatarios usando Mailgun batch sending.
+     * Usa recipient-variables para personalización por destinatario.
+     * Procesa en lotes de 1 000 contactos máximo (límite de Mailgun).
+     *
+     * $contacts = [['nombre' => '...', 'email' => '...'], ...]
+     */
+    public function sendMassEmail(array $contacts, MailTemplate $template): array
+    {
+        if (! $this->isConfigured()) {
+            return ['success' => false, 'message' => 'No hay credenciales configuradas.', 'sent' => 0, 'failed' => 0];
+        }
+
+        if (empty($contacts)) {
+            return ['success' => false, 'message' => 'No hay destinatarios.', 'sent' => 0, 'failed' => 0];
+        }
+
+        $from = ! empty($this->fromEmail) ? $this->fromEmail : "noreply@{$this->domain}";
+        $name = ! empty($this->fromName) ? $this->fromName : 'Mashaec ERP';
+
+        // Preparar el HTML reemplazando {{variable}} por %recipient.variable%
+        $htmlTemplate = str_replace(
+            ['{{nombre}}', '{{empresa}}', '{{email}}', '{{fecha}}', '{{numero}}', '{{url}}', '{{portal}}'],
+            ['%recipient.nombre%', '%recipient.empresa%', '%recipient.email%', '%recipient.fecha%', '%recipient.numero%', '%recipient.url%', '%recipient.portal%'],
+            $template->toHtml()
+        );
+
+        $subjectTemplate = str_replace(
+            ['{{nombre}}', '{{empresa}}', '{{email}}'],
+            ['%recipient.nombre%', '%recipient.empresa%', '%recipient.email%'],
+            $template->subject
+        );
+
+        $sent   = 0;
+        $failed = 0;
+        $chunks = array_chunk($contacts, 1000);
+
+        foreach ($chunks as $chunk) {
+            $toList             = [];
+            $recipientVariables = [];
+
+            foreach ($chunk as $contact) {
+                $email  = $contact['email'];
+                $nombre = ! empty($contact['nombre']) ? $contact['nombre'] : $email;
+
+                $toList[] = "{$nombre} <{$email}>";
+
+                $recipientVariables[$email] = [
+                    'nombre'  => $nombre,
+                    'email'   => $email,
+                    'empresa' => $name,
+                    'fecha'   => now()->format('d/m/Y'),
+                    'numero'  => '',
+                    'url'     => '',
+                    'portal'  => '',
+                ];
+            }
+
+            try {
+                $response = $this->client()
+                    ->asForm()
+                    ->post("{$this->baseUrl}/{$this->domain}/messages", [
+                        'from'                 => "{$name} <{$from}>",
+                        'to'                   => implode(',', $toList),
+                        'subject'              => $subjectTemplate,
+                        'html'                 => $htmlTemplate,
+                        'text'                 => strip_tags($htmlTemplate),
+                        'recipient-variables'  => json_encode($recipientVariables),
+                    ]);
+
+                if ($response->successful()) {
+                    $sent += count($chunk);
+                } else {
+                    $failed += count($chunk);
+                }
+            } catch (\Exception) {
+                $failed += count($chunk);
+            }
+        }
+
+        return [
+            'success' => $failed === 0,
+            'message' => "Enviados: {$sent}" . ($failed > 0 ? ", Fallidos: {$failed}" : ''),
+            'sent'    => $sent,
+            'failed'  => $failed,
+        ];
+    }
+
+    /**
+     * Parsea un archivo CSV o Excel y devuelve un array de contactos.
+     * Columnas esperadas: nombre, email, telefono, notas (en cualquier orden, insensible a mayúsculas).
+     */
+    public static function parseContactsFile(string $filePath): array
+    {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        return match (true) {
+            in_array($ext, ['csv', 'txt'])          => static::parseCsvFile($filePath),
+            in_array($ext, ['xlsx', 'xls', 'ods'])  => static::parseSpreadsheetFile($filePath),
+            default                                  => [],
+        };
+    }
+
+    private static function parseCsvFile(string $filePath): array
+    {
+        $contacts = [];
+        $handle   = fopen($filePath, 'r');
+
+        if ($handle === false) {
+            return [];
+        }
+
+        $headers = null;
+
+        while (($row = fgetcsv($handle, 0, ',')) !== false) {
+            if ($headers === null) {
+                $headers = array_map(fn ($h) => strtolower(trim($h)), $row);
+                continue;
+            }
+
+            if (count($row) < count($headers)) {
+                $row = array_pad($row, count($headers), '');
+            }
+
+            $data  = array_combine($headers, $row);
+            $email = trim($data['email'] ?? '');
+
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $contacts[] = [
+                    'nombre'   => trim($data['nombre'] ?? $data['name'] ?? ''),
+                    'email'    => $email,
+                    'telefono' => trim($data['telefono'] ?? $data['phone'] ?? $data['teléfono'] ?? ''),
+                    'notas'    => trim($data['notas'] ?? $data['notes'] ?? $data['nota'] ?? ''),
+                ];
+            }
+        }
+
+        fclose($handle);
+
+        return $contacts;
+    }
+
+    private static function parseSpreadsheetFile(string $filePath): array
+    {
+        $contacts    = [];
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
+        $rows        = $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        $headers = array_map(fn ($h) => strtolower(trim((string) $h)), $rows[0]);
+
+        foreach (array_slice($rows, 1) as $row) {
+            $padded = array_pad($row, count($headers), '');
+            $data   = array_combine($headers, $padded);
+            $email  = trim($data['email'] ?? '');
+
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $contacts[] = [
+                    'nombre'   => trim($data['nombre'] ?? $data['name'] ?? ''),
+                    'email'    => $email,
+                    'telefono' => trim($data['telefono'] ?? $data['phone'] ?? $data['teléfono'] ?? ''),
+                    'notas'    => trim($data['notas'] ?? $data['notes'] ?? $data['nota'] ?? ''),
+                ];
+            }
+        }
+
+        return $contacts;
+    }
+
     private function emptyStats(): array
     {
         return [
