@@ -60,7 +60,7 @@
 
     {{-- Entregados --}}
     <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mr-2">
             <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Entregados</span>
             <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
                 <x-heroicon-o-paper-airplane class="w-4 h-4 text-indigo-500"/>

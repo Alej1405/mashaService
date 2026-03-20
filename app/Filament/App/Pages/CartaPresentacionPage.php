@@ -323,11 +323,17 @@ class CartaPresentacionPage extends Page implements HasForms
             ->where('empresa_id', $empresa->id)
             ->first();
 
+        $equipo = \App\Models\CmsTeamMember::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->orderBy('sort_order')
+            ->get();
+
         $template = in_array($carta->template, ['ejecutivo', 'vanguardia', 'elite'])
             ? $carta->template
             : 'ejecutivo';
 
-        return view("emails.carta-templates.{$template}", compact('empresa', 'carta', 'servicios', 'contacto'))->render();
+        return view("emails.carta-templates.{$template}", compact('empresa', 'carta', 'servicios', 'contacto', 'equipo'))->render();
     }
 
     public function getViewData(): array

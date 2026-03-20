@@ -141,6 +141,60 @@
         </table>
       @endif
 
+      {{-- ── Equipo ──────────────────────────────────────────────────────── --}}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+        <tr>
+          <td style="padding-bottom:16px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;padding-right:12px;" width="28">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="7" cy="6" r="3" stroke="{{ $carta->color_acento }}" stroke-width="1.3" fill="none"/>
+                    <circle cx="13" cy="6" r="3" stroke="{{ $carta->color_primario }}" stroke-width="1.3" fill="none" opacity="0.5"/>
+                    <path d="M1 17C1 13.7 3.7 11 7 11C10.3 11 13 13.7 13 17" stroke="{{ $carta->color_acento }}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+                    <path d="M13 11C16.3 11 19 13.7 19 17" stroke="{{ $carta->color_primario }}" stroke-width="1.3" fill="none" stroke-linecap="round" opacity="0.5"/>
+                  </svg>
+                </td>
+                <td>
+                  <p style="margin:0;color:{{ $carta->color_primario }};font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Nuestro equipo</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        @if($equipo->count())
+          @foreach($equipo as $miembro)
+          <tr>
+            <td style="padding-bottom:10px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background-color:#fafafa;border-radius:8px;border:1px solid #f0f0f0;">
+                <tr>
+                  <td width="4" style="background:linear-gradient(180deg,{{ $carta->color_acento }},{{ $carta->color_primario }});border-radius:8px 0 0 8px;">&nbsp;</td>
+                  <td style="padding:12px 16px;">
+                    <p style="margin:0 0 2px;color:{{ $carta->color_primario }};font-size:13px;font-weight:700;">{{ $miembro->nombre }}</p>
+                    @if($miembro->cargo)
+                      <p style="margin:0 0 2px;color:{{ $carta->color_acento }};font-size:11px;font-weight:600;">{{ $miembro->cargo }}</p>
+                    @endif
+                    @if($miembro->bio)
+                      <p style="margin:0;color:#888888;font-size:12px;line-height:1.5;">{{ $miembro->bio }}</p>
+                    @endif
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          @endforeach
+        @else
+          <tr>
+            <td style="padding:14px 18px;background-color:#fff8f0;border:1px dashed {{ $carta->color_acento }}55;border-radius:8px;text-align:center;">
+              <p style="margin:0;color:{{ $carta->color_acento }};font-size:12px;">
+                &#9888; Completa la información del equipo en el panel CMS → <strong>Equipo</strong>
+              </p>
+            </td>
+          </tr>
+        @endif
+      </table>
+
       {{-- Cierre --}}
       <p style="margin:0 0 36px;color:{{ $carta->color_texto }};font-size:14px;line-height:1.9;opacity:0.85;">
         {{ $carta->cierre }}
@@ -164,9 +218,9 @@
   </tr>
 
   {{-- ── CONTACTO ────────────────────────────────────────────────────────── --}}
-  @if($contacto)
   <tr>
     <td style="background:linear-gradient(135deg,{{ $carta->color_primario }}f0 0%,{{ $carta->color_primario }} 100%);padding:28px 48px;border-left:1px solid #ebebeb;border-right:1px solid #ebebeb;">
+      @if($contacto)
       <table width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
           @if($contacto->telefono)
@@ -196,9 +250,13 @@
         </tr>
         @endif
       </table>
+      @else
+      <p style="margin:0;color:rgba(255,255,255,0.6);font-size:12px;text-align:center;">
+        &#9888; Completa la información de contacto en el panel CMS → <strong style="color:#ffffff;">Contacto</strong>
+      </p>
+      @endif
     </td>
   </tr>
-  @endif
 
   {{-- ── FOOTER ──────────────────────────────────────────────────────────── --}}
   <tr>

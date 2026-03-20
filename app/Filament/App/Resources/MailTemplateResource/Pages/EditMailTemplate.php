@@ -26,7 +26,7 @@ class EditMailTemplate extends EditRecord
                 ->modalHeading(fn () => 'Vista previa — ' . $this->record->name)
                 ->modalContent(fn () => view(
                     'filament.app.modals.mail-template-preview',
-                    ['html' => $this->record->toHtml()]
+                    ['html' => $this->record->toHtml(), 'template' => $this->record]
                 ))
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Cerrar'),
