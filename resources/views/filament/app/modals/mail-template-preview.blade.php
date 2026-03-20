@@ -6,14 +6,14 @@
         <div class="flex items-center gap-1.5">
             <x-heroicon-o-envelope class="w-3.5 h-3.5"/>
             <span class="font-medium text-gray-700 dark:text-gray-300">Asunto:</span>
-            <span>{{ $template->subject }}</span>
+            <span>{{ $template->subject ?? '—' }}</span>
         </div>
 
         <span class="text-gray-300 dark:text-gray-600">·</span>
 
         <div class="flex items-center gap-1.5">
             <x-heroicon-o-cursor-arrow-rays class="w-3.5 h-3.5"/>
-            <span>{{ $template->font_family }}, {{ $template->base_font_size }}px</span>
+            <span>{{ $template->font_family ?? 'Arial' }}, {{ $template->base_font_size ?? 16 }}px</span>
         </div>
 
         <span class="text-gray-300 dark:text-gray-600">·</span>

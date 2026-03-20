@@ -332,11 +332,24 @@ class CartaPresentacionPage extends Page implements HasForms
 
     public function getViewData(): array
     {
-        $empresa = Filament::getTenant();
-        $carta   = CartaPresentacion::withoutGlobalScopes()->where('empresa_id', $empresa->id)->first();
+        $empresa   = Filament::getTenant();
+        $formData  = $this->data ?? [];
+
+        // Construir un CartaPresentacion temporal con los valores actuales del formulario
+        // para que la preview refleje el estado del form aunque no se haya guardado.
+        $carta = CartaPresentacion::withoutGlobalScopes()
+            ->firstOrNew(['empresa_id' => $empresa->id]);
+
+        if (! empty($formData)) {
+            $carta->fill($formData);
+        }
+
+        $previewHtml = $carta->exists || ! empty($formData)
+            ? $this->buildHtml($empresa, $carta)
+            : null;
 
         return [
-            'previewUrl' => route('carta.preview', ['slug' => $empresa->slug]),
+            'previewHtml' => $previewHtml,
         ];
     }
 }
