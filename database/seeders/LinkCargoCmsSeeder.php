@@ -81,47 +81,45 @@ class LinkCargoCmsSeeder extends Seeder
 
     private function seedAbout(int $empresaId): void
     {
-        $cuerpo = <<<HTML
-<p>En Link Cargo, entendemos que cada carga es única. Por eso, diseñamos soluciones personalizadas que optimizan tus operaciones de comercio internacional, garantizando eficiencia, seguridad y costos competitivos.</p>
-
-<p>Somos una empresa dedicada a la prestación de servicios de comercio exterior y logística internacional. Nuestro principal enfoque está en la eficiencia, agilidad, precisión y calidad de nuestros servicios.</p>
-
-<h2>¿Por qué Link Cargo?</h2>
-<ul>
-  <li>✔ Tarifas competitivas</li>
-  <li>✔ Seguimiento en tiempo real</li>
-  <li>✔ Asesoría personalizada</li>
-  <li>✔ Amplia red de agentes</li>
-  <li>✔ Tecnología de punta</li>
-  <li>✔ Cumplimiento normativo</li>
-</ul>
-
-<h2>Nuestros números</h2>
-<ul>
-  <li><strong>12+</strong> años de trayectoria</li>
-  <li><strong>800+</strong> corresponsales</li>
-  <li><strong>50+</strong> conexiones globales</li>
-  <li><strong>10.000+</strong> operaciones exitosas</li>
-  <li><strong>98%</strong> índice de satisfacción de clientes</li>
-</ul>
-
-<h2>Experiencia Comprobada</h2>
-<p>Más de 15 años liderando el comercio exterior en Ecuador.</p>
-
-<h2>Equipo Experto</h2>
-<p>Profesionales certificados en logística y comercio internacional.</p>
-
-<h2>Atención 24/7</h2>
-<p>Soporte continuo para seguimiento de tus envíos.</p>
-HTML;
-
         CmsAbout::updateOrCreate(
             ['empresa_id' => $empresaId],
             [
-                'titulo'  => 'Tu socio estratégico en comercio exterior',
-                'cuerpo'  => $cuerpo,
-                'imagen'  => null, // subir manualmente desde el panel
-                'activo'  => true,
+                'titulo'      => 'Tu socio estratégico en comercio exterior',
+                'descripcion' => 'En Link Cargo, entendemos que cada carga es única. Por eso, diseñamos soluciones personalizadas que optimizan tus operaciones de comercio internacional, garantizando eficiencia, seguridad y costos competitivos.',
+                'imagen'      => null, // subir manualmente desde el panel
+                'activo'      => true,
+
+                'por_que_nosotros' => [
+                    ['texto' => 'Tarifas competitivas'],
+                    ['texto' => 'Seguimiento en tiempo real'],
+                    ['texto' => 'Asesoría personalizada'],
+                    ['texto' => 'Amplia red de agentes'],
+                    ['texto' => 'Tecnología de punta'],
+                    ['texto' => 'Cumplimiento normativo'],
+                ],
+
+                'numeros' => [
+                    ['valor' => '12+',    'etiqueta' => 'años de trayectoria'],
+                    ['valor' => '800+',   'etiqueta' => 'corresponsales'],
+                    ['valor' => '50+',    'etiqueta' => 'conexiones globales'],
+                    ['valor' => '10.000+','etiqueta' => 'operaciones exitosas'],
+                    ['valor' => '98%',    'etiqueta' => 'índice de satisfacción de clientes'],
+                ],
+
+                'caracteristicas' => [
+                    [
+                        'titulo'      => 'Experiencia Comprobada',
+                        'descripcion' => 'Más de 15 años liderando el comercio exterior en Ecuador.',
+                    ],
+                    [
+                        'titulo'      => 'Equipo Experto',
+                        'descripcion' => 'Profesionales certificados en logística y comercio internacional.',
+                    ],
+                    [
+                        'titulo'      => 'Atención 24/7',
+                        'descripcion' => 'Soporte continuo para seguimiento de tus envíos.',
+                    ],
+                ],
             ]
         );
 

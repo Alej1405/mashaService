@@ -5,8 +5,9 @@ namespace App\Filament\App\Pages\Cms;
 use App\Models\CmsAbout;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -48,23 +49,83 @@ class CmsAboutPage extends Page implements HasForms
     {
         return $form
             ->schema([
-                Section::make('Contenido')
+                Section::make('Contenido principal')
                     ->schema([
                         TextInput::make('titulo')
                             ->label('Título de la sección')
-                            ->placeholder('¿Quiénes somos?')
+                            ->placeholder('Tu socio estratégico en comercio exterior')
                             ->required()
                             ->maxLength(200)
                             ->columnSpanFull(),
 
-                        RichEditor::make('cuerpo')
-                            ->label('Contenido')
-                            ->toolbarButtons([
-                                'bold', 'italic', 'underline',
-                                'bulletList', 'orderedList',
-                                'h2', 'h3', 'paragraph',
-                                'link', 'undo', 'redo',
+                        Textarea::make('descripcion')
+                            ->label('Descripción general')
+                            ->placeholder('Texto introductorio de la sección...')
+                            ->rows(4)
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('¿Por qué nosotros?')
+                    ->description('Lista de ventajas competitivas (se muestran con ✔)')
+                    ->schema([
+                        Repeater::make('por_que_nosotros')
+                            ->label('')
+                            ->schema([
+                                TextInput::make('texto')
+                                    ->label('Ventaja')
+                                    ->placeholder('Tarifas competitivas')
+                                    ->required(),
                             ])
+                            ->addActionLabel('Agregar ventaja')
+                            ->reorderable()
+                            ->collapsible()
+                            ->defaultItems(0)
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Nuestros números')
+                    ->description('Estadísticas y métricas destacadas')
+                    ->schema([
+                        Repeater::make('numeros')
+                            ->label('')
+                            ->schema([
+                                TextInput::make('valor')
+                                    ->label('Valor')
+                                    ->placeholder('12+')
+                                    ->required(),
+                                TextInput::make('etiqueta')
+                                    ->label('Etiqueta')
+                                    ->placeholder('años de trayectoria')
+                                    ->required(),
+                            ])
+                            ->columns(2)
+                            ->addActionLabel('Agregar número')
+                            ->reorderable()
+                            ->collapsible()
+                            ->defaultItems(0)
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Características destacadas')
+                    ->description('Tarjetas con título y descripción corta')
+                    ->schema([
+                        Repeater::make('caracteristicas')
+                            ->label('')
+                            ->schema([
+                                TextInput::make('titulo')
+                                    ->label('Título')
+                                    ->placeholder('Experiencia Comprobada')
+                                    ->required(),
+                                Textarea::make('descripcion')
+                                    ->label('Descripción')
+                                    ->placeholder('Más de 15 años liderando el comercio exterior en Ecuador.')
+                                    ->rows(2)
+                                    ->required(),
+                            ])
+                            ->addActionLabel('Agregar característica')
+                            ->reorderable()
+                            ->collapsible()
+                            ->defaultItems(0)
                             ->columnSpanFull(),
                     ]),
 
@@ -97,5 +158,4 @@ class CmsAboutPage extends Page implements HasForms
 
         Notification::make()->success()->title('Sección Nosotros guardada')->send();
     }
-
 }

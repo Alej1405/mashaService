@@ -67,9 +67,12 @@ class CmsController extends Controller
         }
 
         return response()->json([
-            'titulo' => $about->titulo,
-            'cuerpo' => $about->cuerpo,
-            'imagen' => $this->imageUrl($about->imagen),
+            'titulo'           => $about->titulo,
+            'descripcion'      => $about->descripcion,
+            'imagen'           => $this->imageUrl($about->imagen),
+            'por_que_nosotros' => $about->por_que_nosotros ?? [],
+            'numeros'          => $about->numeros          ?? [],
+            'caracteristicas'  => $about->caracteristicas  ?? [],
         ]);
     }
 
@@ -258,9 +261,12 @@ class CmsController extends Controller
                 'cta_url'     => $hero->cta_url,
             ] : null,
             'nosotros' => $about ? [
-                'titulo' => $about->titulo,
-                'cuerpo' => $about->cuerpo,
-                'imagen' => $this->imageUrl($about->imagen),
+                'titulo'           => $about->titulo,
+                'descripcion'      => $about->descripcion,
+                'imagen'           => $this->imageUrl($about->imagen),
+                'por_que_nosotros' => $about->por_que_nosotros ?? [],
+                'numeros'          => $about->numeros          ?? [],
+                'caracteristicas'  => $about->caracteristicas  ?? [],
             ] : null,
             'servicios' => CmsService::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($s) => ['titulo' => $s->titulo, 'descripcion' => $s->descripcion, 'icono' => $s->icono, 'imagen' => $this->imageUrl($s->imagen)]),
             'equipo' => CmsTeamMember::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($m) => ['nombre' => $m->nombre, 'cargo' => $m->cargo, 'bio' => $m->bio, 'foto' => $this->imageUrl($m->foto)]),
