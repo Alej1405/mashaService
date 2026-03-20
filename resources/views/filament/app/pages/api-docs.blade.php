@@ -1,5 +1,23 @@
 <x-filament-panels::page>
 
+{{-- Función JS reutilizable para copiar bloques de código --}}
+<script>
+function copyBlock(btn) {
+    const code = btn.closest('.code-block').querySelector('pre').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '¡Copiado!';
+        btn.classList.add('bg-emerald-500');
+        btn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.classList.remove('bg-emerald-500');
+            btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+        }, 2000);
+    });
+}
+</script>
+
     {{-- Token activo / nuevo token --}}
     @if ($newToken)
         <x-filament::section>
@@ -32,16 +50,25 @@
     <x-filament::section>
         <x-slot name="heading">Autenticación</x-slot>
         <x-slot name="description">Incluye el token en el header de cada petición.</x-slot>
-        <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 overflow-x-auto">Authorization: Bearer &lt;tu-token&gt;</pre>
+        <div class="code-block relative">
+            <button onclick="copyBlock(this)" class="absolute top-2 right-2 rounded px-2 py-1 text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-200 transition flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copiar
+            </button>
+            <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 pr-24 overflow-x-auto">Authorization: Bearer &lt;tu-token&gt;</pre>
+        </div>
     </x-filament::section>
 
     {{-- Endpoint principal --}}
     <x-filament::section>
         <x-slot name="heading">Endpoint principal</x-slot>
         <x-slot name="description">Devuelve todo el contenido activo en una sola llamada.</x-slot>
-        <div class="flex items-center gap-3 mb-4">
-            <span class="rounded px-2 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">GET</span>
-            <code class="text-sm font-mono text-gray-800 dark:text-gray-200">{{ $baseUrl }}/all</code>
+        <div class="code-block relative">
+            <button onclick="copyBlock(this)" class="absolute top-2 right-2 rounded px-2 py-1 text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-200 transition flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copiar
+            </button>
+            <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 pr-24 overflow-x-auto">GET {{ $baseUrl }}/all</pre>
         </div>
     </x-filament::section>
 
@@ -49,8 +76,12 @@
     <x-filament::section>
         <x-slot name="heading">Esquema de tipos (Zod)</x-slot>
         <x-slot name="description">Copia este schema directamente en tu proyecto React.</x-slot>
-
-        <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 overflow-x-auto">import { z } from 'zod'
+        <div class="code-block relative">
+            <button onclick="copyBlock(this)" class="absolute top-2 right-2 rounded px-2 py-1 text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-200 transition flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copiar todo
+            </button>
+            <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 pr-24 overflow-x-auto">import { z } from 'zod'
 
 // ── Primitivos reutilizables ────────────────────────────────────────────
 const nullable = &lt;T extends z.ZodTypeAny&gt;(s: T) => s.nullable()
@@ -181,12 +212,18 @@ export type Faq            = z.infer&lt;typeof FaqSchema&gt;
 export type Contacto       = z.infer&lt;typeof ContactoSchema&gt;
 export type Noticia        = z.infer&lt;typeof NoticiaSchema&gt;
 export type NoticiaDetalle = z.infer&lt;typeof NoticiaDetalleSchema&gt;</pre>
+        </div>
     </x-filament::section>
 
-    {{-- Uso completo --}}
+    {{-- Ejemplo de uso --}}
     <x-filament::section>
         <x-slot name="heading">Ejemplo de uso en React + TypeScript</x-slot>
-        <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 overflow-x-auto">// lib/cms.ts
+        <div class="code-block relative">
+            <button onclick="copyBlock(this)" class="absolute top-2 right-2 rounded px-2 py-1 text-xs font-semibold bg-gray-700 hover:bg-gray-600 text-gray-200 transition flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copiar todo
+            </button>
+            <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 pr-24 overflow-x-auto">// lib/cms.ts
 import { CmsSchema, type Cms } from './schemas/cms'
 
 const BASE  = '{{ config('app.url') }}/api/cms'
@@ -202,6 +239,7 @@ export async function fetchCms(slug: string): Promise&lt;Cms&gt; {
 
 // .env
 VITE_CMS_TOKEN=&lt;tu-token&gt;</pre>
+        </div>
     </x-filament::section>
 
     {{-- Endpoints individuales --}}
