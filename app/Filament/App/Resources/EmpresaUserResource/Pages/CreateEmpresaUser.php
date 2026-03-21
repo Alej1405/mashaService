@@ -4,6 +4,7 @@ namespace App\Filament\App\Resources\EmpresaUserResource\Pages;
 
 use App\Filament\App\Resources\EmpresaUserResource;
 use App\Jobs\SendSmtpMailJob;
+use App\Services\MailingService;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -46,8 +47,9 @@ class CreateEmpresaUser extends CreateRecord
     private function sendWelcomeEmail(Model $user, ?string $role, string $plainPassword): void
     {
         $empresa = Filament::getTenant();
+        $service = new MailingService($empresa);
 
-        if (empty($empresa->smtp_host) || empty($empresa->smtp_username)) {
+        if (! $service->hasSmtp() && ! $service->isConfigured()) {
             return;
         }
 
