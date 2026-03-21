@@ -3,12 +3,10 @@
 namespace App\Filament\App\Resources\EmpresaUserResource\Pages;
 
 use App\Filament\App\Resources\EmpresaUserResource;
-use App\Mail\EmpresaPlainMail;
+use App\Jobs\SendSmtpMailJob;
 use Filament\Facades\Filament;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\View;
 
 class CreateEmpresaUser extends CreateRecord
@@ -71,32 +69,22 @@ class CreateEmpresaUser extends CreateRecord
         $fromEmail = ! empty($empresa->smtp_from_email) ? $empresa->smtp_from_email : $empresa->smtp_username;
         $fromName  = ! empty($empresa->smtp_from_name)  ? $empresa->smtp_from_name  : $empresa->name;
 
-        config([
-            'mail.mailers.empresa_smtp' => [
+        SendSmtpMailJob::dispatch(
+            [
                 'transport'  => 'smtp',
                 'host'       => $empresa->smtp_host,
                 'port'       => $empresa->smtp_port ?? 587,
                 'encryption' => $empresa->smtp_encryption ?? 'tls',
                 'username'   => $empresa->smtp_username,
                 'password'   => $empresa->smtp_password,
+                'timeout'    => 15,
             ],
-        ]);
-
-        try {
-            Mail::mailer('empresa_smtp')
-                ->to($user->email, $user->name)
-                ->send(new EmpresaPlainMail(
-                    "Bienvenido/a a {$empresa->name}",
-                    $html,
-                    $fromEmail,
-                    $fromName,
-                ));
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Usuario creado, pero no se pudo enviar el correo de bienvenida')
-                ->body($e->getMessage())
-                ->warning()
-                ->send();
-        }
+            $user->email,
+            $user->name,
+            "Bienvenido/a a {$empresa->name}",
+            $html,
+            $fromEmail,
+            $fromName,
+        );
     }
 }

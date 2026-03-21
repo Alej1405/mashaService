@@ -70,6 +70,7 @@ class EditEmpresaProfile extends EditTenantProfile
                             'encryption' => $empresa->smtp_encryption ?? 'tls',
                             'username'   => $empresa->smtp_username,
                             'password'   => $empresa->smtp_password,
+                            'timeout'    => 10,
                         ],
                     ]);
 
