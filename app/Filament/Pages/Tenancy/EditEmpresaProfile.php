@@ -53,24 +53,9 @@ class EditEmpresaProfile extends EditTenantProfile
                         return;
                     }
 
-                    $fromEmail = ! empty($empresa->smtp_from_email) ? $empresa->smtp_from_email : $empresa->smtp_username;
-                    $fromName  = ! empty($empresa->smtp_from_name)  ? $empresa->smtp_from_name  : $empresa->name;
-
                     $html = '<p>Este es un correo de prueba enviado desde <strong>' . e($empresa->name) . '</strong> '
                           . 'para verificar que las credenciales SMTP están correctamente configuradas. ✅</p>'
                           . '<p style="color:#64748b;font-size:13px;">Servidor: ' . e($empresa->smtp_host) . ':' . ($empresa->smtp_port ?? 587) . '</p>';
-
-                    config([
-                        'mail.mailers.empresa_smtp' => [
-                            'transport'  => 'smtp',
-                            'host'       => $empresa->smtp_host,
-                            'port'       => $empresa->smtp_port ?? 587,
-                            'encryption' => $empresa->smtp_encryption ?? 'tls',
-                            'username'   => $empresa->smtp_username,
-                            'password'   => $empresa->smtp_password,
-                            'timeout'    => 10,
-                        ],
-                    ]);
 
                     $host       = $empresa->smtp_host;
                     $port       = $empresa->smtp_port ?? 587;
@@ -92,21 +77,11 @@ class EditEmpresaProfile extends EditTenantProfile
                     fclose($socket);
 
                     \App\Jobs\SendSmtpMailJob::dispatch(
-                        [
-                            'transport'  => 'smtp',
-                            'host'       => $host,
-                            'port'       => $port,
-                            'encryption' => $encryption,
-                            'username'   => $empresa->smtp_username,
-                            'password'   => $empresa->smtp_password,
-                            'timeout'    => 15,
-                        ],
+                        $empresa->id,
                         $data['email_destino'],
                         '',
                         'Prueba de conexión SMTP — ' . $empresa->name,
                         $html,
-                        $fromEmail,
-                        $fromName,
                     );
 
                     Notification::make()

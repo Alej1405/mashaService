@@ -38,6 +38,23 @@ class MailingService
         return ! empty($this->empresa->smtp_host) && ! empty($this->empresa->smtp_username);
     }
 
+    /** Verifica si el puerto SMTP es alcanzable (timeout 5s). */
+    public function isSmtpPortReachable(): bool
+    {
+        $host    = $this->empresa->smtp_host;
+        $port    = $this->empresa->smtp_port ?? 587;
+        $enc     = $this->empresa->smtp_encryption ?? 'tls';
+        $address = ($enc === 'ssl' ? 'ssl://' : '') . $host;
+        $socket  = @fsockopen($address, $port, $errno, $errstr, 5);
+
+        if ($socket) {
+            fclose($socket);
+            return true;
+        }
+
+        return false;
+    }
+
     /**
      * Envía un correo HTML usando el SMTP configurado por la empresa.
      * Retorna array con 'success' y 'message'.
@@ -201,7 +218,7 @@ class MailingService
      */
     public function sendRawEmail(string $to, string $toName, string $subject, string $html): array
     {
-        if ($this->hasSmtp()) {
+        if ($this->hasSmtp() && $this->isSmtpPortReachable()) {
             return $this->sendViaSMTP($to, $toName, $subject, $html);
         }
 

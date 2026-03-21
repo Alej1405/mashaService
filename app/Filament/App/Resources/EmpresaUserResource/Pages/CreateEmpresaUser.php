@@ -66,25 +66,12 @@ class CreateEmpresaUser extends CreateRecord
             'loginUrl'  => url('/app/' . $empresa->slug),
         ])->render();
 
-        $fromEmail = ! empty($empresa->smtp_from_email) ? $empresa->smtp_from_email : $empresa->smtp_username;
-        $fromName  = ! empty($empresa->smtp_from_name)  ? $empresa->smtp_from_name  : $empresa->name;
-
         SendSmtpMailJob::dispatch(
-            [
-                'transport'  => 'smtp',
-                'host'       => $empresa->smtp_host,
-                'port'       => $empresa->smtp_port ?? 587,
-                'encryption' => $empresa->smtp_encryption ?? 'tls',
-                'username'   => $empresa->smtp_username,
-                'password'   => $empresa->smtp_password,
-                'timeout'    => 15,
-            ],
+            $empresa->id,
             $user->email,
             $user->name,
             "Bienvenido/a a {$empresa->name}",
             $html,
-            $fromEmail,
-            $fromName,
         );
     }
 }
