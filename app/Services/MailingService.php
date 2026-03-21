@@ -441,6 +441,62 @@ class MailingService
     }
 
     /**
+     * Envía HTML arbitrario de forma masiva a múltiples destinatarios via Mailgun.
+     * $contacts = [['nombre' => '...', 'email' => '...'], ...]
+     */
+    public function sendRawMassEmail(array $contacts, string $subject, string $html): array
+    {
+        if (! $this->isConfigured()) {
+            return ['success' => false, 'message' => 'No hay credenciales de Mailgun configuradas.', 'sent' => 0, 'failed' => 0];
+        }
+
+        if (empty($contacts)) {
+            return ['success' => false, 'message' => 'No hay destinatarios.', 'sent' => 0, 'failed' => 0];
+        }
+
+        $from   = ! empty($this->fromEmail) ? $this->fromEmail : "noreply@{$this->domain}";
+        $name   = ! empty($this->fromName)  ? $this->fromName  : $this->empresa->name;
+        $sent   = 0;
+        $failed = 0;
+
+        foreach (array_chunk($contacts, 1000) as $chunk) {
+            $toList             = [];
+            $recipientVariables = [];
+
+            foreach ($chunk as $contact) {
+                $email  = $contact['email'];
+                $nombre = ! empty($contact['nombre']) ? $contact['nombre'] : $email;
+                $toList[]                  = "{$nombre} <{$email}>";
+                $recipientVariables[$email] = ['nombre' => $nombre, 'email' => $email];
+            }
+
+            try {
+                $response = $this->client()
+                    ->asForm()
+                    ->post("{$this->baseUrl}/{$this->domain}/messages", [
+                        'from'                => "{$name} <{$from}>",
+                        'to'                  => implode(',', $toList),
+                        'subject'             => $subject,
+                        'html'                => $html,
+                        'text'                => strip_tags($html),
+                        'recipient-variables' => json_encode($recipientVariables),
+                    ]);
+
+                $response->successful() ? $sent += count($chunk) : $failed += count($chunk);
+            } catch (\Exception) {
+                $failed += count($chunk);
+            }
+        }
+
+        return [
+            'success' => $failed === 0,
+            'message' => "Enviados: {$sent}" . ($failed > 0 ? ", Fallidos: {$failed}" : ''),
+            'sent'    => $sent,
+            'failed'  => $failed,
+        ];
+    }
+
+    /**
      * Parsea un archivo CSV o Excel y devuelve un array de contactos.
      * Columnas esperadas: nombre, email, telefono, notas (en cualquier orden, insensible a mayúsculas).
      */
