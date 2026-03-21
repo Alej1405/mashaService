@@ -11,6 +11,7 @@ use App\Models\CmsHero;
 use App\Models\CmsPost;
 use App\Models\CmsService;
 use App\Models\CmsTeamMember;
+use App\Models\CmsTerminos;
 use App\Models\CmsTestimonial;
 use App\Models\Empresa;
 use Illuminate\Http\JsonResponse;
@@ -276,6 +277,36 @@ class CmsController extends Controller
             'faq' => CmsFaq::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($f) => ['pregunta' => $f->pregunta, 'respuesta' => $f->respuesta]),
             'contacto' => $contact ? ['direccion' => $contact->direccion, 'telefono' => $contact->telefono, 'email' => $contact->email, 'whatsapp' => $contact->whatsapp, 'mapa_embed' => $contact->mapa_embed, 'redes' => array_filter(['facebook' => $contact->facebook, 'instagram' => $contact->instagram, 'linkedin' => $contact->linkedin, 'youtube' => $contact->youtube, 'tiktok' => $contact->tiktok])] : null,
             'noticias' => CmsPost::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderByDesc('publicado_en')->limit(10)->get()->map(fn ($p) => ['slug' => $p->slug, 'titulo' => $p->titulo, 'imagen' => $this->imageUrl($p->imagen), 'publicado_en' => $p->publicado_en?->toISOString(), 'extracto' => strip_tags(mb_substr($p->contenido, 0, 200)) . '…']),
+            'terminos' => $this->terminosData($id),
         ]);
+    }
+
+    public function terminos(string $slug): JsonResponse
+    {
+        $empresa  = $this->empresa($slug);
+        $terminos = CmsTerminos::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->first();
+
+        return response()->json($terminos ? $this->terminosData($empresa->id) : null);
+    }
+
+    private function terminosData(int $empresaId): ?array
+    {
+        $t = CmsTerminos::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)
+            ->where('activo', true)
+            ->first();
+
+        if (! $t) {
+            return null;
+        }
+
+        return [
+            'titulo'               => $t->titulo,
+            'contenido'            => $t->contenido,
+            'ultima_actualizacion' => $t->ultima_actualizacion?->toDateString(),
+        ];
     }
 }

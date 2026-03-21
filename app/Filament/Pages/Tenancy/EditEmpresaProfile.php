@@ -3,6 +3,8 @@
 namespace App\Filament\Pages\Tenancy;
 
 use App\Helpers\PlanHelper;
+use App\Mail\EmpresaPlainMail;
+use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Placeholder;
@@ -10,8 +12,10 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Pages\Tenancy\EditTenantProfile;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 
 class EditEmpresaProfile extends EditTenantProfile
@@ -19,6 +23,81 @@ class EditEmpresaProfile extends EditTenantProfile
     public static function getLabel(): string
     {
         return 'Configuración de la Empresa';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('test_smtp')
+                ->label('Verificar conexión SMTP')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('gray')
+                ->modalHeading('Verificar conexión SMTP')
+                ->modalDescription('Se enviará un correo de prueba usando las credenciales SMTP guardadas de la empresa.')
+                ->modalWidth('md')
+                ->form([
+                    TextInput::make('email_destino')
+                        ->label('Enviar correo de prueba a')
+                        ->email()
+                        ->required()
+                        ->default(fn () => auth()->user()->email)
+                        ->helperText('Por defecto se usa tu correo. Puedes cambiarlo.'),
+                ])
+                ->action(function (array $data): void {
+                    $empresa = Filament::getTenant();
+
+                    if (empty($empresa->smtp_host) || empty($empresa->smtp_username)) {
+                        Notification::make()
+                            ->title('SMTP no configurado')
+                            ->body('Completa los campos de servidor SMTP antes de verificar.')
+                            ->warning()
+                            ->send();
+                        return;
+                    }
+
+                    $fromEmail = ! empty($empresa->smtp_from_email) ? $empresa->smtp_from_email : $empresa->smtp_username;
+                    $fromName  = ! empty($empresa->smtp_from_name)  ? $empresa->smtp_from_name  : $empresa->name;
+
+                    $html = '<p>Este es un correo de prueba enviado desde <strong>' . e($empresa->name) . '</strong> '
+                          . 'para verificar que las credenciales SMTP están correctamente configuradas. ✅</p>'
+                          . '<p style="color:#64748b;font-size:13px;">Servidor: ' . e($empresa->smtp_host) . ':' . ($empresa->smtp_port ?? 587) . '</p>';
+
+                    config([
+                        'mail.mailers.empresa_smtp' => [
+                            'transport'  => 'smtp',
+                            'host'       => $empresa->smtp_host,
+                            'port'       => $empresa->smtp_port ?? 587,
+                            'encryption' => $empresa->smtp_encryption ?? 'tls',
+                            'username'   => $empresa->smtp_username,
+                            'password'   => $empresa->smtp_password,
+                        ],
+                    ]);
+
+                    try {
+                        Mail::mailer('empresa_smtp')
+                            ->to($data['email_destino'])
+                            ->send(new EmpresaPlainMail(
+                                'Prueba de conexión SMTP — ' . $empresa->name,
+                                $html,
+                                $fromEmail,
+                                $fromName,
+                            ));
+
+                        Notification::make()
+                            ->title('Conexión SMTP verificada')
+                            ->body('Correo enviado correctamente a ' . $data['email_destino'])
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                        Notification::make()
+                            ->title('Error de conexión SMTP')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    }
+                }),
+        ];
     }
 
     public function form(Form $form): Form

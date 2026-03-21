@@ -196,4 +196,9 @@ class Empresa extends Model implements HasName
     {
         return $this->hasMany(\App\Models\MailCampaign::class, 'empresa_id');
     }
+
+    public function cmsTerminos(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsTerminos::class, 'empresa_id');
+    }
 }

@@ -34,4 +34,5 @@ Route::prefix('cms/{slug}')
         Route::get('contact',      [CmsController::class, 'contact']);
         Route::get('posts',        [CmsController::class, 'posts']);
         Route::get('posts/{post}', [CmsController::class, 'post']);
+        Route::get('terminos',     [CmsController::class, 'terminos']);
     });

@@ -187,6 +187,12 @@ export const NoticiaDetalleSchema = NoticiaSchema.extend({
   contenido: z.string(),
 })
 
+export const TerminosSchema = z.object({
+  titulo:               z.string(),
+  contenido:            nullable(z.string()),
+  ultima_actualizacion: nullable(z.string()),
+}).nullable()
+
 // ── Schema principal (/all) ─────────────────────────────────────────────
 
 export const CmsSchema = z.object({
@@ -200,6 +206,7 @@ export const CmsSchema = z.object({
   faq:         z.array(FaqSchema),
   contacto:    ContactoSchema,
   noticias:    z.array(NoticiaSchema),
+  terminos:    TerminosSchema,
 })
 
 export type Cms            = z.infer&lt;typeof CmsSchema&gt;
@@ -212,7 +219,8 @@ export type Testimonio     = z.infer&lt;typeof TestimonioSchema&gt;
 export type Faq            = z.infer&lt;typeof FaqSchema&gt;
 export type Contacto       = z.infer&lt;typeof ContactoSchema&gt;
 export type Noticia        = z.infer&lt;typeof NoticiaSchema&gt;
-export type NoticiaDetalle = z.infer&lt;typeof NoticiaDetalleSchema&gt;</pre>
+export type NoticiaDetalle = z.infer&lt;typeof NoticiaDetalleSchema&gt;
+export type Terminos       = z.infer&lt;typeof TerminosSchema&gt;</pre>
         </div>
     </x-filament::section>
 
@@ -267,6 +275,7 @@ VITE_CMS_TOKEN=&lt;tu-token&gt;</pre>
                         ['contact',       'ContactoSchema'],
                         ['posts',         'z.array(NoticiaSchema)'],
                         ['posts/{slug}',  'NoticiaDetalleSchema'],
+                        ['terminos',      'TerminosSchema'],
                     ] as [$path, $schema])
                         <tr>
                             <td class="py-2 pr-4">
