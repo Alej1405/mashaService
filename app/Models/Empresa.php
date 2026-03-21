@@ -201,4 +201,9 @@ class Empresa extends Model implements HasName
     {
         return $this->hasMany(\App\Models\CmsTerminos::class, 'empresa_id');
     }
+
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(\App\Models\SupportTicket::class, 'empresa_id');
+    }
 }

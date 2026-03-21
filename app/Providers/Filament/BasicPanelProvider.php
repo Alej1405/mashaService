@@ -70,6 +70,7 @@ class BasicPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\CmsTestimonialResource::class,
                 \App\Filament\App\Resources\CmsFaqResource::class,
                 \App\Filament\App\Resources\CmsPostResource::class,
+                \App\Filament\App\Resources\SupportTicketResource::class,
             ])
             ->pages([
                 \App\Filament\Basic\Pages\Dashboard::class,
