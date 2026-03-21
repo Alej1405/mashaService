@@ -3,7 +3,6 @@
 namespace App\Filament\Pages\Tenancy;
 
 use App\Helpers\PlanHelper;
-use App\Mail\EmpresaPlainMail;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
@@ -15,7 +14,6 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Tenancy\EditTenantProfile;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\HtmlString;
 
 class EditEmpresaProfile extends EditTenantProfile
@@ -74,29 +72,48 @@ class EditEmpresaProfile extends EditTenantProfile
                         ],
                     ]);
 
-                    try {
-                        Mail::mailer('empresa_smtp')
-                            ->to($data['email_destino'])
-                            ->send(new EmpresaPlainMail(
-                                'Prueba de conexión SMTP — ' . $empresa->name,
-                                $html,
-                                $fromEmail,
-                                $fromName,
-                            ));
+                    $host       = $empresa->smtp_host;
+                    $port       = $empresa->smtp_port ?? 587;
+                    $encryption = $empresa->smtp_encryption ?? 'tls';
+                    $address    = ($encryption === 'ssl' ? 'ssl://' : '') . $host;
 
+                    $socket = @fsockopen($address, $port, $errno, $errstr, 5);
+
+                    if (! $socket) {
                         Notification::make()
-                            ->title('Conexión SMTP verificada')
-                            ->body('Correo enviado correctamente a ' . $data['email_destino'])
-                            ->success()
-                            ->send();
-                    } catch (\Exception $e) {
-                        Notification::make()
-                            ->title('Error de conexión SMTP')
-                            ->body($e->getMessage())
+                            ->title('No se puede conectar al servidor SMTP')
+                            ->body("Puerto {$port} inaccesible en {$host}: {$errstr}")
                             ->danger()
                             ->persistent()
                             ->send();
+                        return;
                     }
+
+                    fclose($socket);
+
+                    \App\Jobs\SendSmtpMailJob::dispatch(
+                        [
+                            'transport'  => 'smtp',
+                            'host'       => $host,
+                            'port'       => $port,
+                            'encryption' => $encryption,
+                            'username'   => $empresa->smtp_username,
+                            'password'   => $empresa->smtp_password,
+                            'timeout'    => 15,
+                        ],
+                        $data['email_destino'],
+                        '',
+                        'Prueba de conexión SMTP — ' . $empresa->name,
+                        $html,
+                        $fromEmail,
+                        $fromName,
+                    );
+
+                    Notification::make()
+                        ->title('Servidor SMTP alcanzable')
+                        ->body('El correo de prueba fue enviado a la cola — revisa tu bandeja en unos segundos.')
+                        ->success()
+                        ->send();
                 }),
         ];
     }
