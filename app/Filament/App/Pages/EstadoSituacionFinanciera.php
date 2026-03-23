@@ -9,9 +9,10 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class EstadoSituacionFinanciera extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-document-currency-dollar';
-    protected static ?string $navigationGroup = 'Informes Financieros';
-    protected static ?string $navigationLabel = 'Estado de Resultados';
+    protected static ?string $navigationIcon       = 'heroicon-o-document-currency-dollar';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Informes';
+    protected static ?string $navigationLabel      = 'Estado de Resultados (SUPERCIAS)';
     protected static ?string $title = 'Estado de Resultados Integrales (SUPERCIAS)';
 
     protected static string $view = 'filament.app.pages.estado-situacion-financiera';

@@ -19,7 +19,7 @@ class BankAccountResource extends Resource
     protected static ?string $tenantRelationshipName = 'bankAccounts';
 
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
-    protected static ?string $navigationGroup = 'Finanzas';
+    protected static ?string $navigationGroup = 'Contabilidad General';
     protected static ?string $modelLabel = 'Cuenta Bancaria';
     protected static ?string $pluralModelLabel = 'Cuentas Bancarias';
 

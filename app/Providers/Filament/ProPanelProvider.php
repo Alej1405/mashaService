@@ -57,6 +57,7 @@ class ProPanelProvider extends PanelProvider
                 'panels::body.start',
                 fn (): string => view('filament.loading')->render(),
             )
+            ->navigationGroups(\App\Helpers\PlanHelper::navigationGroups())
             ->discoverResources(
                 in: app_path('Filament/App/Resources'),
                 for: 'App\\Filament\\App\\Resources'

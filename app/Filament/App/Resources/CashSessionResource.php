@@ -15,9 +15,9 @@ class CashSessionResource extends Resource
 {
     protected static ?string $model = CashSession::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-clock';
-
-    protected static ?string $navigationGroup = 'Tesorería';
+    protected static ?string $navigationIcon       = 'heroicon-o-clock';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Caja';
 
     protected static ?string $tenantRelationshipName = 'cashSessions';
 

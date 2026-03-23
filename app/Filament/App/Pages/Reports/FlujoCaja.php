@@ -17,9 +17,10 @@ class FlujoCaja extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationGroup = 'Informes Financieros';
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $title = 'Flujo de Caja';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Informes';
+    protected static ?string $navigationIcon       = 'heroicon-o-document-text';
+    protected static ?string $title                = 'Flujo de Caja';
     protected static string $view = 'filament.app.pages.reports.flujo-caja';
 
     public $fecha_desde;

@@ -24,9 +24,10 @@ class LibroMayor extends Page implements HasTable, HasForms
     use InteractsWithTable;
     use InteractsWithForms;
 
-    protected static ?string $navigationGroup = 'Informes Financieros';
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $title = 'Libro Mayor';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Informes';
+    protected static ?string $navigationIcon       = 'heroicon-o-document-text';
+    protected static ?string $title                = 'Libro Mayor';
     protected static string $view = 'filament.app.pages.reports.libro-mayor';
 
     public ?int $account_plan_id = null;

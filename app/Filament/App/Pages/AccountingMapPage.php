@@ -17,7 +17,7 @@ class AccountingMapPage extends Page implements HasTable
     use InteractsWithTable;
 
     protected static ?string $navigationIcon = 'heroicon-o-adjustments-horizontal';
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static ?string $navigationGroup = 'Contabilidad General';
     protected static ?string $navigationLabel = 'Mapeo Contable';
     protected static ?string $title = 'Mapeo Contable';
 

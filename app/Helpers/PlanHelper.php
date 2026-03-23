@@ -47,6 +47,28 @@ class PlanHelper
     }
 
     /**
+     * Grupos de navegación del panel App (orden del sidebar).
+     *
+     * @return \Filament\Navigation\NavigationGroup[]
+     */
+    public static function navigationGroups(): array
+    {
+        return array_map(
+            fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible(),
+            [
+                'Contabilidad General',
+                'Ventas',
+                'Clientes',
+                'Compras',
+                'Inventario',
+                'Mailing',
+                'CMS',
+                'Configuración',
+            ]
+        );
+    }
+
+    /**
      * Etiqueta legible del plan.
      */
     public static function label(string $plan): string

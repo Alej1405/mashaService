@@ -22,9 +22,10 @@ class BalanceComprobacion extends Page implements HasTable, HasForms
     use InteractsWithTable;
     use InteractsWithForms;
 
-    protected static ?string $navigationGroup = 'Informes Financieros';
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $title = 'Balance de Comprobación';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Informes';
+    protected static ?string $navigationIcon       = 'heroicon-o-document-text';
+    protected static ?string $title                = 'Balance de Comprobación';
     protected static string $view = 'filament.app.pages.reports.balance-comprobacion';
 
     public ?string $fecha_desde = null;

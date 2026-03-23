@@ -21,7 +21,8 @@ class Settings extends Page implements HasForms
 
     protected static ?string $title = 'Configuración de la Empresa';
 
-    protected static ?string $navigationGroup = 'Administración';
+    protected static ?string $navigationGroup = null;
+    protected static ?int    $navigationSort  = 999;
 
     public ?array $data = [];
 

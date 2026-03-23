@@ -22,7 +22,12 @@ class ApiDocsPage extends Page
 
     public static function canAccess(): bool
     {
-        return true;
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
     }
 
     protected function getHeaderActions(): array

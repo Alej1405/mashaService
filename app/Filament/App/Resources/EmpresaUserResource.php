@@ -21,7 +21,7 @@ class EmpresaUserResource extends Resource
 
     protected static ?string $navigationIcon   = 'heroicon-o-users';
     protected static ?string $navigationLabel  = 'Usuarios';
-    protected static ?string $navigationGroup  = 'Empresa';
+    protected static ?string $navigationGroup  = null;
     protected static ?int    $navigationSort   = 10;
     protected static ?string $modelLabel       = 'Usuario';
     protected static ?string $pluralModelLabel = 'Usuarios de la empresa';

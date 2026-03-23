@@ -14,9 +14,9 @@ class CashRegisterResource extends Resource
 {
     protected static ?string $model = CashRegister::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-briefcase';
-    
-    protected static ?string $navigationGroup = 'Tesorería';
+    protected static ?string $navigationIcon       = 'heroicon-o-briefcase';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Caja';
 
     protected static ?string $tenantRelationshipName = 'cashRegisters';
 

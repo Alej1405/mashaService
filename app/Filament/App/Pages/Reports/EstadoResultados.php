@@ -48,9 +48,10 @@ class EstadoResultados extends Page implements HasForms
     //     ];
     // }
 
-    protected static ?string $navigationGroup = 'Informes Financieros';
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $title = 'Estado de Resultados';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Informes';
+    protected static ?string $navigationIcon       = 'heroicon-o-document-text';
+    protected static ?string $title                = 'Estado de Resultados';
     protected static string $view = 'filament.app.pages.reports.estado-resultados';
 
     public $fecha_desde;

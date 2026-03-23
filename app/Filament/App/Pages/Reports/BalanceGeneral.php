@@ -19,9 +19,10 @@ class BalanceGeneral extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationGroup = 'Informes Financieros';
-    protected static ?string $navigationIcon  = 'heroicon-o-scale';
-    protected static ?string $title           = 'Balance General';
+    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationParentItem = 'Informes';
+    protected static ?string $navigationIcon       = 'heroicon-o-scale';
+    protected static ?string $title                = 'Balance General';
     protected static string  $view            = 'filament.app.pages.reports.balance-general';
 
     public $fecha_corte;

@@ -38,7 +38,15 @@ class CartaPresentacionPage extends Page implements HasForms
 
     public ?array $data = [];
 
-    public static function canAccess(): bool { return true; }
+    public static function canAccess(): bool
+    {
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
 
     public function mount(): void
     {

@@ -35,6 +35,11 @@ class CmsHeroPage extends Page implements HasForms
         return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+
     public function mount(): void
     {
         $record = CmsHero::firstOrCreate(

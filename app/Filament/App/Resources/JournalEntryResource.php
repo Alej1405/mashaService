@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Auth;
 
 class JournalEntryResource extends Resource
 {
-    protected static ?string $navigationGroup = 'Contabilidad';
+    protected static ?string $navigationGroup = 'Contabilidad General';
     protected static ?string $navigationLabel = 'Asientos Contables';
     protected static ?string $pluralLabel = 'Asientos Contables';
     protected static ?string $modelLabel = 'Asiento Contable';

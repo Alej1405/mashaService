@@ -19,7 +19,7 @@ class SupportTicketResource extends Resource
 
     protected static ?string $navigationIcon   = 'heroicon-o-lifebuoy';
     protected static ?string $navigationLabel  = 'Soporte';
-    protected static ?string $navigationGroup  = 'Empresa';
+    protected static ?string $navigationGroup  = null;
     protected static ?int    $navigationSort   = 20;
     protected static ?string $modelLabel       = 'Ticket';
     protected static ?string $pluralModelLabel = 'Tickets de soporte';

@@ -19,10 +19,14 @@ class MailingDashboard extends Page
     protected static ?int    $navigationSort  = 1;
     protected static string  $view            = 'filament.app.pages.mailing-dashboard';
 
-    /** Accesible a todos los planes (la restricción está en el panel). */
     public static function canAccess(): bool
     {
-        return true;
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
     }
 
     public function getViewData(): array
