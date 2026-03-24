@@ -8,6 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('product_formula_lines'); // por si quedó huérfana de un deploy fallido
         Schema::create('product_formula_lines', function (Blueprint $table) {
             $table->id();
             $table->foreignId('presentation_id')->constrained('product_presentations')->cascadeOnDelete();
