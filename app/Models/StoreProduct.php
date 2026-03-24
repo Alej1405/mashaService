@@ -20,6 +20,7 @@ class StoreProduct extends Model
         'slug',
         'descripcion',
         'precio_venta',
+        'precio_distribuidor',
         'imagen_principal',
         'galeria',
         'publicado',
@@ -28,7 +29,8 @@ class StoreProduct extends Model
     ];
 
     protected $casts = [
-        'precio_venta' => 'decimal:4',
+        'precio_venta'        => 'decimal:4',
+        'precio_distribuidor' => 'decimal:4',
         'galeria'      => 'array',
         'publicado'    => 'boolean',
         'destacado'    => 'boolean',

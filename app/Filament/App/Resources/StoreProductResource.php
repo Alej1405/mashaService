@@ -125,6 +125,9 @@ class StoreProductResource extends Resource
                                     if ($pres->pvp_estimado > 0) {
                                         $set('precio_venta', $pres->pvp_estimado);
                                     }
+                                    if ($pres->precio_distribuidor > 0) {
+                                        $set('precio_distribuidor', $pres->precio_distribuidor);
+                                    }
                                     $design = ProductDesign::find($get('product_design_id'));
                                     $set('slug', Str::slug(($design?->nombre ?? '') . '-' . $pres->nombre));
                                 })
@@ -176,11 +179,19 @@ class StoreProductResource extends Resource
                                 ->maxLength(255)
                                 ->columnSpan(1),
                             TextInput::make('precio_venta')
-                                ->label('Precio de Venta')
+                                ->label('PVP (precio público)')
                                 ->numeric()
                                 ->required()
                                 ->prefix('$')
                                 ->helperText('Cargado desde la presentación. Puedes ajustarlo.')
+                                ->columnSpan(1),
+
+                            TextInput::make('precio_distribuidor')
+                                ->label('Precio Distribuidor (10+ unidades)')
+                                ->numeric()
+                                ->default(0)
+                                ->prefix('$')
+                                ->helperText('Se aplica automáticamente cuando el cliente compra 10 o más unidades.')
                                 ->columnSpan(1),
 
                             RichEditor::make('descripcion')

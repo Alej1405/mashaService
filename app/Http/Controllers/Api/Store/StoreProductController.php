@@ -14,7 +14,7 @@ class StoreProductController extends Controller
         $empresa = app('store.empresa');
 
         $query = StoreProduct::withoutGlobalScopes()
-            ->with(['storeCategory', 'inventoryItem:id,stock_actual'])
+            ->with(['storeCategory', 'productDesign.inventoryItem:id,stock_actual'])
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true);
 
@@ -54,7 +54,7 @@ class StoreProductController extends Controller
         $empresa = app('store.empresa');
 
         $products = StoreProduct::withoutGlobalScopes()
-            ->with(['storeCategory', 'inventoryItem:id,stock_actual'])
+            ->with(['storeCategory', 'productDesign.inventoryItem:id,stock_actual'])
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
             ->where('destacado', true)
@@ -70,7 +70,7 @@ class StoreProductController extends Controller
         $empresa = app('store.empresa');
 
         $product = StoreProduct::withoutGlobalScopes()
-            ->with(['storeCategory', 'inventoryItem:id,stock_actual,nombre'])
+            ->with(['storeCategory', 'productDesign.inventoryItem:id,stock_actual,nombre'])
             ->where('empresa_id', $empresa->id)
             ->where('slug', $slug)
             ->where('publicado', true)
@@ -89,7 +89,7 @@ class StoreProductController extends Controller
             ->firstOrFail();
 
         $related = StoreProduct::withoutGlobalScopes()
-            ->with(['storeCategory', 'inventoryItem:id,stock_actual'])
+            ->with(['storeCategory', 'productDesign.inventoryItem:id,stock_actual'])
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
             ->where('id', '!=', $id)

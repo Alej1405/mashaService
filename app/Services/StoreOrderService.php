@@ -35,24 +35,30 @@ class StoreOrderService
                     ->where('empresa_id', $empresa->id)
                     ->where('id', $item['store_product_id'])
                     ->where('publicado', true)
-                    ->with('inventoryItem')
+                    ->with('productDesign.inventoryItem')
                     ->firstOrFail();
 
-                $stock = (float) ($product->inventoryItem->stock_actual ?? 0);
-                $qty   = (float) $item['cantidad'];
+                $qty          = (float) $item['cantidad'];
+                $inventoryItem = $product->productDesign?->inventoryItem;
+                $stock         = (float) ($inventoryItem?->stock_actual ?? 0);
 
-                if ($stock < $qty) {
+                if ($inventoryItem && $stock < $qty) {
                     throw new \Exception("Stock insuficiente para: {$product->nombre} (disponible: {$stock})");
                 }
 
-                $lineTotal   = (float) $product->precio_venta * $qty;
-                $subtotal   += $lineTotal;
+                // Precio distribuidor si compra 10+ unidades
+                $precioAplicado = ($qty >= 10 && (float) $product->precio_distribuidor > 0)
+                    ? (float) $product->precio_distribuidor
+                    : (float) $product->precio_venta;
+
+                $lineTotal  = $precioAplicado * $qty;
+                $subtotal  += $lineTotal;
 
                 $orderItems[] = [
                     'store_product_id'  => $product->id,
-                    'inventory_item_id' => $product->inventory_item_id,
+                    'inventory_item_id' => $inventoryItem?->id,
                     'nombre_snapshot'   => $product->nombre,
-                    'precio_unitario'   => $product->precio_venta,
+                    'precio_unitario'   => $precioAplicado,
                     'cantidad'          => $qty,
                     'subtotal'          => $lineTotal,
                 ];
@@ -143,7 +149,8 @@ class StoreOrderService
             ]);
 
             // ── SaleItems: SaleItem.saving() calcula subtotal/iva/total ──
-            foreach ($order->orderItems()->with('inventoryItem')->get() as $item) {
+            foreach ($order->orderItems as $item) {
+                if (!$item->inventory_item_id) continue; // sin inventario vinculado, se omite movimiento
                 SaleItem::create([
                     'sale_id'           => $sale->id,
                     'inventory_item_id' => $item->inventory_item_id,

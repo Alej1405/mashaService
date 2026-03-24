@@ -498,8 +498,29 @@ class ProductDesignResource extends Resource
                                                     );
                                                 }),
 
-                                            // Guardar pvp_estimado (oculto)
-                                            \Filament\Forms\Components\Hidden::make('pvp_estimado')->default(0),
+                                            // ── PVP y precio distribuidor ───────────────────────
+                                            TextInput::make('pvp_estimado')
+                                                ->label('PVP (precio consumidor final)')
+                                                ->numeric()
+                                                ->default(0)
+                                                ->prefix('$')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(function ($state, callable $set) {
+                                                    $pvp = (float) $state;
+                                                    if ($pvp > 0) {
+                                                        $set('precio_distribuidor', round($pvp * 0.60, 2));
+                                                    }
+                                                })
+                                                ->helperText('Puedes usar el PVP Estimado calculado arriba como referencia.')
+                                                ->columnSpan(3),
+
+                                            TextInput::make('precio_distribuidor')
+                                                ->label('Precio Distribuidor (margen 40%)')
+                                                ->numeric()
+                                                ->default(0)
+                                                ->prefix('$')
+                                                ->helperText('= PVP × 60%. Aplica en tienda para pedidos de 10+ unidades.')
+                                                ->columnSpan(3),
                                         ])
                                         ->columns(6)
                                         ->collapsible()
