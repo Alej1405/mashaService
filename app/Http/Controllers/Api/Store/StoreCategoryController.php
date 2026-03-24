@@ -27,13 +27,13 @@ class StoreCategoryController extends Controller
         return response()->json($categories);
     }
 
-    public function show(Request $request, string $slug): JsonResponse
+    public function show(Request $request, string $cat_slug): JsonResponse
     {
         $empresa = app('store.empresa');
 
         $category = StoreCategory::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->where('slug', $slug)
+            ->where('slug', $cat_slug)
             ->where('publicado', true)
             ->firstOrFail();
 

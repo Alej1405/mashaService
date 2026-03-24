@@ -44,13 +44,13 @@ Route::prefix('store/{slug}')
     ->group(function () {
 
         // ── Catálogo público ────────────────────────────────────────────
-        Route::get('products',              [StoreProductController::class, 'index']);
-        Route::get('products/featured',     [StoreProductController::class, 'featured']);
-        Route::get('products/{slug}',       [StoreProductController::class, 'show']);
-        Route::get('products/{id}/related', [StoreProductController::class, 'related']);
+        Route::get('products',                  [StoreProductController::class, 'index']);
+        Route::get('products/featured',         [StoreProductController::class, 'featured']);
+        Route::get('products/{product_slug}',   [StoreProductController::class, 'show']);
+        Route::get('products/{id}/related',     [StoreProductController::class, 'related']);
 
-        Route::get('categories',            [StoreCategoryController::class, 'index']);
-        Route::get('categories/{slug}',     [StoreCategoryController::class, 'show']);
+        Route::get('categories',                [StoreCategoryController::class, 'index']);
+        Route::get('categories/{cat_slug}',     [StoreCategoryController::class, 'show']);
 
         // ── Auth ────────────────────────────────────────────────────────
         Route::prefix('auth')->group(function () {
