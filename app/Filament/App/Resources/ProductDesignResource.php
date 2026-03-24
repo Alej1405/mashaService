@@ -541,9 +541,11 @@ class ProductDesignResource extends Resource
                                 ->options(function (callable $get) {
                                     $presentations = $get('presentations') ?? [];
                                     $result = [];
+                                    $i = 1;
                                     foreach ($presentations as $key => $p) {
-                                        $nombre = $p['nombre'] ?? ('Presentación ' . ($key + 1));
+                                        $nombre = $p['nombre'] ?? ('Presentación ' . $i);
                                         $result[$key] = $nombre;
+                                        $i++;
                                     }
                                     return $result;
                                 })
@@ -881,8 +883,9 @@ class ProductDesignResource extends Resource
                                         ->options(function (callable $get) {
                                             $presentations = $get('presentations') ?? [];
                                             $result = [];
+                                            $i = 1;
                                             foreach ($presentations as $key => $p) {
-                                                $nombre = $p['nombre'] ?? ('Presentación ' . ($key + 1));
+                                                $nombre = $p['nombre'] ?? ('Presentación ' . $i++);
                                                 $lote   = (float) ($p['cantidad_minima_produccion'] ?? 1);
                                                 $result[$key] = $nombre . '  (lote base: ' . rtrim(rtrim(number_format($lote, 4), '0'), '.') . ' u.)';
                                             }
