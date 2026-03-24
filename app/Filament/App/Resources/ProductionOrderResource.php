@@ -83,22 +83,29 @@ class ProductionOrderResource extends Resource
                             ->placeholder('Primero selecciona un diseño...')
                             ->columnSpan(2),
 
-                        // Producto terminado en inventario
-                        Select::make('inventory_item_id')
+                        // Producto terminado — auto-resuelto desde el diseño
+                        Placeholder::make('_item_terminado_info')
                             ->label('Producto Terminado (Inventario)')
-                            ->relationship('finishedProduct', 'nombre', fn ($query) => $query->where('type', 'producto_terminado'))
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm(fn () => InventoryItemResource::getQuickCreateFormSchema())
-                            ->createOptionUsing(function (array $data): int {
-                                return InventoryItem::create([
-                                    ...$data,
-                                    'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
-                                    'activo'     => true,
-                                ])->getKey();
+                            ->content(function (Get $get) {
+                                $designId = $get('_product_design_id');
+                                if (!$designId) {
+                                    return new HtmlString('<span class="text-sm text-gray-400">Selecciona un diseño para ver el producto terminado.</span>');
+                                }
+                                $design = ProductDesign::with('inventoryItem')->find($designId);
+                                if (!$design) {
+                                    return new HtmlString('<span class="text-sm text-gray-400">—</span>');
+                                }
+                                if ($design->inventoryItem) {
+                                    $stock = $design->inventoryItem->stock_actual ?? 0;
+                                    return new HtmlString(
+                                        '<span class="text-sm font-medium text-success-600">✓ ' . e($design->inventoryItem->nombre) .
+                                        ' &nbsp;·&nbsp; Stock actual: <strong>' . $stock . '</strong></span>'
+                                    );
+                                }
+                                return new HtmlString(
+                                    '<span class="text-sm text-warning-600">⚡ Se creará <strong>' . e($design->nombre) . '</strong> como producto terminado al guardar la orden.</span>'
+                                );
                             })
-                            ->required()
-                            ->helperText('Ítem de inventario que se incrementará al completar la orden.')
                             ->columnSpan(2),
 
                         // Cantidad a producir

@@ -4,7 +4,10 @@ namespace App\Models;
 
 use App\Traits\HasEmpresa;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\StoreCategory;
+use App\Models\InventoryItem;
 
 class ProductDesign extends Model
 {
@@ -14,6 +17,8 @@ class ProductDesign extends Model
         'empresa_id',
         'nombre',
         'categoria',
+        'store_category_id',
+        'inventory_item_id',
         'propuesta_valor',
         'notas_estrategicas',
         'activo',
@@ -30,6 +35,16 @@ class ProductDesign extends Model
         'capacidad_instalada_mensual'     => 'decimal:2',
         'costo_mano_obra_persona'         => 'decimal:2',
     ];
+
+    public function storeCategory(): BelongsTo
+    {
+        return $this->belongsTo(StoreCategory::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class);
+    }
 
     public function presentations(): HasMany
     {

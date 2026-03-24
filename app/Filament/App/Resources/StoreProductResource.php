@@ -3,7 +3,6 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\StoreProductResource\Pages;
-use App\Models\InventoryItem;
 use App\Models\ProductDesign;
 use App\Models\ProductPresentation;
 use App\Models\StoreCategory;
@@ -81,6 +80,11 @@ class StoreProductResource extends Resource
                                     $set('nombre', $design->nombre);
                                     if ($design->propuesta_valor) {
                                         $set('descripcion', $design->propuesta_valor);
+                                    }
+
+                                    // Categoría desde el diseño
+                                    if ($design->store_category_id) {
+                                        $set('store_category_id', $design->store_category_id);
                                     }
 
                                     // Si tiene una sola presentación, cargarla directo
@@ -179,18 +183,6 @@ class StoreProductResource extends Resource
                                 ->helperText('Cargado desde la presentación. Puedes ajustarlo.')
                                 ->columnSpan(1),
 
-                            // ── Ítem de inventario (opcional, para control de stock) ──
-                            Select::make('inventory_item_id')
-                                ->label('Ítem de Inventario (stock)')
-                                ->options(fn () => InventoryItem::where('type', 'producto_terminado')
-                                    ->where('activo', true)
-                                    ->get()
-                                    ->mapWithKeys(fn ($i) => [$i->id => "{$i->codigo} — {$i->nombre}"]))
-                                ->searchable()
-                                ->nullable()
-                                ->helperText('Opcional. Vincula este producto al inventario para mostrar stock disponible.')
-                                ->columnSpan(2),
-
                             RichEditor::make('descripcion')
                                 ->label('Descripción')
                                 ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
@@ -254,9 +246,10 @@ class StoreProductResource extends Resource
                     ->label('Precio')
                     ->money('USD')
                     ->sortable(),
-                TextColumn::make('inventoryItem.stock_actual')
+                TextColumn::make('productDesign.inventoryItem.stock_actual')
                     ->label('Stock')
                     ->badge()
+                    ->placeholder('—')
                     ->color(fn ($state) => $state > 0 ? 'success' : 'danger'),
                 IconColumn::make('publicado')
                     ->label('Publicado')

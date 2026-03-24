@@ -6,7 +6,9 @@ use App\Filament\App\Resources\ProductDesignResource\Pages;
 use App\Models\InventoryItem;
 use App\Models\MeasurementUnit;
 use App\Models\ProductDesign;
+use App\Models\StoreCategory;
 use Filament\Facades\Filament;
+use Filament\Forms\Set;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Section;
@@ -60,10 +62,34 @@ class ProductDesignResource extends Resource
                                 ->required()
                                 ->maxLength(150)
                                 ->columnSpan(2),
-                            TextInput::make('categoria')
-                                ->label('Categoría')
-                                ->maxLength(100)
-                                ->placeholder('Limpieza, Alimentos, Textiles...')
+                            Select::make('store_category_id')
+                                ->label('Categoría de Tienda')
+                                ->options(fn () => StoreCategory::where('empresa_id', Filament::getTenant()->id)
+                                    ->where('publicado', true)
+                                    ->pluck('nombre', 'id'))
+                                ->searchable()
+                                ->nullable()
+                                ->createOptionModalHeading('Nueva Categoría')
+                                ->createOptionForm([
+                                    TextInput::make('nombre')
+                                        ->label('Nombre')
+                                        ->required()
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(fn (Set $set, ?string $state) =>
+                                            $set('slug', \Illuminate\Support\Str::slug($state ?? ''))),
+                                    TextInput::make('slug')
+                                        ->label('Slug')
+                                        ->required(),
+                                    Toggle::make('publicado')
+                                        ->label('Publicada')
+                                        ->default(true),
+                                ])
+                                ->createOptionUsing(function (array $data): int {
+                                    return StoreCategory::create([
+                                        ...$data,
+                                        'empresa_id' => Filament::getTenant()->id,
+                                    ])->getKey();
+                                })
                                 ->columnSpan(1),
                             Toggle::make('activo')
                                 ->label('Activo')
