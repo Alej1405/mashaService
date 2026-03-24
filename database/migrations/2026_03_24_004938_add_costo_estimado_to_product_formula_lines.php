@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('product_formula_lines', 'costo_estimado')) return;
         Schema::table('product_formula_lines', function (Blueprint $table) {
             $table->decimal('costo_estimado', 14, 4)->default(0)->after('es_subproducto_manufacturado');
         });

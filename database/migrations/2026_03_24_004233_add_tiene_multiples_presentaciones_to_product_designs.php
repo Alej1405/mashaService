@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('product_designs', 'tiene_multiples_presentaciones')) return;
         Schema::table('product_designs', function (Blueprint $table) {
             $table->boolean('tiene_multiples_presentaciones')->default(false)->after('activo');
         });

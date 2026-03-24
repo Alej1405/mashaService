@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('product_indirect_costs', 'frecuencia')) return;
         Schema::table('product_indirect_costs', function (Blueprint $table) {
             $table->enum('frecuencia', ['semanal', 'mensual', 'unico'])->default('mensual')->after('monto_mensual');
         });
