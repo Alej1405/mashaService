@@ -46,8 +46,9 @@ class StoreOrderService
                     throw new \Exception("Stock insuficiente para: {$product->nombre} (disponible: {$stock})");
                 }
 
-                // Precio distribuidor si compra 10+ unidades
-                $precioAplicado = ($qty >= 10 && (float) $product->precio_distribuidor > 0)
+                // Precio distribuidor si compra la cantidad mínima configurada
+                $cantMinDist    = (int) ($product->cantidad_minima_distribuidor ?? 10);
+                $precioAplicado = ($qty >= $cantMinDist && (float) $product->precio_distribuidor > 0)
                     ? (float) $product->precio_distribuidor
                     : (float) $product->precio_venta;
 

@@ -92,6 +92,7 @@ class StoreProductResource extends Resource
                                         $set('product_presentation_id', $pres->id);
                                         if ($pres->pvp_estimado > 0) $set('precio_venta', $pres->pvp_estimado);
                                         if ($pres->precio_distribuidor > 0) $set('precio_distribuidor', $pres->precio_distribuidor);
+                                        $set('cantidad_minima_distribuidor', $pres->cantidad_minima_distribuidor ?? 10);
                                         $set('slug', Str::slug($design->nombre . '-' . $pres->nombre));
                                     } else {
                                         $set('product_presentation_id', null);
@@ -123,6 +124,7 @@ class StoreProductResource extends Resource
                                     if (!$pres) return;
                                     if ($pres->pvp_estimado > 0) $set('precio_venta', $pres->pvp_estimado);
                                     if ($pres->precio_distribuidor > 0) $set('precio_distribuidor', $pres->precio_distribuidor);
+                                    $set('cantidad_minima_distribuidor', $pres->cantidad_minima_distribuidor ?? 10);
                                     $design = ProductDesign::find($get('product_design_id'));
                                     $set('slug', Str::slug(($design?->nombre ?? '') . '-' . $pres->nombre));
                                 })
@@ -165,12 +167,20 @@ class StoreProductResource extends Resource
                                 ->columnSpan(1),
 
                             TextInput::make('precio_distribuidor')
-                                ->label('Precio Distribuidor (10+ unidades)')
+                                ->label('Precio Distribuidor')
                                 ->numeric()
                                 ->default(0)
                                 ->prefix('$')
                                 ->readOnly(fn (string $operation) => $operation === 'edit')
-                                ->helperText('Calculado automáticamente desde el Diseño. PVP × 60%.')
+                                ->helperText('Configurado en el Diseño de Producto.')
+                                ->columnSpan(1),
+
+                            TextInput::make('cantidad_minima_distribuidor')
+                                ->label('Cantidad mínima (precio dist.)')
+                                ->numeric()
+                                ->default(10)
+                                ->readOnly(fn (string $operation) => $operation === 'edit')
+                                ->helperText('Unidades mínimas por pedido para aplicar precio de distribuidor.')
                                 ->columnSpan(1),
 
                             RichEditor::make('descripcion')

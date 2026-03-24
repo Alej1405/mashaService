@@ -21,6 +21,7 @@ class StoreProduct extends Model
         'descripcion',
         'precio_venta',
         'precio_distribuidor',
+        'cantidad_minima_distribuidor',
         'imagen_principal',
         'galeria',
         'publicado',
@@ -29,8 +30,9 @@ class StoreProduct extends Model
     ];
 
     protected $casts = [
-        'precio_venta'        => 'decimal:4',
-        'precio_distribuidor' => 'decimal:4',
+        'precio_venta'                 => 'decimal:4',
+        'precio_distribuidor'          => 'decimal:4',
+        'cantidad_minima_distribuidor' => 'integer',
         'galeria'      => 'array',
         'publicado'    => 'boolean',
         'destacado'    => 'boolean',

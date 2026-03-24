@@ -498,29 +498,60 @@ class ProductDesignResource extends Resource
                                                     );
                                                 }),
 
-                                            // ── PVP y precio distribuidor ───────────────────────
+                                            // ── PVP y canal distribuidores ──────────────────────
                                             TextInput::make('pvp_estimado')
                                                 ->label('PVP (precio consumidor final)')
                                                 ->numeric()
                                                 ->default(0)
                                                 ->prefix('$')
                                                 ->live(onBlur: true)
-                                                ->afterStateUpdated(function ($state, callable $set) {
+                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                                     $pvp = (float) $state;
-                                                    if ($pvp > 0) {
-                                                        $set('precio_distribuidor', round($pvp * 0.60, 2));
-                                                    }
+                                                    if ($pvp <= 0) return;
+                                                    $margen = (float) ($get('margen_distribuidor') ?: 40);
+                                                    $set('precio_distribuidor', round($pvp * (1 - $margen / 100), 2));
                                                 })
                                                 ->helperText('Puedes usar el PVP Estimado calculado arriba como referencia.')
-                                                ->columnSpan(3),
+                                                ->columnSpan(2),
+
+                                            TextInput::make('margen_distribuidor')
+                                                ->label('Margen Distribuidor (%)')
+                                                ->numeric()
+                                                ->default(40)
+                                                ->suffix('%')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                    $margen = (float) $state;
+                                                    $pvp    = (float) ($get('pvp_estimado') ?? 0);
+                                                    if ($pvp > 0) {
+                                                        $set('precio_distribuidor', round($pvp * (1 - $margen / 100), 2));
+                                                    }
+                                                })
+                                                ->helperText('Porcentaje que gana el distribuidor sobre el PVP.')
+                                                ->columnSpan(2),
 
                                             TextInput::make('precio_distribuidor')
-                                                ->label('Precio Distribuidor (margen 40%)')
+                                                ->label('Precio Distribuidor')
                                                 ->numeric()
                                                 ->default(0)
                                                 ->prefix('$')
-                                                ->readOnly()
-                                                ->helperText('Calculado automáticamente: PVP × 60%. Aplica en tienda para pedidos de 10+ unidades.')
+                                                ->live(onBlur: true)
+                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                    $precio = (float) $state;
+                                                    $pvp    = (float) ($get('pvp_estimado') ?? 0);
+                                                    if ($pvp > 0 && $precio >= 0) {
+                                                        $set('margen_distribuidor', round((1 - $precio / $pvp) * 100, 2));
+                                                    }
+                                                })
+                                                ->helperText('= PVP × (100% − margen). Editable: al cambiar recalcula el margen.')
+                                                ->columnSpan(2),
+
+                                            TextInput::make('cantidad_minima_distribuidor')
+                                                ->label('Cantidad mínima (precio distribuidor)')
+                                                ->numeric()
+                                                ->default(10)
+                                                ->minValue(1)
+                                                ->helperText('Unidades mínimas por pedido en tienda para aplicar el precio de distribuidor.')
                                                 ->columnSpan(3),
                                         ])
                                         ->columns(6)
