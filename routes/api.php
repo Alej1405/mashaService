@@ -33,24 +33,24 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | API Routes — E-Commerce Store
 |--------------------------------------------------------------------------
-| Base URL: /api/store/{slug}/...
+| Base URL: /api/ecommerce/{empresa_slug}/...
 |
 | Rutas públicas: productos, categorías, auth/login, auth/register
 | Rutas protegidas (Bearer token del StoreCustomer): órdenes, perfil, direcciones
 */
 
-Route::prefix('store/{slug}')
+Route::prefix('ecommerce/{empresa_slug}')
     ->middleware(ResolveStoreEmpresa::class)
     ->group(function () {
 
         // ── Catálogo público ────────────────────────────────────────────
-        Route::get('products',                  [StoreProductController::class, 'index']);
-        Route::get('products/featured',         [StoreProductController::class, 'featured']);
-        Route::get('products/{product_slug}',   [StoreProductController::class, 'show']);
-        Route::get('products/{id}/related',     [StoreProductController::class, 'related']);
+        Route::get('products',              [StoreProductController::class, 'index']);
+        Route::get('products/featured',     [StoreProductController::class, 'featured']);
+        Route::get('products/{slug}',       [StoreProductController::class, 'show']);
+        Route::get('products/{id}/related', [StoreProductController::class, 'related']);
 
-        Route::get('categories',                [StoreCategoryController::class, 'index']);
-        Route::get('categories/{cat_slug}',     [StoreCategoryController::class, 'show']);
+        Route::get('categories',            [StoreCategoryController::class, 'index']);
+        Route::get('categories/{slug}',     [StoreCategoryController::class, 'show']);
 
         // ── Auth ────────────────────────────────────────────────────────
         Route::prefix('auth')->group(function () {

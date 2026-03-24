@@ -11,7 +11,7 @@ class ResolveStoreEmpresa
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $empresa = Empresa::where('slug', $request->route('slug'))->first();
+        $empresa = Empresa::where('slug', $request->route('empresa_slug'))->first();
 
         if (!$empresa) {
             return response()->json(['message' => 'Tienda no encontrada'], 404);

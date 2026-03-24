@@ -65,14 +65,14 @@ class StoreProductController extends Controller
         return response()->json($products);
     }
 
-    public function show(Request $request, string $product_slug): JsonResponse
+    public function show(Request $request, string $slug): JsonResponse
     {
         $empresa = app('store.empresa');
 
         $product = StoreProduct::withoutGlobalScopes()
             ->with(['storeCategory', 'inventoryItem:id,stock_actual,nombre'])
             ->where('empresa_id', $empresa->id)
-            ->where('slug', $product_slug)
+            ->where('slug', $slug)
             ->where('publicado', true)
             ->firstOrFail();
 
