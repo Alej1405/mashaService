@@ -519,7 +519,8 @@ class ProductDesignResource extends Resource
                                                 ->numeric()
                                                 ->default(0)
                                                 ->prefix('$')
-                                                ->helperText('= PVP × 60%. Aplica en tienda para pedidos de 10+ unidades.')
+                                                ->readOnly()
+                                                ->helperText('Calculado automáticamente: PVP × 60%. Aplica en tienda para pedidos de 10+ unidades.')
                                                 ->columnSpan(3),
                                         ])
                                         ->columns(6)
@@ -1611,6 +1612,30 @@ class ProductDesignResource extends Resource
                                     $html .= $kpiBig('Impuestos (IVA+ICE)', '$ ' . $fmt($totalImpuestos), '$ ' . number_format($cantidad > 0 ? $totalImpuestos / $cantidad : 0, 4) . ' / u.', $cAmb);
                                     $html .= $kpiBig('Rentabilidad ROI', $pct($roi), 'Retorno sobre costo total', $cPurp, false, $roiExplain);
                                     $html .= $kpiBig('Utilidad Neta', '$ ' . $fmt($utilidadNeta), '$ ' . number_format($utilidadPorUnit, 4) . ' / u.', $cUtil, true);
+                                    $html .= '</div></div>';
+
+                                    // ── C3b: Canal Distribuidores ────────────────────
+                                    $pvpDistribuidor       = round($pvpSinIva * 0.60, 4);
+                                    $ingresoDistribuidor   = round($pvpDistribuidor * $cantidad, 2);
+                                    $utilidadDistribuidor  = round($ingresoDistribuidor - $costoTotalProd - $iceTotal, 2);
+                                    $margenDistribuidor    = $ingresoDistribuidor > 0
+                                        ? round(($utilidadDistribuidor / $ingresoDistribuidor) * 100, 1) : 0;
+                                    $roiDistribuidor       = $inversionReal > 0
+                                        ? round(($utilidadDistribuidor / $inversionReal) * 100, 1) : 0;
+                                    $utilUnitDist          = $cantidad > 0 ? $utilidadDistribuidor / $cantidad : 0;
+                                    $cUtilDist             = $utilidadDistribuidor >= 0 ? $cGreen : $cRed;
+
+                                    $html .= '<div style="margin-bottom:1.25rem;border-radius:0.75rem;border:1px solid #c7d2fe;overflow:hidden;">'
+                                        . '<div style="background:#eef2ff;padding:0.5rem 1rem;border-bottom:1px solid #c7d2fe;display:flex;justify-content:space-between;align-items:center;">'
+                                        . '<span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4338ca;">📦 Canal Distribuidores — si toda la producción se vende a distribuidores</span>'
+                                        . '<span style="font-size:0.75rem;color:#6366f1;font-weight:600;">Precio: $ ' . $fmt($pvpDistribuidor) . ' / u. (PVP × 60%)</span>'
+                                        . '</div>'
+                                        . '<div style="display:grid;grid-template-columns:repeat(5,1fr);">';
+                                    $html .= $kpiBig('Precio Distribuidor', '$ ' . $fmt($pvpDistribuidor), 'vs PVP $ ' . $fmt($pvpSinIva) . ' público', '#6366f1');
+                                    $html .= $kpiBig('Ingreso Bruto', '$ ' . $fmt($ingresoDistribuidor), 'vs $ ' . $fmt($ingresoNeto) . ' canal directo', '#6366f1');
+                                    $html .= $kpiBig('Margen', $pct($margenDistribuidor), 'vs ' . $pct($margenNeto) . ' canal directo', $cUtilDist);
+                                    $html .= $kpiBig('ROI', $pct($roiDistribuidor), 'vs ' . $pct($roi) . ' canal directo', $cUtilDist);
+                                    $html .= $kpiBig('Utilidad Neta', '$ ' . $fmt($utilidadDistribuidor), '$ ' . number_format($utilUnitDist, 4) . ' / u.', $cUtilDist, true);
                                     $html .= '</div></div>';
 
                                     // ── C4: Tablas de detalle ────────────────────────

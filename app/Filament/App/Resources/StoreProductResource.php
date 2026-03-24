@@ -62,46 +62,43 @@ class StoreProductResource extends Resource
                         ->icon('heroicon-o-cube')
                         ->schema([
 
-                            // ── Cargar desde Diseño de Producto ──────────────
+                            // ── Cargar desde Diseño (solo en creación) ────────
                             Select::make('product_design_id')
                                 ->label('📐 Diseño de Producto')
                                 ->options(fn () => ProductDesign::where('activo', true)
                                     ->get()
-                                    ->mapWithKeys(fn ($d) => [$d->id => $d->nombre . ($d->categoria ? '  —  ' . $d->categoria : '')]))
+                                    ->mapWithKeys(fn ($d) => [$d->id => $d->nombre . ($d->storeCategory ? '  —  ' . $d->storeCategory->nombre : '')]))
                                 ->searchable()
                                 ->nullable()
                                 ->live()
+                                ->disabled(fn (string $operation) => $operation === 'edit')
+                                ->dehydrated()
                                 ->afterStateUpdated(function (Set $set, Get $get, ?int $state) {
                                     if (!$state) return;
-                                    $design = ProductDesign::with('presentations')->find($state);
+                                    $design = ProductDesign::with(['presentations', 'storeCategory'])->find($state);
                                     if (!$design) return;
 
-                                    // Poblar campos básicos del diseño
                                     $set('nombre', $design->nombre);
                                     if ($design->propuesta_valor) {
                                         $set('descripcion', $design->propuesta_valor);
                                     }
-
-                                    // Categoría desde el diseño
                                     if ($design->store_category_id) {
                                         $set('store_category_id', $design->store_category_id);
                                     }
 
-                                    // Si tiene una sola presentación, cargarla directo
                                     $presentations = $design->presentations->where('activa', true);
                                     if ($presentations->count() === 1) {
                                         $pres = $presentations->first();
                                         $set('product_presentation_id', $pres->id);
-                                        if ($pres->pvp_estimado > 0) {
-                                            $set('precio_venta', $pres->pvp_estimado);
-                                        }
+                                        if ($pres->pvp_estimado > 0) $set('precio_venta', $pres->pvp_estimado);
+                                        if ($pres->precio_distribuidor > 0) $set('precio_distribuidor', $pres->precio_distribuidor);
                                         $set('slug', Str::slug($design->nombre . '-' . $pres->nombre));
                                     } else {
                                         $set('product_presentation_id', null);
                                         $set('slug', Str::slug($design->nombre));
                                     }
                                 })
-                                ->helperText('Selecciona el diseño de producto. Se autocompletarán nombre, descripción y precio.')
+                                ->helperText('Selecciona el diseño. Los datos se cargan automáticamente y no son editables después.')
                                 ->columnSpanFull(),
 
                             Select::make('product_presentation_id')
@@ -118,72 +115,53 @@ class StoreProductResource extends Resource
                                 })
                                 ->nullable()
                                 ->live()
+                                ->disabled(fn (string $operation) => $operation === 'edit')
+                                ->dehydrated()
                                 ->afterStateUpdated(function (Set $set, Get $get, ?int $state) {
                                     if (!$state) return;
                                     $pres = ProductPresentation::find($state);
                                     if (!$pres) return;
-                                    if ($pres->pvp_estimado > 0) {
-                                        $set('precio_venta', $pres->pvp_estimado);
-                                    }
-                                    if ($pres->precio_distribuidor > 0) {
-                                        $set('precio_distribuidor', $pres->precio_distribuidor);
-                                    }
+                                    if ($pres->pvp_estimado > 0) $set('precio_venta', $pres->pvp_estimado);
+                                    if ($pres->precio_distribuidor > 0) $set('precio_distribuidor', $pres->precio_distribuidor);
                                     $design = ProductDesign::find($get('product_design_id'));
                                     $set('slug', Str::slug(($design?->nombre ?? '') . '-' . $pres->nombre));
                                 })
-                                ->helperText('Si el diseño tiene varias presentaciones, selecciona cuál publicar.')
+                                ->helperText('Selecciona la presentación a publicar.')
                                 ->visible(fn (Get $get) => (bool) $get('product_design_id'))
                                 ->columnSpan(2),
 
-                            // ── Campos editables (pre-cargados o manuales) ───
+                            // ── Datos del producto (solo lectura en edición) ──
                             Select::make('store_category_id')
                                 ->label('Categoría')
-                                ->options(fn () => StoreCategory::where('publicado', true)
-                                    ->pluck('nombre', 'id'))
+                                ->options(fn () => StoreCategory::where('publicado', true)->pluck('nombre', 'id'))
                                 ->searchable()
                                 ->nullable()
-                                ->createOptionModalHeading('Nueva Categoría')
-                                ->createOptionForm([
-                                    TextInput::make('nombre')
-                                        ->label('Nombre')
-                                        ->required()
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(fn (Set $set, ?string $state) =>
-                                            $set('slug', \Illuminate\Support\Str::slug($state ?? ''))),
-                                    TextInput::make('slug')
-                                        ->label('Slug')
-                                        ->required(),
-                                    \Filament\Forms\Components\Toggle::make('publicado')
-                                        ->label('Publicada')
-                                        ->default(true),
-                                ])
-                                ->createOptionUsing(function (array $data): int {
-                                    return StoreCategory::create([
-                                        ...$data,
-                                        'empresa_id' => filament()->getTenant()->id,
-                                    ])->getKey();
-                                })
+                                ->disabled(fn (string $operation) => $operation === 'edit')
+                                ->dehydrated()
+                                ->helperText('Definida en el Diseño de Producto.')
                                 ->columnSpan(1),
 
                             TextInput::make('nombre')
                                 ->label('Nombre en Tienda')
                                 ->required()
                                 ->maxLength(255)
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(fn (Set $set, ?string $state) =>
-                                    $set('slug', Str::slug($state ?? '')))
+                                ->readOnly(fn (string $operation) => $operation === 'edit')
                                 ->columnSpan(2),
+
                             TextInput::make('slug')
                                 ->label('Slug')
                                 ->required()
                                 ->maxLength(255)
+                                ->readOnly(fn (string $operation) => $operation === 'edit')
                                 ->columnSpan(1),
+
                             TextInput::make('precio_venta')
                                 ->label('PVP (precio público)')
                                 ->numeric()
                                 ->required()
                                 ->prefix('$')
-                                ->helperText('Cargado desde la presentación. Puedes ajustarlo.')
+                                ->readOnly(fn (string $operation) => $operation === 'edit')
+                                ->helperText('Proviene del Diseño de Producto. Para cambiar, actualiza la presentación.')
                                 ->columnSpan(1),
 
                             TextInput::make('precio_distribuidor')
@@ -191,12 +169,15 @@ class StoreProductResource extends Resource
                                 ->numeric()
                                 ->default(0)
                                 ->prefix('$')
-                                ->helperText('Se aplica automáticamente cuando el cliente compra 10 o más unidades.')
+                                ->readOnly(fn (string $operation) => $operation === 'edit')
+                                ->helperText('Calculado automáticamente desde el Diseño. PVP × 60%.')
                                 ->columnSpan(1),
 
                             RichEditor::make('descripcion')
                                 ->label('Descripción')
                                 ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])
+                                ->disabled(fn (string $operation) => $operation === 'edit')
+                                ->dehydrated()
                                 ->columnSpanFull(),
                         ])->columns(3),
 
