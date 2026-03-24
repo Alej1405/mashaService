@@ -4,10 +4,13 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\StoreProductResource\Pages;
 use App\Models\InventoryItem;
+use App\Models\ProductDesign;
+use App\Models\ProductPresentation;
 use App\Models\StoreCategory;
 use App\Models\StoreProduct;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Tabs;
@@ -15,6 +18,7 @@ use Filament\Forms\Components\Tabs\Tab;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\DeleteAction;
@@ -58,53 +62,73 @@ class StoreProductResource extends Resource
                     Tab::make('Producto')
                         ->icon('heroicon-o-cube')
                         ->schema([
-                            Select::make('inventory_item_id')
-                                ->label('Ítem de Inventario')
-                                ->options(fn () => InventoryItem::where('type', 'producto_terminado')
-                                    ->where('activo', true)
+
+                            // ── Cargar desde Diseño de Producto ──────────────
+                            Select::make('product_design_id')
+                                ->label('📐 Diseño de Producto')
+                                ->options(fn () => ProductDesign::where('activo', true)
                                     ->get()
-                                    ->mapWithKeys(fn ($i) => [$i->id => "{$i->codigo} — {$i->nombre}"]))
+                                    ->mapWithKeys(fn ($d) => [$d->id => $d->nombre . ($d->categoria ? '  —  ' . $d->categoria : '')]))
                                 ->searchable()
-                                ->required()
+                                ->nullable()
                                 ->live()
-                                ->afterStateUpdated(function (Set $set, ?int $state) {
-                                    if ($state) {
-                                        $item = InventoryItem::find($state);
-                                        if ($item) {
-                                            $set('nombre', $item->nombre);
-                                            $set('precio_venta', $item->sale_price);
+                                ->afterStateUpdated(function (Set $set, Get $get, ?int $state) {
+                                    if (!$state) return;
+                                    $design = ProductDesign::with('presentations')->find($state);
+                                    if (!$design) return;
+
+                                    // Poblar campos básicos del diseño
+                                    $set('nombre', $design->nombre);
+                                    if ($design->propuesta_valor) {
+                                        $set('descripcion', $design->propuesta_valor);
+                                    }
+
+                                    // Si tiene una sola presentación, cargarla directo
+                                    $presentations = $design->presentations->where('activa', true);
+                                    if ($presentations->count() === 1) {
+                                        $pres = $presentations->first();
+                                        $set('product_presentation_id', $pres->id);
+                                        if ($pres->pvp_estimado > 0) {
+                                            $set('precio_venta', $pres->pvp_estimado);
                                         }
+                                        $set('slug', Str::slug($design->nombre . '-' . $pres->nombre));
+                                    } else {
+                                        $set('product_presentation_id', null);
+                                        $set('slug', Str::slug($design->nombre));
                                     }
                                 })
-                                ->createOptionModalHeading('Nuevo Producto Terminado')
-                                ->createOptionForm([
-                                    TextInput::make('codigo')
-                                        ->label('Código')
-                                        ->required()
-                                        ->maxLength(50),
-                                    TextInput::make('nombre')
-                                        ->label('Nombre')
-                                        ->required()
-                                        ->maxLength(255),
-                                    TextInput::make('sale_price')
-                                        ->label('Precio de Venta')
-                                        ->numeric()
-                                        ->prefix('$'),
-                                    TextInput::make('purchase_price')
-                                        ->label('Precio de Compra')
-                                        ->numeric()
-                                        ->prefix('$')
-                                        ->default(0),
-                                ])
-                                ->createOptionUsing(function (array $data): int {
-                                    return InventoryItem::create([
-                                        ...$data,
-                                        'type'       => 'producto_terminado',
-                                        'empresa_id' => filament()->getTenant()->id,
-                                        'activo'     => true,
-                                    ])->getKey();
+                                ->helperText('Selecciona el diseño de producto. Se autocompletarán nombre, descripción y precio.')
+                                ->columnSpanFull(),
+
+                            Select::make('product_presentation_id')
+                                ->label('Presentación')
+                                ->options(function (Get $get) {
+                                    $designId = $get('product_design_id');
+                                    if (!$designId) return [];
+                                    return ProductPresentation::where('product_design_id', $designId)
+                                        ->where('activa', true)
+                                        ->get()
+                                        ->mapWithKeys(fn ($p) => [
+                                            $p->id => $p->nombre . ($p->pvp_estimado > 0 ? '  —  PVP $ ' . number_format($p->pvp_estimado, 2) : ''),
+                                        ]);
                                 })
+                                ->nullable()
+                                ->live()
+                                ->afterStateUpdated(function (Set $set, Get $get, ?int $state) {
+                                    if (!$state) return;
+                                    $pres = ProductPresentation::find($state);
+                                    if (!$pres) return;
+                                    if ($pres->pvp_estimado > 0) {
+                                        $set('precio_venta', $pres->pvp_estimado);
+                                    }
+                                    $design = ProductDesign::find($get('product_design_id'));
+                                    $set('slug', Str::slug(($design?->nombre ?? '') . '-' . $pres->nombre));
+                                })
+                                ->helperText('Si el diseño tiene varias presentaciones, selecciona cuál publicar.')
+                                ->visible(fn (Get $get) => (bool) $get('product_design_id'))
                                 ->columnSpan(2),
+
+                            // ── Campos editables (pre-cargados o manuales) ───
                             Select::make('store_category_id')
                                 ->label('Categoría')
                                 ->options(fn () => StoreCategory::where('publicado', true)
@@ -133,6 +157,7 @@ class StoreProductResource extends Resource
                                     ])->getKey();
                                 })
                                 ->columnSpan(1),
+
                             TextInput::make('nombre')
                                 ->label('Nombre en Tienda')
                                 ->required()
@@ -151,7 +176,21 @@ class StoreProductResource extends Resource
                                 ->numeric()
                                 ->required()
                                 ->prefix('$')
+                                ->helperText('Cargado desde la presentación. Puedes ajustarlo.')
                                 ->columnSpan(1),
+
+                            // ── Ítem de inventario (opcional, para control de stock) ──
+                            Select::make('inventory_item_id')
+                                ->label('Ítem de Inventario (stock)')
+                                ->options(fn () => InventoryItem::where('type', 'producto_terminado')
+                                    ->where('activo', true)
+                                    ->get()
+                                    ->mapWithKeys(fn ($i) => [$i->id => "{$i->codigo} — {$i->nombre}"]))
+                                ->searchable()
+                                ->nullable()
+                                ->helperText('Opcional. Vincula este producto al inventario para mostrar stock disponible.')
+                                ->columnSpan(2),
+
                             RichEditor::make('descripcion')
                                 ->label('Descripción')
                                 ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList'])

@@ -6,6 +6,8 @@ use App\Traits\HasEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\ProductDesign;
+use App\Models\ProductPresentation;
 
 class StoreProduct extends Model
 {
@@ -13,6 +15,8 @@ class StoreProduct extends Model
 
     protected $fillable = [
         'empresa_id',
+        'product_design_id',
+        'product_presentation_id',
         'inventory_item_id',
         'store_category_id',
         'nombre',
@@ -54,6 +58,16 @@ class StoreProduct extends Model
             $i++;
         }
         return $slug;
+    }
+
+    public function productDesign(): BelongsTo
+    {
+        return $this->belongsTo(ProductDesign::class);
+    }
+
+    public function productPresentation(): BelongsTo
+    {
+        return $this->belongsTo(ProductPresentation::class);
     }
 
     public function inventoryItem(): BelongsTo
