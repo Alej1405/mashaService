@@ -19,6 +19,9 @@ class ProductDesign extends Model
         'categoria',
         'store_category_id',
         'inventory_item_id',
+        'precio_distribuidor',
+        'margen_distribuidor',
+        'cantidad_minima_distribuidor',
         'propuesta_valor',
         'notas_estrategicas',
         'activo',
@@ -34,6 +37,9 @@ class ProductDesign extends Model
         'tiene_multiples_presentaciones'  => 'boolean',
         'capacidad_instalada_mensual'     => 'decimal:2',
         'costo_mano_obra_persona'         => 'decimal:2',
+        'precio_distribuidor'             => 'decimal:4',
+        'margen_distribuidor'             => 'decimal:2',
+        'cantidad_minima_distribuidor'    => 'integer',
     ];
 
     public function storeCategory(): BelongsTo

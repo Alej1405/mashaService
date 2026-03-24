@@ -498,60 +498,13 @@ class ProductDesignResource extends Resource
                                                     );
                                                 }),
 
-                                            // ── PVP y canal distribuidores ──────────────────────
+                                            // Guardar pvp_estimado (usado en etiqueta y en tienda)
                                             TextInput::make('pvp_estimado')
                                                 ->label('PVP (precio consumidor final)')
                                                 ->numeric()
                                                 ->default(0)
                                                 ->prefix('$')
-                                                ->live(onBlur: true)
-                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                    $pvp = (float) $state;
-                                                    if ($pvp <= 0) return;
-                                                    $margen = (float) ($get('margen_distribuidor') ?: 40);
-                                                    $set('precio_distribuidor', round($pvp * (1 - $margen / 100), 2));
-                                                })
-                                                ->helperText('Puedes usar el PVP Estimado calculado arriba como referencia.')
-                                                ->columnSpan(2),
-
-                                            TextInput::make('margen_distribuidor')
-                                                ->label('Margen Distribuidor (%)')
-                                                ->numeric()
-                                                ->default(40)
-                                                ->suffix('%')
-                                                ->live(onBlur: true)
-                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                    $margen = (float) $state;
-                                                    $pvp    = (float) ($get('pvp_estimado') ?? 0);
-                                                    if ($pvp > 0) {
-                                                        $set('precio_distribuidor', round($pvp * (1 - $margen / 100), 2));
-                                                    }
-                                                })
-                                                ->helperText('Porcentaje que gana el distribuidor sobre el PVP.')
-                                                ->columnSpan(2),
-
-                                            TextInput::make('precio_distribuidor')
-                                                ->label('Precio Distribuidor')
-                                                ->numeric()
-                                                ->default(0)
-                                                ->prefix('$')
-                                                ->live(onBlur: true)
-                                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                    $precio = (float) $state;
-                                                    $pvp    = (float) ($get('pvp_estimado') ?? 0);
-                                                    if ($pvp > 0 && $precio >= 0) {
-                                                        $set('margen_distribuidor', round((1 - $precio / $pvp) * 100, 2));
-                                                    }
-                                                })
-                                                ->helperText('= PVP × (100% − margen). Editable: al cambiar recalcula el margen.')
-                                                ->columnSpan(2),
-
-                                            TextInput::make('cantidad_minima_distribuidor')
-                                                ->label('Cantidad mínima (precio distribuidor)')
-                                                ->numeric()
-                                                ->default(10)
-                                                ->minValue(1)
-                                                ->helperText('Unidades mínimas por pedido en tienda para aplicar el precio de distribuidor.')
+                                                ->helperText('Usa el PVP Estimado calculado arriba como referencia. El precio de distribuidor se configura en Planificación.')
                                                 ->columnSpan(3),
                                         ])
                                         ->columns(6)
@@ -1072,6 +1025,9 @@ class ProductDesignResource extends Resource
                                             $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
                                             $pvpSinIva  = $incluyeIva ? $pvp / 1.15 : $pvp;
                                             $set('_plan_margen_venta', round((($pvpSinIva - $costo) / $pvpSinIva) * 100, 2));
+                                            // Actualizar precio distribuidor con el nuevo PVP
+                                            $margenDist = (float) ($get('margen_distribuidor') ?: 40);
+                                            $set('precio_distribuidor', round($pvpSinIva * (1 - $margenDist / 100), 2));
                                         })
                                         ->placeholder('Ej: 2.50')
                                         ->helperText('Ingresa el PVP → se calcula el margen.')
@@ -1159,6 +1115,67 @@ class ProductDesignResource extends Resource
                                         ))
                                         ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
                                         ->columnSpan(2),
+
+                                    // ── Canal Distribuidores ─────────────────────────
+                                    \Filament\Forms\Components\Placeholder::make('_dist_divider')
+                                        ->label('')
+                                        ->content(new \Illuminate\Support\HtmlString(
+                                            '<div style="border-top:2px solid #e0e7ff;padding-top:0.5rem;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#6366f1;">📦 Canal Distribuidores</div>'
+                                        ))
+                                        ->columnSpanFull(),
+
+                                    TextInput::make('margen_distribuidor')
+                                        ->label('Margen Distribuidor (%)')
+                                        ->numeric()
+                                        ->default(40)
+                                        ->suffix('%')
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            $margen    = (float) $state;
+                                            $pvp       = (float) ($get('_plan_pvp_venta') ?? 0);
+                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
+                                            $pvpSinIva  = ($pvp > 0 && $incluyeIva) ? $pvp / 1.15 : $pvp;
+                                            if ($pvpSinIva > 0) {
+                                                $set('precio_distribuidor', round($pvpSinIva * (1 - $margen / 100), 2));
+                                            }
+                                        })
+                                        ->helperText('Ingresa el margen → calcula el precio distribuidor.')
+                                        ->columnSpan(1),
+
+                                    TextInput::make('precio_distribuidor')
+                                        ->label('Precio Distribuidor')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->prefix('$')
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            $precio     = (float) $state;
+                                            $pvp        = (float) ($get('_plan_pvp_venta') ?? 0);
+                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
+                                            $pvpSinIva  = ($pvp > 0 && $incluyeIva) ? $pvp / 1.15 : $pvp;
+                                            if ($pvpSinIva > 0 && $precio >= 0) {
+                                                $set('margen_distribuidor', round((1 - $precio / $pvpSinIva) * 100, 2));
+                                            }
+                                        })
+                                        ->helperText('Ingresa el precio → calcula el margen.')
+                                        ->columnSpan(1),
+
+                                    TextInput::make('cantidad_minima_distribuidor')
+                                        ->label('Cantidad mínima (precio dist.)')
+                                        ->numeric()
+                                        ->default(10)
+                                        ->minValue(1)
+                                        ->helperText('Unidades mínimas en tienda para aplicar precio de distribuidor.')
+                                        ->columnSpan(1),
+
+                                    \Filament\Forms\Components\Placeholder::make('_dist_info')
+                                        ->label('')
+                                        ->content(new \Illuminate\Support\HtmlString(
+                                            '<p style="font-size:0.72rem;color:#6b7280;line-height:1.5;">'
+                                            . 'El precio de distribuidor y la cantidad mínima se aplicarán automáticamente en la tienda online cuando un cliente compre la cantidad mínima o más unidades de este producto.'
+                                            . '</p>'
+                                        ))
+                                        ->columnSpan(1),
                                 ]),
 
                             // ── Tabla de materiales necesarios ───────────────────

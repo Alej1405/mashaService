@@ -16,19 +16,13 @@ class ProductPresentation extends Model
         'cantidad_minima_produccion',
         'margen_objetivo',
         'pvp_estimado',
-        'precio_distribuidor',
-        'margen_distribuidor',
-        'cantidad_minima_distribuidor',
     ];
 
     protected $casts = [
-        'activa'                       => 'boolean',
-        'cantidad_minima_produccion'   => 'decimal:4',
-        'margen_objetivo'              => 'decimal:2',
-        'pvp_estimado'                 => 'decimal:4',
-        'precio_distribuidor'          => 'decimal:4',
-        'margen_distribuidor'          => 'decimal:2',
-        'cantidad_minima_distribuidor' => 'integer',
+        'activa'                    => 'boolean',
+        'cantidad_minima_produccion' => 'decimal:4',
+        'margen_objetivo'           => 'decimal:2',
+        'pvp_estimado'              => 'decimal:4',
     ];
 
     public function productDesign(): BelongsTo

@@ -85,14 +85,16 @@ class StoreProductResource extends Resource
                                     if ($design->store_category_id) {
                                         $set('store_category_id', $design->store_category_id);
                                     }
+                                    if ($design->precio_distribuidor > 0) {
+                                        $set('precio_distribuidor', $design->precio_distribuidor);
+                                    }
+                                    $set('cantidad_minima_distribuidor', $design->cantidad_minima_distribuidor ?? 10);
 
                                     $presentations = $design->presentations->where('activa', true);
                                     if ($presentations->count() === 1) {
                                         $pres = $presentations->first();
                                         $set('product_presentation_id', $pres->id);
                                         if ($pres->pvp_estimado > 0) $set('precio_venta', $pres->pvp_estimado);
-                                        if ($pres->precio_distribuidor > 0) $set('precio_distribuidor', $pres->precio_distribuidor);
-                                        $set('cantidad_minima_distribuidor', $pres->cantidad_minima_distribuidor ?? 10);
                                         $set('slug', Str::slug($design->nombre . '-' . $pres->nombre));
                                     } else {
                                         $set('product_presentation_id', null);
@@ -123,8 +125,6 @@ class StoreProductResource extends Resource
                                     $pres = ProductPresentation::find($state);
                                     if (!$pres) return;
                                     if ($pres->pvp_estimado > 0) $set('precio_venta', $pres->pvp_estimado);
-                                    if ($pres->precio_distribuidor > 0) $set('precio_distribuidor', $pres->precio_distribuidor);
-                                    $set('cantidad_minima_distribuidor', $pres->cantidad_minima_distribuidor ?? 10);
                                     $design = ProductDesign::find($get('product_design_id'));
                                     $set('slug', Str::slug(($design?->nombre ?? '') . '-' . $pres->nombre));
                                 })
