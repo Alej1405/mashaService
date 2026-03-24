@@ -15,6 +15,7 @@ class Purchase extends Model
         'empresa_id',
         'supplier_id',
         'number',
+        'numero_factura',
         'date',
         'tipo_pago',
         'fecha_vencimiento',

@@ -82,6 +82,23 @@ class CashRegisterResource extends Resource
             ]);
     }
 
+    public static function getQuickCreateFormSchema(): array
+    {
+        return [
+            Forms\Components\TextInput::make('nombre')
+                ->label('Nombre de la Caja')
+                ->required()
+                ->maxLength(255),
+            Forms\Components\Select::make('tipo')
+                ->label('Tipo')
+                ->options([
+                    'principal' => 'Principal',
+                    'chica'     => 'Caja Chica',
+                ])
+                ->required(),
+        ];
+    }
+
     public static function getRelations(): array
     {
         return [

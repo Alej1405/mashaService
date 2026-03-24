@@ -134,6 +134,46 @@ class AccountPlanResource extends Resource
             ]);
     }
 
+    public static function getQuickCreateFormSchema(): array
+    {
+        return [
+            Forms\Components\TextInput::make('code')
+                ->label('Código')
+                ->required()
+                ->maxLength(50),
+            Forms\Components\TextInput::make('name')
+                ->label('Nombre de la Cuenta')
+                ->required()
+                ->maxLength(255),
+            Forms\Components\Select::make('type')
+                ->label('Tipo')
+                ->options([
+                    'activo'     => 'Activo',
+                    'pasivo'     => 'Pasivo',
+                    'patrimonio' => 'Patrimonio',
+                    'ingreso'    => 'Ingreso',
+                    'costo'      => 'Costo',
+                    'gasto'      => 'Gasto',
+                ])
+                ->required(),
+            Forms\Components\Select::make('nature')
+                ->label('Naturaleza')
+                ->options([
+                    'deudora'   => 'Deudora',
+                    'acreedora' => 'Acreedora',
+                ])
+                ->required(),
+            Forms\Components\TextInput::make('level')
+                ->label('Nivel')
+                ->numeric()
+                ->default(3)
+                ->required(),
+            Forms\Components\Toggle::make('accepts_movements')
+                ->label('Acepta Movimientos')
+                ->default(true),
+        ];
+    }
+
     public static function getRelations(): array
     {
         return [

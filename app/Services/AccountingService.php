@@ -166,12 +166,16 @@ class AccountingService
                 }
 
                 // 3. Registrar Movimiento de Inventario
+                // Aplicar factor de conversión: si compran en kg pero el stock se lleva en g
+                $factor   = (float) ($item->inventoryItem->conversion_factor ?? 1);
+                $stockQty = round($item->quantity * $factor, 6);
+
                 InventoryMovement::create([
                     'empresa_id'        => $purchase->empresa_id,
                     'inventory_item_id' => $item->inventory_item_id,
                     'type'              => 'entrada',
-                    'quantity'          => $item->quantity,
-                    'unit_price'        => $item->unit_price,
+                    'quantity'          => $stockQty,
+                    'unit_price'        => $item->unit_price / $factor,  // precio por unidad de stock
                     'total'             => $item->subtotal,
                     'reference_type'    => 'purchase',
                     'reference_id'      => $purchase->id,
@@ -180,7 +184,7 @@ class AccountingService
                     'date'              => $purchase->date,
                 ]);
 
-                $item->inventoryItem->increment('stock_actual', $item->quantity);
+                $item->inventoryItem->increment('stock_actual', $stockQty);
             }
 
             // 4. Línea de Pago (Haber)

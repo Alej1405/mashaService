@@ -14,6 +14,12 @@ class InventoryItem extends Model
 
     protected static function booted()
     {
+        static::creating(function ($item) {
+            if (empty($item->codigo)) {
+                $item->codigo = 'INV-' . strtoupper(substr(uniqid(), -8));
+            }
+        });
+
         static::saving(function ($item) {
             // Asigna automáticamente el plan de cuentas (como Inventario) basado en su tipo, 
             // buscando el movimiento de compra al contado (que generalmente es su cuenta de Activo)
@@ -36,6 +42,8 @@ class InventoryItem extends Model
         'descripcion',
         'type',
         'measurement_unit_id',
+        'purchase_unit_id',
+        'conversion_factor',
         'account_plan_id',
         'supplier_id',
         'purchase_price',
@@ -47,9 +55,18 @@ class InventoryItem extends Model
         'activo',
     ];
 
+    protected $casts = [
+        'conversion_factor' => 'decimal:6',
+    ];
+
     public function measurementUnit(): BelongsTo
     {
         return $this->belongsTo(MeasurementUnit::class);
+    }
+
+    public function purchaseUnit(): BelongsTo
+    {
+        return $this->belongsTo(MeasurementUnit::class, 'purchase_unit_id');
     }
 
     public function accountPlan(): BelongsTo

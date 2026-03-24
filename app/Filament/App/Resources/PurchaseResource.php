@@ -23,6 +23,9 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Support\Enums\Alignment;
 use Filament\Facades\Filament;
 use Illuminate\Support\HtmlString;
+use App\Filament\App\Resources\BankAccountResource;
+use App\Filament\App\Resources\CashRegisterResource;
+use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\SupplierResource;
 use App\Filament\App\Resources\InventoryItemResource;
 
@@ -45,168 +48,312 @@ class PurchaseResource extends Resource
                 Forms\Components\Hidden::make('iva')->default(0)->live(),
                 Forms\Components\Hidden::make('total')->default(0)->live(),
                 Wizard::make([
-                    Step::make('Proveedor')
+                    Step::make('Datos de la Factura')
+                        ->icon('heroicon-o-document-text')
                         ->schema([
                             Forms\Components\Select::make('supplier_id')
                                 ->label('Proveedor')
                                 ->relationship('supplier', 'nombre')
                                 ->searchable()
-                                ->getOptionLabelFromRecordUsing(fn (Supplier $record) => "{$record->nombre} - {$record->numero_identificacion}")
+                                ->getOptionLabelFromRecordUsing(fn (Supplier $record) => "{$record->nombre} — {$record->numero_identificacion}")
                                 ->required()
-                                ->createOptionForm(fn () => SupplierResource::getQuickCreateFormSchema()),
+                                ->columnSpan(2)
+                                ->createOptionModalHeading('Nuevo Proveedor')
+                                ->createOptionForm(fn () => SupplierResource::getQuickCreateFormSchema())
+                                ->createOptionUsing(function (array $data): int {
+                                    return \App\Models\Supplier::create([
+                                        ...$data,
+                                        'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                    ])->getKey();
+                                }),
+                            Forms\Components\TextInput::make('numero_factura')
+                                ->label('N° Factura del Proveedor')
+                                ->placeholder('001-001-000001234')
+                                ->maxLength(100)
+                                ->columnSpan(1),
                             Forms\Components\DatePicker::make('date')
-                                ->label('Fecha')
+                                ->label('Fecha de la Factura')
                                 ->default(now())
-                                ->required(),
+                                ->required()
+                                ->native(false)
+                                ->columnSpan(1),
                             Forms\Components\Select::make('forma_pago')
                                 ->label('Forma de Pago')
                                 ->options([
-                                    'efectivo' => 'Efectivo',
-                                    'transferencia' => 'Transferencia/Débito',
+                                    'efectivo'     => 'Efectivo',
+                                    'transferencia' => 'Transferencia / Débito',
                                     'tarjeta_credito' => 'Tarjeta de Crédito',
-                                    'credito' => 'Crédito (Cuentas por Pagar)',
+                                    'credito'      => 'Crédito (Cuentas por Pagar)',
                                 ])
                                 ->default('efectivo')
                                 ->required()
-                                ->reactive(),
+                                ->reactive()
+                                ->columnSpan(1),
                             Forms\Components\Select::make('cash_register_id')
                                 ->label('Caja')
                                 ->relationship('cashRegister', 'nombre', fn($query) => $query->where('activo', true))
                                 ->visible(fn ($get) => $get('forma_pago') === 'efectivo')
                                 ->required(fn ($get) => $get('forma_pago') === 'efectivo')
                                 ->searchable()
-                                ->preload(),
+                                ->preload()
+                                ->columnSpan(1)
+                                ->createOptionModalHeading('Nueva Caja')
+                                ->createOptionForm(fn () => CashRegisterResource::getQuickCreateFormSchema())
+                                ->createOptionUsing(function (array $data): int {
+                                    return \App\Models\CashRegister::create([
+                                        ...$data,
+                                        'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                        'activo'     => true,
+                                    ])->getKey();
+                                }),
                             Forms\Components\Select::make('bank_account_id')
                                 ->label('Cuenta Bancaria')
                                 ->relationship('bankAccount', 'numero_cuenta', fn($query) => $query->where('activo', true))
                                 ->visible(fn ($get) => $get('forma_pago') === 'transferencia')
                                 ->required(fn ($get) => $get('forma_pago') === 'transferencia')
                                 ->searchable()
-                                ->preload(),
+                                ->preload()
+                                ->columnSpan(1)
+                                ->createOptionModalHeading('Nueva Cuenta Bancaria')
+                                ->createOptionForm(fn () => BankAccountResource::getQuickCreateFormSchema())
+                                ->createOptionUsing(function (array $data): int {
+                                    return \App\Models\BankAccount::create([
+                                        ...$data,
+                                        'empresa_id'    => \Filament\Facades\Filament::getTenant()->id,
+                                        'activo'        => true,
+                                        'saldo_inicial' => $data['saldo_inicial'] ?? 0,
+                                    ])->getKey();
+                                }),
                             Forms\Components\Select::make('credit_card_id')
                                 ->label('Tarjeta de Crédito')
                                 ->relationship('creditCard', 'nombre', fn($query) => $query->where('activo', true))
                                 ->visible(fn ($get) => $get('forma_pago') === 'tarjeta_credito')
                                 ->required(fn ($get) => $get('forma_pago') === 'tarjeta_credito')
                                 ->searchable()
-                                ->preload(),
+                                ->preload()
+                                ->columnSpan(1)
+                                ->createOptionModalHeading('Nueva Tarjeta de Crédito')
+                                ->createOptionForm(fn () => CreditCardResource::getQuickCreateFormSchema())
+                                ->createOptionUsing(function (array $data): int {
+                                    return \App\Models\CreditCard::create([
+                                        ...$data,
+                                        'empresa_id'      => \Filament\Facades\Filament::getTenant()->id,
+                                        'activo'          => true,
+                                        'saldo_utilizado' => 0,
+                                    ])->getKey();
+                                }),
                             Forms\Components\DatePicker::make('fecha_vencimiento')
                                 ->label('Fecha de Vencimiento')
-                                ->visible(fn (callable $get) => $get('forma_pago') === 'credito')
-                                ->required(fn (callable $get) => $get('forma_pago') === 'credito'),
+                                ->native(false)
+                                ->visible(fn ($get) => $get('forma_pago') === 'credito')
+                                ->required(fn ($get) => $get('forma_pago') === 'credito')
+                                ->columnSpan(1),
                             Forms\Components\Textarea::make('notas')
-                                ->label('Notas')
+                                ->label('Notas / Observaciones')
+                                ->rows(2)
                                 ->columnSpanFull(),
-                        ])->columns(2),
+                        ])->columns(3),
 
-                    Step::make('Productos')
+                    Step::make('Productos / Ítems')
+                        ->icon('heroicon-o-shopping-cart')
                         ->schema([
                             Forms\Components\Repeater::make('items')
                                 ->relationship()
                                 ->live()
+                                ->label('')
                                 ->schema([
+                                    // ── Producto ──────────────────────────────
                                     Forms\Components\Select::make('inventory_item_id')
-                                        ->label('Producto/Insumo')
+                                        ->label('Producto / Insumo')
                                         ->relationship('inventoryItem', 'nombre')
                                         ->searchable()
-                                        ->getOptionLabelFromRecordUsing(fn (InventoryItem $record) => "{$record->codigo} - {$record->nombre} (Stock: {$record->stock_actual})")
+                                        ->getOptionLabelFromRecordUsing(fn (InventoryItem $record) => "{$record->codigo} — {$record->nombre}")
                                         ->required()
+                                        ->columnSpan(4)
+                                        ->createOptionModalHeading('Nuevo Ítem de Inventario')
                                         ->createOptionForm(fn () => InventoryItemResource::getQuickCreateFormSchema())
+                                        ->createOptionUsing(function (array $data): int {
+                                            return \App\Models\InventoryItem::create([
+                                                ...$data,
+                                                'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                                'activo'     => true,
+                                            ])->getKey();
+                                        })
                                         ->reactive()
-                                        ->afterStateUpdated(function ($state, callable $set) {
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                             $item = InventoryItem::find($state);
-                                            if ($item) {
-                                                $set('unit_price', $item->purchase_price ?? 0);
+                                            if (!$item) return;
+
+                                            $set('_conversion_factor', (float) ($item->conversion_factor ?? 1));
+                                            $set('_purchase_unit_label', $item->purchaseUnit?->abreviatura ?? $item->measurementUnit?->abreviatura ?? '');
+                                            $set('_stock_unit_label',    $item->measurementUnit?->abreviatura ?? '');
+
+                                            if ($item->purchase_price > 0) {
+                                                $qty    = max((float) $get('quantity'), 1);
+                                                $aplica = (bool) $get('aplica_iva');
+                                                $base   = $item->purchase_price * $qty;
+                                                $set('total_linea', round($aplica ? $base * 1.15 : $base, 2));
+                                                $set('unit_price', $item->purchase_price);
                                             }
                                         }),
+
+                                    // ── Cantidad ──────────────────────────────
                                     Forms\Components\TextInput::make('quantity')
                                         ->label('Cantidad')
                                         ->numeric()
                                         ->default(1)
-                                        ->minValue(0.0001)
                                         ->required()
-                                        ->live()
-                                        ->afterStateUpdated(function (Forms\Contracts\HasForms $livewire, callable $set) {
+                                        ->live(onBlur: true)
+                                        ->columnSpan(2)
+                                        ->afterStateUpdated(function ($state, callable $get, callable $set, Forms\Contracts\HasForms $livewire) {
+                                            self::recalcularLinea($get, $set);
                                             self::updateTotals($livewire, $set);
                                         }),
-                                    Forms\Components\TextInput::make('unit_price')
-                                        ->label('Precio Unitario')
+
+                                    // ── Valor en factura (entrada principal) ──
+                                    Forms\Components\TextInput::make('total_linea')
+                                        ->label('Valor en factura')
                                         ->numeric()
                                         ->required()
-                                        ->live()
-                                        ->afterStateUpdated(function (Forms\Contracts\HasForms $livewire, callable $set) {
+                                        ->prefix('$')
+                                        ->live(onBlur: true)
+                                        ->columnSpan(2)
+                                        ->helperText('Ingresa el valor tal como aparece en la factura del proveedor.')
+                                        ->afterStateHydrated(function ($state, callable $get, callable $set) {
+                                            if (empty($state)) {
+                                                $unitPrice = (float) $get('unit_price');
+                                                $qty       = max((float) $get('quantity'), 0.0001);
+                                                $aplica    = (bool) $get('aplica_iva');
+                                                if ($unitPrice > 0) {
+                                                    $base = $unitPrice * $qty;
+                                                    $set('total_linea', round($aplica ? $base * 1.15 : $base, 2));
+                                                }
+                                            }
+                                        })
+                                        ->afterStateUpdated(function ($state, callable $get, callable $set, Forms\Contracts\HasForms $livewire) {
+                                            self::recalcularLinea($get, $set);
                                             self::updateTotals($livewire, $set);
                                         }),
+
+                                    // ── ¿Aplica IVA? ──────────────────────────
                                     Forms\Components\Toggle::make('aplica_iva')
-                                        ->label('Aplica IVA')
+                                        ->label('¿Aplica IVA?')
                                         ->default(true)
+                                        ->inline(false)
                                         ->live()
-                                        ->afterStateUpdated(function (Forms\Contracts\HasForms $livewire, callable $set) {
+                                        ->columnSpan(1)
+                                        ->afterStateUpdated(function ($state, callable $get, callable $set, Forms\Contracts\HasForms $livewire) {
+                                            self::recalcularLinea($get, $set);
                                             self::updateTotals($livewire, $set);
                                         }),
-                                    Forms\Components\Placeholder::make('subtotal_display')
-                                        ->label('Subtotal')
+
+                                    // ── ¿El precio ya incluye IVA? ────────────
+                                    Forms\Components\Toggle::make('iva_incluido_en_precio')
+                                        ->label('¿IVA ya incluido?')
+                                        ->default(true)
+                                        ->inline(false)
+                                        ->live()
+                                        ->columnSpan(1)
+                                        ->visible(fn (callable $get) => (bool) $get('aplica_iva'))
+                                        ->helperText(fn (callable $get) => (bool) ($get('iva_incluido_en_precio') ?? true)
+                                            ? 'El sistema desglosa el IVA del valor ingresado.'
+                                            : 'El sistema agregará el 15% al valor ingresado.')
+                                        ->afterStateUpdated(function ($state, callable $get, callable $set, Forms\Contracts\HasForms $livewire) {
+                                            self::recalcularLinea($get, $set);
+                                            self::updateTotals($livewire, $set);
+                                        }),
+
+                                    // ── Datos de conversión (ocultos, poblados al seleccionar ítem) ──
+                                    Forms\Components\Hidden::make('unit_price')->default(0),
+                                    Forms\Components\Hidden::make('_conversion_factor')->default(1),
+                                    Forms\Components\Hidden::make('_purchase_unit_label')->default(''),
+                                    Forms\Components\Hidden::make('_stock_unit_label')->default(''),
+
+                                    // ── Indicador de conversión (visible solo si hay factor ≠ 1) ────
+                                    Forms\Components\Placeholder::make('_conversion_display')
+                                        ->label('Equivale en stock')
+                                        ->columnSpan(3)
+                                        ->visible(fn (callable $get) => (float) ($get('_conversion_factor') ?? 1) !== 1.0)
                                         ->content(function (callable $get) {
-                                            $qty = (float) $get('quantity');
-                                            $price = (float) $get('unit_price');
-                                            return number_format($qty * $price, 4);
+                                            $qty    = (float) ($get('quantity') ?? 1);
+                                            $factor = (float) ($get('_conversion_factor') ?? 1);
+                                            $pu     = $get('_purchase_unit_label') ?: '?';
+                                            $su     = $get('_stock_unit_label') ?: '?';
+                                            $stockQty = round($qty * $factor, 4);
+                                            return "{$qty} {$pu}  →  {$stockQty} {$su}";
+                                        }),
+
+                                    // ── Desglose (display) ────────────────────
+                                    Forms\Components\Placeholder::make('base_display')
+                                        ->label('Base (sin IVA)')
+                                        ->columnSpan(3)
+                                        ->content(function (callable $get) {
+                                            $unitPrice = (float) ($get('unit_price') ?? 0);
+                                            $qty       = max((float) ($get('quantity') ?? 1), 0.0001);
+                                            return '$ ' . number_format(round($unitPrice * $qty, 2), 2);
                                         }),
                                     Forms\Components\Placeholder::make('iva_display')
-                                        ->label('IVA 15%')
+                                        ->label('IVA (15%)')
+                                        ->columnSpan(3)
                                         ->content(function (callable $get) {
-                                            $qty = (float) $get('quantity');
-                                            $price = (float) $get('unit_price');
-                                            $aplica = $get('aplica_iva');
-                                            return number_format($aplica ? ($qty * $price * 0.15) : 0, 4);
+                                            $unitPrice = (float) ($get('unit_price') ?? 0);
+                                            $qty       = max((float) ($get('quantity') ?? 1), 0.0001);
+                                            $aplica    = (bool) $get('aplica_iva');
+                                            $base      = round($unitPrice * $qty, 2);
+                                            return '$ ' . number_format($aplica ? round($base * 0.15, 2) : 0, 2);
                                         }),
-                                    Forms\Components\Placeholder::make('total_item_display')
-                                        ->label('Total Item')
+                                    Forms\Components\Placeholder::make('precio_unit_display')
+                                        ->label('P. Unitario neto')
+                                        ->columnSpan(3)
                                         ->content(function (callable $get) {
-                                            $qty = (float) $get('quantity');
-                                            $price = (float) $get('unit_price');
-                                            $aplica = $get('aplica_iva');
-                                            $sub = $qty * $price;
-                                            $iva = $aplica ? $sub * 0.15 : 0;
-                                            return number_format($sub + $iva, 4);
+                                            $unitPrice = (float) ($get('unit_price') ?? 0);
+                                            return '$ ' . number_format(round($unitPrice, 4), 4);
                                         }),
                                 ])
-                                ->columns(4)
+                                ->columns(13)
                                 ->defaultItems(1)
+                                ->addActionLabel('+ Agregar producto')
                                 ->afterStateUpdated(function (Forms\Contracts\HasForms $livewire, callable $set) {
                                     self::updateTotals($livewire, $set);
                                 }),
                         ]),
 
-                    Step::make('Resumen')
+                    Step::make('Resumen y Totales')
+                        ->icon('heroicon-o-calculator')
                         ->schema([
-                            Forms\Components\Placeholder::make('resumen_compra')
-                                ->content(fn ($get) => view('filament.forms.components.purchase-summary', ['get' => $get])),
                             Forms\Components\Grid::make(3)
                                 ->schema([
                                     Forms\Components\Placeholder::make('subtotal_general')
-                                        ->label('Subtotal General')
+                                        ->label('Subtotal (sin IVA)')
                                         ->content(function ($get) {
                                             $items = $get('items') ?? [];
-                                            $sum = collect($items)->sum(fn($i) => (float)($i['quantity'] ?? 0) * (float)($i['unit_price'] ?? 0));
-                                            return number_format($sum, 4);
+                                            $sum = collect($items)->sum(function ($i) {
+                                                return (float) ($i['unit_price'] ?? 0) * (float) ($i['quantity'] ?? 0);
+                                            });
+                                            return '$ ' . number_format($sum, 2);
                                         }),
                                     Forms\Components\Placeholder::make('iva_total')
-                                        ->label('IVA Total')
+                                        ->label('Total IVA 15%')
                                         ->content(function ($get) {
                                             $items = $get('items') ?? [];
-                                            $sum = collect($items)->sum(fn($i) => ($i['aplica_iva'] ?? false) ? (float)($i['quantity'] ?? 0) * (float)($i['unit_price'] ?? 0) * 0.15 : 0);
-                                            return number_format($sum, 4);
+                                            $sum = collect($items)->sum(function ($i) {
+                                                $base   = (float) ($i['unit_price'] ?? 0) * (float) ($i['quantity'] ?? 0);
+                                                $aplica = (bool) ($i['aplica_iva'] ?? true);
+                                                return $aplica ? $base * 0.15 : 0;
+                                            });
+                                            return '$ ' . number_format($sum, 2);
                                         }),
                                     Forms\Components\Placeholder::make('total_general')
-                                        ->label('Total General')
+                                        ->label('TOTAL FACTURA')
+                                        ->extraAttributes(['style' => 'font-size:1.2rem; font-weight:bold; color:#16a34a'])
                                         ->content(function ($get) {
                                             $items = $get('items') ?? [];
-                                            $total = 0;
-                                            foreach($items as $i) {
-                                                $sub = (float)($i['quantity'] ?? 0) * (float)($i['unit_price'] ?? 0);
-                                                $total += $sub + (($i['aplica_iva'] ?? false) ? $sub * 0.15 : 0);
-                                            }
-                                            return number_format($total, 4);
+                                            $total = collect($items)->sum(function ($i) {
+                                                $base   = (float) ($i['unit_price'] ?? 0) * (float) ($i['quantity'] ?? 0);
+                                                $aplica = (bool) ($i['aplica_iva'] ?? true);
+                                                return $base * ($aplica ? 1.15 : 1);
+                                            });
+                                            return '$ ' . number_format($total, 2);
                                         }),
                                 ]),
                         ]),
@@ -216,29 +363,61 @@ class PurchaseResource extends Resource
             ]);
     }
 
-    public static function updateTotals($livewire, $set)
+    /**
+     * Calcula unit_price neto a partir del valor ingresado en factura.
+     * - aplica_iva=false           → sin IVA, unit_price = valor / qty
+     * - aplica_iva=true, incluido  → el valor ya contiene IVA → desglosa ÷ 1.15
+     * - aplica_iva=true, excluido  → el valor es neto → el sistema agrega el 15%
+     */
+    public static function recalcularLinea(callable $get, callable $set): void
     {
-        $items = $livewire->data['items'] ?? [];
-        $subtotal = 0;
-        $iva = 0;
+        $valorFactura  = (float) ($get('total_linea') ?? 0);
+        $qty           = max((float) ($get('quantity') ?? 1), 0.0001);
+        $aplicaIva     = (bool) $get('aplica_iva');
+        $ivaIncluido   = (bool) ($get('iva_incluido_en_precio') ?? true);
 
-        foreach ($items as $item) {
-            $s = ((float) ($item['quantity'] ?? 0)) * ((float) ($item['unit_price'] ?? 0));
-            $subtotal += $s;
-            if ($item['aplica_iva'] ?? false) {
-                $iva += $s * 0.15;
-            }
+        if ($aplicaIva && $ivaIncluido) {
+            // El precio ya lleva IVA → desglosa para obtener base neta
+            $baseLinea = $valorFactura / 1.15;
+        } else {
+            // Sin IVA o IVA no incluido → el valor ingresado ES la base neta
+            $baseLinea = $valorFactura;
         }
 
-        $set('subtotal', $subtotal);
-        $set('iva', $iva);
-        $set('total', $subtotal + $iva);
+        $set('unit_price', round($baseLinea / $qty, 6));
+    }
 
-        // Seguridad: Asegurar que el estado raíz de Livewire se actualice
+    /**
+     * Recalcula los totales generales de la compra a partir de unit_price (neto).
+     */
+    public static function updateTotals($livewire, $set): void
+    {
+        $items    = $livewire->data['items'] ?? [];
+        $subtotal = 0;
+        $iva      = 0;
+
+        foreach ($items as $item) {
+            $unitPrice = (float) ($item['unit_price'] ?? 0);
+            $qty       = (float) ($item['quantity'] ?? 0);
+            $aplicaIva = (bool) ($item['aplica_iva'] ?? true);
+
+            $base    = $unitPrice * $qty;
+            $ivaPart = $aplicaIva ? $base * 0.15 : 0;
+
+            $subtotal += $base;
+            $iva      += $ivaPart;
+        }
+
+        $total = $subtotal + $iva;
+
+        $set('subtotal', round($subtotal, 2));
+        $set('iva', round($iva, 2));
+        $set('total', round($total, 2));
+
         if (isset($livewire->data) && is_array($livewire->data)) {
-            $livewire->data['subtotal'] = $subtotal;
-            $livewire->data['iva'] = $iva;
-            $livewire->data['total'] = $subtotal + $iva;
+            $livewire->data['subtotal'] = round($subtotal, 2);
+            $livewire->data['iva']      = round($iva, 2);
+            $livewire->data['total']    = round($total, 2);
         }
     }
 
@@ -247,26 +426,49 @@ class PurchaseResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('number')
-                    ->label('Referencia')
+                    ->label('N° Interno')
                     ->fontFamily('mono')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('numero_factura')
+                    ->label('N° Factura')
+                    ->searchable()
+                    ->placeholder('—'),
                 Tables\Columns\TextColumn::make('date')
                     ->label('Fecha')
-                    ->date()
+                    ->date('d/m/Y')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('supplier.nombre')
                     ->label('Proveedor')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('tipo_pago')
-                    ->label('Tipo Pago')
+                Tables\Columns\TextColumn::make('forma_pago')
+                    ->label('Pago')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'contado' => 'success',
-                        'credito_local' => 'warning',
-                        'credito_exterior' => 'danger',
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'efectivo'       => 'Efectivo',
+                        'transferencia'  => 'Transferencia',
+                        'tarjeta_credito' => 'Tarjeta',
+                        'credito'        => 'Crédito',
+                        default          => $state,
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'efectivo'       => 'success',
+                        'transferencia'  => 'info',
+                        'tarjeta_credito' => 'warning',
+                        'credito'        => 'danger',
+                        default          => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('subtotal')
+                    ->label('Base')
+                    ->money('USD')
+                    ->alignment(Alignment::End)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('iva')
+                    ->label('IVA')
+                    ->money('USD')
+                    ->alignment(Alignment::End)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
                     ->money('USD')
@@ -276,9 +478,10 @@ class PurchaseResource extends Resource
                     ->label('Estado')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'borrador' => 'gray',
+                        'borrador'   => 'gray',
                         'confirmado' => 'success',
-                        'anulado' => 'danger',
+                        'anulado'    => 'danger',
+                        default      => 'gray',
                     }),
             ])
             ->filters([
@@ -317,19 +520,19 @@ class PurchaseResource extends Resource
                         ->visible(fn (Purchase $record) => $record->status === 'borrador')
                         ->requiresConfirmation()
                         ->action(function (Purchase $record) {
-                            // RECALCULAR TOTALES ANTES DE CONFIRMAR (Seguridad)
-                            $subtotal = $record->items->sum(fn($i) => (float)$i->quantity * (float)$i->unit_price);
-                            $iva = $record->items->sum(fn($i) => $i->aplica_iva ? (float)$i->quantity * (float)$i->unit_price * 0.15 : 0);
-                            
+                            // Recalcular totales desde los ítems (unit_price ya es neto)
+                            $subtotal = $record->items->sum(fn($i) => (float)$i->subtotal);
+                            $iva      = $record->items->sum(fn($i) => (float)$i->iva_monto);
+
                             $record->update([
-                                'status' => 'confirmado',
+                                'status'   => 'confirmado',
                                 'subtotal' => $subtotal,
-                                'iva' => $iva,
-                                'total' => $subtotal + $iva,
+                                'iva'      => $iva,
+                                'total'    => $subtotal + $iva,
                             ]);
 
                             Notification::make()
-                                ->title('Compra confirmada exitosamente')
+                                ->title('Compra confirmada — asiento contable generado')
                                 ->success()
                                 ->send();
                         }),
@@ -342,19 +545,22 @@ class PurchaseResource extends Resource
                         ->action(function (Purchase $record) {
                             DB::transaction(function () use ($record) {
                                 foreach ($record->items as $item) {
+                                    $factor   = (float) ($item->inventoryItem->conversion_factor ?? 1);
+                                    $stockQty = round($item->quantity * $factor, 6);
+
                                     InventoryMovement::create([
-                                        'empresa_id' => $record->empresa_id,
+                                        'empresa_id'        => $record->empresa_id,
                                         'inventory_item_id' => $item->inventory_item_id,
-                                        'type' => 'salida',
-                                        'quantity' => $item->quantity,
-                                        'unit_price' => $item->unit_price,
-                                        'total' => $item->subtotal,
-                                        'reference_type' => 'purchase_void',
-                                        'reference_id' => $record->id,
-                                        'notes' => 'Anulación de compra ' . $record->number,
-                                        'date' => now(),
+                                        'type'              => 'salida',
+                                        'quantity'          => $stockQty,
+                                        'unit_price'        => $item->unit_price / $factor,
+                                        'total'             => $item->subtotal,
+                                        'reference_type'    => 'purchase_void',
+                                        'reference_id'      => $record->id,
+                                        'notes'             => 'Anulación de compra ' . $record->number,
+                                        'date'              => now(),
                                     ]);
-                                    $item->inventoryItem->decrement('stock_actual', $item->quantity);
+                                    $item->inventoryItem->decrement('stock_actual', $stockQty);
                                 }
 
                                 if ($record->journalEntry) {

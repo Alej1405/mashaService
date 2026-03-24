@@ -99,7 +99,7 @@ class ApiDocsPage extends Page
             'tokenCreadoEn' => $token?->created_at?->format('d/m/Y H:i'),
             'tokenUsadoEn'  => $token?->last_used_at?->format('d/m/Y H:i') ?? 'Nunca',
             'newToken'      => $this->newToken,
-            'baseUrl'       => config('app.url') . '/api/cms/' . $empresa->slug,
+            'baseUrl'       => 'https://mashaec.net/api/cms/' . $empresa->slug,
         ];
     }
 }

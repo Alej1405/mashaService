@@ -177,7 +177,6 @@ class EditEmpresaProfile extends EditTenantProfile
                                 ->label('Puerto')
                                 ->numeric()
                                 ->placeholder('587')
-                                ->minValue(1)
                                 ->maxValue(65535),
                         ]),
 

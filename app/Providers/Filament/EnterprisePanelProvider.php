@@ -57,15 +57,21 @@ class EnterprisePanelProvider extends PanelProvider
                 'panels::body.start',
                 fn (): string => view('filament.loading')->render(),
             )
-            ->navigationGroups(\App\Helpers\PlanHelper::navigationGroups())
-            ->discoverResources(
-                in: app_path('Filament/App/Resources'),
-                for: 'App\\Filament\\App\\Resources'
-            )
-            ->discoverPages(
-                in: app_path('Filament/App/Pages'),
-                for: 'App\\Filament\\App\\Pages'
-            )
+            ->navigationGroups([
+                \Filament\Navigation\NavigationGroup::make('E-Commerce')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('Inventario')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('Diseño de Producto')->collapsible(),
+            ])
+            ->resources([
+                \App\Filament\App\Resources\StoreProductResource::class,
+                \App\Filament\App\Resources\StoreCategoryResource::class,
+                \App\Filament\App\Resources\StoreOrderResource::class,
+                \App\Filament\App\Resources\StoreCustomerResource::class,
+                \App\Filament\App\Resources\StoreCouponResource::class,
+                \App\Filament\App\Resources\InventoryItemResource::class,
+                \App\Filament\App\Resources\ProductDesignResource::class,
+                \App\Filament\App\Resources\ItemRequestResource::class,
+            ])
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,
             ])
@@ -79,15 +85,7 @@ class EnterprisePanelProvider extends PanelProvider
                     ->icon('heroicon-o-building-office-2')
                     ->url(fn (): string => '/pro/' . (Filament::getTenant()?->slug ?? '')),
             ])
-            ->widgets([
-                \App\Filament\App\Widgets\DashboardHeaderWidget::class,
-                \App\Filament\App\Widgets\ResumenFinancieroWidget::class,
-                \App\Filament\App\Widgets\VentasComprasWidget::class,
-                \App\Filament\App\Widgets\StockBajoWidget::class,
-                \App\Filament\App\Widgets\TopProductosWidget::class,
-                \App\Filament\App\Widgets\FlujoCajaWidget::class,
-                \App\Filament\App\Widgets\EstadoResultadosWidget::class,
-            ])
+            ->widgets([])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

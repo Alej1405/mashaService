@@ -43,6 +43,11 @@ class ProductionOrder extends Model
         return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
     }
 
+    public function productPresentation(): BelongsTo
+    {
+        return $this->belongsTo(ProductPresentation::class);
+    }
+
     public function materials(): HasMany
     {
         return $this->hasMany(ProductionMaterial::class);

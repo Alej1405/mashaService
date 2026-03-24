@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Resources;
 
+use App\Filament\App\Resources\AccountPlanResource;
 use App\Filament\App\Resources\SupplierResource\Pages;
 use App\Filament\App\Resources\SupplierResource\RelationManagers;
 use App\Models\Supplier;
@@ -137,7 +138,16 @@ class SupplierResource extends Resource
                             )
                             ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->code} - {$record->name}")
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->createOptionModalHeading('Nueva Cuenta Contable')
+                            ->createOptionForm(fn () => AccountPlanResource::getQuickCreateFormSchema())
+                            ->createOptionUsing(function (array $data): int {
+                                return \App\Models\AccountPlan::create([
+                                    ...$data,
+                                    'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                    'is_active'  => true,
+                                ])->getKey();
+                            }),
                         Forms\Components\Toggle::make('activo')
                             ->label('Proveedor Activo')
                             ->default(true),

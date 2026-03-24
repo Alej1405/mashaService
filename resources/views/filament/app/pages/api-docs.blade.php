@@ -235,7 +235,7 @@ export type Terminos       = z.infer&lt;typeof TerminosSchema&gt;</pre>
             <pre class="rounded-lg bg-gray-900 text-green-400 text-sm p-4 pr-24 overflow-x-auto">// lib/cms.ts
 import { CmsSchema, type Cms } from './schemas/cms'
 
-const BASE  = '{{ config('app.url') }}/api/cms'
+const BASE  = 'https://mashaec.net/api/cms'
 const TOKEN = import.meta.env.VITE_CMS_TOKEN
 
 export async function fetchCms(slug: string): Promise&lt;Cms&gt; {

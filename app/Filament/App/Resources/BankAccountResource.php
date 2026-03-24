@@ -31,7 +31,18 @@ class BankAccountResource extends Resource
                     ->label('Banco')
                     ->options(Bank::where('activo', true)->get()->pluck('nombre', 'id'))
                     ->searchable()
-                    ->required(),
+                    ->required()
+                    ->createOptionModalHeading('Nuevo Banco')
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('nombre')
+                            ->label('Nombre del Banco')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Toggle::make('activo')
+                            ->label('Activo')
+                            ->default(true),
+                    ])
+                    ->createOptionUsing(fn (array $data): int => Bank::create($data)->getKey()),
                 Forms\Components\TextInput::make('numero_cuenta')
                     ->label('Número de Cuenta')
                     ->required()
@@ -104,6 +115,47 @@ class BankAccountResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getQuickCreateFormSchema(): array
+    {
+        return [
+            Forms\Components\Select::make('bank_id')
+                ->label('Banco')
+                ->options(Bank::where('activo', true)->pluck('nombre', 'id'))
+                ->searchable()
+                ->required()
+                ->createOptionModalHeading('Nuevo Banco')
+                ->createOptionForm([
+                    Forms\Components\TextInput::make('nombre')
+                        ->label('Nombre del Banco')
+                        ->required()
+                        ->maxLength(255),
+                    Forms\Components\Toggle::make('activo')
+                        ->default(true),
+                ])
+                ->createOptionUsing(fn (array $data): int => Bank::create($data)->getKey()),
+            Forms\Components\TextInput::make('numero_cuenta')
+                ->label('Número de Cuenta')
+                ->required()
+                ->maxLength(255),
+            Forms\Components\Select::make('tipo_cuenta')
+                ->label('Tipo de Cuenta')
+                ->options([
+                    'corriente' => 'Corriente',
+                    'ahorros'   => 'Ahorros',
+                ])
+                ->required(),
+            Forms\Components\TextInput::make('nombre_titular')
+                ->label('Nombre del Titular')
+                ->required()
+                ->maxLength(255),
+            Forms\Components\TextInput::make('saldo_inicial')
+                ->label('Saldo Inicial')
+                ->numeric()
+                ->prefix('$')
+                ->default(0),
+        ];
     }
 
     public static function getPages(): array

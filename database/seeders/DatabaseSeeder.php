@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             AccountPlanSeeder::class,
             AccountingMapSeeder::class,
+            EcommerceTraceabilitySeeder::class,
         ]);
     }
 }

@@ -206,4 +206,39 @@ class Empresa extends Model implements HasName
     {
         return $this->hasMany(\App\Models\SupportTicket::class, 'empresa_id');
     }
+
+    public function productDesigns(): HasMany
+    {
+        return $this->hasMany(\App\Models\ProductDesign::class, 'empresa_id');
+    }
+
+    public function itemRequests(): HasMany
+    {
+        return $this->hasMany(\App\Models\ItemRequest::class, 'empresa_id');
+    }
+
+    public function storeProducts(): HasMany
+    {
+        return $this->hasMany(\App\Models\StoreProduct::class, 'empresa_id');
+    }
+
+    public function storeCategories(): HasMany
+    {
+        return $this->hasMany(\App\Models\StoreCategory::class, 'empresa_id');
+    }
+
+    public function storeOrders(): HasMany
+    {
+        return $this->hasMany(\App\Models\StoreOrder::class, 'empresa_id');
+    }
+
+    public function storeCustomers(): HasMany
+    {
+        return $this->hasMany(\App\Models\StoreCustomer::class, 'empresa_id');
+    }
+
+    public function storeCoupons(): HasMany
+    {
+        return $this->hasMany(\App\Models\StoreCoupon::class, 'empresa_id');
+    }
 }

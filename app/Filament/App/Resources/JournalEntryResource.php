@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Resources;
 
+use App\Filament\App\Resources\AccountPlanResource;
 use App\Filament\App\Resources\JournalEntryResource\Pages;
 use App\Filament\App\Resources\JournalEntryResource\RelationManagers;
 use App\Models\JournalEntry;
@@ -68,6 +69,15 @@ class JournalEntryResource extends Resource
                                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->code} - {$record->name}")
                                     ->searchable(['code', 'name'])
                                     ->required()
+                                    ->createOptionModalHeading('Nueva Cuenta Contable')
+                                    ->createOptionForm(fn () => AccountPlanResource::getQuickCreateFormSchema())
+                                    ->createOptionUsing(function (array $data): int {
+                                        return \App\Models\AccountPlan::create([
+                                            ...$data,
+                                            'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                            'is_active'  => true,
+                                        ])->getKey();
+                                    })
                                     ->columnSpan(4),
                                 Forms\Components\TextInput::make('descripcion')
                                     ->label('Descripción línea')

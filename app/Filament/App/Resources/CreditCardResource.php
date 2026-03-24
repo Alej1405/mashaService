@@ -3,7 +3,9 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\CreditCardResource\Pages;
+use App\Models\Bank;
 use App\Models\CreditCard;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -46,7 +48,18 @@ class CreditCardResource extends Resource
                             ->relationship('bank', 'nombre')
                             ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->createOptionModalHeading('Nuevo Banco')
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('nombre')
+                                    ->label('Nombre del Banco')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\Toggle::make('activo')
+                                    ->label('Activo')
+                                    ->default(true),
+                            ])
+                            ->createOptionUsing(fn (array $data): int => Bank::create($data)->getKey()),
                         Forms\Components\TextInput::make('limite_credito')
                             ->label('Límite de Crédito')
                             ->numeric()
@@ -60,13 +73,11 @@ class CreditCardResource extends Resource
                         Forms\Components\TextInput::make('dia_corte')
                             ->label('Día de Corte')
                             ->numeric()
-                            ->minValue(1)
                             ->maxValue(31)
                             ->required(),
                         Forms\Components\TextInput::make('dia_pago')
                             ->label('Día de Pago')
                             ->numeric()
-                            ->minValue(1)
                             ->maxValue(31)
                             ->required(),
                         Forms\Components\Placeholder::make('cuenta_contable')
@@ -124,6 +135,54 @@ class CreditCardResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
             ]);
+    }
+
+    public static function getQuickCreateFormSchema(): array
+    {
+        return [
+            Forms\Components\TextInput::make('nombre')
+                ->label('Nombre Identificador')
+                ->required()
+                ->maxLength(255),
+            Forms\Components\Select::make('franquicia')
+                ->label('Franquicia')
+                ->options([
+                    'visa'       => 'Visa',
+                    'mastercard' => 'Mastercard',
+                    'amex'       => 'Amex',
+                    'diners'     => 'Diners',
+                ])
+                ->required(),
+            Forms\Components\Select::make('bank_id')
+                ->label('Banco')
+                ->options(Bank::where('activo', true)->pluck('nombre', 'id'))
+                ->searchable()
+                ->required()
+                ->createOptionModalHeading('Nuevo Banco')
+                ->createOptionForm([
+                    Forms\Components\TextInput::make('nombre')
+                        ->label('Nombre del Banco')
+                        ->required()
+                        ->maxLength(255),
+                    Forms\Components\Toggle::make('activo')->default(true),
+                ])
+                ->createOptionUsing(fn (array $data): int => Bank::create($data)->getKey()),
+            Forms\Components\TextInput::make('limite_credito')
+                ->label('Límite de Crédito')
+                ->numeric()
+                ->prefix('$')
+                ->required(),
+            Forms\Components\TextInput::make('dia_corte')
+                ->label('Día de Corte')
+                ->numeric()
+                ->maxValue(31)
+                ->required(),
+            Forms\Components\TextInput::make('dia_pago')
+                ->label('Día de Pago')
+                ->numeric()
+                ->maxValue(31)
+                ->required(),
+        ];
     }
 
     public static function getRelations(): array

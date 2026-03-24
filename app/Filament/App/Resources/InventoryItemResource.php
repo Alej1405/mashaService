@@ -4,7 +4,10 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\InventoryItemResource\Pages;
 use App\Filament\App\Resources\InventoryItemResource\RelationManagers;
+use App\Filament\App\Resources\SupplierResource;
 use App\Models\InventoryItem;
+use App\Models\MeasurementUnit;
+use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -56,7 +59,19 @@ class InventoryItemResource extends Resource
                                     ->label('Unidad de Medida')
                                     ->relationship('measurementUnit', 'nombre', fn ($query) => $query->where('activo', true))
                                     ->searchable()
-                                    ->preload(),
+                                    ->preload()
+                                    ->createOptionModalHeading('Nueva Unidad de Medida')
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('nombre')
+                                            ->label('Nombre')
+                                            ->required()
+                                            ->maxLength(100),
+                                        Forms\Components\TextInput::make('abreviatura')
+                                            ->label('Abreviatura')
+                                            ->maxLength(10),
+                                    ])
+                                    ->createOptionUsing(fn (array $data): int =>
+                                        MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey()),
                                 Forms\Components\RichEditor::make('descripcion')
                                     ->label('Descripción')
                                     ->columnSpanFull(),
@@ -81,6 +96,40 @@ class InventoryItemResource extends Resource
                                     ->label('Stock Mínimo (Alerta)')
                                     ->numeric()
                                     ->default(0),
+                                Forms\Components\Section::make('Conversión de Unidades')
+                                    ->description('Configura si compras en una unidad diferente a la que controlas en stock (ej: compras en kg pero el stock se lleva en gramos).')
+                                    ->schema([
+                                        Forms\Components\Select::make('purchase_unit_id')
+                                            ->label('Unidad de Compra')
+                                            ->relationship('purchaseUnit', 'nombre', fn ($query) => $query->where('activo', true))
+                                            ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->nombre} ({$record->abreviatura})")
+                                            ->searchable()
+                                            ->preload()
+                                            ->nullable()
+                                            ->live()
+                                            ->helperText('Deja en blanco si compras y usas la misma unidad.')
+                                            ->createOptionModalHeading('Nueva Unidad de Medida')
+                                            ->createOptionForm([
+                                                Forms\Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(100),
+                                                Forms\Components\TextInput::make('abreviatura')->label('Abreviatura')->maxLength(10),
+                                            ])
+                                            ->createOptionUsing(fn (array $data): int =>
+                                                MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey()),
+                                        Forms\Components\TextInput::make('conversion_factor')
+                                            ->label('Factor de Conversión')
+                                            ->numeric()
+                                            ->default(1)
+                                            ->visible(fn (Forms\Get $get) => !empty($get('purchase_unit_id')))
+                                            ->helperText(function (Forms\Get $get) {
+                                                $pu = MeasurementUnit::find($get('purchase_unit_id'));
+                                                $su = MeasurementUnit::find($get('measurement_unit_id'));
+                                                $puLabel = $pu?->abreviatura ?? 'unidad compra';
+                                                $suLabel = $su?->abreviatura ?? 'unidad stock';
+                                                return "1 {$puLabel} = ? {$suLabel}  (ej: kg→g pondrías 1000)";
+                                            }),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
                             ])->columns(2),
 
                         Forms\Components\Tabs\Tab::make('Lote y Caducidad')
@@ -100,7 +149,15 @@ class InventoryItemResource extends Resource
                                     ->label('Proveedor Predeterminado')
                                     ->relationship('supplier', 'nombre')
                                     ->searchable()
-                                    ->preload(),
+                                    ->preload()
+                                    ->createOptionModalHeading('Nuevo Proveedor')
+                                    ->createOptionForm(fn () => SupplierResource::getQuickCreateFormSchema())
+                                    ->createOptionUsing(function (array $data): int {
+                                        return \App\Models\Supplier::create([
+                                            ...$data,
+                                            'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                        ])->getKey();
+                                    }),
                             ])->columns(2),
 
                         Forms\Components\Tabs\Tab::make('Archivos y Fichas (PDFs)')

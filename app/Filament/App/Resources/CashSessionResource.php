@@ -2,6 +2,7 @@
 
 namespace App\Filament\App\Resources;
 
+use App\Filament\App\Resources\CashRegisterResource;
 use App\Filament\App\Resources\CashSessionResource\Pages;
 use App\Models\CashSession;
 use Filament\Forms;
@@ -32,7 +33,16 @@ class CashSessionResource extends Resource
                             ->relationship('cashRegister', 'nombre', fn($query) => $query->where('activo', true))
                             ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->createOptionModalHeading('Nueva Caja')
+                            ->createOptionForm(fn () => CashRegisterResource::getQuickCreateFormSchema())
+                            ->createOptionUsing(function (array $data): int {
+                                return \App\Models\CashRegister::create([
+                                    ...$data,
+                                    'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                    'activo'     => true,
+                                ])->getKey();
+                            }),
                         Forms\Components\Hidden::make('user_id')
                             ->default(Auth::id()),
                         Forms\Components\DatePicker::make('fecha')

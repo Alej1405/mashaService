@@ -47,7 +47,7 @@ class PlanHelper
     }
 
     /**
-     * Grupos de navegación del panel App (orden del sidebar).
+     * Grupos de navegación del panel App / Pro (orden del sidebar).
      *
      * @return \Filament\Navigation\NavigationGroup[]
      */
@@ -61,6 +61,29 @@ class PlanHelper
                 'Clientes',
                 'Compras',
                 'Inventario',
+                'Mailing',
+                'CMS',
+                'Configuración',
+            ]
+        );
+    }
+
+    /**
+     * Grupos de navegación del panel Enterprise (incluye grupos exclusivos).
+     *
+     * @return \Filament\Navigation\NavigationGroup[]
+     */
+    public static function enterpriseNavigationGroups(): array
+    {
+        return array_map(
+            fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible(),
+            [
+                'Contabilidad General',
+                'Ventas',
+                'Clientes',
+                'Compras',
+                'Inventario',
+                'Diseño de Producto',
                 'Mailing',
                 'CMS',
                 'Configuración',

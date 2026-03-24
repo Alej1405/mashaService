@@ -43,6 +43,20 @@ class Supplier extends Model
         'activo' => 'boolean',
     ];
 
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->codigo)) {
+                $model->codigo = 'PRV-' . strtoupper(substr(uniqid(), -6));
+            }
+            if (empty($model->tipo_proveedor)) {
+                $model->tipo_proveedor = [];
+            }
+        });
+    }
+
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class, 'supplier_id');

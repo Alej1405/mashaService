@@ -21,6 +21,9 @@ use Filament\Facades\Filament;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\DB;
 use App\Models\InventoryMovement;
+use App\Filament\App\Resources\BankAccountResource;
+use App\Filament\App\Resources\CashRegisterResource;
+use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\CustomerResource;
 use App\Filament\App\Resources\InventoryItemResource;
 
@@ -52,7 +55,14 @@ class SaleResource extends Resource
                                 ->getOptionLabelFromRecordUsing(fn (Customer $record) => "{$record->nombre} - {$record->numero_identificacion}")
                                 ->required()
                                 ->preload()
-                                ->createOptionForm(fn () => CustomerResource::getQuickCreateFormSchema()),
+                                ->createOptionForm(fn () => CustomerResource::getQuickCreateFormSchema())
+                                ->createOptionUsing(function (array $data): int {
+                                    return \App\Models\Customer::create([
+                                        ...$data,
+                                        'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                        'activo'     => true,
+                                    ])->getKey();
+                                }),
                             Forms\Components\DatePicker::make('fecha')
                                 ->label('Fecha de Emisión')
                                 ->default(now())
@@ -102,16 +112,34 @@ class SaleResource extends Resource
                                         ->visible(fn ($get) => $get('forma_pago') === 'efectivo')
                                         ->required(fn ($get) => $get('forma_pago') === 'efectivo')
                                         ->searchable()
-                                        ->preload(),
+                                        ->preload()
+                                        ->createOptionModalHeading('Nueva Caja')
+                                        ->createOptionForm(fn () => CashRegisterResource::getQuickCreateFormSchema())
+                                        ->createOptionUsing(function (array $data): int {
+                                            return \App\Models\CashRegister::create([
+                                                ...$data,
+                                                'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                                'activo'     => true,
+                                            ])->getKey();
+                                        }),
 
                                     Forms\Components\Select::make('bank_account_id')
                                         ->label('Cuenta Bancaria')
                                         ->relationship('bankAccount', 'numero_cuenta', fn($query) => $query->where('activo', true))
-                                        ->visible(fn(callable $get) => 
+                                        ->visible(fn(callable $get) =>
                                             in_array($get('forma_pago'), ['transferencia', 'cheque'])
                                         )
                                         ->searchable()
-                                        ->preload(),
+                                        ->preload()
+                                        ->createOptionModalHeading('Nueva Cuenta Bancaria')
+                                        ->createOptionForm(fn () => BankAccountResource::getQuickCreateFormSchema())
+                                        ->createOptionUsing(function (array $data): int {
+                                            return \App\Models\BankAccount::create([
+                                                ...$data,
+                                                'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                                'activo'     => true,
+                                            ])->getKey();
+                                        }),
 
                                     Forms\Components\Select::make('credit_card_id')
                                         ->label('Tarjeta de Crédito')
@@ -119,7 +147,17 @@ class SaleResource extends Resource
                                         ->visible(fn ($get) => $get('forma_pago') === 'tarjeta')
                                         ->required(fn ($get) => $get('forma_pago') === 'tarjeta')
                                         ->searchable()
-                                        ->preload(),
+                                        ->preload()
+                                        ->createOptionModalHeading('Nueva Tarjeta de Crédito')
+                                        ->createOptionForm(fn () => CreditCardResource::getQuickCreateFormSchema())
+                                        ->createOptionUsing(function (array $data): int {
+                                            return \App\Models\CreditCard::create([
+                                                ...$data,
+                                                'empresa_id'      => \Filament\Facades\Filament::getTenant()->id,
+                                                'activo'          => true,
+                                                'saldo_utilizado' => 0,
+                                            ])->getKey();
+                                        }),
                                 ]),
                             Forms\Components\Textarea::make('notas')
                                 ->label('Observaciones Internas')
@@ -136,7 +174,7 @@ class SaleResource extends Resource
                                         ->label('Producto / Insumo / Materia Prima')
                                         ->options(function() {
                                             $empresaId = \Filament\Facades\Filament::getTenant()->id;
-                                            
+
                                             return \App\Models\InventoryItem::where('empresa_id', $empresaId)
                                                 ->where('activo', true)
                                                 ->where('stock_actual', '>', 0)
@@ -147,8 +185,8 @@ class SaleResource extends Resource
                                                 ->mapWithKeys(fn($items, $type) => [
                                                     ucfirst(str_replace('_', ' ', $type)) => $items->mapWithKeys(
                                                         fn($item) => [
-                                                            $item->id => $item->nombre . 
-                                                                ' (Stock: ' . $item->stock_actual . 
+                                                            $item->id => $item->nombre .
+                                                                ' (Stock: ' . $item->stock_actual .
                                                                 ' ' . $item->unidad . ')'
                                                         ]
                                                     )
@@ -157,6 +195,15 @@ class SaleResource extends Resource
                                         ->searchable()
                                         ->required()
                                         ->reactive()
+                                        ->createOptionModalHeading('Nuevo Ítem de Inventario')
+                                        ->createOptionForm(fn () => InventoryItemResource::getQuickCreateFormSchema())
+                                        ->createOptionUsing(function (array $data): int {
+                                            return \App\Models\InventoryItem::create([
+                                                ...$data,
+                                                'empresa_id' => \Filament\Facades\Filament::getTenant()->id,
+                                                'activo'     => true,
+                                            ])->getKey();
+                                        })
                                         ->afterStateUpdated(function($state, callable $set) {
                                             if (!$state) return;
                                             $item = \App\Models\InventoryItem::find($state);
@@ -176,7 +223,6 @@ class SaleResource extends Resource
                                                 ->label('Cantidad')
                                                 ->numeric()
                                                 ->default(1)
-                                                ->minValue(0.0001)
                                                 ->required()
                                                 ->live()
                                                 ->afterStateUpdated(function (Forms\Contracts\HasForms $livewire, callable $set) {

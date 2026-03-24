@@ -13,13 +13,16 @@ class ListInventoryItems extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\Action::make('importar')
+        $actions = [Actions\CreateAction::make()];
+
+        if (\Filament\Facades\Filament::getCurrentPanel()?->getId() === 'app') {
+            array_unshift($actions, Actions\Action::make('importar')
                 ->label('Importar desde archivo')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('gray')
-                ->url(ImportarInventarioPage::getUrl()),
-            Actions\CreateAction::make(),
-        ];
+                ->url(ImportarInventarioPage::getUrl()));
+        }
+
+        return $actions;
     }
 }
