@@ -61,8 +61,10 @@ class EnterprisePanelProvider extends PanelProvider
                 \Filament\Navigation\NavigationGroup::make('E-Commerce')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Inventario')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Diseño de Producto')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('Planificación')->collapsible(),
             ])
             ->resources([
+                \App\Filament\App\Resources\CostoFijoResource::class,
                 \App\Filament\App\Resources\StoreProductResource::class,
                 \App\Filament\App\Resources\StoreCategoryResource::class,
                 \App\Filament\App\Resources\StoreOrderResource::class,

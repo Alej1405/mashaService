@@ -217,6 +217,11 @@ class Empresa extends Model implements HasName
         return $this->hasMany(\App\Models\ItemRequest::class, 'empresa_id');
     }
 
+    public function costosFijos(): HasMany
+    {
+        return $this->hasMany(\App\Models\CostoFijo::class, 'empresa_id');
+    }
+
     public function storeProducts(): HasMany
     {
         return $this->hasMany(\App\Models\StoreProduct::class, 'empresa_id');
