@@ -42,9 +42,12 @@ class EnterprisePanelProvider extends PanelProvider
             ->brandLogo(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
                 ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
                 : null)
+            ->favicon(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
+                : null)
             ->brandLogoHeight('2rem')
-            ->darkMode(true)
-            ->profile(isSimple: false)
+            ->darkMode(false)
+            ->font('Sansation')
             ->renderHook(
                 'panels::head.done',
                 fn (): HtmlString => new HtmlString('
