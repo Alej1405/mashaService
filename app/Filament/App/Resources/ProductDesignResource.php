@@ -335,181 +335,6 @@ class ProductDesignResource extends Resource
                                         ->collapsible()
                                         ->columnSpanFull(),
 
-                                    // ── Sección: Precio de Venta Estimado ──────────────────
-                                    Section::make('Precio de Venta Estimado (PVP)')
-                                        ->description('PVP = Costo unitario ÷ (1 − Margen)')
-                                        ->icon('heroicon-o-currency-dollar')
-                                        ->schema([
-                                            // Tabla de costos por ingrediente
-                                            \Filament\Forms\Components\Placeholder::make('_tabla_costos')
-                                                ->label('Desglose de Costos por Ingrediente')
-                                                ->columnSpanFull()
-                                                ->content(function (callable $get) {
-                                                    $lines = $get('formulaLines') ?? [];
-                                                    if (empty($lines)) {
-                                                        return new \Illuminate\Support\HtmlString('<p class="text-sm text-gray-400">Sin ingredientes registrados.</p>');
-                                                    }
-
-                                                    $lote = max((float) ($get('cantidad_minima_produccion') ?? 1), 0.0001);
-
-                                                    $fmt = fn (float $n): string => rtrim(rtrim(number_format($n, 4), '0'), '.');
-
-                                                    $rows       = '';
-                                                    $totalLote  = 0;
-
-                                                    foreach ($lines as $line) {
-                                                        $itemId    = $line['inventory_item_id'] ?? null;
-                                                        $item      = $itemId ? InventoryItem::find($itemId) : null;
-                                                        $nombre    = $item?->nombre ?? ($line['notas'] ?? 'Insumo sin asignar');
-                                                        $qty       = (float) ($line['cantidad'] ?? 0);
-                                                        $unitId    = $line['measurement_unit_id'] ?? null;
-                                                        $unitLabel = $unitId ? (MeasurementUnit::find($unitId)?->abreviatura ?? '') : '';
-
-                                                        [$costoLote] = self::costoLinea($item, $qty, $unitId);
-                                                        $costoUnidad  = $lote > 0 ? $costoLote / $lote : 0;
-                                                        $qtyTotal     = $qty * $lote;
-                                                        $totalLote   += $costoLote;
-
-                                                        $rows .= "<tr class='border-b border-gray-100 dark:border-gray-700'>
-                                                            <td class='py-1 pr-4 text-sm'>{$nombre}</td>
-                                                            <td class='py-1 pr-4 text-sm text-right'>" . $fmt($qty) . " {$unitLabel}</td>
-                                                            <td class='py-1 pr-4 text-sm text-right'>" . $fmt($qtyTotal) . " {$unitLabel}</td>
-                                                            <td class='py-1 pr-4 text-sm text-right font-mono'>$ " . number_format($costoUnidad, 4) . "</td>
-                                                            <td class='py-1 text-sm text-right font-mono'>$ " . number_format($costoLote, 4) . "</td>
-                                                        </tr>";
-                                                    }
-
-                                                    $costoUnitarioTotal = $lote > 0 ? $totalLote / $lote : 0;
-
-                                                    $rows .= "<tr class='border-t-2 border-gray-300 dark:border-gray-500 font-bold'>
-                                                        <td class='py-2 pr-4 text-sm' colspan='3'>Total</td>
-                                                        <td class='py-2 text-sm text-right font-mono'>$ " . number_format($costoUnitarioTotal, 4) . "</td>
-                                                        <td class='py-2 text-sm text-right font-mono'>$ " . number_format($totalLote, 4) . "</td>
-                                                    </tr>";
-
-                                                    return new \Illuminate\Support\HtmlString("
-                                                        <div class='overflow-x-auto'>
-                                                            <table class='w-full'>
-                                                                <thead>
-                                                                    <tr class='border-b border-gray-200 dark:border-gray-600'>
-                                                                        <th class='pb-1 pr-4 text-left text-xs font-semibold text-gray-500 uppercase'>Ingrediente</th>
-                                                                        <th class='pb-1 pr-4 text-right text-xs font-semibold text-gray-500 uppercase'>Cant. x Unidad</th>
-                                                                        <th class='pb-1 pr-4 text-right text-xs font-semibold text-gray-500 uppercase'>Cant. x Lote ({$lote})</th>
-                                                                        <th class='pb-1 pr-4 text-right text-xs font-semibold text-gray-500 uppercase'>Costo Unitario</th>
-                                                                        <th class='pb-1 text-right text-xs font-semibold text-gray-500 uppercase'>Costo Lote</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>{$rows}</tbody>
-                                                            </table>
-                                                            <p class='mt-2 text-xs text-gray-400'>* La coma (,) es separador de miles. Ej: 1,000 = mil.</p>
-                                                        </div>
-                                                    ");
-                                                }),
-
-                                            // Margen objetivo
-                                            TextInput::make('margen_objetivo')
-                                                ->label('Margen de Utilidad (%)')
-                                                ->numeric()
-                                                ->default(30)
-                                                ->maxValue(99.99)
-                                                ->suffix('%')
-                                                ->live(onBlur: true)
-                                                ->helperText('Ej: 40 significa que el costo representa el 60% del PVP')
-                                                ->columnSpan(1),
-
-                                            // Costo unitario
-                                            \Filament\Forms\Components\Placeholder::make('_costo_unitario')
-                                                ->label('Costo por Unidad')
-                                                ->columnSpan(1)
-                                                ->content(function (callable $get) {
-                                                    $total = self::costoLote($get('formulaLines') ?? []);
-                                                    $lote  = max((float) ($get('cantidad_minima_produccion') ?? 1), 0.0001);
-                                                    return '$ ' . number_format(round($total / $lote, 4), 4);
-                                                }),
-
-                                            // PVP calculado
-                                            \Filament\Forms\Components\Placeholder::make('_pvp_calculado')
-                                                ->label('PVP Estimado')
-                                                ->columnSpan(1)
-                                                ->content(function (callable $get) {
-                                                    $total  = self::costoLote($get('formulaLines') ?? []);
-                                                    $lote   = max((float) ($get('cantidad_minima_produccion') ?? 1), 0.0001);
-                                                    $margen = (float) ($get('margen_objetivo') ?? 30) / 100;
-                                                    $divisor = 1 - $margen;
-                                                    if ($divisor <= 0) return 'Margen inválido';
-                                                    $pvp = round(($total / $lote) / $divisor, 2);
-                                                    return new \Illuminate\Support\HtmlString(
-                                                        '<span style="font-size:1.25rem;font-weight:bold;color:#16a34a">$ ' . number_format($pvp, 2) . '</span>'
-                                                    );
-                                                }),
-
-                                            // Margen bruto
-                                            \Filament\Forms\Components\Placeholder::make('_margen_bruto')
-                                                ->label('Margen Bruto')
-                                                ->columnSpan(1)
-                                                ->content(function (callable $get) {
-                                                    $total   = self::costoLote($get('formulaLines') ?? []);
-                                                    $lote    = max((float) ($get('cantidad_minima_produccion') ?? 1), 0.0001);
-                                                    $margen  = (float) ($get('margen_objetivo') ?? 30) / 100;
-                                                    $divisor = 1 - $margen;
-                                                    if ($divisor <= 0) return 'Margen inválido';
-                                                    $costo = $total / $lote;
-                                                    $pvp   = $costo / $divisor;
-                                                    $margenBruto = $pvp > 0 ? (($pvp - $costo) / $pvp) * 100 : 0;
-                                                    return new \Illuminate\Support\HtmlString(
-                                                        '<span style="font-size:1.25rem;font-weight:bold;color:#2563eb">' . number_format($margenBruto, 2) . '%</span>'
-                                                    );
-                                                }),
-
-                                            // Utilidad en dinero
-                                            \Filament\Forms\Components\Placeholder::make('_utilidad')
-                                                ->label('Utilidad por Unidad')
-                                                ->columnSpan(1)
-                                                ->content(function (callable $get) {
-                                                    $total   = self::costoLote($get('formulaLines') ?? []);
-                                                    $lote    = max((float) ($get('cantidad_minima_produccion') ?? 1), 0.0001);
-                                                    $margen  = (float) ($get('margen_objetivo') ?? 30) / 100;
-                                                    $divisor = 1 - $margen;
-                                                    if ($divisor <= 0) return 'Margen inválido';
-                                                    $costo    = $total / $lote;
-                                                    $pvp      = $costo / $divisor;
-                                                    $utilidad = $pvp - $costo;
-                                                    return new \Illuminate\Support\HtmlString(
-                                                        '<span style="font-size:1.25rem;font-weight:bold;color:#16a34a">$ ' . number_format($utilidad, 2) . '</span>'
-                                                    );
-                                                }),
-
-                                            // Rentabilidad (ROI sobre costo)
-                                            \Filament\Forms\Components\Placeholder::make('_rentabilidad')
-                                                ->label('Rentabilidad (ROI)')
-                                                ->columnSpan(1)
-                                                ->content(function (callable $get) {
-                                                    $total   = self::costoLote($get('formulaLines') ?? []);
-                                                    $lote    = max((float) ($get('cantidad_minima_produccion') ?? 1), 0.0001);
-                                                    $margen  = (float) ($get('margen_objetivo') ?? 30) / 100;
-                                                    $divisor = 1 - $margen;
-                                                    if ($divisor <= 0) return 'Margen inválido';
-                                                    $costo         = $total / $lote;
-                                                    $pvp           = $costo / $divisor;
-                                                    $utilidad      = $pvp - $costo;
-                                                    $rentabilidad  = $costo > 0 ? ($utilidad / $costo) * 100 : 0;
-                                                    return new \Illuminate\Support\HtmlString(
-                                                        '<span style="font-size:1.25rem;font-weight:bold;color:#7c3aed">' . number_format($rentabilidad, 2) . '%</span>'
-                                                    );
-                                                }),
-
-                                            // Guardar pvp_estimado (usado en etiqueta y en tienda)
-                                            TextInput::make('pvp_estimado')
-                                                ->label('PVP (precio consumidor final)')
-                                                ->numeric()
-                                                ->default(0)
-                                                ->prefix('$')
-                                                ->helperText('Usa el PVP Estimado calculado arriba como referencia. El precio de distribuidor se configura en Planificación.')
-                                                ->columnSpan(3),
-                                        ])
-                                        ->columns(6)
-                                        ->collapsible()
-                                        ->columnSpanFull(),
                                 ])
                                 ->columns(6)
                                 ->defaultItems(0)
@@ -517,18 +342,14 @@ class ProductDesignResource extends Resource
                                     if (!$get('tiene_multiples_presentaciones')) {
                                         return 'Fórmula';
                                     }
-                                    $label = $state['nombre'] ?? 'Nueva presentación';
-                                    if (isset($state['pvp_estimado']) && $state['pvp_estimado'] > 0) {
-                                        $label .= '  —  PVP $' . number_format($state['pvp_estimado'], 2);
-                                    }
-                                    return $label;
+                                    return $state['nombre'] ?? 'Nueva presentación';
                                 })
                                 ->collapsible()
                                 ->columnSpanFull(),
                         ]),
 
-                    Tab::make('Pasos de Producción')
-                        ->icon('heroicon-o-queue-list')
+                    Tab::make('Proceso y Capacidad')
+                        ->icon('heroicon-o-cog-6-tooth')
                         ->schema([
                             Repeater::make('productionSteps')
                                 ->relationship()
@@ -559,31 +380,6 @@ class ProductDesignResource extends Resource
                                 ->defaultItems(0)
                                 ->reorderable('orden')
                                 ->orderColumn('orden')
-                                ->columnSpanFull(),
-                        ]),
-
-                    Tab::make('Costos Indirectos')
-                        ->icon('heroicon-o-calculator')
-                        ->schema([
-
-                            // ── Selector de presentación (solo UI) ───────────────
-                            Select::make('_ci_presentation_id')
-                                ->label('Presentación de referencia')
-                                ->helperText('Selecciona la presentación para calcular el costo total real por unidad.')
-                                ->options(function (callable $get) {
-                                    $presentations = $get('presentations') ?? [];
-                                    $result = [];
-                                    $i = 1;
-                                    foreach ($presentations as $key => $p) {
-                                        $nombre = $p['nombre'] ?? ('Presentación ' . $i);
-                                        $result[$key] = $nombre;
-                                        $i++;
-                                    }
-                                    return $result;
-                                })
-                                ->dehydrated(false)
-                                ->live()
-                                ->placeholder('Seleccionar presentación...')
                                 ->columnSpanFull(),
 
                             // ── Capacidad instalada ──────────────────────────────
@@ -661,6 +457,11 @@ class ProductDesignResource extends Resource
                                             );
                                         }),
                                 ]),
+                        ]),
+
+                    Tab::make('Costos Operativos')
+                        ->icon('heroicon-o-calculator')
+                        ->schema([
 
                             // ── Otras inversiones ────────────────────────────────
                             \Filament\Forms\Components\Section::make('Otras Inversiones')
@@ -802,6 +603,20 @@ class ProductDesignResource extends Resource
                                                 </tr>";
                                             }
 
+                                            // Costos fijos de empresa
+                                            $totalFijosMes = self::costosFijosMensuales();
+                                            if ($totalFijosMes > 0) {
+                                                $porUnidadFijos = $capacidad > 0 ? $totalFijosMes / $capacidad : 0;
+                                                $totalMes += $totalFijosMes;
+                                                $rows .= "<tr class='border-b border-gray-100 dark:border-gray-700' style='background:rgba(124,58,237,0.05);'>
+                                                    <td class='py-1 pr-4 text-sm' style='color:#7c3aed;'>🏢 Costos Fijos Empresa</td>
+                                                    <td class='py-1 pr-4 text-sm text-gray-400'>Prorrateo mensual</td>
+                                                    <td class='py-1 pr-4 text-sm text-center'><span class='px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-700'>Mensual</span></td>
+                                                    <td class='py-1 pr-4 text-sm text-right font-mono' style='color:#7c3aed;'>$ " . number_format($totalFijosMes, 2) . "</td>
+                                                    <td class='py-1 text-sm text-right font-mono' style='color:#7c3aed;'>" . ($capacidad > 0 ? '$ ' . number_format($porUnidadFijos, 4) : '—') . "</td>
+                                                </tr>";
+                                            }
+
                                             if (empty($rows)) {
                                                 return new \Illuminate\Support\HtmlString('<p class="text-sm text-gray-400">Sin costos indirectos registrados.</p>');
                                             }
@@ -810,24 +625,25 @@ class ProductDesignResource extends Resource
 
                                             // Fila de total
                                             $rows .= "<tr class='border-t-2 border-gray-300 dark:border-gray-500 font-bold'>
-                                                <td class='py-2 pr-4 text-sm' colspan='3'>Total Indirectos / Mes</td>
+                                                <td class='py-2 pr-4 text-sm' colspan='3'>Total (Indirectos + Fijos) / Mes</td>
                                                 <td class='py-2 pr-4 text-sm text-right font-mono'>$ " . number_format($totalMes, 2) . "</td>
                                                 <td class='py-2 text-sm text-right font-mono'>" . ($capacidad > 0 ? '$ ' . number_format($porUnidadTotal, 4) : '—') . "</td>
                                             </tr>";
 
-                                            // Fila costo total real (materiales + indirectos)
-                                            $presKey = $get('_ci_presentation_id');
+                                            // Filas costo total real por presentación (materiales + indirectos + fijos)
                                             $presentations = $get('presentations') ?? [];
-                                            $pres = ($presKey !== null && $presKey !== '') ? ($presentations[$presKey] ?? null) : null;
-
-                                            if ($pres) {
+                                            $pIdx = 0;
+                                            foreach ($presentations as $pKey => $pres) {
+                                                $pIdx++;
+                                                $presNombre    = $pres['nombre'] ?? ('Presentación ' . $pIdx);
                                                 $costoMat      = self::costoLote($pres['formulaLines'] ?? []);
                                                 $lote          = max((float) ($pres['cantidad_minima_produccion'] ?? 1), 0.0001);
                                                 $matPorUnidad  = $costoMat / $lote;
                                                 $costoTotal    = $matPorUnidad + $porUnidadTotal;
                                                 $rows .= "<tr class='border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800'>
-                                                    <td class='py-2 pr-4 text-sm font-semibold' colspan='3'>Costo Total Real / Unidad (materiales + indirectos)</td>
-                                                    <td class='py-2 pr-4 text-sm text-right font-mono text-gray-400'>Materiales: $ " . number_format($matPorUnidad, 4) . "</td>
+                                                    <td class='py-2 pr-4 text-sm font-semibold' colspan='2'>" . e($presNombre) . " — Costo Total / Unidad</td>
+                                                    <td class='py-2 pr-4 text-sm text-center'><span class='px-2 py-0.5 rounded text-xs bg-green-100 text-green-700'>Mat: $ " . number_format($matPorUnidad, 4) . "</span></td>
+                                                    <td class='py-2 pr-4 text-sm text-right font-mono text-gray-400'>Ind+Fijos: $ " . number_format($porUnidadTotal, 4) . "</td>
                                                     <td class='py-2 text-sm text-right font-mono font-bold' style='color:#dc2626'>$ " . number_format($costoTotal, 4) . "</td>
                                                 </tr>";
                                             }
@@ -853,9 +669,306 @@ class ProductDesignResource extends Resource
                                 ]),
                         ]),
 
-                    Tab::make('Planificación por Producción')
+                    Tab::make('Estrategia Comercial')
+                        ->icon('heroicon-o-currency-dollar')
+                        ->schema([
+
+                            // ── Precio de venta e impuestos ──────────────────────
+                            \Filament\Forms\Components\Section::make('Precio de Venta e Impuestos')
+                                ->description('Define el precio de venta y si aplican impuestos especiales. El IVA (15%) aplica siempre como passthrough.')
+                                ->columns(4)
+                                ->schema([
+                                    TextInput::make('_plan_margen_venta')
+                                        ->label('Margen de Utilidad (%)')
+                                        ->numeric()
+                                        ->suffix('%')
+                                        ->dehydrated(false)
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            $costo = self::planCostoUnitario($get);
+                                            if ($costo <= 0) return;
+                                            $margen  = (float) ($state ?? 0);
+                                            $divisor = 1 - ($margen / 100);
+                                            if ($divisor <= 0) return;
+                                            $pvpSinIva  = round($costo / $divisor, 2);
+                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
+                                            $set('_plan_pvp_venta', $incluyeIva ? round($pvpSinIva * 1.15, 2) : $pvpSinIva);
+                                        })
+                                        ->placeholder('Ej: 40')
+                                        ->helperText('Ingresa el margen → se calcula el PVP.')
+                                        ->columnSpan(1),
+
+                                    TextInput::make('_plan_pvp_venta')
+                                        ->label(fn (callable $get) => (bool) ($get('_plan_pvp_incluye_iva') ?? false)
+                                            ? 'PVP de Venta (con IVA incluido)'
+                                            : 'PVP de Venta (sin IVA)')
+                                        ->numeric()
+                                        ->prefix('$')
+                                        ->dehydrated(false)
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            $costo = self::planCostoUnitario($get);
+                                            if ($costo <= 0) return;
+                                            $pvp = (float) ($state ?? 0);
+                                            if ($pvp <= 0) return;
+                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
+                                            $pvpSinIva  = $incluyeIva ? $pvp / 1.15 : $pvp;
+                                            $set('_plan_margen_venta', round((($pvpSinIva - $costo) / $pvpSinIva) * 100, 2));
+                                            // Actualizar precio distribuidor con el nuevo PVP
+                                            $margenDist = (float) ($get('margen_distribuidor') ?: 40);
+                                            $set('precio_distribuidor', round($pvpSinIva * (1 - $margenDist / 100), 2));
+                                        })
+                                        ->placeholder('Ej: 2.50')
+                                        ->helperText('Ingresa el PVP → se calcula el margen.')
+                                        ->columnSpan(1),
+
+                                    Toggle::make('_plan_pvp_incluye_iva')
+                                        ->label('¿El PVP ya incluye IVA (15%)?')
+                                        ->dehydrated(false)
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            $pvp = (float) ($get('_plan_pvp_venta') ?? 0);
+                                            if ($pvp <= 0) return;
+                                            $incluyeIva = (bool) $state;
+                                            $pvpSinIva  = $incluyeIva ? round($pvp / 1.15, 4) : $pvp;
+                                            // Recalcular margen de venta
+                                            $costo = self::planCostoUnitario($get);
+                                            if ($costo > 0 && $pvpSinIva > 0) {
+                                                $set('_plan_margen_venta', round((($pvpSinIva - $costo) / $pvpSinIva) * 100, 2));
+                                            }
+                                            // Recalcular precio distribuidor
+                                            $margenDist = (float) ($get('margen_distribuidor') ?: 40);
+                                            $set('precio_distribuidor', round($pvpSinIva * (1 - $margenDist / 100), 2));
+                                        })
+                                        ->helperText('Actívalo si el precio ingresado es el precio final al consumidor con IVA incluido.')
+                                        ->columnSpan(2),
+
+                                    TextInput::make('_plan_dias_venta')
+                                        ->label('Días estimados para vender')
+                                        ->numeric()
+                                        ->dehydrated(false)
+                                        ->live(onBlur: true)
+                                        ->suffix('días')
+                                        ->placeholder('Ej: 30')
+                                        ->helperText('¿En cuántos días esperas vender toda la producción?')
+                                        ->columnSpan(1),
+
+                                    TextInput::make('_plan_meta_ganancia')
+                                        ->label('Meta de Rentabilidad (%)')
+                                        ->numeric()
+                                        ->suffix('%')
+                                        ->dehydrated(false)
+                                        ->live(onBlur: true)
+                                        ->default(5)
+                                        ->placeholder('5')
+                                        ->helperText('ROI mínimo esperado.')
+                                        ->columnSpan(1),
+
+                                    Toggle::make('_plan_aplica_ice')
+                                        ->label('¿El producto paga ICE?')
+                                        ->dehydrated(false)
+                                        ->live()
+                                        ->helperText('Impuesto a los Consumos Especiales — SRI Ecuador')
+                                        ->columnSpan(2),
+
+                                    Select::make('_plan_ice_categoria')
+                                        ->label('Categoría ICE según la LRTI')
+                                        ->options([
+                                            'cerveza_artesanal' => 'Cerveza artesanal (prod. ≤ 50.000 l/año)',
+                                            'cerveza'           => 'Cerveza industrial',
+                                            'vino'              => 'Vino / Bebidas fermentadas naturales',
+                                            'licor_bajo'        => 'Bebida alcohólica / Licor  < 20° GL',
+                                            'licor_medio'       => 'Bebida alcohólica / Licor  20–50° GL',
+                                            'licor_alto'        => 'Bebida alcohólica / Licor  > 50° GL',
+                                            'otro'              => 'Otro producto con ICE (tasa manual)',
+                                        ])
+                                        ->dehydrated(false)
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, callable $set) {
+                                            $tasas = [
+                                                'cerveza_artesanal' => 30,
+                                                'cerveza'           => 75,
+                                                'vino'              => 40,
+                                                'licor_bajo'        => 75,
+                                                'licor_medio'       => 100,
+                                                'licor_alto'        => 100,
+                                                'otro'              => 0,
+                                            ];
+                                            $set('_plan_ice_porcentaje', $tasas[$state] ?? 0);
+                                        })
+                                        ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
+                                        ->columnSpan(1),
+
+                                    TextInput::make('_plan_ice_porcentaje')
+                                        ->label('Tasa ICE (%)')
+                                        ->numeric()
+                                        ->suffix('%')
+                                        ->dehydrated(false)
+                                        ->live(onBlur: true)
+                                        ->helperText('% sobre el precio ex-fábrica (PVP sin IVA). Verifique en la LRTI.')
+                                        ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
+                                        ->columnSpan(1),
+
+                                    \Filament\Forms\Components\Placeholder::make('_plan_ice_aviso')
+                                        ->label('')
+                                        ->content(new \Illuminate\Support\HtmlString(
+                                            '<div style="border-radius:0.5rem;background:#fffbeb;border:1px solid #fde68a;padding:0.6rem 0.9rem;font-size:0.75rem;color:#92400e;">'
+                                            . '<strong>⚠ Nota:</strong> Tasas referenciales según la LRTI. Verifique con el SRI las tarifas vigentes y la base de cálculo aplicable a su producto.'
+                                            . '</div>'
+                                        ))
+                                        ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
+                                        ->columnSpan(2),
+                                ]),
+
+                            // ── Canal Distribuidores ────────────────────────────
+                            \Filament\Forms\Components\Section::make('Canal Distribuidores')
+                                ->description('Configura el precio y las condiciones mínimas para el canal de distribuidores.')
+                                ->columns(4)
+                                ->schema([
+                                    TextInput::make('margen_distribuidor')
+                                        ->label('Margen Distribuidor (%)')
+                                        ->numeric()
+                                        ->default(40)
+                                        ->suffix('%')
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            $margen     = (float) $state;
+                                            $pvp        = (float) ($get('_plan_pvp_venta') ?? 0);
+                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
+                                            $pvpSinIva  = ($pvp > 0 && $incluyeIva) ? $pvp / 1.15 : $pvp;
+                                            if ($pvpSinIva > 0) {
+                                                $set('precio_distribuidor', round($pvpSinIva * (1 - $margen / 100), 2));
+                                            }
+                                        })
+                                        ->helperText('Ingresa el margen → calcula el precio distribuidor.')
+                                        ->columnSpan(1),
+
+                                    TextInput::make('precio_distribuidor')
+                                        ->label('Precio Distribuidor')
+                                        ->numeric()
+                                        ->default(0)
+                                        ->prefix('$')
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                            $precio     = (float) $state;
+                                            $pvp        = (float) ($get('_plan_pvp_venta') ?? 0);
+                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
+                                            $pvpSinIva  = ($pvp > 0 && $incluyeIva) ? $pvp / 1.15 : $pvp;
+                                            if ($pvpSinIva > 0 && $precio >= 0) {
+                                                $set('margen_distribuidor', round((1 - $precio / $pvpSinIva) * 100, 2));
+                                            }
+                                        })
+                                        ->helperText('Ingresa el precio → calcula el margen.')
+                                        ->columnSpan(1),
+
+                                    TextInput::make('cantidad_minima_distribuidor')
+                                        ->label('Cantidad mínima (precio dist.)')
+                                        ->numeric()
+                                        ->default(10)
+                                        ->minValue(1)
+                                        ->helperText('Unidades mínimas en tienda para aplicar precio de distribuidor.')
+                                        ->columnSpan(1),
+
+                                    \Filament\Forms\Components\Placeholder::make('_dist_info')
+                                        ->label('')
+                                        ->content(new \Illuminate\Support\HtmlString(
+                                            '<p style="font-size:0.72rem;color:#6b7280;line-height:1.5;">'
+                                            . 'El precio de distribuidor y la cantidad mínima se aplicarán automáticamente en la tienda online cuando un cliente compre la cantidad mínima o más unidades de este producto.'
+                                            . '</p>'
+                                        ))
+                                        ->columnSpan(1),
+                                ]),
+                        ]),
+                    Tab::make('Simulación y Análisis')
                         ->icon('heroicon-o-chart-bar')
                         ->schema([
+
+                            // ── Alerta de capacidad vs simulaciones activas ────
+                            \Filament\Forms\Components\Placeholder::make('_alerta_capacidad_sim')
+                                ->label('')
+                                ->columnSpanFull()
+                                ->content(function (callable $get, $record) {
+                                    $capacidad = (float) ($get('capacidad_instalada_mensual') ?? 0);
+                                    $personas  = (float) ($get('num_personas') ?? 0);
+                                    $costoMo   = (float) ($get('costo_mano_obra_persona') ?? 0);
+                                    $diasLab   = max((int) ($get('dias_laborales_mes') ?? 22), 1);
+
+                                    if (!$record || $capacidad <= 0) return '';
+
+                                    $sims = \App\Models\ProductSimulation::where('product_design_id', $record->id)
+                                        ->where('estado', 'en_proyecto')
+                                        ->get();
+
+                                    if ($sims->isEmpty()) return '';
+
+                                    $totalDemanda = $sims->sum('cantidad');
+                                    $pctUso = ($totalDemanda / $capacidad) * 100;
+
+                                    if ($totalDemanda <= $capacidad) {
+                                        $disponible = $capacidad - $totalDemanda;
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<div style="padding:0.75rem 1rem;border-radius:0.75rem;background:#f0fdf4;border:1px solid #bbf7d0;margin-bottom:0.5rem;">'
+                                            . '<div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">'
+                                            . '<span style="font-size:0.78rem;font-weight:700;color:#15803d;">✓ Capacidad OK</span>'
+                                            . '<span style="font-size:0.72rem;color:#374151;">' . $sims->count() . ' simulación(es) en proyecto · <strong>' . number_format($totalDemanda, 0) . '</strong> de ' . number_format($capacidad, 0) . ' u/mes (<strong>' . number_format($pctUso, 1) . '%</strong>) · Disponible: <strong>' . number_format($disponible, 0) . ' u.</strong></span>'
+                                            . '</div>'
+                                            . self::renderListaSimulaciones($sims)
+                                            . '</div>'
+                                        );
+                                    }
+
+                                    // ── Excede capacidad ──
+                                    $exceso = $totalDemanda - $capacidad;
+                                    $capPorPersona = $personas > 0 ? $capacidad / $personas : $capacidad;
+                                    $personasExtra = $capPorPersona > 0 ? ceil($exceso / $capPorPersona) : 0;
+                                    $costoExtra    = $personasExtra * $costoMo;
+                                    $totalPersonas = $personas + $personasExtra;
+                                    $totalCostoMo  = $totalPersonas * $costoMo;
+                                    $nuevaCapacidad = $capacidad + ($personasExtra * $capPorPersona);
+                                    $diaria = $capacidad / $diasLab;
+                                    $diasActual = $diaria > 0 ? ceil($totalDemanda / $diaria) : 0;
+                                    $diariaAmpliada = $nuevaCapacidad / $diasLab;
+                                    $diasAmpliado = $diariaAmpliada > 0 ? ceil($totalDemanda / $diariaAmpliada) : 0;
+                                    $fmt = fn ($v) => number_format((float) $v, 2);
+
+                                    $html = '<div style="padding:1.25rem 1.5rem;border-radius:0.75rem;background:linear-gradient(135deg,#fef2f2 0%,#fff7ed 100%);border:2px solid #fca5a5;margin-bottom:0.5rem;">';
+                                    $html .= '<p style="font-weight:700;color:#dc2626;font-size:0.9rem;margin-bottom:0.25rem;">⚠️ Capacidad insuficiente para las simulaciones activas</p>';
+                                    $html .= '<p style="font-size:0.75rem;color:#6b7280;margin-bottom:1rem;">Si se ejecutan todas las simulaciones en proyecto simultáneamente, la demanda supera tu capacidad instalada.</p>';
+
+                                    // KPIs
+                                    $html .= '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.75rem;margin-bottom:1.25rem;">';
+                                    $kpi = function (string $label, string $value, string $sub, string $color) {
+                                        return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:0.6rem;padding:0.75rem;text-align:center;">'
+                                            . '<p style="font-size:0.6rem;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.15rem;">' . $label . '</p>'
+                                            . '<p style="font-size:1.3rem;font-weight:800;color:' . $color . ';line-height:1.1;">' . $value . '</p>'
+                                            . '<p style="font-size:0.6rem;color:#9ca3af;margin-top:0.1rem;">' . $sub . '</p>'
+                                            . '</div>';
+                                    };
+                                    $html .= $kpi('Demanda Total', number_format($totalDemanda, 0) . ' u.', $sims->count() . ' simulaciones activas', '#dc2626');
+                                    $html .= $kpi('Capacidad Actual', number_format($capacidad, 0) . ' u.', $personas > 0 ? $personas . ' persona(s)' : 'Sin personal', '#6b7280');
+                                    $html .= $kpi('Exceso', number_format($exceso, 0) . ' u.', number_format($pctUso - 100, 1) . '% sobre capacidad', '#f59e0b');
+                                    $html .= $kpi('Personal Adicional', '+' . $personasExtra, 'Total: ' . $totalPersonas . ' personas', '#2563eb');
+                                    $html .= $kpi('Costo Adicional M.O.', '$ ' . $fmt($costoExtra), 'Total: $ ' . $fmt($totalCostoMo) . '/mes', '#7c3aed');
+                                    $html .= '</div>';
+
+                                    // Comparativa
+                                    $html .= '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">';
+                                    $html .= '<div style="padding:0.75rem 1rem;background:#fff;border:1px solid #fca5a5;border-radius:0.5rem;">'
+                                        . '<p style="font-size:0.72rem;font-weight:700;color:#dc2626;margin-bottom:0.5rem;">❌ Escenario Actual</p>'
+                                        . '<p style="font-size:0.7rem;color:#374151;">Capacidad: <strong>' . number_format($capacidad, 0) . ' u/mes</strong> · Personal: <strong>' . $personas . '</strong> · M.O.: <strong>$ ' . $fmt($personas * $costoMo) . '/mes</strong></p>'
+                                        . '<p style="font-size:0.7rem;color:#dc2626;">Tiempo para cubrir demanda: <strong>' . $diasActual . ' días háb.</strong> (' . round($diasActual / $diasLab, 1) . ' meses)</p>'
+                                        . '</div>';
+                                    $html .= '<div style="padding:0.75rem 1rem;background:#fff;border:1px solid #bbf7d0;border-radius:0.5rem;">'
+                                        . '<p style="font-size:0.72rem;font-weight:700;color:#16a34a;margin-bottom:0.5rem;">✓ Escenario Ampliado</p>'
+                                        . '<p style="font-size:0.7rem;color:#374151;">Capacidad: <strong>' . number_format($nuevaCapacidad, 0) . ' u/mes</strong> · Personal: <strong>' . $totalPersonas . '</strong> · M.O.: <strong>$ ' . $fmt($totalCostoMo) . '/mes</strong></p>'
+                                        . '<p style="font-size:0.7rem;color:#16a34a;">Tiempo para cubrir demanda: <strong>' . $diasAmpliado . ' días háb.</strong> (' . round($diasAmpliado / $diasLab, 1) . ' meses)</p>'
+                                        . '</div>';
+                                    $html .= '</div>';
+
+                                    $html .= self::renderListaSimulaciones($sims);
+                                    $html .= '</div>';
+                                    return new \Illuminate\Support\HtmlString($html);
+                                }),
 
                             // ── Entradas del plan ────────────────────────────────
                             \Filament\Forms\Components\Section::make('Parámetros de Simulación')
@@ -964,232 +1077,6 @@ class ProductDesignResource extends Resource
                                             );
                                         }),
 
-                                    TextInput::make('_plan_num_personas')
-                                        ->label('Personas (simulación)')
-                                        ->numeric()
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->placeholder(fn (callable $get) => 'Por defecto: ' . ($get('num_personas') ?? '0'))
-                                        ->helperText('Deja vacío para usar el valor configurado en Costos Indirectos.')
-                                        ->columnSpan(1),
-
-                                    TextInput::make('_plan_costo_mo_persona')
-                                        ->label('Costo Mano de Obra / persona (simulación)')
-                                        ->numeric()
-                                        ->prefix('$')
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->placeholder(fn (callable $get) => 'Por defecto: $' . number_format((float) ($get('costo_mano_obra_persona') ?? 0), 2))
-                                        ->helperText('Deja vacío para usar el valor configurado.')
-                                        ->columnSpan(1),
-                                ]),
-
-                            // ── Precio de venta e impuestos ──────────────────────
-                            \Filament\Forms\Components\Section::make('Precio de Venta e Impuestos')
-                                ->description('Define el precio de venta y si aplican impuestos especiales. El IVA (15%) aplica siempre como passthrough.')
-                                ->columns(4)
-                                ->schema([
-                                    TextInput::make('_plan_margen_venta')
-                                        ->label('Margen de Utilidad (%)')
-                                        ->numeric()
-                                        ->suffix('%')
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            $costo = self::planCostoUnitario($get);
-                                            if ($costo <= 0) return;
-                                            $margen  = (float) ($state ?? 0);
-                                            $divisor = 1 - ($margen / 100);
-                                            if ($divisor <= 0) return;
-                                            $pvpSinIva  = round($costo / $divisor, 2);
-                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
-                                            $set('_plan_pvp_venta', $incluyeIva ? round($pvpSinIva * 1.15, 2) : $pvpSinIva);
-                                        })
-                                        ->placeholder('Ej: 40')
-                                        ->helperText('Ingresa el margen → se calcula el PVP.')
-                                        ->columnSpan(1),
-
-                                    TextInput::make('_plan_pvp_venta')
-                                        ->label(fn (callable $get) => (bool) ($get('_plan_pvp_incluye_iva') ?? false)
-                                            ? 'PVP de Venta (con IVA incluido)'
-                                            : 'PVP de Venta (sin IVA)')
-                                        ->numeric()
-                                        ->prefix('$')
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            $costo = self::planCostoUnitario($get);
-                                            if ($costo <= 0) return;
-                                            $pvp = (float) ($state ?? 0);
-                                            if ($pvp <= 0) return;
-                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
-                                            $pvpSinIva  = $incluyeIva ? $pvp / 1.15 : $pvp;
-                                            $set('_plan_margen_venta', round((($pvpSinIva - $costo) / $pvpSinIva) * 100, 2));
-                                            // Actualizar precio distribuidor con el nuevo PVP
-                                            $margenDist = (float) ($get('margen_distribuidor') ?: 40);
-                                            $set('precio_distribuidor', round($pvpSinIva * (1 - $margenDist / 100), 2));
-                                        })
-                                        ->placeholder('Ej: 2.50')
-                                        ->helperText('Ingresa el PVP → se calcula el margen.')
-                                        ->columnSpan(1),
-
-                                    Toggle::make('_plan_pvp_incluye_iva')
-                                        ->label('¿El PVP ya incluye IVA (15%)?')
-                                        ->dehydrated(false)
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            $pvp = (float) ($get('_plan_pvp_venta') ?? 0);
-                                            if ($pvp <= 0) return;
-                                            $incluyeIva = (bool) $state;
-                                            $pvpSinIva  = $incluyeIva ? round($pvp / 1.15, 4) : $pvp;
-                                            // Recalcular margen de venta
-                                            $costo = self::planCostoUnitario($get);
-                                            if ($costo > 0 && $pvpSinIva > 0) {
-                                                $set('_plan_margen_venta', round((($pvpSinIva - $costo) / $pvpSinIva) * 100, 2));
-                                            }
-                                            // Recalcular precio distribuidor
-                                            $margenDist = (float) ($get('margen_distribuidor') ?: 40);
-                                            $set('precio_distribuidor', round($pvpSinIva * (1 - $margenDist / 100), 2));
-                                        })
-                                        ->helperText('Actívalo si el precio ingresado es el precio final al consumidor con IVA incluido.')
-                                        ->columnSpan(2),
-
-                                    TextInput::make('_plan_dias_venta')
-                                        ->label('Días estimados para vender')
-                                        ->numeric()
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->suffix('días')
-                                        ->placeholder('Ej: 30')
-                                        ->helperText('¿En cuántos días esperas vender toda la producción?')
-                                        ->columnSpan(1),
-
-                                    TextInput::make('_plan_meta_ganancia')
-                                        ->label('Meta de Rentabilidad (%)')
-                                        ->numeric()
-                                        ->suffix('%')
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->default(5)
-                                        ->placeholder('5')
-                                        ->helperText('ROI mínimo esperado. Por cada +2% adicional, el tiempo de retorno estimado sube ~15 días.')
-                                        ->columnSpan(1),
-
-                                    Toggle::make('_plan_aplica_ice')
-                                        ->label('¿El producto paga ICE?')
-                                        ->dehydrated(false)
-                                        ->live()
-                                        ->helperText('Impuesto a los Consumos Especiales — SRI Ecuador')
-                                        ->columnSpan(2),
-
-                                    Select::make('_plan_ice_categoria')
-                                        ->label('Categoría ICE según la LRTI')
-                                        ->options([
-                                            'cerveza_artesanal' => 'Cerveza artesanal (prod. ≤ 50.000 l/año)',
-                                            'cerveza'           => 'Cerveza industrial',
-                                            'vino'              => 'Vino / Bebidas fermentadas naturales',
-                                            'licor_bajo'        => 'Bebida alcohólica / Licor  < 20° GL',
-                                            'licor_medio'       => 'Bebida alcohólica / Licor  20–50° GL',
-                                            'licor_alto'        => 'Bebida alcohólica / Licor  > 50° GL',
-                                            'otro'              => 'Otro producto con ICE (tasa manual)',
-                                        ])
-                                        ->dehydrated(false)
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, callable $set) {
-                                            $tasas = [
-                                                'cerveza_artesanal' => 30,
-                                                'cerveza'           => 75,
-                                                'vino'              => 40,
-                                                'licor_bajo'        => 75,
-                                                'licor_medio'       => 100,
-                                                'licor_alto'        => 100,
-                                                'otro'              => 0,
-                                            ];
-                                            $set('_plan_ice_porcentaje', $tasas[$state] ?? 0);
-                                        })
-                                        ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
-                                        ->columnSpan(1),
-
-                                    TextInput::make('_plan_ice_porcentaje')
-                                        ->label('Tasa ICE (%)')
-                                        ->numeric()
-                                        ->suffix('%')
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->helperText('% sobre el precio ex-fábrica (PVP sin IVA). Verifique en la LRTI.')
-                                        ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
-                                        ->columnSpan(1),
-
-                                    \Filament\Forms\Components\Placeholder::make('_plan_ice_aviso')
-                                        ->label('')
-                                        ->content(new \Illuminate\Support\HtmlString(
-                                            '<div style="border-radius:0.5rem;background:#fffbeb;border:1px solid #fde68a;padding:0.6rem 0.9rem;font-size:0.75rem;color:#92400e;">'
-                                            . '<strong>⚠ Nota:</strong> Tasas referenciales según la LRTI. Verifique con el SRI las tarifas vigentes y la base de cálculo aplicable a su producto.'
-                                            . '</div>'
-                                        ))
-                                        ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
-                                        ->columnSpan(2),
-
-                                    // ── Canal Distribuidores ─────────────────────────
-                                    \Filament\Forms\Components\Placeholder::make('_dist_divider')
-                                        ->label('')
-                                        ->content(new \Illuminate\Support\HtmlString(
-                                            '<div style="border-top:2px solid #e0e7ff;padding-top:0.5rem;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#6366f1;">📦 Canal Distribuidores</div>'
-                                        ))
-                                        ->columnSpanFull(),
-
-                                    TextInput::make('margen_distribuidor')
-                                        ->label('Margen Distribuidor (%)')
-                                        ->numeric()
-                                        ->default(40)
-                                        ->suffix('%')
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            $margen    = (float) $state;
-                                            $pvp       = (float) ($get('_plan_pvp_venta') ?? 0);
-                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
-                                            $pvpSinIva  = ($pvp > 0 && $incluyeIva) ? $pvp / 1.15 : $pvp;
-                                            if ($pvpSinIva > 0) {
-                                                $set('precio_distribuidor', round($pvpSinIva * (1 - $margen / 100), 2));
-                                            }
-                                        })
-                                        ->helperText('Ingresa el margen → calcula el precio distribuidor.')
-                                        ->columnSpan(1),
-
-                                    TextInput::make('precio_distribuidor')
-                                        ->label('Precio Distribuidor')
-                                        ->numeric()
-                                        ->default(0)
-                                        ->prefix('$')
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            $precio     = (float) $state;
-                                            $pvp        = (float) ($get('_plan_pvp_venta') ?? 0);
-                                            $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
-                                            $pvpSinIva  = ($pvp > 0 && $incluyeIva) ? $pvp / 1.15 : $pvp;
-                                            if ($pvpSinIva > 0 && $precio >= 0) {
-                                                $set('margen_distribuidor', round((1 - $precio / $pvpSinIva) * 100, 2));
-                                            }
-                                        })
-                                        ->helperText('Ingresa el precio → calcula el margen.')
-                                        ->columnSpan(1),
-
-                                    TextInput::make('cantidad_minima_distribuidor')
-                                        ->label('Cantidad mínima (precio dist.)')
-                                        ->numeric()
-                                        ->default(10)
-                                        ->minValue(1)
-                                        ->helperText('Unidades mínimas en tienda para aplicar precio de distribuidor.')
-                                        ->columnSpan(1),
-
-                                    \Filament\Forms\Components\Placeholder::make('_dist_info')
-                                        ->label('')
-                                        ->content(new \Illuminate\Support\HtmlString(
-                                            '<p style="font-size:0.72rem;color:#6b7280;line-height:1.5;">'
-                                            . 'El precio de distribuidor y la cantidad mínima se aplicarán automáticamente en la tienda online cuando un cliente compre la cantidad mínima o más unidades de este producto.'
-                                            . '</p>'
-                                        ))
-                                        ->columnSpan(1),
                                 ]),
 
                             // ── Tabla de materiales necesarios ───────────────────
@@ -1555,8 +1442,12 @@ class ProductDesignResource extends Resource
                                         };
                                     }
                                     $totalInd       = $totalMO + $totalOtrosInd;
-                                    $costoTotalProd = $totalMatComprar + $totalMatStock + $totalInd;
-                                    $inversionReal  = $totalMatComprar + $totalInd;
+
+                                    // Costos fijos de empresa prorrateados
+                                    $totalFijosEmpresa = self::costosFijosMensuales() * $fracMes;
+
+                                    $costoTotalProd = $totalMatComprar + $totalMatStock + $totalInd + $totalFijosEmpresa;
+                                    $inversionReal  = $totalMatComprar + $totalInd + $totalFijosEmpresa;
                                     $costoUnitario  = $cantidad > 0 ? $costoTotalProd / $cantidad : 0;
 
                                     // ── Tiempo de producción ─────────────────────────
@@ -1714,6 +1605,7 @@ class ProductDesignResource extends Resource
                                         . $tr('Materiales en stock (disponible)', '$ ' . $fmt($totalMatStock), false, $cGray, true)
                                         . $tr('Mano de Obra', '$ ' . $fmt($totalMO), false, '', true)
                                         . $tr('Otros costos indirectos', '$ ' . $fmt($totalOtrosInd), false, '', true)
+                                        . $tr('Costos fijos empresa (prorrateo)', '$ ' . $fmt($totalFijosEmpresa), false, '#7c3aed', true)
                                         . $tr('Costo total de producción', '$ ' . $fmt($costoTotalProd), true, $cRed)
                                         . $tr('Costo por unidad', '$ ' . number_format($costoUnitario, 4), false, $cBlue)
                                         . '</table></div>';
@@ -1769,6 +1661,361 @@ class ProductDesignResource extends Resource
                                         $html .= $kpi('Payback', '—', 'Requiere días de venta', $cGray, true);
                                     }
                                     $html .= '</div></div>';
+
+                                    // ── C9: Simulación de inversión externa ──────────
+                                    $montoInv = (float) ($get('_plan_monto_inversion') ?? 0);
+                                    $tasaInteres = (float) ($get('_plan_inversion_interes') ?? 0);
+                                    $mesesInv    = (float) ($get('_plan_inversion_meses') ?? 0);
+
+                                    if ($montoInv > 0 && $inversionReal > 0 && $ingresoNeto > 0) {
+                                        // Fracción de la producción que financia el inversor
+                                        $fracInv    = min($montoInv / $inversionReal, 1.0);
+                                        $unidsInv   = round($cantidad * $fracInv, 0);
+
+                                        // Interés acordado (interés simple sobre el plazo pactado)
+                                        $hasAcuerdo      = $tasaInteres > 0 && $mesesInv > 0;
+                                        $interesAcordado = $hasAcuerdo ? round($montoInv * ($tasaInteres / 100) * $mesesInv, 2) : 0;
+                                        $totalAPagar     = round($montoInv + $interesAcordado, 2);
+
+                                        // Utilidad real que genera la producción para esa fracción
+                                        $utilInv     = round($utilidadNeta * $fracInv, 2);
+                                        $excedente   = round($utilInv - $interesAcordado, 2); // positivo = te sobra, negativo = no alcanza
+                                        $roiEfectivo = $montoInv > 0 ? round(($utilInv / $montoInv) * 100, 1) : 0;
+                                        $cInv        = $roiEfectivo >= $tasaInteres ? '#4ade80' : '#fca5a5';
+                                        $alcanza     = $utilInv >= $interesAcordado;
+
+                                        // Hito: al qué % de ventas recupera el inversor su capital + interés acordado
+                                        $unidsParaCapital    = $pvpSinIva > 0 ? $montoInv / $pvpSinIva : 0;
+                                        $unidsParaTotalPagar = $pvpSinIva > 0 ? $totalAPagar / $pvpSinIva : 0;
+                                        $pctCapital          = $cantidad > 0 ? min(round($unidsParaCapital / $cantidad * 100, 1), 100) : 0;
+                                        $pctTotalPagar       = $cantidad > 0 ? min(round($unidsParaTotalPagar / $cantidad * 100, 1), 100) : 0;
+                                        $pctGananciaCompleta = round($fracInv * 100, 1);
+
+                                        $html .= '<div style="margin-bottom:1.25rem;padding:1.5rem;border-radius:0.75rem;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border:2px solid #3b82f6;color:#fff;">';
+                                        $html .= '<p style="font-weight:700;font-size:1rem;margin-bottom:0.25rem;color:#93c5fd;">🤝 Simulación de Inversión Externa</p>';
+
+                                        // Subtítulo con parámetros del acuerdo
+                                        if ($hasAcuerdo) {
+                                            $html .= '<p style="font-size:0.75rem;color:#94a3b8;margin-bottom:1.25rem;">'
+                                                . 'Capital <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong>'
+                                                . ' · Interés acordado <strong style="color:#fbbf24;">' . $tasaInteres . '% mensual</strong>'
+                                                . ' · Plazo <strong style="color:#fbbf24;">' . $mesesInv . ' meses</strong>'
+                                                . ' → Total a devolver <strong style="color:#a78bfa;">$ ' . $fmt($totalAPagar) . '</strong>'
+                                                . ' <span style="font-size:0.68rem;color:#64748b;">(interés simple: capital × tasa × meses)</span>'
+                                                . '</p>';
+                                        } else {
+                                            $html .= '<p style="font-size:0.75rem;color:#94a3b8;margin-bottom:1.25rem;">'
+                                                . 'Capital <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong>'
+                                                . ' <span style="font-size:0.68rem;color:#64748b;">— ingresa tasa e interés para simular el acuerdo con el inversor</span>'
+                                                . '</p>';
+                                        }
+
+                                        // KPIs
+                                        $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.25rem;">';
+                                        $kpiCards = [
+                                            ['Financia', number_format($fracInv * 100, 1) . '%', 'de la producción', '#fbbf24'],
+                                            ['Unidades', number_format($unidsInv, 0), 'de ' . number_format($cantidad, 0) . ' totales', '#93c5fd'],
+                                            ['Utilidad generada', '$ ' . $fmt($utilInv), 'lo que produce su lote', '#4ade80'],
+                                        ];
+                                        if ($hasAcuerdo) {
+                                            $kpiCards[] = ['Interés acordado', '$ ' . $fmt($interesAcordado), $tasaInteres . '% × ' . $mesesInv . ' meses', '#fbbf24'];
+                                            $kpiCards[] = ['Total a devolver', '$ ' . $fmt($totalAPagar), 'capital + interés', '#a78bfa'];
+                                            $kpiCards[] = $alcanza
+                                                ? ['Excedente', '$ ' . $fmt($excedente), 'te sobra después de pagar', '#4ade80']
+                                                : ['Déficit', '$ ' . $fmt(abs($excedente)), 'no cubre el interés acordado', '#fca5a5'];
+                                        } else {
+                                            $kpiCards[] = ['ROI efectivo', $roiEfectivo . '%', 'retorno real de la producción', $cInv];
+                                            $kpiCards[] = ['Total retorno', '$ ' . $fmt($montoInv + $utilInv), 'capital + utilidad real', '#a78bfa'];
+                                        }
+                                        foreach ($kpiCards as $k) {
+                                            $html .= '<div style="background:rgba(255,255,255,0.07);border-radius:0.6rem;padding:0.9rem 1rem;text-align:center;">'
+                                                . '<p style="font-size:0.65rem;color:#94a3b8;margin-bottom:0.2rem;text-transform:uppercase;letter-spacing:.04em;">' . $k[0] . '</p>'
+                                                . '<p style="font-size:1.4rem;font-weight:800;color:' . $k[3] . ';line-height:1.1;">' . $k[1] . '</p>'
+                                                . '<p style="font-size:0.65rem;color:#cbd5e1;">' . $k[2] . '</p>'
+                                                . '</div>';
+                                        }
+                                        $html .= '</div>';
+
+                                        // ── Hitos por % de ventas ──
+                                        $html .= '<div style="background:rgba(255,255,255,0.05);border-radius:0.6rem;padding:1rem 1.25rem;margin-bottom:1rem;">';
+                                        $html .= '<p style="font-size:0.78rem;font-weight:700;color:#e2e8f0;margin-bottom:0.75rem;">📊 Hitos de recuperación por % de ventas</p>';
+
+                                        // Barra visual
+                                        $html .= '<div style="position:relative;height:10px;background:rgba(255,255,255,0.1);border-radius:9999px;margin-bottom:0.75rem;">';
+                                        $html .= '<div style="position:absolute;left:0;top:0;height:10px;width:' . min($pctCapital,100) . '%;background:#fbbf24;border-radius:9999px;"></div>';
+                                        if ($hasAcuerdo) {
+                                            $html .= '<div style="position:absolute;left:0;top:0;height:10px;width:' . min($pctTotalPagar,100) . '%;background:#a78bfa;border-radius:9999px;opacity:0.6;"></div>';
+                                        }
+                                        $html .= '<div style="position:absolute;left:0;top:0;height:10px;width:' . min($pctGananciaCompleta,100) . '%;background:#4ade80;border-radius:9999px;opacity:0.35;"></div>';
+                                        $html .= '</div>';
+
+                                        $html .= '<div style="display:flex;flex-wrap:wrap;gap:1.5rem;">';
+                                        $html .= '<div>'
+                                            . '<p style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;">🟡 Recupera capital</p>'
+                                            . '<p style="font-size:1.05rem;font-weight:700;color:#fbbf24;">al ' . $pctCapital . '% de ventas</p>'
+                                            . '<p style="font-size:0.68rem;color:#64748b;">≈ ' . number_format(ceil($unidsParaCapital), 0) . ' unidades</p>'
+                                            . '</div>';
+                                        if ($hasAcuerdo) {
+                                            $html .= '<div>'
+                                                . '<p style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;">🟣 Capital + interés acordado</p>'
+                                                . '<p style="font-size:1.05rem;font-weight:700;color:#a78bfa;">al ' . $pctTotalPagar . '% de ventas</p>'
+                                                . '<p style="font-size:0.68rem;color:#64748b;">≈ ' . number_format(ceil($unidsParaTotalPagar), 0) . ' unidades · $ ' . $fmt($totalAPagar) . '</p>'
+                                                . '</div>';
+                                        }
+                                        $html .= '<div>'
+                                            . '<p style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;">🟢 Toda la utilidad de su lote</p>'
+                                            . '<p style="font-size:1.05rem;font-weight:700;color:#4ade80;">al ' . $pctGananciaCompleta . '% de ventas</p>'
+                                            . '<p style="font-size:0.68rem;color:#64748b;">≈ ' . number_format($unidsInv, 0) . ' unidades · $ ' . $fmt($montoInv + $utilInv) . '</p>'
+                                            . '</div>';
+                                        $html .= '</div></div>';
+
+                                        // Párrafo explicativo
+                                        $html .= '<p style="font-size:0.75rem;color:#cbd5e1;line-height:1.8;">';
+                                        if ($hasAcuerdo) {
+                                            $html .= 'El inversor aporta <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong> financiando el <strong style="color:#fbbf24;">' . number_format($fracInv * 100, 1) . '%</strong> de la producción. '
+                                                . 'Con una tasa del <strong style="color:#fbbf24;">' . $tasaInteres . '% mensual</strong> a <strong style="color:#fbbf24;">' . $mesesInv . ' meses</strong>, '
+                                                . 'el interés acordado es <strong style="color:#a78bfa;">$ ' . $fmt($interesAcordado) . '</strong> — total a devolver <strong style="color:#a78bfa;">$ ' . $fmt($totalAPagar) . '</strong>. ';
+                                            if ($alcanza) {
+                                                $html .= 'La producción genera <strong style="color:#4ade80;">$ ' . $fmt($utilInv) . '</strong> de utilidad para esa fracción, '
+                                                    . '<strong style="color:#4ade80;">cubriendo el acuerdo y dejando un excedente de $ ' . $fmt($excedente) . '</strong>. '
+                                                    . 'Pagas al inversor al ' . $pctTotalPagar . '% de ventas y el resto es tuyo.';
+                                            } else {
+                                                $html .= '<strong style="color:#fca5a5;">⚠ La utilidad generada ($ ' . $fmt($utilInv) . ') no alcanza a cubrir el interés acordado.</strong> '
+                                                    . 'Hay un déficit de <strong style="color:#fca5a5;">$ ' . $fmt(abs($excedente)) . '</strong>. '
+                                                    . 'Considera subir el PVP, reducir costos o renegociar la tasa.';
+                                            }
+                                        } else {
+                                            $html .= 'Con <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong> el inversor financia el <strong style="color:#fbbf24;">' . number_format($fracInv * 100, 1) . '%</strong> de la producción. '
+                                                . 'Recupera el capital al ' . $pctCapital . '% de ventas y obtiene toda su utilidad (<strong style="color:#4ade80;">$ ' . $fmt($utilInv) . '</strong>) al ' . $pctGananciaCompleta . '% de ventas. '
+                                                . 'Ingresa tasa y plazo para simular el acuerdo financiero.';
+                                        }
+                                        $html .= '</p>';
+
+                                        $html .= '</div>';
+                                    }
+
+                                    // ══════════════════════════════════════════════════
+                                    // LIQUIDACIÓN — CANAL DISTRIBUIDORES
+                                    // ══════════════════════════════════════════════════
+                                    $pvpDistribuidor  = (float) ($get('precio_distribuidor') ?? 0);
+                                    $cantMinDist      = (int)   ($get('cantidad_minima_distribuidor') ?? 10);
+                                    $margenDistPct    = (float) ($get('margen_distribuidor') ?? 40);
+
+                                    $html .= '<div style="margin-top:2rem;border-top:3px solid #6366f1;padding-top:1.5rem;">';
+                                    $html .= '<div style="margin-bottom:1rem;padding:0.6rem 1rem;background:#f5f3ff;border-radius:0.5rem;border:1px solid #c4b5fd;">'
+                                        . '<span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4c1d95;">🚚 LIQUIDACIÓN — Canal Distribuidores</span>'
+                                        . '<span style="float:right;font-size:0.7rem;color:#6d28d9;">Pedido mínimo: ' . $cantMinDist . ' u. para aplicar precio distribuidor</span>'
+                                        . '</div>';
+
+                                    // ── Precio de distribuidor con desglose IVA ───────
+                                    if ($pvpDistribuidor > 0) {
+                                        $pvpDistConIva = round($pvpDistribuidor * 1.15, 4);
+                                        $html .= '<div style="margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;padding:0.6rem 1rem;background:#fff;border:1px solid #e0e7ff;border-radius:0.5rem;flex-wrap:wrap;">';
+                                        $html .= '<div>'
+                                            . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">Precio Distribuidor</span><br>'
+                                            . '<strong style="font-size:1rem;color:#4c1d95;">$ ' . number_format($pvpDistribuidor, 2) . '</strong>';
+
+                                        // Si el PVP directo incluye IVA, aclarar que el dist. es sin IVA
+                                        if ($incluyeIva) {
+                                            $html .= ' <span style="font-size:0.7rem;color:#6b7280;">(sin IVA)</span>';
+                                        }
+                                        $html .= '</div>';
+
+                                        $html .= '<div style="border-left:1px solid #e0e7ff;padding-left:1.5rem;">'
+                                            . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">+ IVA 15% → precio al distribuidor</span><br>'
+                                            . '<strong style="font-size:0.9rem;color:#374151;">$ ' . number_format($pvpDistConIva, 2) . '</strong>'
+                                            . '</div>';
+
+                                        $html .= '<div style="border-left:1px solid #e0e7ff;padding-left:1.5rem;">'
+                                            . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">Margen sobre PVP directo</span><br>'
+                                            . '<strong style="font-size:0.9rem;color:#6d28d9;">' . number_format($margenDistPct, 1) . '%</strong>'
+                                            . '</div>';
+
+                                        if ($pvpSinIva > 0) {
+                                            $difPrecio = $pvpSinIva - $pvpDistribuidor;
+                                            $html .= '<div style="border-left:1px solid #e0e7ff;padding-left:1.5rem;">'
+                                                . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">Diferencia vs PVP directo</span><br>'
+                                                . '<strong style="font-size:0.9rem;color:#dc2626;">– $ ' . number_format($difPrecio, 2) . ' / u.</strong>'
+                                                . '</div>';
+                                        }
+
+                                        $html .= '</div>';
+                                    }
+
+                                    if ($pvpDistribuidor <= 0) {
+                                        $html .= '<div style="padding:1.5rem;border:2px dashed #c4b5fd;border-radius:0.75rem;text-align:center;color:#7c3aed;">'
+                                            . '<p style="font-size:0.85rem;margin-bottom:0.4rem;">📐 Configura el precio de distribuidor</p>'
+                                            . '<p style="font-size:0.75rem;color:#a78bfa;">Ve a la sección <strong>Precio de Venta e Impuestos</strong> e ingresa el precio distribuidor o el margen.</p>'
+                                            . '</div>';
+                                    } else {
+                                        // ── Cálculos distribuidores ──────────────────────
+                                        $ingresoNetoDist    = $pvpDistribuidor * $cantidad;
+                                        $ivaDistribuidor    = $pvpDistribuidor * 0.15 * $cantidad;
+                                        $totalFacturadoDist = $ingresoNetoDist + $ivaDistribuidor;
+                                        $iceTotalDist       = $aplicaIce ? round($pvpDistribuidor * $icePct * $cantidad, 2) : 0;
+                                        $utilidadBrutaDist  = $ingresoNetoDist - $costoTotalProd;
+                                        $margenBrutoDist    = $ingresoNetoDist > 0 ? ($utilidadBrutaDist / $ingresoNetoDist) * 100 : 0;
+                                        $utilidadNetaDist   = $utilidadBrutaDist - $iceTotalDist;
+                                        $margenNetoDist     = $ingresoNetoDist > 0 ? ($utilidadNetaDist / $ingresoNetoDist) * 100 : 0;
+                                        $roiDist            = $costoTotalProd > 0 ? ($utilidadNetaDist / $costoTotalProd) * 100 : 0;
+                                        $utilPorUnitDist    = $cantidad > 0 ? $utilidadNetaDist / $cantidad : 0;
+                                        $totalImpDist       = $ivaDistribuidor + $iceTotalDist;
+
+                                        // Payback distribuidores
+                                        $paybackDiasDist = null;
+                                        if ($hasDiasVenta && $diasVenta > 0 && $ingresoNetoDist > 0 && $inversionReal > 0) {
+                                            $ingresosDiarioDist = $ingresoNetoDist / $diasVenta;
+                                            $paybackDiasDist    = (int) ceil($inversionReal / $ingresosDiarioDist);
+                                        }
+                                        $unidadesPaybackDist = $pvpDistribuidor > 0 ? (int) ceil($inversionReal / $pvpDistribuidor) : 0;
+
+                                        // Diferencia vs venta directa
+                                        $difUtil  = $utilidadNetaDist - $utilidadNeta;
+                                        $difSign  = $difUtil >= 0 ? '+' : '';
+                                        $difColor = $difUtil >= 0 ? $cGreen : $cRed;
+
+                                        $cPurpD = '#7c3aed';
+                                        $cUtilD = $utilidadNetaDist >= 0 ? $cGreen : $cRed;
+                                        $cUtilBrutaD = $utilidadBrutaDist >= 0 ? '#16a34a' : $cRed;
+
+                                        // ── D3: KPI cards GRANDES ─────────────────────────
+                                        $roiExplainDist = 'Por cada $1 invertido recibes $' . number_format(1 + $roiDist / 100, 2) . ' de vuelta en el canal distribuidores.';
+                                        $html .= '<div style="margin-bottom:1.25rem;border-radius:0.75rem;border:1px solid #e5e7eb;overflow:hidden;">'
+                                            . '<div style="background:#f5f3ff;padding:0.5rem 1rem;border-bottom:1px solid #e5e7eb;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:' . $cPurpD . ';">📊 Indicadores Financieros — Distribuidores</div>'
+                                            . '<div style="display:grid;grid-template-columns:repeat(5,1fr);">';
+                                        $html .= $kpiBig('Margen Bruto', $pct($margenBrutoDist), $pct($margenNetoDist) . ' neto', $cPurpD);
+                                        $html .= $kpiBig('Utilidad Bruta', '$ ' . $fmt($utilidadBrutaDist), '$ ' . number_format($cantidad > 0 ? $utilidadBrutaDist / $cantidad : 0, 4) . ' / u.', $cUtilBrutaD);
+                                        $html .= $kpiBig('Impuestos (IVA+ICE)', '$ ' . $fmt($totalImpDist), '$ ' . number_format($cantidad > 0 ? $totalImpDist / $cantidad : 0, 4) . ' / u.', $cAmb);
+                                        $html .= $kpiBig('Rentabilidad ROI', $pct($roiDist), 'Retorno sobre costo total', $cPurpD, false, $roiExplainDist);
+                                        $html .= $kpiBig('Utilidad Neta', '$ ' . $fmt($utilidadNetaDist), '$ ' . number_format($utilPorUnitDist, 4) . ' / u.', $cUtilD, true);
+                                        $html .= '</div></div>';
+
+                                        // ── D4: Tablas de detalle ─────────────────────────
+                                        $html .= '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.25rem;">';
+
+                                        // Columna izquierda
+                                        $html .= '<div>';
+                                        $html .= '<div style="margin-bottom:1.25rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
+                                            . $sec('💰', 'Ingresos (Distribuidor)', $cPurpD)
+                                            . '<table style="width:100%;">'
+                                            . $tr('Ingresos netos (' . number_format($cantidad, 0) . ' u. × $ ' . $fmt($pvpDistribuidor) . ')', '$ ' . $fmt($ingresoNetoDist), true, $cPurpD)
+                                            . $tr('IVA cobrado al distribuidor (15%)  ↗', '$ ' . $fmt($ivaDistribuidor), false, $cGray, true)
+                                            . $tr('Total facturado al distribuidor', '$ ' . $fmt($totalFacturadoDist))
+                                            . '</table></div>';
+                                        $html .= '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
+                                            . $sec('🏭', 'Costos de Producción', $cRed)
+                                            . '<table style="width:100%;">'
+                                            . $tr('Materiales a comprar', '$ ' . $fmt($totalMatComprar))
+                                            . $tr('Materiales en stock (disponible)', '$ ' . $fmt($totalMatStock), false, $cGray, true)
+                                            . $tr('Mano de Obra', '$ ' . $fmt($totalMO), false, '', true)
+                                            . $tr('Otros costos indirectos', '$ ' . $fmt($totalOtrosInd), false, '', true)
+                                            . $tr('Costos fijos empresa (prorrateo)', '$ ' . $fmt($totalFijosEmpresa), false, '#7c3aed', true)
+                                            . $tr('Costo total de producción', '$ ' . $fmt($costoTotalProd), true, $cRed)
+                                            . $tr('Costo por unidad', '$ ' . number_format($costoUnitario, 4), false, $cBlue)
+                                            . '</table></div>';
+                                        $html .= '</div>';
+
+                                        // Columna derecha
+                                        $html .= '<div>';
+                                        $html .= '<div style="margin-bottom:1.25rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
+                                            . $sec('🧾', 'Impuestos', $cAmb)
+                                            . '<table style="width:100%;">'
+                                            . $tr('IVA 15% — passthrough', '$ ' . $fmt($ivaDistribuidor), false, $cGray);
+                                        if ($aplicaIce) {
+                                            $html .= $tr('ICE ' . $iceCatLabel . ' (' . number_format($icePct * 100, 0) . '% sobre precio dist.)', '$ ' . $fmt($iceTotalDist), false, $cAmb)
+                                                . $tr('↳ Costo real para el productor', '', false, $cGray, true);
+                                        } else {
+                                            $html .= $tr('ICE', 'No aplica', false, $cGray);
+                                        }
+                                        $html .= $tr('Total impuestos del productor', '$ ' . $fmt($iceTotalDist), true, $cAmb)
+                                            . '</table></div>';
+                                        $html .= '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
+                                            . $sec('📊', 'Resultado', $cPurpD)
+                                            . '<table style="width:100%;">'
+                                            . $tr('Utilidad Bruta', '$ ' . $fmt($utilidadBrutaDist), false, $cUtilBrutaD)
+                                            . $tr('Margen Bruto', $pct($margenBrutoDist), false, $cUtilBrutaD, true)
+                                            . ($aplicaIce ? $tr('– ICE (' . number_format($icePct * 100, 0) . '%)', '– $ ' . $fmt($iceTotalDist), false, $cAmb, true) : '')
+                                            . $tr('Utilidad Neta (después de ICE)', '$ ' . $fmt($utilidadNetaDist), true, $cUtilD)
+                                            . $tr('Margen Neto', $pct($margenNetoDist), false, $cUtilD, true)
+                                            . $tr('Utilidad por unidad', '$ ' . number_format($utilPorUnitDist, 4), false, $cUtilD)
+                                            . $tr('ROI (sobre costo total)', $pct($roiDist), false, $cPurpD)
+                                            . $tr('vs. Venta Directa', $difSign . '$ ' . $fmt($difUtil), false, $difColor, true)
+                                            . '</table></div>';
+                                        $html .= '</div>';
+
+                                        $html .= '</div>'; // grid D4
+
+                                        // ── D5: KPIs de operación ─────────────────────────
+                                        $html .= '<div style="margin-bottom:1.25rem;border-radius:0.75rem;border:1px solid #e5e7eb;overflow:hidden;">'
+                                            . '<div style="background:#f5f3ff;padding:0.6rem 1rem;border-bottom:1px solid #e5e7eb;">'
+                                            . '<span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:' . $cPurpD . ';">⏱ Recuperación — Canal Distribuidores</span></div>'
+                                            . '<div style="display:grid;grid-template-columns:repeat(5,1fr);">';
+                                        $html .= $kpi('Inversión a Desembolsar', '$ ' . $fmt($inversionReal), 'Igual que venta directa', $cRed);
+                                        $html .= $kpi('Precio Distribuidor', '$ ' . $fmt($pvpDistribuidor), 'Margen ' . $margenDistPct . '% sobre PVP', $cPurpD);
+                                        $html .= $kpi('Pedido Mínimo', $cantMinDist . ' u.', 'Para aplicar precio distribuidor', $cBlue);
+                                        $html .= $kpi('Unidades para Payback', $unidadesPaybackDist > 0 ? number_format($unidadesPaybackDist) . ' u.' : '—', 'Para recuperar inversión', $cAmb);
+                                        if ($hasDiasVenta) {
+                                            if ($paybackDiasDist !== null) {
+                                                $okDist = $paybackDiasDist <= $diasVenta;
+                                                $html .= $kpi('Payback', "{$paybackDiasDist} días", $okDist ? '✓ Dentro del período de venta' : '⚠ Supera el período de venta', $okDist ? $cGreen : $cAmb, true);
+                                            } else {
+                                                $html .= $kpi('Payback', '—', 'Ingresa PVP de venta', $cGray, true);
+                                            }
+                                        } else {
+                                            $html .= $kpi('Payback', '—', 'Requiere días de venta', $cGray, true);
+                                        }
+                                        $html .= '</div></div>';
+
+                                        // ── D6: Párrafo estratégico ──────────────────────
+                                        $pvpDistPar     = '$' . number_format($pvpDistribuidor, 2);
+                                        $pvpDistIvaPar  = '$' . number_format($pvpDistribuidor * 1.15, 2);
+                                        $ingDistPar     = '$' . number_format($ingresoNetoDist, 2);
+                                        $utilDistPar    = '$' . number_format($utilidadNetaDist, 2);
+                                        $utilUnitDistPar = '$' . number_format($utilPorUnitDist, 4);
+                                        $roiDistPar     = number_format($roiDist, 1) . '%';
+                                        $margenDistNPar = number_format($margenNetoDist, 1) . '%';
+                                        $difUtilPar     = ($difUtil >= 0 ? '+' : '') . '$' . number_format($difUtil, 2);
+                                        $paybackDistStr = $paybackDiasDist !== null ? $paybackDiasDist . ' días' : 'N/D';
+
+                                        $comparacion = $difUtil >= 0
+                                            ? "Aunque el precio unitario es menor que el canal directo, la certeza de ventas en volumen ({$cantMinDist}+ u. por pedido) puede compensar con menor riesgo de inventario sin vender."
+                                            : "El canal distribuidor genera <strong style=\"color:{$cRed};\">{$difUtilPar}</strong> menos de utilidad que la venta directa. Evalúa si el beneficio en volumen y menor costo de venta justifica este sacrificio de margen.";
+
+                                        $parrafoDist = "Si destinas toda tu producción de <strong>" . number_format($cantidad, 0) . " unidades</strong> al canal distribuidor, "
+                                            . "las vendes a <strong>{$pvpDistPar} / u.</strong> (sin IVA; {$pvpDistIvaPar} con IVA al distribuidor), "
+                                            . "generando un ingreso total de <strong>{$ingDistPar}</strong>. "
+                                            . "Tu <strong>utilidad neta será {$utilDistPar}</strong> — <strong>{$utilUnitDistPar} / unidad</strong>, "
+                                            . "con margen del <strong>{$margenDistNPar}</strong> y ROI del <strong>{$roiDistPar}</strong>. "
+                                            . "Necesitas vender al menos <strong>" . number_format($unidadesPaybackDist) . " unidades</strong> para recuperar tu inversión"
+                                            . ($paybackDiasDist !== null ? " (~{$paybackDistStr})" : "") . ". "
+                                            . $comparacion;
+
+                                        $distBadgeColor  = $utilidadNetaDist >= 0 ? '#6d28d9' : '#dc2626';
+                                        $distBadgeBg     = $utilidadNetaDist >= 0 ? '#f5f3ff' : '#fef2f2';
+                                        $distBadgeBorder = $utilidadNetaDist >= 0 ? '#c4b5fd' : '#fecaca';
+                                        $distLabel       = $utilidadNetaDist >= 0 ? '✓ RENTABLE EN DISTRIBUCIÓN' : '✗ NO RENTABLE EN DISTRIBUCIÓN';
+
+                                        $html .= '<div style="margin-bottom:1.25rem;padding:1.25rem 1.5rem;border-radius:0.75rem;background:#f5f3ff;border:1px solid #c4b5fd;">'
+                                            . '<p style="font-weight:700;color:#4c1d95;font-size:0.9rem;margin-bottom:0.75rem;">🚚 Análisis Estratégico — Canal Distribuidores</p>'
+                                            . '<p style="font-size:0.82rem;color:#374151;line-height:1.7;">' . $parrafoDist . '</p>'
+                                            . '<hr style="border:none;border-top:1px solid #c4b5fd;margin:0.75rem 0;">'
+                                            . '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">'
+                                            . '<span style="font-size:0.75rem;font-weight:700;color:#4c1d95;">🎯 Precio Distribuidor: ' . $pvpDistPar . ' | Margen: ' . $margenDistPct . '%</span>'
+                                            . '<span style="padding:0.2rem 0.75rem;border-radius:999px;font-size:0.7rem;font-weight:700;background:' . $distBadgeBg . ';border:1px solid ' . $distBadgeBorder . ';color:' . $distBadgeColor . ';">' . $distLabel . '</span>'
+                                            . '<span style="font-size:0.7rem;color:#6d28d9;">Diferencia vs venta directa: <strong style="color:' . $difColor . ';">' . $difSign . '$ ' . $fmt(abs($difUtil)) . '</strong></span>'
+                                            . '</div>'
+                                            . '</div>';
+                                    }
+
+                                    $html .= '</div>'; // cierre bloque distribuidores
+
+                                    // ══════════════════════════════════════════════════
+                                    // ANÁLISIS ESTRATÉGICO Y RECOMENDACIONES
+                                    // ══════════════════════════════════════════════════
+                                    $html .= '<div style="margin-top:2.5rem;border-top:3px solid #3b82f6;padding-top:1.5rem;">';
+                                    $html .= '<div style="margin-bottom:1rem;padding:0.6rem 1rem;background:#eff6ff;border-radius:0.5rem;border:1px solid #bfdbfe;">'
+                                        . '<span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#1e3a5f;">📋 ANÁLISIS ESTRATÉGICO Y RECOMENDACIONES</span>'
+                                        . '</div>';
 
                                     // ── C6: Párrafo estratégico ──────────────────────
                                     $presNombrePar = $pres['nombre'] ?? 'este producto';
@@ -1909,137 +2156,7 @@ class ProductDesignResource extends Resource
                                     }
                                     $html .= '</div>';
 
-                                    // ── C9: Simulación de inversión externa ──────────
-                                    $montoInv = (float) ($get('_plan_monto_inversion') ?? 0);
-                                    $tasaInteres = (float) ($get('_plan_inversion_interes') ?? 0);
-                                    $mesesInv    = (float) ($get('_plan_inversion_meses') ?? 0);
-
-                                    if ($montoInv > 0 && $inversionReal > 0 && $ingresoNeto > 0) {
-                                        // Fracción de la producción que financia el inversor
-                                        $fracInv    = min($montoInv / $inversionReal, 1.0);
-                                        $unidsInv   = round($cantidad * $fracInv, 0);
-
-                                        // Interés acordado (interés simple sobre el plazo pactado)
-                                        $hasAcuerdo      = $tasaInteres > 0 && $mesesInv > 0;
-                                        $interesAcordado = $hasAcuerdo ? round($montoInv * ($tasaInteres / 100) * $mesesInv, 2) : 0;
-                                        $totalAPagar     = round($montoInv + $interesAcordado, 2);
-
-                                        // Utilidad real que genera la producción para esa fracción
-                                        $utilInv     = round($utilidadNeta * $fracInv, 2);
-                                        $excedente   = round($utilInv - $interesAcordado, 2); // positivo = te sobra, negativo = no alcanza
-                                        $roiEfectivo = $montoInv > 0 ? round(($utilInv / $montoInv) * 100, 1) : 0;
-                                        $cInv        = $roiEfectivo >= $tasaInteres ? '#4ade80' : '#fca5a5';
-                                        $alcanza     = $utilInv >= $interesAcordado;
-
-                                        // Hito: al qué % de ventas recupera el inversor su capital + interés acordado
-                                        $unidsParaCapital    = $pvpSinIva > 0 ? $montoInv / $pvpSinIva : 0;
-                                        $unidsParaTotalPagar = $pvpSinIva > 0 ? $totalAPagar / $pvpSinIva : 0;
-                                        $pctCapital          = $cantidad > 0 ? min(round($unidsParaCapital / $cantidad * 100, 1), 100) : 0;
-                                        $pctTotalPagar       = $cantidad > 0 ? min(round($unidsParaTotalPagar / $cantidad * 100, 1), 100) : 0;
-                                        $pctGananciaCompleta = round($fracInv * 100, 1);
-
-                                        $html .= '<div style="margin-bottom:1.25rem;padding:1.5rem;border-radius:0.75rem;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border:2px solid #3b82f6;color:#fff;">';
-                                        $html .= '<p style="font-weight:700;font-size:1rem;margin-bottom:0.25rem;color:#93c5fd;">🤝 Simulación de Inversión Externa</p>';
-
-                                        // Subtítulo con parámetros del acuerdo
-                                        if ($hasAcuerdo) {
-                                            $html .= '<p style="font-size:0.75rem;color:#94a3b8;margin-bottom:1.25rem;">'
-                                                . 'Capital <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong>'
-                                                . ' · Interés acordado <strong style="color:#fbbf24;">' . $tasaInteres . '% mensual</strong>'
-                                                . ' · Plazo <strong style="color:#fbbf24;">' . $mesesInv . ' meses</strong>'
-                                                . ' → Total a devolver <strong style="color:#a78bfa;">$ ' . $fmt($totalAPagar) . '</strong>'
-                                                . ' <span style="font-size:0.68rem;color:#64748b;">(interés simple: capital × tasa × meses)</span>'
-                                                . '</p>';
-                                        } else {
-                                            $html .= '<p style="font-size:0.75rem;color:#94a3b8;margin-bottom:1.25rem;">'
-                                                . 'Capital <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong>'
-                                                . ' <span style="font-size:0.68rem;color:#64748b;">— ingresa tasa e interés para simular el acuerdo con el inversor</span>'
-                                                . '</p>';
-                                        }
-
-                                        // KPIs
-                                        $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.25rem;">';
-                                        $kpiCards = [
-                                            ['Financia', number_format($fracInv * 100, 1) . '%', 'de la producción', '#fbbf24'],
-                                            ['Unidades', number_format($unidsInv, 0), 'de ' . number_format($cantidad, 0) . ' totales', '#93c5fd'],
-                                            ['Utilidad generada', '$ ' . $fmt($utilInv), 'lo que produce su lote', '#4ade80'],
-                                        ];
-                                        if ($hasAcuerdo) {
-                                            $kpiCards[] = ['Interés acordado', '$ ' . $fmt($interesAcordado), $tasaInteres . '% × ' . $mesesInv . ' meses', '#fbbf24'];
-                                            $kpiCards[] = ['Total a devolver', '$ ' . $fmt($totalAPagar), 'capital + interés', '#a78bfa'];
-                                            $kpiCards[] = $alcanza
-                                                ? ['Excedente', '$ ' . $fmt($excedente), 'te sobra después de pagar', '#4ade80']
-                                                : ['Déficit', '$ ' . $fmt(abs($excedente)), 'no cubre el interés acordado', '#fca5a5'];
-                                        } else {
-                                            $kpiCards[] = ['ROI efectivo', $roiEfectivo . '%', 'retorno real de la producción', $cInv];
-                                            $kpiCards[] = ['Total retorno', '$ ' . $fmt($montoInv + $utilInv), 'capital + utilidad real', '#a78bfa'];
-                                        }
-                                        foreach ($kpiCards as $k) {
-                                            $html .= '<div style="background:rgba(255,255,255,0.07);border-radius:0.6rem;padding:0.9rem 1rem;text-align:center;">'
-                                                . '<p style="font-size:0.65rem;color:#94a3b8;margin-bottom:0.2rem;text-transform:uppercase;letter-spacing:.04em;">' . $k[0] . '</p>'
-                                                . '<p style="font-size:1.4rem;font-weight:800;color:' . $k[3] . ';line-height:1.1;">' . $k[1] . '</p>'
-                                                . '<p style="font-size:0.65rem;color:#cbd5e1;">' . $k[2] . '</p>'
-                                                . '</div>';
-                                        }
-                                        $html .= '</div>';
-
-                                        // ── Hitos por % de ventas ──
-                                        $html .= '<div style="background:rgba(255,255,255,0.05);border-radius:0.6rem;padding:1rem 1.25rem;margin-bottom:1rem;">';
-                                        $html .= '<p style="font-size:0.78rem;font-weight:700;color:#e2e8f0;margin-bottom:0.75rem;">📊 Hitos de recuperación por % de ventas</p>';
-
-                                        // Barra visual
-                                        $html .= '<div style="position:relative;height:10px;background:rgba(255,255,255,0.1);border-radius:9999px;margin-bottom:0.75rem;">';
-                                        $html .= '<div style="position:absolute;left:0;top:0;height:10px;width:' . min($pctCapital,100) . '%;background:#fbbf24;border-radius:9999px;"></div>';
-                                        if ($hasAcuerdo) {
-                                            $html .= '<div style="position:absolute;left:0;top:0;height:10px;width:' . min($pctTotalPagar,100) . '%;background:#a78bfa;border-radius:9999px;opacity:0.6;"></div>';
-                                        }
-                                        $html .= '<div style="position:absolute;left:0;top:0;height:10px;width:' . min($pctGananciaCompleta,100) . '%;background:#4ade80;border-radius:9999px;opacity:0.35;"></div>';
-                                        $html .= '</div>';
-
-                                        $html .= '<div style="display:flex;flex-wrap:wrap;gap:1.5rem;">';
-                                        $html .= '<div>'
-                                            . '<p style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;">🟡 Recupera capital</p>'
-                                            . '<p style="font-size:1.05rem;font-weight:700;color:#fbbf24;">al ' . $pctCapital . '% de ventas</p>'
-                                            . '<p style="font-size:0.68rem;color:#64748b;">≈ ' . number_format(ceil($unidsParaCapital), 0) . ' unidades</p>'
-                                            . '</div>';
-                                        if ($hasAcuerdo) {
-                                            $html .= '<div>'
-                                                . '<p style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;">🟣 Capital + interés acordado</p>'
-                                                . '<p style="font-size:1.05rem;font-weight:700;color:#a78bfa;">al ' . $pctTotalPagar . '% de ventas</p>'
-                                                . '<p style="font-size:0.68rem;color:#64748b;">≈ ' . number_format(ceil($unidsParaTotalPagar), 0) . ' unidades · $ ' . $fmt($totalAPagar) . '</p>'
-                                                . '</div>';
-                                        }
-                                        $html .= '<div>'
-                                            . '<p style="font-size:0.68rem;color:#94a3b8;text-transform:uppercase;">🟢 Toda la utilidad de su lote</p>'
-                                            . '<p style="font-size:1.05rem;font-weight:700;color:#4ade80;">al ' . $pctGananciaCompleta . '% de ventas</p>'
-                                            . '<p style="font-size:0.68rem;color:#64748b;">≈ ' . number_format($unidsInv, 0) . ' unidades · $ ' . $fmt($montoInv + $utilInv) . '</p>'
-                                            . '</div>';
-                                        $html .= '</div></div>';
-
-                                        // Párrafo explicativo
-                                        $html .= '<p style="font-size:0.75rem;color:#cbd5e1;line-height:1.8;">';
-                                        if ($hasAcuerdo) {
-                                            $html .= 'El inversor aporta <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong> financiando el <strong style="color:#fbbf24;">' . number_format($fracInv * 100, 1) . '%</strong> de la producción. '
-                                                . 'Con una tasa del <strong style="color:#fbbf24;">' . $tasaInteres . '% mensual</strong> a <strong style="color:#fbbf24;">' . $mesesInv . ' meses</strong>, '
-                                                . 'el interés acordado es <strong style="color:#a78bfa;">$ ' . $fmt($interesAcordado) . '</strong> — total a devolver <strong style="color:#a78bfa;">$ ' . $fmt($totalAPagar) . '</strong>. ';
-                                            if ($alcanza) {
-                                                $html .= 'La producción genera <strong style="color:#4ade80;">$ ' . $fmt($utilInv) . '</strong> de utilidad para esa fracción, '
-                                                    . '<strong style="color:#4ade80;">cubriendo el acuerdo y dejando un excedente de $ ' . $fmt($excedente) . '</strong>. '
-                                                    . 'Pagas al inversor al ' . $pctTotalPagar . '% de ventas y el resto es tuyo.';
-                                            } else {
-                                                $html .= '<strong style="color:#fca5a5;">⚠ La utilidad generada ($ ' . $fmt($utilInv) . ') no alcanza a cubrir el interés acordado.</strong> '
-                                                    . 'Hay un déficit de <strong style="color:#fca5a5;">$ ' . $fmt(abs($excedente)) . '</strong>. '
-                                                    . 'Considera subir el PVP, reducir costos o renegociar la tasa.';
-                                            }
-                                        } else {
-                                            $html .= 'Con <strong style="color:#fbbf24;">$ ' . $fmt($montoInv) . '</strong> el inversor financia el <strong style="color:#fbbf24;">' . number_format($fracInv * 100, 1) . '%</strong> de la producción. '
-                                                . 'Recupera el capital al ' . $pctCapital . '% de ventas y obtiene toda su utilidad (<strong style="color:#4ade80;">$ ' . $fmt($utilInv) . '</strong>) al ' . $pctGananciaCompleta . '% de ventas. '
-                                                . 'Ingresa tasa y plazo para simular el acuerdo financiero.';
-                                        }
-                                        $html .= '</p>';
-
-                                        $html .= '</div>';
-                                    }
+                                    $html .= '</div>'; // cierre bloque análisis estratégico
 
                                     // ── C8: Nota al pie ──────────────────────────────
                                     $html .= '<p style="margin-top:0.75rem;font-size:0.68rem;color:' . $cGray . ';line-height:1.6;">'
@@ -2048,220 +2165,6 @@ class ProductDesignResource extends Resource
                                         . ($aplicaIce ? '* <strong>ICE</strong>: calculado sobre el precio ex-fábrica (PVP sin IVA). Verifique tarifas vigentes con el SRI. ' : '')
                                         . '* Los materiales en stock se consideran en el costo total pero no en la inversión a desembolsar.'
                                         . '</p>';
-
-                                    // ══════════════════════════════════════════════════
-                                    // LIQUIDACIÓN — CANAL DISTRIBUIDORES
-                                    // ══════════════════════════════════════════════════
-                                    $pvpDistribuidor  = (float) ($get('precio_distribuidor') ?? 0);
-                                    $cantMinDist      = (int)   ($get('cantidad_minima_distribuidor') ?? 10);
-                                    $margenDistPct    = (float) ($get('margen_distribuidor') ?? 40);
-
-                                    $html .= '<div style="margin-top:2rem;border-top:3px solid #6366f1;padding-top:1.5rem;">';
-                                    $html .= '<div style="margin-bottom:1rem;padding:0.6rem 1rem;background:#f5f3ff;border-radius:0.5rem;border:1px solid #c4b5fd;">'
-                                        . '<span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4c1d95;">🚚 LIQUIDACIÓN — Canal Distribuidores</span>'
-                                        . '<span style="float:right;font-size:0.7rem;color:#6d28d9;">Pedido mínimo: ' . $cantMinDist . ' u. para aplicar precio distribuidor</span>'
-                                        . '</div>';
-
-                                    // ── Precio de distribuidor con desglose IVA ───────
-                                    if ($pvpDistribuidor > 0) {
-                                        $pvpDistConIva = round($pvpDistribuidor * 1.15, 4);
-                                        $html .= '<div style="margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;padding:0.6rem 1rem;background:#fff;border:1px solid #e0e7ff;border-radius:0.5rem;flex-wrap:wrap;">';
-                                        $html .= '<div>'
-                                            . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">Precio Distribuidor</span><br>'
-                                            . '<strong style="font-size:1rem;color:#4c1d95;">$ ' . number_format($pvpDistribuidor, 2) . '</strong>';
-
-                                        // Si el PVP directo incluye IVA, aclarar que el dist. es sin IVA
-                                        if ($incluyeIva) {
-                                            $html .= ' <span style="font-size:0.7rem;color:#6b7280;">(sin IVA)</span>';
-                                        }
-                                        $html .= '</div>';
-
-                                        $html .= '<div style="border-left:1px solid #e0e7ff;padding-left:1.5rem;">'
-                                            . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">+ IVA 15% → precio al distribuidor</span><br>'
-                                            . '<strong style="font-size:0.9rem;color:#374151;">$ ' . number_format($pvpDistConIva, 2) . '</strong>'
-                                            . '</div>';
-
-                                        $html .= '<div style="border-left:1px solid #e0e7ff;padding-left:1.5rem;">'
-                                            . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">Margen sobre PVP directo</span><br>'
-                                            . '<strong style="font-size:0.9rem;color:#6d28d9;">' . number_format($margenDistPct, 1) . '%</strong>'
-                                            . '</div>';
-
-                                        if ($pvpSinIva > 0) {
-                                            $difPrecio = $pvpSinIva - $pvpDistribuidor;
-                                            $html .= '<div style="border-left:1px solid #e0e7ff;padding-left:1.5rem;">'
-                                                . '<span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.06em;color:#6b7280;">Diferencia vs PVP directo</span><br>'
-                                                . '<strong style="font-size:0.9rem;color:#dc2626;">– $ ' . number_format($difPrecio, 2) . ' / u.</strong>'
-                                                . '</div>';
-                                        }
-
-                                        $html .= '</div>';
-                                    }
-
-                                    if ($pvpDistribuidor <= 0) {
-                                        $html .= '<div style="padding:1.5rem;border:2px dashed #c4b5fd;border-radius:0.75rem;text-align:center;color:#7c3aed;">'
-                                            . '<p style="font-size:0.85rem;margin-bottom:0.4rem;">📐 Configura el precio de distribuidor</p>'
-                                            . '<p style="font-size:0.75rem;color:#a78bfa;">Ve a la sección <strong>Precio de Venta e Impuestos</strong> e ingresa el precio distribuidor o el margen.</p>'
-                                            . '</div>';
-                                    } else {
-                                        // ── Cálculos distribuidores ──────────────────────
-                                        $ingresoNetoDist    = $pvpDistribuidor * $cantidad;
-                                        $ivaDistribuidor    = $pvpDistribuidor * 0.15 * $cantidad;
-                                        $totalFacturadoDist = $ingresoNetoDist + $ivaDistribuidor;
-                                        $iceTotalDist       = $aplicaIce ? round($pvpDistribuidor * $icePct * $cantidad, 2) : 0;
-                                        $utilidadBrutaDist  = $ingresoNetoDist - $costoTotalProd;
-                                        $margenBrutoDist    = $ingresoNetoDist > 0 ? ($utilidadBrutaDist / $ingresoNetoDist) * 100 : 0;
-                                        $utilidadNetaDist   = $utilidadBrutaDist - $iceTotalDist;
-                                        $margenNetoDist     = $ingresoNetoDist > 0 ? ($utilidadNetaDist / $ingresoNetoDist) * 100 : 0;
-                                        $roiDist            = $costoTotalProd > 0 ? ($utilidadNetaDist / $costoTotalProd) * 100 : 0;
-                                        $utilPorUnitDist    = $cantidad > 0 ? $utilidadNetaDist / $cantidad : 0;
-                                        $totalImpDist       = $ivaDistribuidor + $iceTotalDist;
-
-                                        // Payback distribuidores
-                                        $paybackDiasDist = null;
-                                        if ($hasDiasVenta && $diasVenta > 0 && $ingresoNetoDist > 0 && $inversionReal > 0) {
-                                            $ingresosDiarioDist = $ingresoNetoDist / $diasVenta;
-                                            $paybackDiasDist    = (int) ceil($inversionReal / $ingresosDiarioDist);
-                                        }
-                                        $unidadesPaybackDist = $pvpDistribuidor > 0 ? (int) ceil($inversionReal / $pvpDistribuidor) : 0;
-
-                                        // Diferencia vs venta directa
-                                        $difUtil  = $utilidadNetaDist - $utilidadNeta;
-                                        $difSign  = $difUtil >= 0 ? '+' : '';
-                                        $difColor = $difUtil >= 0 ? $cGreen : $cRed;
-
-                                        $cPurpD = '#7c3aed';
-                                        $cUtilD = $utilidadNetaDist >= 0 ? $cGreen : $cRed;
-                                        $cUtilBrutaD = $utilidadBrutaDist >= 0 ? '#16a34a' : $cRed;
-
-                                        // ── D3: KPI cards GRANDES ─────────────────────────
-                                        $roiExplainDist = 'Por cada $1 invertido recibes $' . number_format(1 + $roiDist / 100, 2) . ' de vuelta en el canal distribuidores.';
-                                        $html .= '<div style="margin-bottom:1.25rem;border-radius:0.75rem;border:1px solid #e5e7eb;overflow:hidden;">'
-                                            . '<div style="background:#f5f3ff;padding:0.5rem 1rem;border-bottom:1px solid #e5e7eb;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:' . $cPurpD . ';">📊 Indicadores Financieros — Distribuidores</div>'
-                                            . '<div style="display:grid;grid-template-columns:repeat(5,1fr);">';
-                                        $html .= $kpiBig('Margen Bruto', $pct($margenBrutoDist), $pct($margenNetoDist) . ' neto', $cPurpD);
-                                        $html .= $kpiBig('Utilidad Bruta', '$ ' . $fmt($utilidadBrutaDist), '$ ' . number_format($cantidad > 0 ? $utilidadBrutaDist / $cantidad : 0, 4) . ' / u.', $cUtilBrutaD);
-                                        $html .= $kpiBig('Impuestos (IVA+ICE)', '$ ' . $fmt($totalImpDist), '$ ' . number_format($cantidad > 0 ? $totalImpDist / $cantidad : 0, 4) . ' / u.', $cAmb);
-                                        $html .= $kpiBig('Rentabilidad ROI', $pct($roiDist), 'Retorno sobre costo total', $cPurpD, false, $roiExplainDist);
-                                        $html .= $kpiBig('Utilidad Neta', '$ ' . $fmt($utilidadNetaDist), '$ ' . number_format($utilPorUnitDist, 4) . ' / u.', $cUtilD, true);
-                                        $html .= '</div></div>';
-
-                                        // ── D4: Tablas de detalle ─────────────────────────
-                                        $html .= '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.25rem;">';
-
-                                        // Columna izquierda
-                                        $html .= '<div>';
-                                        $html .= '<div style="margin-bottom:1.25rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
-                                            . $sec('💰', 'Ingresos (Distribuidor)', $cPurpD)
-                                            . '<table style="width:100%;">'
-                                            . $tr('Ingresos netos (' . number_format($cantidad, 0) . ' u. × $ ' . $fmt($pvpDistribuidor) . ')', '$ ' . $fmt($ingresoNetoDist), true, $cPurpD)
-                                            . $tr('IVA cobrado al distribuidor (15%)  ↗', '$ ' . $fmt($ivaDistribuidor), false, $cGray, true)
-                                            . $tr('Total facturado al distribuidor', '$ ' . $fmt($totalFacturadoDist))
-                                            . '</table></div>';
-                                        $html .= '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
-                                            . $sec('🏭', 'Costos de Producción', $cRed)
-                                            . '<table style="width:100%;">'
-                                            . $tr('Materiales a comprar', '$ ' . $fmt($totalMatComprar))
-                                            . $tr('Materiales en stock (disponible)', '$ ' . $fmt($totalMatStock), false, $cGray, true)
-                                            . $tr('Mano de Obra', '$ ' . $fmt($totalMO), false, '', true)
-                                            . $tr('Otros costos indirectos', '$ ' . $fmt($totalOtrosInd), false, '', true)
-                                            . $tr('Costo total de producción', '$ ' . $fmt($costoTotalProd), true, $cRed)
-                                            . $tr('Costo por unidad', '$ ' . number_format($costoUnitario, 4), false, $cBlue)
-                                            . '</table></div>';
-                                        $html .= '</div>';
-
-                                        // Columna derecha
-                                        $html .= '<div>';
-                                        $html .= '<div style="margin-bottom:1.25rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
-                                            . $sec('🧾', 'Impuestos', $cAmb)
-                                            . '<table style="width:100%;">'
-                                            . $tr('IVA 15% — passthrough', '$ ' . $fmt($ivaDistribuidor), false, $cGray);
-                                        if ($aplicaIce) {
-                                            $html .= $tr('ICE ' . $iceCatLabel . ' (' . number_format($icePct * 100, 0) . '% sobre precio dist.)', '$ ' . $fmt($iceTotalDist), false, $cAmb)
-                                                . $tr('↳ Costo real para el productor', '', false, $cGray, true);
-                                        } else {
-                                            $html .= $tr('ICE', 'No aplica', false, $cGray);
-                                        }
-                                        $html .= $tr('Total impuestos del productor', '$ ' . $fmt($iceTotalDist), true, $cAmb)
-                                            . '</table></div>';
-                                        $html .= '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1rem;">'
-                                            . $sec('📊', 'Resultado', $cPurpD)
-                                            . '<table style="width:100%;">'
-                                            . $tr('Utilidad Bruta', '$ ' . $fmt($utilidadBrutaDist), false, $cUtilBrutaD)
-                                            . $tr('Margen Bruto', $pct($margenBrutoDist), false, $cUtilBrutaD, true)
-                                            . ($aplicaIce ? $tr('– ICE (' . number_format($icePct * 100, 0) . '%)', '– $ ' . $fmt($iceTotalDist), false, $cAmb, true) : '')
-                                            . $tr('Utilidad Neta (después de ICE)', '$ ' . $fmt($utilidadNetaDist), true, $cUtilD)
-                                            . $tr('Margen Neto', $pct($margenNetoDist), false, $cUtilD, true)
-                                            . $tr('Utilidad por unidad', '$ ' . number_format($utilPorUnitDist, 4), false, $cUtilD)
-                                            . $tr('ROI (sobre costo total)', $pct($roiDist), false, $cPurpD)
-                                            . $tr('vs. Venta Directa', $difSign . '$ ' . $fmt($difUtil), false, $difColor, true)
-                                            . '</table></div>';
-                                        $html .= '</div>';
-
-                                        $html .= '</div>'; // grid D4
-
-                                        // ── D5: KPIs de operación ─────────────────────────
-                                        $html .= '<div style="margin-bottom:1.25rem;border-radius:0.75rem;border:1px solid #e5e7eb;overflow:hidden;">'
-                                            . '<div style="background:#f5f3ff;padding:0.6rem 1rem;border-bottom:1px solid #e5e7eb;">'
-                                            . '<span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:' . $cPurpD . ';">⏱ Recuperación — Canal Distribuidores</span></div>'
-                                            . '<div style="display:grid;grid-template-columns:repeat(5,1fr);">';
-                                        $html .= $kpi('Inversión a Desembolsar', '$ ' . $fmt($inversionReal), 'Igual que venta directa', $cRed);
-                                        $html .= $kpi('Precio Distribuidor', '$ ' . $fmt($pvpDistribuidor), 'Margen ' . $margenDistPct . '% sobre PVP', $cPurpD);
-                                        $html .= $kpi('Pedido Mínimo', $cantMinDist . ' u.', 'Para aplicar precio distribuidor', $cBlue);
-                                        $html .= $kpi('Unidades para Payback', $unidadesPaybackDist > 0 ? number_format($unidadesPaybackDist) . ' u.' : '—', 'Para recuperar inversión', $cAmb);
-                                        if ($hasDiasVenta) {
-                                            if ($paybackDiasDist !== null) {
-                                                $okDist = $paybackDiasDist <= $diasVenta;
-                                                $html .= $kpi('Payback', "{$paybackDiasDist} días", $okDist ? '✓ Dentro del período de venta' : '⚠ Supera el período de venta', $okDist ? $cGreen : $cAmb, true);
-                                            } else {
-                                                $html .= $kpi('Payback', '—', 'Ingresa PVP de venta', $cGray, true);
-                                            }
-                                        } else {
-                                            $html .= $kpi('Payback', '—', 'Requiere días de venta', $cGray, true);
-                                        }
-                                        $html .= '</div></div>';
-
-                                        // ── D6: Párrafo estratégico ──────────────────────
-                                        $pvpDistPar     = '$' . number_format($pvpDistribuidor, 2);
-                                        $pvpDistIvaPar  = '$' . number_format($pvpDistribuidor * 1.15, 2);
-                                        $ingDistPar     = '$' . number_format($ingresoNetoDist, 2);
-                                        $utilDistPar    = '$' . number_format($utilidadNetaDist, 2);
-                                        $utilUnitDistPar = '$' . number_format($utilPorUnitDist, 4);
-                                        $roiDistPar     = number_format($roiDist, 1) . '%';
-                                        $margenDistNPar = number_format($margenNetoDist, 1) . '%';
-                                        $difUtilPar     = ($difUtil >= 0 ? '+' : '') . '$' . number_format($difUtil, 2);
-                                        $paybackDistStr = $paybackDiasDist !== null ? $paybackDiasDist . ' días' : 'N/D';
-
-                                        $comparacion = $difUtil >= 0
-                                            ? "Aunque el precio unitario es menor que el canal directo, la certeza de ventas en volumen ({$cantMinDist}+ u. por pedido) puede compensar con menor riesgo de inventario sin vender."
-                                            : "El canal distribuidor genera <strong style=\"color:{$cRed};\">{$difUtilPar}</strong> menos de utilidad que la venta directa. Evalúa si el beneficio en volumen y menor costo de venta justifica este sacrificio de margen.";
-
-                                        $parrafoDist = "Si destinas toda tu producción de <strong>" . number_format($cantidad, 0) . " unidades</strong> al canal distribuidor, "
-                                            . "las vendes a <strong>{$pvpDistPar} / u.</strong> (sin IVA; {$pvpDistIvaPar} con IVA al distribuidor), "
-                                            . "generando un ingreso total de <strong>{$ingDistPar}</strong>. "
-                                            . "Tu <strong>utilidad neta será {$utilDistPar}</strong> — <strong>{$utilUnitDistPar} / unidad</strong>, "
-                                            . "con margen del <strong>{$margenDistNPar}</strong> y ROI del <strong>{$roiDistPar}</strong>. "
-                                            . "Necesitas vender al menos <strong>" . number_format($unidadesPaybackDist) . " unidades</strong> para recuperar tu inversión"
-                                            . ($paybackDiasDist !== null ? " (~{$paybackDistStr})" : "") . ". "
-                                            . $comparacion;
-
-                                        $distBadgeColor  = $utilidadNetaDist >= 0 ? '#6d28d9' : '#dc2626';
-                                        $distBadgeBg     = $utilidadNetaDist >= 0 ? '#f5f3ff' : '#fef2f2';
-                                        $distBadgeBorder = $utilidadNetaDist >= 0 ? '#c4b5fd' : '#fecaca';
-                                        $distLabel       = $utilidadNetaDist >= 0 ? '✓ RENTABLE EN DISTRIBUCIÓN' : '✗ NO RENTABLE EN DISTRIBUCIÓN';
-
-                                        $html .= '<div style="margin-bottom:1.25rem;padding:1.25rem 1.5rem;border-radius:0.75rem;background:#f5f3ff;border:1px solid #c4b5fd;">'
-                                            . '<p style="font-weight:700;color:#4c1d95;font-size:0.9rem;margin-bottom:0.75rem;">🚚 Análisis Estratégico — Canal Distribuidores</p>'
-                                            . '<p style="font-size:0.82rem;color:#374151;line-height:1.7;">' . $parrafoDist . '</p>'
-                                            . '<hr style="border:none;border-top:1px solid #c4b5fd;margin:0.75rem 0;">'
-                                            . '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">'
-                                            . '<span style="font-size:0.75rem;font-weight:700;color:#4c1d95;">🎯 Precio Distribuidor: ' . $pvpDistPar . ' | Margen: ' . $margenDistPct . '%</span>'
-                                            . '<span style="padding:0.2rem 0.75rem;border-radius:999px;font-size:0.7rem;font-weight:700;background:' . $distBadgeBg . ';border:1px solid ' . $distBadgeBorder . ';color:' . $distBadgeColor . ';">' . $distLabel . '</span>'
-                                            . '<span style="font-size:0.7rem;color:#6d28d9;">Diferencia vs venta directa: <strong style="color:' . $difColor . ';">' . $difSign . '$ ' . $fmt(abs($difUtil)) . '</strong></span>'
-                                            . '</div>'
-                                            . '</div>';
-                                    }
-
-                                    $html .= '</div>'; // cierre bloque distribuidores
 
                                     return new \Illuminate\Support\HtmlString($html);
                                 }),
@@ -2337,9 +2240,12 @@ class ProductDesignResource extends Resource
                                         }
                                         $totalInd = $totalMO + $totalOtrosInd;
 
-                                        $costoTotal    = $totalMat + $totalInd;
+                                        // Costos fijos de empresa prorrateados
+                                        $totalFijosEmpresa = self::costosFijosMensuales() * $fracMes;
+
+                                        $costoTotal    = $totalMat + $totalInd + $totalFijosEmpresa;
                                         $costoUnitario = $cantidad > 0 ? $costoTotal / $cantidad : 0;
-                                        $inversionReal = $totalMatComprar + $totalInd;
+                                        $inversionReal = $totalMatComprar + $totalInd + $totalFijosEmpresa;
 
                                         if ($pvpSinIva <= 0 && $margenPct > 0) {
                                             $div = 1 - $margenPct / 100;
@@ -2426,8 +2332,9 @@ class ProductDesignResource extends Resource
                                         $html .= $tr2('Total materias primas', '$ ' . $fmt($totalMat), true);
                                         $html .= $tr2('Mano de obra', '$ ' . $fmt($totalMO), false, '', true);
                                         $html .= $tr2('Otros costos indirectos', '$ ' . $fmt($totalOtrosInd), false, '', true);
+                                        $html .= $tr2('Costos fijos empresa (prorrateo)', '$ ' . $fmt($totalFijosEmpresa), false, '#7c3aed', true);
                                         $html .= $tr2('Total costo de producción', '$ ' . $fmt($costoTotal), true, '#dc2626');
-                                        $html .= $tr2('Inversión a desembolsar (compras + MO + indirectos)', '$ ' . $fmt($inversionReal), false, '#7c3aed');
+                                        $html .= $tr2('Inversión a desembolsar', '$ ' . $fmt($inversionReal), false, '#7c3aed');
                                         $html .= $tr2('Costo por unidad', '$ ' . $fmt($costoUnitario), false, '#1e40af');
                                         $html .= '</table>';
 
@@ -3234,6 +3141,327 @@ class ProductDesignResource extends Resource
                                     }),
                             ])->columnSpanFull(),
                         ]),
+                    Tab::make('Punto de Equilibrio')
+                        ->icon('heroicon-o-scale')
+                        ->schema([
+                            \Filament\Forms\Components\Placeholder::make('_equilibrio_panel')
+                                ->label('')
+                                ->content(function (callable $get): \Illuminate\Support\HtmlString {
+                                    $fmt = fn ($v) => number_format((float) $v, 2);
+                                    $pct = fn ($v) => number_format((float) $v, 1) . '%';
+                                    $tenant = \Filament\Facades\Filament::getTenant();
+
+                                    // ── Costos fijos de empresa ──
+                                    $costosFijos = $tenant
+                                        ? \App\Models\CostoFijo::where('empresa_id', $tenant->id)->where('activo', true)->get()
+                                        : collect();
+                                    $totalFijosMensual = $costosFijos->sum(fn ($cf) => $cf->monto_mensual);
+
+                                    // ── Costo unitario de producto ──
+                                    $presKey   = $get('_plan_presentation_id');
+                                    $cantidad  = (float) ($get('_plan_cantidad') ?? 0);
+                                    $capacidad = (float) ($get('capacidad_instalada_mensual') ?? 0);
+                                    $pres      = ($get('presentations') ?? [])[$presKey] ?? null;
+
+                                    if (!$pres || $cantidad <= 0) {
+                                        $html = '<div style="padding:2rem;text-align:center;border:2px dashed #e5e7eb;border-radius:0.75rem;color:#6b7280;">'
+                                            . '<p style="font-size:0.9rem;margin-bottom:0.5rem;">⚖️ Configura la simulación primero</p>'
+                                            . '<p style="font-size:0.78rem;">Selecciona una presentación y cantidad en la pestaña <strong>Simulación y Análisis</strong>.</p>'
+                                            . '</div>';
+
+                                        // Mostrar tabla de fijos aunque no haya simulación
+                                        if ($costosFijos->isNotEmpty()) {
+                                            $html .= '<div style="margin-top:1.5rem;">';
+                                            $html .= self::renderTablaCostosFijos($costosFijos, $totalFijosMensual);
+                                            $html .= '</div>';
+                                        }
+                                        return new \Illuminate\Support\HtmlString($html);
+                                    }
+
+                                    $lote   = max((float) ($pres['cantidad_minima_produccion'] ?? 1), 0.0001);
+                                    $factor = $cantidad / $lote;
+                                    $fracMes = $capacidad > 0 ? $cantidad / $capacidad : 0;
+
+                                    // ── Materiales ──
+                                    $totalMat = 0;
+                                    foreach ($pres['formulaLines'] ?? [] as $line) {
+                                        $item = ($line['inventory_item_id'] ?? null) ? \App\Models\InventoryItem::find($line['inventory_item_id']) : null;
+                                        $cantBase = (float) ($line['cantidad'] ?? 0);
+                                        $factorConv = max((float) ($item?->conversion_factor ?? 1), 0.000001);
+                                        $puId = $item?->purchase_unit_id ?? null;
+                                        $fUnitId = $line['measurement_unit_id'] ?? null;
+                                        $stockUnitId = $item?->measurement_unit_id;
+                                        $cantNecF = round($cantBase * $factor, 6);
+                                        if ($fUnitId == $stockUnitId || !$fUnitId) $cantNecS = $cantNecF;
+                                        elseif ($puId && $fUnitId == $puId && $puId != $stockUnitId) $cantNecS = round($cantNecF * $factorConv, 6);
+                                        else $cantNecS = round($cantNecF / $factorConv, 6);
+                                        [$cPorU] = self::costoLinea($item, 1, $fUnitId);
+                                        $totalMat += $cPorU * $cantNecS;
+                                    }
+
+                                    // ── MO + Indirectos ──
+                                    $personas = (float) ($get('num_personas') ?? 0);
+                                    $costoMo  = (float) ($get('costo_mano_obra_persona') ?? 0);
+                                    $totalMO  = $personas * $costoMo * $fracMes;
+                                    $totalOtrosInd = 0;
+                                    foreach ($get('indirectCosts') ?? [] as $ind) {
+                                        $m = (float) ($ind['monto_mensual'] ?? 0);
+                                        $totalOtrosInd += match ($ind['frecuencia'] ?? 'mensual') {
+                                            'semanal' => $m * 4.33 * $fracMes,
+                                            'unico'   => $m,
+                                            default   => $m * $fracMes,
+                                        };
+                                    }
+
+                                    // ── Costos fijos prorrateados ──
+                                    $totalFijosProrr = $totalFijosMensual * $fracMes;
+
+                                    // ── Totales ──
+                                    $costoVariable   = $totalMat + $totalMO + $totalOtrosInd;
+                                    $costoTotal      = $costoVariable + $totalFijosProrr;
+                                    $costoUnitario   = $cantidad > 0 ? $costoTotal / $cantidad : 0;
+                                    $costoVarUnit    = $cantidad > 0 ? $costoVariable / $cantidad : 0;
+                                    $costoFijoUnit   = $cantidad > 0 ? $totalFijosProrr / $cantidad : 0;
+                                    $matUnit         = $cantidad > 0 ? $totalMat / $cantidad : 0;
+                                    $moUnit          = $cantidad > 0 ? $totalMO / $cantidad : 0;
+                                    $indUnit         = $cantidad > 0 ? $totalOtrosInd / $cantidad : 0;
+
+                                    // ── PVP ──
+                                    $incluyeIva = (bool) ($get('_plan_pvp_incluye_iva') ?? false);
+                                    $pvpCampo   = (float) ($get('_plan_pvp_venta') ?? 0);
+                                    if ($pvpCampo > 0) {
+                                        $pvpSinIva = $incluyeIva ? round($pvpCampo / 1.15, 4) : $pvpCampo;
+                                    } else {
+                                        $margenPct = (float) ($get('_plan_margen_venta') ?? 0);
+                                        if ($margenPct <= 0) $margenPct = (float) ($pres['margen_objetivo'] ?? 30);
+                                        $div = 1 - ($margenPct / 100);
+                                        $pvpSinIva = ($div > 0 && $costoUnitario > 0) ? round($costoUnitario / $div, 2) : 0;
+                                    }
+                                    $pvpConIva      = round($pvpSinIva * 1.15, 2);
+                                    $margenUnit     = $pvpSinIva - $costoUnitario;
+                                    $margenPctCalc  = $pvpSinIva > 0 ? ($margenUnit / $pvpSinIva) * 100 : 0;
+                                    $ivaUnit        = round($pvpSinIva * 0.15, 4);
+
+                                    // ── Contribución y Punto de Equilibrio ──
+                                    $contribucionUnit = $pvpSinIva - $costoVarUnit; // margen de contribución
+                                    $peUnidades       = $contribucionUnit > 0 ? ceil($totalFijosMensual / $contribucionUnit) : null;
+                                    $peMonetario      = $peUnidades !== null ? $peUnidades * $pvpSinIva : null;
+                                    $coberturaPct     = ($peUnidades !== null && $peUnidades > 0) ? min(($cantidad / $peUnidades) * 100, 999) : null;
+
+                                    // Distribuidor
+                                    $pvpDist        = (float) ($get('precio_distribuidor') ?? 0);
+                                    $contribDistUnit = $pvpDist - $costoVarUnit;
+                                    $peUnidadesDist  = ($pvpDist > 0 && $contribDistUnit > 0) ? ceil($totalFijosMensual / $contribDistUnit) : null;
+
+                                    // ── RENDER HTML ──
+                                    $cBlue  = '#2563eb'; $cGreen = '#16a34a'; $cRed = '#dc2626';
+                                    $cAmb   = '#d97706'; $cPurp  = '#7c3aed'; $cGray = '#6b7280';
+
+                                    $html = '';
+
+                                    // ══════════════════════════════════════════════════
+                                    // 1. ESTRUCTURA DEL PVP
+                                    // ══════════════════════════════════════════════════
+                                    $html .= '<div style="margin-bottom:2rem;">';
+                                    $html .= '<div style="margin-bottom:0.75rem;padding:0.6rem 1rem;background:#f0fdf4;border-radius:0.5rem;border:1px solid #bbf7d0;">'
+                                        . '<span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#15803d;">💰 COMPOSICIÓN DEL PRECIO DE VENTA</span>'
+                                        . '<span style="float:right;font-size:0.7rem;color:#16a34a;">PVP: $ ' . $fmt($pvpConIva) . ' (con IVA)</span>'
+                                        . '</div>';
+
+                                    // Barra visual proporcional
+                                    $parts = [
+                                        ['Materiales', $matUnit, '#ef4444'],
+                                        ['M.O.', $moUnit, '#f97316'],
+                                        ['Indirectos', $indUnit, '#eab308'],
+                                        ['Fijos Empresa', $costoFijoUnit, '#8b5cf6'],
+                                        ['Margen', max($margenUnit, 0), '#22c55e'],
+                                    ];
+                                    $totalBar = $pvpSinIva > 0 ? $pvpSinIva : 1;
+
+                                    $html .= '<div style="display:flex;height:2rem;border-radius:0.5rem;overflow:hidden;margin-bottom:0.5rem;border:1px solid #e5e7eb;">';
+                                    foreach ($parts as $p) {
+                                        $w = ($p[1] / $totalBar) * 100;
+                                        if ($w < 0.5) continue;
+                                        $html .= '<div style="width:' . number_format($w, 1) . '%;background:' . $p[2] . ';display:flex;align-items:center;justify-content:center;">'
+                                            . '<span style="font-size:0.55rem;color:#fff;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,0.3);white-space:nowrap;">' . $p[0] . '</span>'
+                                            . '</div>';
+                                    }
+                                    $html .= '</div>';
+
+                                    // Leyenda
+                                    $html .= '<div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">';
+                                    foreach ($parts as $p) {
+                                        $pctPvp = $pvpSinIva > 0 ? ($p[1] / $pvpSinIva) * 100 : 0;
+                                        $html .= '<span style="font-size:0.68rem;color:#374151;">'
+                                            . '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' . $p[2] . ';margin-right:4px;"></span>'
+                                            . $p[0] . ': $ ' . number_format($p[1], 4) . ' (' . number_format($pctPvp, 1) . '%)'
+                                            . '</span>';
+                                    }
+                                    $html .= '</div>';
+
+                                    // Tabla detallada
+                                    $html .= '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">';
+                                    $thStyle = 'style="padding:0.4rem 0.75rem;background:#f8fafc;border-bottom:2px solid #e5e7eb;text-align:left;font-size:0.68rem;color:#475569;text-transform:uppercase;letter-spacing:0.05em;"';
+                                    $html .= '<thead><tr><th ' . $thStyle . '>Componente</th><th ' . $thStyle . ' style="text-align:right;">$/Unidad</th><th ' . $thStyle . ' style="text-align:right;">% del PVP</th><th ' . $thStyle . ' style="text-align:right;">Total (' . number_format($cantidad, 0) . ' u.)</th></tr></thead>';
+                                    $html .= '<tbody>';
+
+                                    $row = function (string $label, float $perUnit, string $color = '', bool $bold = false, bool $indent = false) use ($pvpSinIva, $cantidad, $fmt) {
+                                        $pctPvp = $pvpSinIva > 0 ? ($perUnit / $pvpSinIva) * 100 : 0;
+                                        $total  = $perUnit * $cantidad;
+                                        $fw = $bold ? 'font-weight:700;' : '';
+                                        $cl = $color ? 'color:' . $color . ';' : '';
+                                        $pl = $indent ? 'padding-left:1.5rem;' : '';
+                                        return '<tr style="border-bottom:1px solid #f1f5f9;">'
+                                            . '<td style="padding:0.4rem 0.75rem;' . $fw . $cl . $pl . '">' . $label . '</td>'
+                                            . '<td style="padding:0.4rem 0.75rem;text-align:right;font-family:monospace;' . $fw . $cl . '">$ ' . number_format($perUnit, 4) . '</td>'
+                                            . '<td style="padding:0.4rem 0.75rem;text-align:right;' . $fw . $cl . '">' . number_format($pctPvp, 1) . '%</td>'
+                                            . '<td style="padding:0.4rem 0.75rem;text-align:right;font-family:monospace;' . $fw . $cl . '">$ ' . $fmt($total) . '</td>'
+                                            . '</tr>';
+                                    };
+
+                                    $html .= $row('Materias primas', $matUnit, '#ef4444', false, true);
+                                    $html .= $row('Mano de obra', $moUnit, '#f97316', false, true);
+                                    $html .= $row('Costos indirectos producto', $indUnit, '#eab308', false, true);
+                                    $html .= $row('Costos fijos empresa', $costoFijoUnit, '#8b5cf6', false, true);
+                                    $html .= '<tr style="border-top:2px solid #e5e7eb;background:#f8fafc;">';
+                                    $html .= $row('= Costo Total', $costoUnitario, $cRed, true);
+                                    $html .= $row('+ Margen (' . number_format($margenPctCalc, 1) . '%)', $margenUnit, $cGreen, true);
+                                    $html .= '<tr style="border-top:2px solid #1e293b;background:#1e293b;">';
+                                    $html .= '<td style="padding:0.5rem 0.75rem;font-weight:700;color:#fff;">= PVP sin IVA</td>'
+                                        . '<td style="padding:0.5rem 0.75rem;text-align:right;font-family:monospace;font-weight:700;color:#fff;">$ ' . number_format($pvpSinIva, 4) . '</td>'
+                                        . '<td style="padding:0.5rem 0.75rem;text-align:right;font-weight:700;color:#fff;">100%</td>'
+                                        . '<td style="padding:0.5rem 0.75rem;text-align:right;font-family:monospace;font-weight:700;color:#fff;">$ ' . $fmt($pvpSinIva * $cantidad) . '</td>';
+                                    $html .= '</tr>';
+                                    $html .= $row('+ IVA 15%', $ivaUnit, $cGray);
+                                    $html .= '<tr style="background:#f0fdf4;">';
+                                    $html .= '<td style="padding:0.5rem 0.75rem;font-weight:700;color:' . $cGreen . ';">= PVP al Público</td>'
+                                        . '<td style="padding:0.5rem 0.75rem;text-align:right;font-family:monospace;font-weight:700;color:' . $cGreen . ';">$ ' . number_format($pvpConIva, 4) . '</td>'
+                                        . '<td style="padding:0.5rem 0.75rem;text-align:right;font-weight:700;color:' . $cGreen . ';">115%</td>'
+                                        . '<td style="padding:0.5rem 0.75rem;text-align:right;font-family:monospace;font-weight:700;color:' . $cGreen . ';">$ ' . $fmt($pvpConIva * $cantidad) . '</td>';
+                                    $html .= '</tr>';
+                                    $html .= '</tbody></table>';
+                                    $html .= '</div>';
+
+                                    // ══════════════════════════════════════════════════
+                                    // 2. COSTOS FIJOS DE LA EMPRESA
+                                    // ══════════════════════════════════════════════════
+                                    $html .= self::renderTablaCostosFijos($costosFijos, $totalFijosMensual);
+
+                                    // ══════════════════════════════════════════════════
+                                    // 3. PUNTO DE EQUILIBRIO
+                                    // ══════════════════════════════════════════════════
+                                    $html .= '<div style="margin-top:2rem;">';
+                                    $html .= '<div style="margin-bottom:0.75rem;padding:0.6rem 1rem;background:#fef3c7;border-radius:0.5rem;border:1px solid #fde68a;">'
+                                        . '<span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#92400e;">⚖️ PUNTO DE EQUILIBRIO</span>'
+                                        . '</div>';
+
+                                    // KPIs
+                                    $kpi = function (string $label, string $value, string $sub, string $color, bool $last = false) {
+                                        $border = $last ? '' : 'border-right:1px solid #f1f5f9;';
+                                        return '<div style="padding:1rem;text-align:center;' . $border . '">'
+                                            . '<p style="font-size:0.62rem;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem;">' . $label . '</p>'
+                                            . '<p style="font-size:1.5rem;font-weight:800;color:' . $color . ';line-height:1.1;">' . $value . '</p>'
+                                            . '<p style="font-size:0.65rem;color:#9ca3af;margin-top:0.15rem;">' . $sub . '</p>'
+                                            . '</div>';
+                                    };
+
+                                    $html .= '<div style="display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #e5e7eb;border-radius:0.75rem;overflow:hidden;margin-bottom:1.25rem;">';
+
+                                    // Contribución por unidad
+                                    $html .= $kpi(
+                                        'Contribución / unidad',
+                                        '$ ' . number_format($contribucionUnit, 4),
+                                        'PVP sin IVA − Costo variable',
+                                        $contribucionUnit > 0 ? $cGreen : $cRed
+                                    );
+
+                                    // PE en unidades
+                                    $html .= $kpi(
+                                        'Equilibrio (unidades)',
+                                        $peUnidades !== null ? number_format($peUnidades) . ' u.' : '—',
+                                        $peUnidades !== null ? 'Para cubrir $ ' . $fmt($totalFijosMensual) . ' /mes de fijos' : 'Contribución ≤ 0',
+                                        $cAmb
+                                    );
+
+                                    // PE monetario
+                                    $html .= $kpi(
+                                        'Equilibrio (monetario)',
+                                        $peMonetario !== null ? '$ ' . $fmt($peMonetario) : '—',
+                                        'Ventas mensuales necesarias',
+                                        $cBlue
+                                    );
+
+                                    // Cobertura
+                                    $cobColor = $coberturaPct === null ? $cGray : ($coberturaPct >= 100 ? $cGreen : ($coberturaPct >= 50 ? $cAmb : $cRed));
+                                    $html .= $kpi(
+                                        'Cobertura esta producción',
+                                        $coberturaPct !== null ? number_format($coberturaPct, 1) . '%' : '—',
+                                        number_format($cantidad, 0) . ' u. planificadas de ' . ($peUnidades !== null ? number_format($peUnidades) : '?') . ' necesarias',
+                                        $cobColor,
+                                        true
+                                    );
+                                    $html .= '</div>';
+
+                                    // Barra de progreso visual
+                                    if ($coberturaPct !== null) {
+                                        $barPct = min($coberturaPct, 100);
+                                        $barColor = $coberturaPct >= 100 ? '#22c55e' : ($coberturaPct >= 50 ? '#f59e0b' : '#ef4444');
+                                        $html .= '<div style="margin-bottom:1.25rem;">';
+                                        $html .= '<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#6b7280;margin-bottom:0.3rem;">'
+                                            . '<span>0%</span><span>Punto de Equilibrio (100%)</span>'
+                                            . '</div>';
+                                        $html .= '<div style="position:relative;height:1.5rem;background:#f1f5f9;border-radius:999px;overflow:hidden;">';
+                                        $html .= '<div style="height:100%;width:' . number_format($barPct, 1) . '%;background:' . $barColor . ';border-radius:999px;transition:width 0.5s;display:flex;align-items:center;justify-content:center;">';
+                                        if ($barPct > 15) {
+                                            $html .= '<span style="font-size:0.6rem;font-weight:700;color:#fff;">' . number_format($coberturaPct, 1) . '%</span>';
+                                        }
+                                        $html .= '</div></div>';
+                                        if ($coberturaPct >= 100) {
+                                            $html .= '<p style="margin-top:0.5rem;font-size:0.75rem;color:' . $cGreen . ';font-weight:600;">✓ Esta producción cubre el punto de equilibrio y genera utilidad adicional.</p>';
+                                        } else {
+                                            $faltantes = $peUnidades !== null ? $peUnidades - $cantidad : 0;
+                                            $html .= '<p style="margin-top:0.5rem;font-size:0.75rem;color:' . $cAmb . ';">⚠ Faltan <strong>' . number_format(max($faltantes, 0)) . ' unidades</strong> para alcanzar el punto de equilibrio. Necesitas otros productos o más volumen.</p>';
+                                        }
+                                        $html .= '</div>';
+                                    }
+
+                                    // ── Comparativa por canal ──
+                                    if ($pvpDist > 0 && $peUnidades !== null) {
+                                        $html .= '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.25rem;">';
+
+                                        // Venta directa
+                                        $html .= '<div style="padding:1rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:0.75rem;">'
+                                            . '<p style="font-size:0.72rem;font-weight:700;color:#1e40af;margin-bottom:0.5rem;">🏪 Venta Directa</p>'
+                                            . '<p style="font-size:0.68rem;color:#374151;">Contribución/u.: <strong>$ ' . number_format($contribucionUnit, 4) . '</strong></p>'
+                                            . '<p style="font-size:0.68rem;color:#374151;">Equilibrio: <strong>' . number_format($peUnidades) . ' unidades</strong></p>'
+                                            . '<p style="font-size:0.68rem;color:#374151;">Ventas: <strong>$ ' . $fmt($peMonetario) . '</strong></p>'
+                                            . '</div>';
+
+                                        // Distribuidores
+                                        $html .= '<div style="padding:1rem;background:#f5f3ff;border:1px solid #c4b5fd;border-radius:0.75rem;">'
+                                            . '<p style="font-size:0.72rem;font-weight:700;color:#6d28d9;margin-bottom:0.5rem;">🚚 Distribuidores</p>'
+                                            . '<p style="font-size:0.68rem;color:#374151;">Contribución/u.: <strong>$ ' . number_format($contribDistUnit, 4) . '</strong></p>'
+                                            . '<p style="font-size:0.68rem;color:#374151;">Equilibrio: <strong>' . ($peUnidadesDist !== null ? number_format($peUnidadesDist) . ' unidades' : 'N/A') . '</strong></p>'
+                                            . '<p style="font-size:0.68rem;color:#374151;">Ventas: <strong>' . ($peUnidadesDist !== null ? '$ ' . $fmt($peUnidadesDist * $pvpDist) : 'N/A') . '</strong></p>'
+                                            . '</div>';
+
+                                        $html .= '</div>';
+                                    }
+
+                                    // Nota explicativa
+                                    $html .= '<p style="font-size:0.68rem;color:' . $cGray . ';line-height:1.6;">'
+                                        . '* <strong>Punto de equilibrio</strong>: cantidad mínima mensual para cubrir los costos fijos de la empresa con la contribución de este producto. '
+                                        . '* <strong>Margen de contribución</strong>: PVP sin IVA − costo variable unitario (materiales + MO + indirectos del producto). '
+                                        . '* Los costos fijos se prorratean según la fracción de capacidad utilizada (cantidad / capacidad mensual).'
+                                        . '</p>';
+
+                                    $html .= '</div>';
+
+                                    return new \Illuminate\Support\HtmlString($html);
+                                })
+                                ->columnSpanFull(),
+                        ]),
+
                 ])
                 ->columnSpanFull(),
         ]);
@@ -3299,6 +3527,109 @@ class ProductDesignResource extends Resource
             $set('_precio_compra', (float) $item->purchase_price);
             $set('_factor', max((float) ($item->conversion_factor ?? 1), 0.000001));
         }
+    }
+
+    /**
+     * Obtiene el total mensual de costos fijos activos de la empresa actual.
+     * Usado en planCostoUnitario(), liquidación y calcEscenario().
+     */
+    public static function costosFijosMensuales(): float
+    {
+        $tenant = \Filament\Facades\Filament::getTenant();
+        if (!$tenant) return 0;
+
+        return \App\Models\CostoFijo::where('empresa_id', $tenant->id)
+            ->where('activo', true)
+            ->get()
+            ->sum(fn ($cf) => $cf->monto_mensual);
+    }
+
+    /**
+     * Renderiza la tabla HTML de costos fijos de empresa agrupada por categoría.
+     */
+    /**
+     * Renderiza la lista compacta de simulaciones activas para el panel de capacidad.
+     */
+    public static function renderListaSimulaciones($sims): string
+    {
+        $html = '<div style="margin-top:0.75rem;">';
+        $html .= '<p style="font-size:0.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">Simulaciones en proyecto:</p>';
+        $html .= '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        foreach ($sims as $sim) {
+            $html .= '<span style="padding:0.25rem 0.6rem;border-radius:999px;font-size:0.68rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;">'
+                . '<strong>' . e($sim->nombre) . '</strong>'
+                . ' · ' . e($sim->presentation_nombre)
+                . ' · ' . number_format($sim->cantidad, 0) . ' u.'
+                . '</span>';
+        }
+        $html .= '</div></div>';
+        return $html;
+    }
+
+    public static function renderTablaCostosFijos($costosFijos, float $totalMensual): string
+    {
+        $fmt = fn ($v) => number_format((float) $v, 2);
+
+        $html = '<div style="margin-top:1.5rem;">';
+        $html .= '<div style="margin-bottom:0.75rem;padding:0.6rem 1rem;background:#f5f3ff;border-radius:0.5rem;border:1px solid #c4b5fd;">'
+            . '<span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#4c1d95;">🏢 COSTOS FIJOS DE LA EMPRESA</span>'
+            . '<span style="float:right;font-size:0.7rem;color:#6d28d9;">Total mensual: $ ' . $fmt($totalMensual) . '</span>'
+            . '</div>';
+
+        if ($costosFijos->isEmpty()) {
+            $html .= '<div style="padding:1.5rem;border:2px dashed #c4b5fd;border-radius:0.75rem;text-align:center;color:#7c3aed;">'
+                . '<p style="font-size:0.85rem;margin-bottom:0.4rem;">Sin costos fijos registrados</p>'
+                . '<p style="font-size:0.75rem;color:#a78bfa;">Ingresa los costos fijos de tu empresa en <strong>Planificación → Costos Fijos</strong> para un análisis más preciso.</p>'
+                . '</div>';
+            $html .= '</div>';
+            return $html;
+        }
+
+        $grouped = $costosFijos->groupBy('categoria');
+
+        $html .= '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">';
+        $thStyle = 'style="padding:0.4rem 0.75rem;background:#f8fafc;border-bottom:2px solid #e5e7eb;text-align:left;font-size:0.68rem;color:#475569;text-transform:uppercase;letter-spacing:0.05em;"';
+        $html .= '<thead><tr>'
+            . '<th ' . $thStyle . '>Concepto</th>'
+            . '<th ' . $thStyle . '>Categoría</th>'
+            . '<th ' . $thStyle . ' style="text-align:right;">Monto</th>'
+            . '<th ' . $thStyle . ' style="text-align:center;">Frecuencia</th>'
+            . '<th ' . $thStyle . ' style="text-align:right;">Equiv. Mensual</th>'
+            . '</tr></thead><tbody>';
+
+        $catColors = [
+            'Instalaciones' => '#3b82f6', 'Servicios' => '#06b6d4', 'Personal' => '#f97316',
+            'Tecnología' => '#8b5cf6', 'Marketing' => '#ec4899', 'Financiero' => '#eab308', 'Operativo' => '#6b7280',
+        ];
+
+        foreach ($grouped as $cat => $items) {
+            $catColor = $catColors[$cat] ?? '#6b7280';
+            $subtotal = $items->sum(fn ($cf) => $cf->monto_mensual);
+            foreach ($items as $i => $cf) {
+                $html .= '<tr style="border-bottom:1px solid #f1f5f9;">'
+                    . '<td style="padding:0.4rem 0.75rem;">' . e($cf->nombre) . '</td>'
+                    . '<td style="padding:0.4rem 0.75rem;"><span style="padding:0.1rem 0.5rem;border-radius:999px;font-size:0.65rem;font-weight:600;background:' . $catColor . '1a;color:' . $catColor . ';">' . e($cat) . '</span></td>'
+                    . '<td style="padding:0.4rem 0.75rem;text-align:right;font-family:monospace;">$ ' . $fmt($cf->monto) . '</td>'
+                    . '<td style="padding:0.4rem 0.75rem;text-align:center;font-size:0.7rem;color:#6b7280;">' . ucfirst($cf->frecuencia) . '</td>'
+                    . '<td style="padding:0.4rem 0.75rem;text-align:right;font-family:monospace;font-weight:600;color:#4c1d95;">$ ' . $fmt($cf->monto_mensual) . '</td>'
+                    . '</tr>';
+            }
+            // Subtotal por categoría
+            $html .= '<tr style="background:#f8fafc;border-bottom:2px solid #e5e7eb;">'
+                . '<td colspan="4" style="padding:0.3rem 0.75rem;font-size:0.7rem;font-weight:600;color:' . $catColor . ';text-align:right;">Subtotal ' . e($cat) . '</td>'
+                . '<td style="padding:0.3rem 0.75rem;text-align:right;font-family:monospace;font-weight:700;color:' . $catColor . ';">$ ' . $fmt($subtotal) . '</td>'
+                . '</tr>';
+        }
+
+        // Total general
+        $html .= '<tr style="background:#1e293b;">'
+            . '<td colspan="4" style="padding:0.5rem 0.75rem;font-weight:700;color:#fff;">TOTAL MENSUAL</td>'
+            . '<td style="padding:0.5rem 0.75rem;text-align:right;font-family:monospace;font-weight:700;color:#fbbf24;">$ ' . $fmt($totalMensual) . '</td>'
+            . '</tr>';
+        $html .= '</tbody></table>';
+        $html .= '</div>';
+
+        return $html;
     }
 
     /**
@@ -3401,7 +3732,10 @@ class ProductDesignResource extends Resource
             };
         }
 
-        return $cantidad > 0 ? ($totalMat + $totalInd) / $cantidad : 0;
+        // Costos fijos de empresa prorrateados
+        $totalFijosEmpresa = self::costosFijosMensuales() * $fracMes;
+
+        return $cantidad > 0 ? ($totalMat + $totalInd + $totalFijosEmpresa) / $cantidad : 0;
     }
 
     /**
@@ -3638,9 +3972,12 @@ class ProductDesignResource extends Resource
             };
         }
 
-        $costoTotal  = $matStock + $matComprar + $totalMO + $totalOtros;
+        // Costos fijos de empresa prorrateados
+        $totalFijosEmpresa = self::costosFijosMensuales() * $fracMes;
+
+        $costoTotal  = $matStock + $matComprar + $totalMO + $totalOtros + $totalFijosEmpresa;
         $costoU      = $cantEsc > 0 ? $costoTotal / $cantEsc : 0;
-        $inversion   = $matComprar + $totalMO + $totalOtros;
+        $inversion   = $matComprar + $totalMO + $totalOtros + $totalFijosEmpresa;
 
         $pvpBase = $pvpSinIva;
         if ($pvpBase <= 0 && $margenPct > 0) {
