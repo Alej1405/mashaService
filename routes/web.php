@@ -86,6 +86,10 @@ Route::get('/carta-preview/{slug}', function (string $slug) {
     return view("emails.carta-templates.{$template}", compact('empresa', 'carta', 'servicios', 'contacto'));
 })->name('carta.preview');
 
+Route::get('/app/{empresa}/debts/{debt}/payments/print', [\App\Http\Controllers\DebtPrintController::class, 'paymentHistory'])
+    ->middleware(['auth'])
+    ->name('debt.payments.print');
+
 Route::get('/fichas/download/{file}', function ($file) {
     if (!Auth::check()) {
         abort(403);

@@ -520,6 +520,245 @@ class AccountingService
     }
 
     /**
+     * Genera el asiento contable al activar una Deuda (préstamo recibido).
+     */
+    public function generarAsientoDeuda(\App\Models\Debt $debt): JournalEntry
+    {
+        return DB::transaction(function () use ($debt) {
+            $monto = (float) $debt->monto_original;
+
+            $cuentaPasivo = $this->getCuentaPasivoDeuda($debt);
+            $cuentaActivo = $this->getCuentaActivoDeuda($debt);
+
+            $entry = JournalEntry::create([
+                'empresa_id'      => $debt->empresa_id,
+                'fecha'           => $debt->fecha_inicio,
+                'descripcion'     => "Préstamo recibido: {$debt->acreedor} - {$debt->numero}",
+                'tipo'            => 'ajuste',
+                'origen'          => 'automatico',
+                'referencia_tipo' => 'debt',
+                'referencia_id'   => $debt->id,
+                'status'          => 'confirmado',
+                'total_debe'      => $monto,
+                'total_haber'     => $monto,
+                'esta_cuadrado'   => true,
+                'confirmado_por'  => Auth::id(),
+                'confirmado_at'   => now(),
+            ]);
+
+            // DR: Banco/Caja (activo aumenta)
+            JournalEntryLine::create([
+                'journal_entry_id' => $entry->id,
+                'account_plan_id'  => $cuentaActivo->id,
+                'descripcion'      => "Préstamo recibido {$debt->numero} - {$debt->acreedor}",
+                'debe'             => $monto,
+                'haber'            => 0,
+                'orden'            => 1,
+            ]);
+
+            // CR: Préstamo por Pagar (pasivo aumenta)
+            JournalEntryLine::create([
+                'journal_entry_id' => $entry->id,
+                'account_plan_id'  => $cuentaPasivo->id,
+                'descripcion'      => "Préstamo por pagar - {$debt->acreedor}",
+                'debe'             => 0,
+                'haber'            => $monto,
+                'orden'            => 2,
+            ]);
+
+            return $entry;
+        });
+    }
+
+    /**
+     * Genera el asiento contable para un Pago de Deuda.
+     */
+    public function generarAsientoPagoDeuda(\App\Models\DebtPayment $payment): JournalEntry
+    {
+        $debt = $payment->debt;
+
+        return DB::transaction(function () use ($payment, $debt) {
+            $totalDebe = (float) $payment->monto_capital
+                + (float) $payment->monto_interes
+                + (float) $payment->monto_mora;
+
+            $cuentaPasivo = $this->getCuentaPasivoDeuda($debt);
+            $cuentaPago   = $this->getCuentaPagoDebtPayment($payment);
+
+            $desc = $payment->numero_cuota
+                ? "Pago cuota #{$payment->numero_cuota} préstamo {$debt->numero} ({$payment->numero})"
+                : "Pago préstamo {$debt->numero} ({$payment->numero})";
+
+            $entry = JournalEntry::create([
+                'empresa_id'      => $debt->empresa_id,
+                'fecha'           => $payment->fecha_pago,
+                'descripcion'     => $desc,
+                'tipo'            => 'ajuste',
+                'origen'          => 'automatico',
+                'referencia_tipo' => 'debt_payment',
+                'referencia_id'   => $payment->id,
+                'status'          => 'confirmado',
+                'total_debe'      => $totalDebe,
+                'total_haber'     => $totalDebe,
+                'esta_cuadrado'   => true,
+                'confirmado_por'  => Auth::id(),
+                'confirmado_at'   => now(),
+            ]);
+
+            $orden = 1;
+
+            // DR: Préstamo por Pagar (reduce el pasivo)
+            if ($payment->monto_capital > 0) {
+                JournalEntryLine::create([
+                    'journal_entry_id' => $entry->id,
+                    'account_plan_id'  => $cuentaPasivo->id,
+                    'descripcion'      => "Capital abonado - {$debt->numero}",
+                    'debe'             => (float) $payment->monto_capital,
+                    'haber'            => 0,
+                    'orden'            => $orden++,
+                ]);
+            }
+
+            // DR: Gasto por Intereses
+            if ($payment->monto_interes > 0) {
+                $cuentaInteres = $this->getCuentaGastoFinanciero($debt->empresa_id, '5.3.01', 'Intereses');
+                JournalEntryLine::create([
+                    'journal_entry_id' => $entry->id,
+                    'account_plan_id'  => $cuentaInteres->id,
+                    'descripcion'      => "Intereses pagados - {$debt->numero}",
+                    'debe'             => (float) $payment->monto_interes,
+                    'haber'            => 0,
+                    'orden'            => $orden++,
+                ]);
+            }
+
+            // DR: Gasto por Mora
+            if ($payment->monto_mora > 0) {
+                $cuentaMora = $this->getCuentaGastoFinanciero($debt->empresa_id, '5.3.02', 'Mora');
+                JournalEntryLine::create([
+                    'journal_entry_id' => $entry->id,
+                    'account_plan_id'  => $cuentaMora->id,
+                    'descripcion'      => "Mora pagada - {$debt->numero}",
+                    'debe'             => (float) $payment->monto_mora,
+                    'haber'            => 0,
+                    'orden'            => $orden++,
+                ]);
+            }
+
+            // CR: Banco/Caja (activo disminuye)
+            JournalEntryLine::create([
+                'journal_entry_id' => $entry->id,
+                'account_plan_id'  => $cuentaPago->id,
+                'descripcion'      => "Pago desde cuenta - {$debt->acreedor}",
+                'debe'             => 0,
+                'haber'            => $totalDebe,
+                'orden'            => $orden,
+            ]);
+
+            return $entry;
+        });
+    }
+
+    private function getCuentaPasivoDeuda(\App\Models\Debt $debt): AccountPlan
+    {
+        // 1. Cuenta asignada manualmente en la deuda
+        if ($debt->account_plan_id) {
+            $cuenta = AccountPlan::withoutGlobalScopes()->where('id', $debt->account_plan_id)->first();
+            if ($cuenta) return $cuenta;
+        }
+
+        $empresaId = $debt->empresa_id;
+
+        // 2. Según clasificación y tipo, buscar cuenta más específica
+        if ($debt->clasificacion === 'no_corriente') {
+            // Largo plazo: 2.2.01.01 Préstamos bancarios LP
+            $cuenta = AccountPlan::where('empresa_id', $empresaId)->where('code', '2.2.01.01')->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '2.2.01%')->where('accepts_movements', true)->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '2.2%')->where('accepts_movements', true)->first();
+        } elseif ($debt->tipo === 'tarjeta_credito') {
+            // Tarjetas de crédito: 2.1.02.03
+            $cuenta = AccountPlan::where('empresa_id', $empresaId)->where('code', '2.1.02.03')->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '2.1.02%')->where('accepts_movements', true)->first();
+        } else {
+            // Corriente: 2.1.02.01 Préstamos bancarios CP
+            $cuenta = AccountPlan::where('empresa_id', $empresaId)->where('code', '2.1.02.01')->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '2.1.02%')->where('accepts_movements', true)->first();
+        }
+
+        // 3. Fallback: cualquier pasivo con accepts_movements
+        return $cuenta
+            ?? AccountPlan::where('empresa_id', $empresaId)->where('type', 'pasivo')->where('accepts_movements', true)->first()
+            ?? throw new Exception("Sin cuenta contable de pasivo para deuda {$debt->numero}");
+    }
+
+    private function getCuentaActivoDeuda(\App\Models\Debt $debt): AccountPlan
+    {
+        if ($debt->bank_account_id) {
+            $cuenta = $debt->bankAccount?->accountPlan;
+            if ($cuenta) return $cuenta;
+        }
+
+        if ($debt->credit_card_id) {
+            $cuenta = $debt->creditCard?->accountPlan;
+            if ($cuenta) return $cuenta;
+        }
+
+        $empresaId = $debt->empresa_id;
+
+        return AccountPlan::where('empresa_id', $empresaId)->where('code', '1.1.01.03')->first()
+            ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '1.1.01%')->first()
+            ?? AccountPlan::where('empresa_id', $empresaId)->where('type', 'activo')->where('accepts_movements', true)->first()
+            ?? throw new Exception("Sin cuenta contable de activo para deuda {$debt->numero}");
+    }
+
+    private function getCuentaPagoDebtPayment(\App\Models\DebtPayment $payment): AccountPlan
+    {
+        if ($payment->metodo_pago === 'efectivo' && $payment->cash_register_id) {
+            $cuenta = $payment->cashRegister?->accountPlan;
+            if ($cuenta) return $cuenta;
+        }
+
+        if ($payment->bank_account_id) {
+            $cuenta = $payment->bankAccount?->accountPlan;
+            if ($cuenta) return $cuenta;
+        }
+
+        $empresaId = $payment->empresa_id;
+
+        return AccountPlan::where('empresa_id', $empresaId)->where('code', '1.1.01.03')->first()
+            ?? AccountPlan::where('empresa_id', $empresaId)->where('type', 'activo')->where('accepts_movements', true)->first()
+            ?? throw new Exception("Sin cuenta contable de pago para {$payment->numero}");
+    }
+
+    private function getCuentaGastoFinanciero(int $empresaId, string $codigoPref, string $tipo): AccountPlan
+    {
+        // Buscar por código exacto primero
+        $cuenta = AccountPlan::where('empresa_id', $empresaId)->where('code', $codigoPref)->first();
+        if ($cuenta) return $cuenta;
+
+        // Para intereses: 6.2.01 Intereses bancarios
+        if ($tipo === 'Intereses') {
+            $cuenta = AccountPlan::where('empresa_id', $empresaId)->where('code', '6.2.01')->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '6.2%')->where('accepts_movements', true)->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('name', 'like', '%inter%')->where('type', 'gasto')->where('accepts_movements', true)->first();
+        }
+
+        // Para mora: 6.2.03 Intereses y multas, o fallback a 6.2.01
+        if ($tipo === 'Mora') {
+            $cuenta = AccountPlan::where('empresa_id', $empresaId)->where('code', '6.2.03')->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', '6.2.01')->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '6.2%')->where('accepts_movements', true)->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)->where('name', 'like', '%multa%')->where('type', 'gasto')->where('accepts_movements', true)->first();
+        }
+
+        // Fallback final: cualquier gasto financiero o último recurso cualquier gasto
+        return $cuenta
+            ?? AccountPlan::where('empresa_id', $empresaId)->where('code', 'like', '6.2%')->where('accepts_movements', true)->first()
+            ?? AccountPlan::where('empresa_id', $empresaId)->where('type', 'gasto')->where('accepts_movements', true)->orderBy('code', 'desc')->first()
+            ?? throw new Exception("Sin cuenta de gasto financiero ({$tipo}) para empresa {$empresaId}");
+    }
+
+    /**
      * Genera un asiento contable para una Orden de Producción completada.
      */
     public function generarAsientoProduccion(\App\Models\ProductionOrder $order): JournalEntry
