@@ -57,7 +57,7 @@
     </a>
 
     {{-- Venta --}}
-    <a href="{{ url('/enterprise/' . $empresa->slug . '/store-orders/create') }}"
+    <a href="{{ route('mobile.venta.nueva') }}"
        class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
              style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.25);">
@@ -76,7 +76,7 @@
     </a>
 
     {{-- Orden de Producción --}}
-    <a href="{{ url('/enterprise/' . $empresa->slug . '/production-orders/create') }}"
+    <a href="{{ route('mobile.produccion.nueva') }}"
        class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
              style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.25);">
@@ -144,17 +144,5 @@
 </div>
 @endif
 @endif
-
-{{-- Acceso al panel completo --}}
-<div class="mt-6 pt-5" style="border-top: 1px solid rgba(255,255,255,0.08);">
-    <p class="text-xs text-center mb-3" style="color: rgba(232,230,240,0.3);">
-        Para gestión completa usa el panel en computadora
-    </p>
-    <a href="{{ url('/enterprise/' . $empresa->slug) }}"
-       class="block text-center text-xs py-2.5 rounded-xl font-medium"
-       style="background: rgba(255,255,255,0.05); color: rgba(232,230,240,0.45); border: 1px solid rgba(255,255,255,0.08);">
-        Ir al Panel Enterprise completo
-    </a>
-</div>
 
 @endsection

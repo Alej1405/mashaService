@@ -6,6 +6,11 @@ use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Supplier;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\Customer;
+use App\Models\ProductionOrder;
+use App\Models\ProductPresentation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -310,6 +315,126 @@ class MobileController extends Controller
         } catch (\Exception $e) {
             Log::error('Error confirmando compra móvil: ' . $e->getMessage());
             return response()->json(['error' => 'Error al confirmar: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // ── Venta ─────────────────────────────────────────────────────────────────
+
+    public function showVenta(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        $empresa   = $this->empresa();
+        $customers = Customer::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        $items     = InventoryItem::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        return view('mobile.venta', compact('empresa', 'customers', 'items'));
+    }
+
+    public function guardarVenta(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+        $validated = $request->validate([
+            'fecha'           => ['required', 'date'],
+            'customer_id'     => ['nullable', 'integer', 'exists:customers,id'],
+            'tipo_venta'      => ['required', 'in:contado,credito'],
+            'forma_pago'      => ['required', 'in:efectivo,transferencia,tarjeta_credito,credito'],
+            'items'           => ['required', 'array', 'min:1'],
+            'items.*.inventory_item_id' => ['nullable', 'integer'],
+            'items.*.descripcion'       => ['required', 'string'],
+            'items.*.cantidad'          => ['required', 'numeric', 'min:0.0001'],
+            'items.*.precio_unitario'   => ['required', 'numeric', 'min:0'],
+            'items.*.aplica_iva'        => ['boolean'],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $sale = Sale::create([
+                'empresa_id'     => $empresa->id,
+                'customer_id'    => $validated['customer_id'] ?? null,
+                'fecha'          => $validated['fecha'],
+                'tipo_venta'     => $validated['tipo_venta'],
+                'forma_pago'     => $validated['forma_pago'],
+                'tipo_operacion' => 'productos',
+                'estado'         => 'borrador',
+                'subtotal'       => 0,
+                'iva'            => 0,
+                'total'          => 0,
+            ]);
+
+            foreach ($validated['items'] as $item) {
+                SaleItem::create([
+                    'sale_id'           => $sale->id,
+                    'inventory_item_id' => $item['inventory_item_id'] ?? null,
+                    'tipo_item'         => 'producto',
+                    'descripcion'       => $item['descripcion'],
+                    'cantidad'          => $item['cantidad'],
+                    'precio_unitario'   => $item['precio_unitario'],
+                    'aplica_iva'        => $item['aplica_iva'] ?? false,
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'referencia' => $sale->fresh()->referencia]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error guardando venta móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar la venta.'], 500);
+        }
+    }
+
+    // ── Orden de Producción ───────────────────────────────────────────────────
+
+    public function showProduccion(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        $empresa       = $this->empresa();
+        $presentaciones = ProductPresentation::whereHas('productDesign', fn($q) => $q->where('empresa_id', $empresa->id))
+            ->where('activa', true)
+            ->with('productDesign')
+            ->get();
+        return view('mobile.produccion', compact('empresa', 'presentaciones'));
+    }
+
+    public function guardarProduccion(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+        $validated = $request->validate([
+            'product_presentation_id' => ['required', 'integer'],
+            'fecha'                   => ['required', 'date'],
+            'cantidad_producida'      => ['required', 'numeric', 'min:0.0001'],
+            'notas'                   => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Verificar que la presentación pertenece a la empresa
+        $presentacion = ProductPresentation::whereHas('productDesign', fn($q) => $q->where('empresa_id', $empresa->id))
+            ->find($validated['product_presentation_id']);
+        if (!$presentacion) {
+            return response()->json(['error' => 'Presentación no válida.'], 422);
+        }
+
+        try {
+            $orden = ProductionOrder::create([
+                'empresa_id'              => $empresa->id,
+                'product_presentation_id' => $validated['product_presentation_id'],
+                'fecha'                   => $validated['fecha'],
+                'cantidad_producida'      => $validated['cantidad_producida'],
+                'notas'                   => $validated['notas'] ?? null,
+                'estado'                  => 'borrador',
+                'costo_total'             => 0,
+            ]);
+            return response()->json(['success' => true, 'referencia' => $orden->referencia]);
+        } catch (\Exception $e) {
+            Log::error('Error guardando orden producción móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar la orden.'], 500);
         }
     }
 }

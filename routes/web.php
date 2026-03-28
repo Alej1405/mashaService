@@ -22,6 +22,10 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/compra/guardar',                     [\App\Http\Controllers\MobileController::class, 'guardarCompra'])->name('compra.guardar');
         Route::get('/compras/validar',                     [\App\Http\Controllers\MobileController::class, 'listValidarCompras'])->name('compras.validar');
         Route::post('/compras/{purchase}/confirmar',       [\App\Http\Controllers\MobileController::class, 'confirmarCompra'])->name('compras.confirmar');
+        Route::get('/venta/nueva',                         [\App\Http\Controllers\MobileController::class, 'showVenta'])->name('venta.nueva');
+        Route::post('/venta/guardar',                      [\App\Http\Controllers\MobileController::class, 'guardarVenta'])->name('venta.guardar');
+        Route::get('/produccion/nueva',                    [\App\Http\Controllers\MobileController::class, 'showProduccion'])->name('produccion.nueva');
+        Route::post('/produccion/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarProduccion'])->name('produccion.guardar');
     });
 });
 
