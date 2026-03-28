@@ -20,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 | \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT
                 | \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO
         );
+
+        // Detectar teléfonos y redirigir al portal móvil
+        $middleware->web(append: [
+            \App\Http\Middleware\RedirectMobileToPortal::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
