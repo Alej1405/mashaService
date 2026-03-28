@@ -11,18 +11,17 @@ Route::get('/', function () {
 
 // ── Portal Móvil ──────────────────────────────────────────────────────────
 Route::prefix('mobile')->name('mobile.')->group(function () {
-    Route::get('/',       [\App\Http\Controllers\MobileController::class, 'index'])->name('index')->middleware('auth');
     Route::get('/login',  [\App\Http\Controllers\MobileController::class, 'showLogin'])->name('login');
     Route::post('/login', [\App\Http\Controllers\MobileController::class, 'login'])->name('login.post');
-    Route::post('/logout',[\App\Http\Controllers\MobileController::class, 'logout'])->name('logout')->middleware('auth');
 
-    // Compra con OCR y validación
-    Route::middleware('auth')->group(function () {
-        Route::get('/compra/nueva',                    [\App\Http\Controllers\MobileController::class, 'showCompraOcr'])->name('compra.ocr');
-        Route::post('/compra/ocr',                     [\App\Http\Controllers\MobileController::class, 'procesarOcr'])->name('compra.procesar-ocr');
-        Route::post('/compra/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarCompra'])->name('compra.guardar');
-        Route::get('/compras/validar',                 [\App\Http\Controllers\MobileController::class, 'listValidarCompras'])->name('compras.validar');
-        Route::post('/compras/{purchase}/confirmar',   [\App\Http\Controllers\MobileController::class, 'confirmarCompra'])->name('compras.confirmar');
+    Route::middleware('mobile.auth')->group(function () {
+        Route::get('/',                                    [\App\Http\Controllers\MobileController::class, 'index'])->name('index');
+        Route::post('/logout',                             [\App\Http\Controllers\MobileController::class, 'logout'])->name('logout');
+        Route::get('/compra/nueva',                        [\App\Http\Controllers\MobileController::class, 'showCompraOcr'])->name('compra.ocr');
+        Route::post('/compra/ocr',                         [\App\Http\Controllers\MobileController::class, 'procesarOcr'])->name('compra.procesar-ocr');
+        Route::post('/compra/guardar',                     [\App\Http\Controllers\MobileController::class, 'guardarCompra'])->name('compra.guardar');
+        Route::get('/compras/validar',                     [\App\Http\Controllers\MobileController::class, 'listValidarCompras'])->name('compras.validar');
+        Route::post('/compras/{purchase}/confirmar',       [\App\Http\Controllers\MobileController::class, 'confirmarCompra'])->name('compras.confirmar');
     });
 });
 

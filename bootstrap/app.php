@@ -25,6 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\RedirectMobileToPortal::class,
         ]);
+
+        // Alias para autenticación del portal móvil
+        $middleware->alias([
+            'mobile.auth' => \App\Http\Middleware\MobileAuthenticate::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
