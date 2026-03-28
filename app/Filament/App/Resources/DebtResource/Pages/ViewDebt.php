@@ -4,6 +4,7 @@ namespace App\Filament\App\Resources\DebtResource\Pages;
 
 use App\Filament\App\Resources\DebtResource;
 use App\Models\Debt;
+use App\Services\DebtService;
 use Filament\Actions;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
@@ -39,6 +40,31 @@ class ViewDebt extends ViewRecord
                     } catch (\Exception $e) {
                         \Filament\Notifications\Notification::make()
                             ->title('Error al activar')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
+
+            Actions\Action::make('regenerar_tabla')
+                ->label('Regenerar Tabla')
+                ->icon('heroicon-o-table-cells')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Regenerar Tabla de Amortización')
+                ->modalDescription('Se eliminará la tabla actual (si existe) y se recalculará desde cero.')
+                ->visible(fn () => in_array($this->record->estado, ['activa', 'parcial']) && $this->record->numero_cuotas > 0)
+                ->action(function () {
+                    try {
+                        (new DebtService())->generarLineasAmortizacion($this->record);
+                        \Filament\Notifications\Notification::make()
+                            ->title('Tabla regenerada')
+                            ->body("Se generaron {$this->record->numero_cuotas} cuotas correctamente.")
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Error al regenerar')
                             ->body($e->getMessage())
                             ->danger()
                             ->send();

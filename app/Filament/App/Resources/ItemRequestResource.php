@@ -27,15 +27,14 @@ class ItemRequestResource extends Resource
 
     protected static ?string $navigationIcon  = 'heroicon-o-inbox-arrow-down';
     protected static ?string $navigationLabel = 'Solicitudes de Insumos';
-    protected static ?string $navigationGroup = 'Diseño de Producto';
+    protected static ?string $navigationGroup = 'Compras';
     protected static ?string $modelLabel      = 'Solicitud de Insumo';
     protected static ?string $pluralModelLabel = 'Solicitudes de Insumos';
     protected static ?int    $navigationSort  = 2;
 
     public static function canAccess(): bool
     {
-        return Filament::getCurrentPanel()?->getId() === 'enterprise'
-            && \App\Helpers\PlanHelper::can('enterprise');
+        return \App\Helpers\PlanHelper::can('pro');
     }
 
     public static function shouldRegisterNavigation(): bool

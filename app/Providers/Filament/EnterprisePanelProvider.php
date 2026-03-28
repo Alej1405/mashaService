@@ -75,7 +75,6 @@ class EnterprisePanelProvider extends PanelProvider
                 \App\Filament\App\Resources\StoreCouponResource::class,
                 \App\Filament\App\Resources\InventoryItemResource::class,
                 \App\Filament\App\Resources\ProductDesignResource::class,
-                \App\Filament\App\Resources\ItemRequestResource::class,
             ])
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,
@@ -90,7 +89,9 @@ class EnterprisePanelProvider extends PanelProvider
                     ->icon('heroicon-o-building-office-2')
                     ->url(fn (): string => '/pro/' . (Filament::getTenant()?->slug ?? '')),
             ])
-            ->widgets([])
+            ->widgets([
+                \App\Filament\App\Widgets\CompromisosFinancierosWidget::class,
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

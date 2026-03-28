@@ -91,6 +91,7 @@ class ProPanelProvider extends PanelProvider
                 \App\Filament\App\Widgets\TopProductosWidget::class,
                 \App\Filament\App\Widgets\FlujoCajaWidget::class,
                 \App\Filament\App\Widgets\EstadoResultadosWidget::class,
+                \App\Filament\App\Widgets\CompromisosFinancierosWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

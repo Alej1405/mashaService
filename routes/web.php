@@ -90,6 +90,10 @@ Route::get('/app/{empresa}/debts/{debt}/payments/print', [\App\Http\Controllers\
     ->middleware(['auth'])
     ->name('debt.payments.print');
 
+Route::get('/enterprise/{empresa}/product-designs/{design}/equilibrio/print', [\App\Http\Controllers\ProductDesignPrintController::class, 'equilibrio'])
+    ->middleware(['auth'])
+    ->name('product-design.equilibrio.print');
+
 Route::get('/fichas/download/{file}', function ($file) {
     if (!Auth::check()) {
         abort(403);

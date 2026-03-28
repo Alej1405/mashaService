@@ -3071,9 +3071,10 @@ class ProductDesignResource extends Resource
                                         }
                                         $costoTotal    = $totalMat + $totalInd;
                                         $costoUnitario = $cantidad > 0 ? $costoTotal / $cantidad : 0;
-                                        if ($pvpSinIva <= 0 && $margenPct > 0) {
+                                        if ($pvpSinIva <= 0) {
+                                            if ($margenPct <= 0) $margenPct = (float) ($pres['margen_objetivo'] ?? 30);
                                             $div = 1 - $margenPct / 100;
-                                            $pvpSinIva = $div > 0 ? round($costoUnitario / $div, 2) : 0;
+                                            $pvpSinIva = ($div > 0 && $costoUnitario > 0) ? round($costoUnitario / $div, 2) : 0;
                                         }
                                         $ingresoNeto   = $pvpSinIva * $cantidad;
                                         $ivaTotal      = round($ingresoNeto * 0.15, 2);
@@ -3457,9 +3458,306 @@ class ProductDesignResource extends Resource
 
                                     $html .= '</div>';
 
+                                    // ══════════════════════════════════════════════════
+                                    // COMPROMISOS FINANCIEROS (Deudas + Costos Fijos)
+                                    // ══════════════════════════════════════════════════
+                                    if ($contribucionUnit > 0 && $tenant) {
+                                        $servicioDeudasMes = (float) \App\Models\DebtAmortizationLine::whereHas(
+                                            'debt', fn ($q) => $q->where('empresa_id', $tenant->id)
+                                        )
+                                        ->whereMonth('fecha_vencimiento', now()->month)
+                                        ->whereYear('fecha_vencimiento', now()->year)
+                                        ->where('estado', '!=', 'pagada')
+                                        ->sum('total_cuota');
+
+                                        $totalCompromisos    = $totalFijosMensual + $servicioDeudasMes;
+                                        $contribucionTotal   = $contribucionUnit * $cantidad;
+                                        $peTotalUnidades     = $totalCompromisos > 0 ? ceil($totalCompromisos / $contribucionUnit) : null;
+                                        $peTotalMonetario    = $peTotalUnidades !== null ? $peTotalUnidades * $pvpSinIva : null;
+                                        $coberturaTotal      = ($peTotalUnidades !== null && $peTotalUnidades > 0)
+                                            ? min(($cantidad / $peTotalUnidades) * 100, 999)
+                                            : null;
+                                        $pctAporte           = $totalCompromisos > 0
+                                            ? min(($contribucionTotal / $totalCompromisos) * 100, 999)
+                                            : 0;
+
+                                        $colorAporte = $pctAporte >= 100 ? $cGreen : ($pctAporte >= 50 ? $cAmb : $cRed);
+
+                                        $html .= '<div style="margin-top:1.5rem;">';
+                                        $html .= '<div style="margin-bottom:0.75rem;padding:0.6rem 1rem;background:#eff6ff;border-radius:0.5rem;border:1px solid #bfdbfe;">'
+                                            . '<span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#1d4ed8;">💳 COMPROMISOS FINANCIEROS DEL MES</span>'
+                                            . '<span style="float:right;font-size:0.7rem;color:#2563eb;">Total: $ ' . $fmt($totalCompromisos) . '</span>'
+                                            . '</div>';
+
+                                        if ($servicioDeudasMes <= 0) {
+                                            $html .= '<p style="font-size:0.75rem;color:' . $cGreen . ';padding:0.5rem 0;">'
+                                                . '✓ Sin cuotas de deuda registradas este mes. Los costos fijos ($ ' . $fmt($totalFijosMensual) . '/mes) ya están cubiertos en el análisis anterior.'
+                                                . '</p>';
+                                        } else {
+                                            // Cards: 3 columnas
+                                            $html .= '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">';
+
+                                            $html .= '<div style="padding:0.75rem 1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.75rem;">'
+                                                . '<p style="font-size:0.63rem;font-weight:700;color:#64748b;text-transform:uppercase;margin:0 0 0.3rem;">Costos Fijos Op.</p>'
+                                                . '<p style="font-size:1rem;font-weight:700;color:#1e293b;margin:0;">$ ' . $fmt($totalFijosMensual) . '</p>'
+                                                . '<p style="font-size:0.63rem;color:#94a3b8;margin:0.2rem 0 0;">' . number_format($totalFijosMensual / $totalCompromisos * 100, 1) . '% del total</p>'
+                                                . '</div>';
+
+                                            $html .= '<div style="padding:0.75rem 1rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:0.75rem;">'
+                                                . '<p style="font-size:0.63rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;margin:0 0 0.3rem;">Cuotas Deuda (mes)</p>'
+                                                . '<p style="font-size:1rem;font-weight:700;color:#1d4ed8;margin:0;">$ ' . $fmt($servicioDeudasMes) . '</p>'
+                                                . '<p style="font-size:0.63rem;color:#93c5fd;margin:0.2rem 0 0;">' . number_format($servicioDeudasMes / $totalCompromisos * 100, 1) . '% del total</p>'
+                                                . '</div>';
+
+                                            $html .= '<div style="padding:0.75rem 1rem;background:#4c1d95;border-radius:0.75rem;">'
+                                                . '<p style="font-size:0.63rem;font-weight:700;color:#c4b5fd;text-transform:uppercase;margin:0 0 0.3rem;">Total Compromisos</p>'
+                                                . '<p style="font-size:1rem;font-weight:700;color:#fff;margin:0;">$ ' . $fmt($totalCompromisos) . '</p>'
+                                                . '<p style="font-size:0.63rem;color:#a78bfa;margin:0.2rem 0 0;">operativo + servicio deuda</p>'
+                                                . '</div>';
+
+                                            $html .= '</div>';
+
+                                            // Fila: PE total + Aporte de esta producción
+                                            $html .= '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1.25rem;">';
+
+                                            $html .= '<div style="padding:0.75rem 1rem;background:#f5f3ff;border:1px solid #c4b5fd;border-radius:0.75rem;">'
+                                                . '<p style="font-size:0.63rem;font-weight:700;color:#7c3aed;text-transform:uppercase;margin:0 0 0.3rem;">PE con todos los compromisos</p>'
+                                                . '<p style="font-size:1rem;font-weight:700;color:#6d28d9;margin:0;">' . ($peTotalUnidades !== null ? number_format($peTotalUnidades, 0) . ' u.' : '—') . '</p>'
+                                                . '<p style="font-size:0.63rem;color:#8b5cf6;margin:0.2rem 0 0;">' . ($peTotalMonetario !== null ? '= $ ' . $fmt($peTotalMonetario) . ' en ventas' : '') . '</p>'
+                                                . '</div>';
+
+                                            $html .= '<div style="padding:0.75rem 1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.75rem;">'
+                                                . '<p style="font-size:0.63rem;font-weight:700;color:#64748b;text-transform:uppercase;margin:0 0 0.3rem;">Aporta esta producción</p>'
+                                                . '<p style="font-size:1rem;font-weight:700;color:' . $colorAporte . ';margin:0;">$ ' . $fmt($contribucionTotal) . '</p>'
+                                                . '<p style="font-size:0.63rem;color:#94a3b8;margin:0.2rem 0 0;">' . number_format($pctAporte, 1) . '% de los compromisos</p>'
+                                                . '</div>';
+
+                                            $html .= '</div>';
+
+                                            // Barra de cobertura total
+                                            if ($coberturaTotal !== null) {
+                                                $barPctT   = min($coberturaTotal, 100);
+                                                $barColorT = $coberturaTotal >= 100 ? '#16a34a' : ($coberturaTotal >= 50 ? '#f59e0b' : '#ef4444');
+
+                                                $html .= '<div style="margin-bottom:0.5rem;">';
+                                                $html .= '<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#6b7280;margin-bottom:0.3rem;">'
+                                                    . '<span>0%</span><span>Equilibrio con todos los compromisos (100%)</span>'
+                                                    . '</div>';
+                                                $html .= '<div style="position:relative;height:1.5rem;background:#f1f5f9;border-radius:999px;overflow:hidden;">';
+                                                $html .= '<div style="height:100%;width:' . number_format($barPctT, 1) . '%;background:' . $barColorT . ';border-radius:999px;display:flex;align-items:center;justify-content:center;">';
+                                                if ($barPctT > 15) {
+                                                    $html .= '<span style="font-size:0.6rem;font-weight:700;color:#fff;">' . number_format($coberturaTotal, 1) . '%</span>';
+                                                }
+                                                $html .= '</div></div>';
+
+                                                if ($coberturaTotal >= 100) {
+                                                    $html .= '<p style="margin-top:0.5rem;font-size:0.75rem;color:' . $cGreen . ';font-weight:600;">✓ Esta producción cubre todos los compromisos financieros (operativos + deudas) y genera excedente.</p>';
+                                                } else {
+                                                    $faltanU = max($peTotalUnidades - $cantidad, 0);
+                                                    $html .= '<p style="margin-top:0.5rem;font-size:0.75rem;color:' . $cAmb . ';">⚠ Faltan <strong>' . number_format($faltanU, 0) . ' unidades</strong> adicionales para cubrir la totalidad de los compromisos financieros.</p>';
+                                                }
+                                                $html .= '</div>';
+                                            }
+                                        }
+
+                                        $html .= '</div>'; // close compromisos section
+                                    }
+
                                     return new \Illuminate\Support\HtmlString($html);
                                 })
                                 ->columnSpanFull(),
+
+                                // ── Acciones PE ──────────────────────────────────────
+                                \Filament\Forms\Components\Actions::make([
+
+                                    // ── Modal resumen rápido ──────────────────────────
+                                    \Filament\Forms\Components\Actions\Action::make('ver_pe_resumen')
+                                        ->label('📊 Ver Resumen')
+                                        ->color('info')
+                                        ->icon('heroicon-o-chart-bar')
+                                        ->modalHeading('Punto de Equilibrio — Resumen')
+                                        ->modalWidth('2xl')
+                                        ->modalSubmitAction(false)
+                                        ->modalCancelActionLabel('Cerrar')
+                                        ->mountUsing(function (\Filament\Forms\Form $form, callable $get) {
+                                            $empresa  = \Filament\Facades\Filament::getTenant();
+                                            $presKey  = $get('_plan_presentation_id');
+                                            $cantidad = (float) ($get('_plan_cantidad') ?? 0);
+                                            $pres     = ($get('presentations') ?? [])[$presKey] ?? null;
+
+                                            if (! $presKey || $cantidad <= 0 || ! $pres) {
+                                                $form->fill(['_pe_modal_html' => '<p style="color:#6b7280;text-align:center;padding:2rem 1rem;">Configura la producción en la pestaña <strong>Simulación y Análisis</strong> para ver el resumen.</p>']);
+                                                return;
+                                            }
+
+                                            $fmt  = fn ($v) => '$ ' . number_format((float) $v, 2);
+                                            $pct  = fn ($v) => number_format((float) $v, 1) . '%';
+                                            $card = fn ($lbl, $val, $clr = '#1e40af', $bg = '#eff6ff') =>
+                                                '<div style="padding:0.85rem;background:' . $bg . ';border-radius:0.5rem;text-align:center;">'
+                                                . '<p style="margin:0;font-size:0.65rem;color:#6b7280;text-transform:uppercase;font-weight:600;letter-spacing:0.05em;">' . $lbl . '</p>'
+                                                . '<p style="margin:0.2rem 0 0;font-size:1.15rem;font-weight:800;color:' . $clr . ';">' . $val . '</p>'
+                                                . '</div>';
+
+                                            // PVP
+                                            $pvpCampo   = (float) ($get('_plan_pvp_venta') ?? 0);
+                                            $incluyeIva = (bool)  ($get('_plan_pvp_incluye_iva') ?? false);
+                                            $pvpSinIva  = ($pvpCampo > 0 && $incluyeIva) ? round($pvpCampo / 1.15, 4) : $pvpCampo;
+                                            $capacidad  = (float) ($get('capacidad_instalada_mensual') ?? 0);
+                                            $fracMes    = $capacidad > 0 ? $cantidad / $capacidad : 0;
+
+                                            // Materiales
+                                            $lote     = max((float) ($pres['cantidad_minima_produccion'] ?? 1), 0.0001);
+                                            $factor   = $cantidad / $lote;
+                                            $totalMat = 0;
+                                            foreach ($pres['formulaLines'] ?? [] as $line) {
+                                                $item       = ($line['inventory_item_id'] ?? null) ? \App\Models\InventoryItem::find($line['inventory_item_id']) : null;
+                                                $cantBase   = (float) ($line['cantidad'] ?? 0);
+                                                $factorConv = max((float) ($item?->conversion_factor ?? 1), 0.000001);
+                                                $puId       = $item?->purchase_unit_id ?? null;
+                                                $fUnitId    = $line['measurement_unit_id'] ?? null;
+                                                $sUnitId    = $item?->measurement_unit_id;
+                                                $cantNec    = round($cantBase * $factor, 6);
+                                                if ($fUnitId == $sUnitId || ! $fUnitId) $cantNecS = $cantNec;
+                                                elseif ($puId && $fUnitId == $puId && $puId != $sUnitId) $cantNecS = round($cantNec * $factorConv, 6);
+                                                else $cantNecS = round($cantNec / $factorConv, 6);
+                                                [$cPorU] = self::costoLinea($item, 1, $fUnitId);
+                                                $totalMat += $cPorU * $cantNecS;
+                                            }
+
+                                            // MO + Indirectos
+                                            $personas      = (float) ($get('num_personas') ?? 0);
+                                            $costoMo       = (float) ($get('costo_mano_obra_persona') ?? 0);
+                                            $totalMO       = $personas * $costoMo * $fracMes;
+                                            $totalOtrosInd = 0;
+                                            foreach ($get('indirectCosts') ?? [] as $ind) {
+                                                $m = (float) ($ind['monto_mensual'] ?? 0);
+                                                $totalOtrosInd += match ($ind['frecuencia'] ?? 'mensual') {
+                                                    'semanal' => $m * 4.33 * $fracMes,
+                                                    'unico'   => $m,
+                                                    default   => $m * $fracMes,
+                                                };
+                                            }
+
+                                            // Costos fijos
+                                            $costosFijos       = \App\Models\CostoFijo::where('empresa_id', $empresa->id)->where('activo', true)->get();
+                                            $totalFijosMensual = $costosFijos->sum(fn ($c) => $c->monto_mensual);
+                                            $totalFijosProrr   = $totalFijosMensual * $fracMes;
+
+                                            $costoVariable = $totalMat + $totalMO + $totalOtrosInd;
+                                            $costoTotal    = $costoVariable + $totalFijosProrr;
+                                            $costoUnitario = $cantidad > 0 ? $costoTotal / $cantidad : 0;
+                                            $costoVarUnit  = $cantidad > 0 ? $costoVariable / $cantidad : 0;
+
+                                            if ($pvpSinIva <= 0) {
+                                                $margenPct = (float) ($get('_plan_margen_venta') ?? 30);
+                                                $div       = 1 - ($margenPct / 100);
+                                                $pvpSinIva = ($div > 0 && $costoUnitario > 0) ? round($costoUnitario / $div, 2) : 0;
+                                            }
+
+                                            // PE operativo
+                                            $contribucionUnit = $pvpSinIva - $costoVarUnit;
+                                            $peUnidades       = $contribucionUnit > 0 ? (int) ceil($totalFijosMensual / $contribucionUnit) : null;
+                                            $peMonetario      = $peUnidades !== null ? $peUnidades * $pvpSinIva : null;
+                                            $coberturaOp      = ($peUnidades !== null && $peUnidades > 0) ? min(round($cantidad / $peUnidades * 100, 1), 999) : null;
+
+                                            // Deudas del mes
+                                            $servicioDeudasMes = (float) \App\Models\DebtAmortizationLine::whereHas(
+                                                'debt', fn ($q) => $q->where('empresa_id', $empresa->id)
+                                            )->whereMonth('fecha_vencimiento', now()->month)
+                                             ->whereYear('fecha_vencimiento', now()->year)
+                                             ->where('estado', '!=', 'pagada')
+                                             ->sum('total_cuota');
+
+                                            $totalCompromisos  = $totalFijosMensual + $servicioDeudasMes;
+                                            $contribucionTotal  = $contribucionUnit * $cantidad;
+                                            $peTotalUnidades   = ($contribucionUnit > 0 && $totalCompromisos > 0) ? (int) ceil($totalCompromisos / $contribucionUnit) : null;
+                                            $peTotalMonetario  = $peTotalUnidades !== null ? $peTotalUnidades * $pvpSinIva : null;
+                                            $coberturaTotal    = ($peTotalUnidades !== null && $peTotalUnidades > 0) ? min(round($cantidad / $peTotalUnidades * 100, 1), 999) : null;
+                                            $pctAporte         = $totalCompromisos > 0 ? min(round($contribucionTotal / $totalCompromisos * 100, 1), 999) : 0;
+
+                                            // ── Construir HTML del modal ──────────────────
+                                            $html = '<div style="font-family:sans-serif;font-size:13px;">';
+
+                                            // Fila de métricas clave
+                                            $html .= '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;margin-bottom:0.85rem;">';
+                                            $contribClr = $contribucionUnit > 0 ? '#15803d' : '#dc2626';
+                                            $contribBg  = $contribucionUnit > 0 ? '#f0fdf4' : '#fef2f2';
+                                            $html .= $card('Contribución Unitaria', $fmt($contribucionUnit), $contribClr, $contribBg);
+                                            $html .= $card('Costo Variable Unitario', $fmt($costoVarUnit), '#92400e', '#fffbeb');
+                                            $html .= $card('PVP sin IVA', $fmt($pvpSinIva), '#1e40af', '#eff6ff');
+                                            $html .= $card('Costo Unitario Total', $fmt($costoUnitario), '#374151', '#f9fafb');
+                                            $html .= '</div>';
+
+                                            // PE Operativo
+                                            $html .= '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:0.5rem;padding:0.85rem;margin-bottom:0.75rem;">';
+                                            $html .= '<p style="margin:0 0 0.5rem;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:#475569;letter-spacing:0.08em;">PE Operativo — Costos Fijos: ' . $fmt($totalFijosMensual) . '/mes</p>';
+                                            $html .= '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;">';
+                                            $html .= $card('Unidades PE', $peUnidades !== null ? number_format($peUnidades) . ' u.' : '—', '#1e40af', '#fff');
+                                            $html .= $card('Monto PE', $peMonetario !== null ? $fmt($peMonetario) : '—', '#1e40af', '#fff');
+                                            $covClr = $coberturaOp === null ? '#6b7280' : ($coberturaOp >= 100 ? '#15803d' : ($coberturaOp >= 50 ? '#92400e' : '#dc2626'));
+                                            $html .= $card('Cobertura', $coberturaOp !== null ? $pct($coberturaOp) : '—', $covClr, '#fff');
+                                            $html .= '</div>';
+                                            if ($coberturaOp !== null) {
+                                                $barPct   = min($coberturaOp, 100);
+                                                $barColor = $coberturaOp >= 100 ? '#22c55e' : ($coberturaOp >= 50 ? '#f59e0b' : '#ef4444');
+                                                $html .= '<div style="margin-top:0.6rem;background:#e5e7eb;border-radius:999px;height:7px;">'
+                                                    . '<div style="width:' . $barPct . '%;background:' . $barColor . ';height:7px;border-radius:999px;"></div></div>';
+                                                $html .= '<p style="margin:0.3rem 0 0;font-size:0.62rem;color:#6b7280;">Esta producción de <strong>' . number_format($cantidad, 0) . ' u.</strong> cubre el ' . $pct($coberturaOp) . ' del PE operativo.</p>';
+                                            }
+                                            $html .= '</div>';
+
+                                            // PE Total (si hay deudas)
+                                            if ($servicioDeudasMes > 0) {
+                                                $html .= '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:0.5rem;padding:0.85rem;margin-bottom:0.75rem;">';
+                                                $html .= '<p style="margin:0 0 0.5rem;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:#92400e;letter-spacing:0.08em;">PE Total — Fijos + Deudas: ' . $fmt($totalCompromisos) . '/mes</p>';
+                                                $html .= '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;">';
+                                                $html .= $card('Unidades PE', $peTotalUnidades !== null ? number_format($peTotalUnidades) . ' u.' : '—', '#92400e', '#fff');
+                                                $html .= $card('Monto PE', $peTotalMonetario !== null ? $fmt($peTotalMonetario) : '—', '#92400e', '#fff');
+                                                $covTClr = $coberturaTotal === null ? '#6b7280' : ($coberturaTotal >= 100 ? '#15803d' : ($coberturaTotal >= 50 ? '#92400e' : '#dc2626'));
+                                                $html .= $card('Cobertura', $coberturaTotal !== null ? $pct($coberturaTotal) : '—', $covTClr, '#fff');
+                                                $html .= '</div>';
+                                                $html .= '<p style="margin:0.4rem 0 0;font-size:0.62rem;color:#92400e;">Esta producción aporta el <strong>' . $pct($pctAporte) . '</strong> del total de compromisos del mes.</p>';
+                                                $html .= '</div>';
+                                            }
+
+                                            $presNombre = $pres['nombre'] ?? '—';
+                                            $html .= '<p style="margin:0;font-size:0.6rem;color:#9ca3af;text-align:center;">Presentación: <strong>' . e($presNombre) . '</strong> · ' . number_format($cantidad, 0) . ' u. · Datos en tiempo real del formulario.</p>';
+                                            $html .= '</div>';
+
+                                            $form->fill(['_pe_modal_html' => $html]);
+                                        })
+                                        ->form([
+                                            \Filament\Forms\Components\Placeholder::make('_pe_modal_html')
+                                                ->label('')
+                                                ->content(fn (\Filament\Forms\Get $get) => new \Illuminate\Support\HtmlString($get('_pe_modal_html') ?? ''))
+                                                ->columnSpanFull(),
+                                        ]),
+
+                                    // ── Descargar PDF (ruta web, fuera de Livewire) ───
+                                    \Filament\Forms\Components\Actions\Action::make('descargar_pe_pdf')
+                                        ->label('📄 Descargar PDF')
+                                        ->color('gray')
+                                        ->icon('heroicon-o-arrow-down-tray')
+                                        ->tooltip(fn ($record) => \App\Models\ProductSimulation::where('product_design_id', $record?->id)->exists()
+                                            ? 'Descargar informe PDF del Punto de Equilibrio'
+                                            : 'Guarda una simulación primero para habilitar la descarga')
+                                        ->url(function ($record) {
+                                            if (! $record) return null;
+                                            $empresa    = \Filament\Facades\Filament::getTenant();
+                                            $simulation = \App\Models\ProductSimulation::where('empresa_id', $empresa->id)
+                                                ->where('product_design_id', $record->id)
+                                                ->latest()->first();
+                                            if (! $simulation) return null;
+                                            return route('product-design.equilibrio.print', [
+                                                'empresa'    => $empresa->slug,
+                                                'design'     => $record->id,
+                                                'simulation' => $simulation->id,
+                                                'download'   => 1,
+                                            ]);
+                                        })
+                                        ->openUrlInNewTab(),
+
+                                ])->columnSpanFull(),
                         ]),
 
                 ])

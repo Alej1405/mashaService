@@ -3,6 +3,7 @@
 namespace App\Filament\App\Widgets;
 
 use App\Models\CashMovement;
+use App\Models\DebtPayment;
 use App\Models\Sale;
 use App\Models\Purchase;
 use Filament\Facades\Filament;
@@ -81,6 +82,10 @@ class FlujoCajaWidget extends Widget
                 ->whereDate('fecha', $date)
                 ->sum('monto');
 
+            $egrDia += DebtPayment::where('empresa_id', $tenantId)
+                ->whereDate('fecha_pago', $date)
+                ->sum('total');
+
             $ingAcum += $ingDia;
             $egrAcum += $egrDia;
 
@@ -135,6 +140,11 @@ class FlujoCajaWidget extends Widget
                 ->whereMonth('fecha', $date->month)
                 ->whereYear('fecha', $date->year)
                 ->sum('monto');
+
+            $egrMes += DebtPayment::where('empresa_id', $tenantId)
+                ->whereMonth('fecha_pago', $date->month)
+                ->whereYear('fecha_pago', $date->year)
+                ->sum('total');
 
             $ingAcum += $ingMes;
             $egrAcum += $egrMes;
