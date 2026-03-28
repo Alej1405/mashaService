@@ -7,6 +7,7 @@ use App\Filament\App\Resources\InventoryItemResource\RelationManagers;
 use App\Filament\App\Resources\SupplierResource;
 use App\Models\InventoryItem;
 use App\Models\MeasurementUnit;
+use App\Models\UbicacionAlmacen;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -35,6 +36,18 @@ class InventoryItemResource extends Resource
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Información General')
                             ->schema([
+                                Forms\Components\FileUpload::make('foto_path')
+                                    ->label('Foto del Producto')
+                                    ->image()
+                                    ->imageResizeMode('cover')
+                                    ->imageCropAspectRatio('1:1')
+                                    ->imageResizeTargetWidth('400')
+                                    ->imageResizeTargetHeight('400')
+                                    ->disk('public')
+                                    ->directory('inventario/fotos')
+                                    ->visibility('public')
+                                    ->maxSize(2048)
+                                    ->columnSpanFull(),
                                 Forms\Components\TextInput::make('codigo')
                                     ->label('Código')
                                     ->default(fn () => 'INV-' . strtoupper(uniqid()))
@@ -72,6 +85,16 @@ class InventoryItemResource extends Resource
                                     ])
                                     ->createOptionUsing(fn (array $data): int =>
                                         MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey()),
+                                Forms\Components\Select::make('ubicacion_almacen_id')
+                                    ->label('Ubicación en Almacén')
+                                    ->options(fn () => UbicacionAlmacen::where('empresa_id', Filament::getTenant()->id)
+                                        ->where('activo', true)
+                                        ->with(['zona.almacen'])
+                                        ->get()
+                                        ->mapWithKeys(fn ($u) => [$u->id => $u->etiqueta_completa]))
+                                    ->searchable()
+                                    ->nullable()
+                                    ->placeholder('Sin ubicación asignada'),
                                 Forms\Components\RichEditor::make('descripcion')
                                     ->label('Descripción')
                                     ->columnSpanFull(),
@@ -205,6 +228,13 @@ class InventoryItemResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('foto_path')
+                    ->label('')
+                    ->disk('public')
+                    ->circular()
+                    ->size(40)
+                    ->defaultImageUrl(fn () => null)
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('codigo')
                     ->label('Código')
                     ->searchable()

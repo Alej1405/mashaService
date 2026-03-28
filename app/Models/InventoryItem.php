@@ -40,6 +40,8 @@ class InventoryItem extends Model
         'codigo',
         'nombre',
         'descripcion',
+        'foto_path',
+        'ubicacion_almacen_id',
         'type',
         'measurement_unit_id',
         'purchase_unit_id',
@@ -77,6 +79,11 @@ class InventoryItem extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function ubicacionAlmacen(): BelongsTo
+    {
+        return $this->belongsTo(UbicacionAlmacen::class);
     }
 
     public function files(): HasMany

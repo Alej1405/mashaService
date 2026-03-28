@@ -80,6 +80,21 @@ class Empresa extends Model implements HasName
         return $this->hasMany(InventoryItem::class, 'empresa_id');
     }
 
+    public function almacenes(): HasMany
+    {
+        return $this->hasMany(Almacen::class, 'empresa_id');
+    }
+
+    public function zonasAlmacen(): HasMany
+    {
+        return $this->hasMany(ZonaAlmacen::class, 'empresa_id');
+    }
+
+    public function ubicacionesAlmacen(): HasMany
+    {
+        return $this->hasMany(UbicacionAlmacen::class, 'empresa_id');
+    }
+
     public function inventoryItemFiles(): HasMany
     {
         return $this->hasMany(InventoryItemFile::class, 'empresa_id');
