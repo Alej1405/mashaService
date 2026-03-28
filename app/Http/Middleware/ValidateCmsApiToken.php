@@ -27,7 +27,7 @@ class ValidateCmsApiToken
 
         $empresa = Empresa::where('slug', $slug)->where('activo', true)->first();
 
-        if (! $empresa || $pat->tokenable_id !== $empresa->id) {
+        if (! $empresa || (int) $pat->tokenable_id !== $empresa->id) {
             return response()->json(['error' => 'Token no autorizado para esta empresa.'], 403);
         }
 
