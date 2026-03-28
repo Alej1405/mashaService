@@ -38,7 +38,7 @@
 <div class="space-y-3">
 
     {{-- Inventario --}}
-    <a href="{{ url('/enterprise/' . $empresa->slug . '/inventory-items/create') }}"
+    <a href="{{ route('mobile.inventario.nueva') }}"
        class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
              style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.25);">

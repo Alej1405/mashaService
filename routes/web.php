@@ -17,6 +17,8 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::middleware('mobile.auth')->group(function () {
         Route::get('/',                                    [\App\Http\Controllers\MobileController::class, 'index'])->name('index');
         Route::post('/logout',                             [\App\Http\Controllers\MobileController::class, 'logout'])->name('logout');
+        Route::get('/inventario/nuevo',                    [\App\Http\Controllers\MobileController::class, 'showInventario'])->name('inventario.nueva');
+        Route::post('/inventario/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarInventario'])->name('inventario.guardar');
         Route::get('/compra/nueva',                        [\App\Http\Controllers\MobileController::class, 'showCompraOcr'])->name('compra.ocr');
         Route::post('/compra/ocr',                         [\App\Http\Controllers\MobileController::class, 'procesarOcr'])->name('compra.procesar-ocr');
         Route::post('/compra/guardar',                     [\App\Http\Controllers\MobileController::class, 'guardarCompra'])->name('compra.guardar');

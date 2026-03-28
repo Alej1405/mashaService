@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InventoryItem;
+use App\Models\MeasurementUnit;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Supplier;
@@ -93,6 +94,61 @@ class MobileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('mobile.login');
+    }
+
+    // ── Inventario ────────────────────────────────────────────────────────
+
+    public function showInventario(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        $empresa  = $this->empresa();
+        $unidades = MeasurementUnit::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        return view('mobile.inventario', compact('empresa', 'unidades'));
+    }
+
+    public function guardarInventario(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+
+        $validated = $request->validate([
+            'nombre'              => ['required', 'string', 'max:255'],
+            'type'                => ['required', 'in:insumo,materia_prima,producto_terminado,activo_fijo,servicio'],
+            'measurement_unit_id' => ['nullable', 'integer', 'exists:measurement_units,id'],
+            'descripcion'         => ['nullable', 'string', 'max:500'],
+            'purchase_price'      => ['nullable', 'numeric', 'min:0'],
+            'sale_price'          => ['nullable', 'numeric', 'min:0'],
+            'stock_actual'        => ['nullable', 'numeric', 'min:0'],
+            'stock_minimo'        => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        try {
+            $item = InventoryItem::create([
+                'empresa_id'          => $empresa->id,
+                'nombre'              => $validated['nombre'],
+                'type'                => $validated['type'],
+                'measurement_unit_id' => $validated['measurement_unit_id'] ?? null,
+                'descripcion'         => $validated['descripcion'] ?? null,
+                'purchase_price'      => $validated['purchase_price'] ?? null,
+                'sale_price'          => $validated['sale_price'] ?? null,
+                'stock_actual'        => $validated['stock_actual'] ?? 0,
+                'stock_minimo'        => $validated['stock_minimo'] ?? 0,
+                'activo'              => true,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'codigo'  => $item->codigo,
+                'nombre'  => $item->nombre,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error guardando ítem inventario móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar el ítem.'], 500);
+        }
     }
 
     // ── Compra con foto OCR ───────────────────────────────────────────────
