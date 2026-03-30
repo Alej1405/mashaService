@@ -76,7 +76,7 @@
 <div id="paso-formulario" class="hidden space-y-4">
 
     <div class="flex items-center gap-2 mb-1">
-        <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+        <div id="ocr-dot" class="w-2 h-2 rounded-full bg-emerald-400"></div>
         <p class="text-xs text-emerald-400 font-medium" id="estado-ocr-label"></p>
     </div>
 
@@ -111,7 +111,7 @@
         </div>
 
         <p class="text-xs mt-1" style="color: rgba(232,230,240,0.35);">
-            Si el proveedor no aparece en la lista, selecciona la compra como borrador y completa el proveedor desde el panel ERP.
+            Si el proveedor no aparece en la lista, guarda como borrador y completa desde el panel ERP.
         </p>
     </div>
 
@@ -155,7 +155,6 @@
          style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25);">
     </div>
 
-    {{-- Botones --}}
     <button onclick="guardarCompra()"
             id="btn-guardar"
             class="btn-primary w-full py-3.5 text-sm font-semibold">
@@ -186,7 +185,7 @@
     </a>
 </div>
 
-{{-- Template de ítem (oculto) --}}
+{{-- Template de ítem --}}
 <template id="tmpl-item">
     <div class="item-row p-3 rounded-xl space-y-2" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
         <div class="flex justify-between items-center">
@@ -194,28 +193,51 @@
             <button onclick="eliminarItem(this)" class="text-xs text-red-400 px-2 py-0.5 rounded"
                     style="background: rgba(239,68,68,0.1);">✕</button>
         </div>
+
+        {{-- Descripción --}}
         <input type="text" class="item-desc input w-full px-3 py-2 text-xs" placeholder="Descripción del producto">
-        <select class="item-inv input w-full px-3 py-2 text-xs">
+
+        {{-- Vincular a inventario --}}
+        <select class="item-inv input w-full px-3 py-2 text-xs" onchange="alCambiarProducto(this)">
             <option value="">— Sin vincular a inventario —</option>
             @foreach($items as $item)
-                <option value="{{ $item->id }}">{{ $item->codigo }} — {{ $item->nombre }}</option>
+                <option value="{{ $item->id }}" data-nombre="{{ $item->nombre }}">
+                    {{ $item->codigo }} — {{ $item->nombre }}
+                </option>
             @endforeach
         </select>
+
+        {{-- Presentación / Empaque --}}
+        <div class="item-pres-wrap" style="display:none;">
+            <p class="text-xs mb-1" style="color:rgba(232,230,240,0.4);">Presentación / Empaque</p>
+            <select class="item-pres input w-full px-3 py-2 text-xs" onchange="alCambiarPresentacion(this)">
+                <option value="">— Unidad base (sin presentación) —</option>
+            </select>
+            <p class="item-pres-hint text-xs mt-1 hidden" style="color:#a5b4fc;"></p>
+        </div>
+
+        {{-- Cantidad y precio --}}
         <div class="flex gap-2">
             <div class="flex-1">
                 <p class="text-xs mb-1" style="color: rgba(232,230,240,0.4);">Cantidad</p>
-                <input type="number" class="item-qty input w-full px-3 py-2 text-xs" placeholder="0" min="0.001" step="0.001">
+                <input type="number" class="item-qty input w-full px-3 py-2 text-xs"
+                       placeholder="0" min="0.001" step="0.001" oninput="actualizarHint(this)">
             </div>
             <div class="flex-1">
                 <p class="text-xs mb-1" style="color: rgba(232,230,240,0.4);">Precio unit.</p>
-                <input type="number" class="item-price input w-full px-3 py-2 text-xs" placeholder="0.00" min="0" step="0.01">
+                <input type="number" class="item-price input w-full px-3 py-2 text-xs"
+                       placeholder="0.00" min="0" step="0.01">
             </div>
         </div>
+
+        {{-- Factor oculto --}}
+        <input type="hidden" class="item-factor" value="1">
     </div>
 </template>
 
 <script>
-const CSRF = '{{ csrf_token() }}';
+const CSRF          = '{{ csrf_token() }}';
+const PRESENTATIONS = @json($presentationsByItem);
 let itemCount = 0;
 
 // ── Foto ─────────────────────────────────────────────────────────────────
@@ -242,20 +264,24 @@ function procesarOcr() {
     form.append('foto', file);
     form.append('_token', CSRF);
 
-    fetch('{{ route("mobile.compra.procesar-ocr") }}', { method: 'POST', body: form })
-        .then(r => r.json())
-        .then(data => {
-            document.getElementById('estado-ocr').classList.add('hidden');
-            if (data.error) {
-                mostrarErrorOcr(data.error);
-                return;
-            }
-            rellenarFormulario(data, true);
-        })
-        .catch(() => {
-            document.getElementById('estado-ocr').classList.add('hidden');
-            mostrarErrorOcr('Error de conexión al procesar la imagen.');
-        });
+    fetch('{{ route("mobile.compra.procesar-ocr") }}', {
+        method:  'POST',
+        headers: { 'Accept': 'application/json' },
+        body:    form,
+    })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        document.getElementById('estado-ocr').classList.add('hidden');
+        if (!ok || data.error) {
+            mostrarErrorOcr(data.error || data.message || 'Error al procesar la imagen.');
+            return;
+        }
+        rellenarFormulario(data, true);
+    })
+    .catch(() => {
+        document.getElementById('estado-ocr').classList.add('hidden');
+        mostrarErrorOcr('Error de conexión al procesar la imagen.');
+    });
 }
 
 function mostrarErrorOcr(msg) {
@@ -275,27 +301,21 @@ function rellenarFormulario(data, desdeOcr) {
     document.getElementById('paso-formulario').classList.remove('hidden');
 
     const label = document.getElementById('estado-ocr-label');
+    const dot   = document.getElementById('ocr-dot');
     label.textContent = desdeOcr ? 'Datos extraídos por IA — revisa y corrige si es necesario' : 'Ingreso manual';
-    label.closest('.flex').querySelector('.w-2').className = desdeOcr
-        ? 'w-2 h-2 rounded-full bg-emerald-400'
-        : 'w-2 h-2 rounded-full bg-amber-400';
+    dot.className = desdeOcr ? 'w-2 h-2 rounded-full bg-emerald-400' : 'w-2 h-2 rounded-full bg-amber-400';
+    label.className = desdeOcr ? 'text-xs text-emerald-400 font-medium' : 'text-xs text-amber-400 font-medium';
 
-    if (data.numero_factura) document.getElementById('f-numero').value = data.numero_factura;
-    if (data.fecha)          document.getElementById('f-fecha').value = data.fecha;
-    if (data.subtotal_sin_iva !== undefined && data.subtotal_sin_iva !== null)
-        document.getElementById('f-subtotal').value = data.subtotal_sin_iva;
-    if (data.iva_monto !== undefined && data.iva_monto !== null)
-        document.getElementById('f-iva').value = data.iva_monto;
-    if (data.total !== undefined && data.total !== null)
-        document.getElementById('f-total').value = data.total;
+    if (data.numero_factura)   document.getElementById('f-numero').value   = data.numero_factura;
+    if (data.fecha)            document.getElementById('f-fecha').value    = data.fecha;
+    if (data.subtotal_sin_iva != null) document.getElementById('f-subtotal').value = data.subtotal_sin_iva;
+    if (data.iva_monto    != null) document.getElementById('f-iva').value    = data.iva_monto;
+    if (data.total        != null) document.getElementById('f-total').value  = data.total;
 
     if (data.supplier_id) {
         document.getElementById('f-supplier').value = data.supplier_id;
-    } else if (data.supplier_nombre) {
-        document.getElementById('f-proveedor-nombre').value = data.supplier_nombre;
     }
 
-    // Ítems
     if (data.items && data.items.length > 0) {
         data.items.forEach(item => agregarItem(item));
     } else {
@@ -309,8 +329,8 @@ function agregarItem(data = null) {
     const tmpl = document.getElementById('tmpl-item').content.cloneNode(true);
     tmpl.querySelector('.item-num').textContent = itemCount;
     if (data) {
-        if (data.descripcion)    tmpl.querySelector('.item-desc').value  = data.descripcion;
-        if (data.cantidad)       tmpl.querySelector('.item-qty').value   = data.cantidad;
+        if (data.descripcion)     tmpl.querySelector('.item-desc').value  = data.descripcion;
+        if (data.cantidad)        tmpl.querySelector('.item-qty').value   = data.cantidad;
         if (data.precio_unitario) tmpl.querySelector('.item-price').value = data.precio_unitario;
     }
     document.getElementById('lista-items').appendChild(tmpl);
@@ -320,48 +340,144 @@ function eliminarItem(btn) {
     btn.closest('.item-row').remove();
 }
 
+// ── Al cambiar producto ───────────────────────────────────────────────────
+function alCambiarProducto(sel) {
+    const row    = sel.closest('.item-row');
+    const itemId = sel.value;
+
+    // Rellenar descripción si está vacía
+    const opt = sel.selectedOptions[0];
+    if (opt && opt.dataset.nombre) {
+        const descEl = row.querySelector('.item-desc');
+        if (!descEl.value) descEl.value = opt.dataset.nombre;
+    }
+
+    // Presentaciones
+    const presWrap = row.querySelector('.item-pres-wrap');
+    const presSel  = row.querySelector('.item-pres');
+    row.querySelector('.item-factor').value = 1;
+    presSel.innerHTML = '<option value="">— Unidad base (sin presentación) —</option>';
+
+    const pres = itemId ? (PRESENTATIONS[itemId] || []) : [];
+    if (pres.length > 0) {
+        pres.forEach(p => {
+            const o = document.createElement('option');
+            o.value          = p.id;
+            o.dataset.factor = p.factor_conversion;
+            o.textContent    = p.nombre + ' (×' + parseFloat(p.factor_conversion) + ')';
+            presSel.appendChild(o);
+        });
+        presWrap.style.display = '';
+    } else {
+        presWrap.style.display = 'none';
+    }
+}
+
+// ── Al cambiar presentación ───────────────────────────────────────────────
+function alCambiarPresentacion(sel) {
+    const row   = sel.closest('.item-row');
+    const opt   = sel.selectedOptions[0];
+    const fact  = opt && opt.dataset.factor ? parseFloat(opt.dataset.factor) : 1;
+    const hint  = row.querySelector('.item-pres-hint');
+    row.querySelector('.item-factor').value = fact;
+
+    if (fact !== 1) {
+        const qty = parseFloat(row.querySelector('.item-qty').value) || 1;
+        hint.textContent = `${qty} × ${fact} = ${Math.round(qty * fact * 10000) / 10000} unidades de compra`;
+        hint.classList.remove('hidden');
+    } else {
+        hint.classList.add('hidden');
+    }
+}
+
+// ── Hint al cambiar cantidad ──────────────────────────────────────────────
+function actualizarHint(qtySel) {
+    const row   = qtySel.closest('.item-row');
+    const fact  = parseFloat(row.querySelector('.item-factor').value) || 1;
+    const hint  = row.querySelector('.item-pres-hint');
+    if (fact !== 1) {
+        const qty = parseFloat(qtySel.value) || 0;
+        hint.textContent = `${qty} × ${fact} = ${Math.round(qty * fact * 10000) / 10000} unidades de compra`;
+        hint.classList.remove('hidden');
+    }
+}
+
 // ── Guardar ───────────────────────────────────────────────────────────────
 function guardarCompra() {
-    document.getElementById('error-guardar').classList.add('hidden');
+    const errEl = document.getElementById('error-guardar');
+    errEl.classList.add('hidden');
+
+    const numero = document.getElementById('f-numero').value.trim();
+    const fecha  = document.getElementById('f-fecha').value;
+    if (!numero) { mostrarErrorGuardar('El número de factura es obligatorio.'); return; }
+    if (!fecha)  { mostrarErrorGuardar('La fecha es obligatoria.'); return; }
+
+    const rows  = document.querySelectorAll('.item-row');
+    if (rows.length === 0) { mostrarErrorGuardar('Agrega al menos un ítem.'); return; }
 
     const items = [];
-    document.querySelectorAll('.item-row').forEach(row => {
+    let valido  = true;
+    rows.forEach((row, i) => {
+        const desc = row.querySelector('.item-desc').value.trim();
+        const qty  = parseFloat(row.querySelector('.item-qty').value);
+        const prc  = parseFloat(row.querySelector('.item-price').value);
+        const fact = parseFloat(row.querySelector('.item-factor').value) || 1;
+
+        if (!desc)           { mostrarErrorGuardar(`Ítem ${i + 1}: la descripción es obligatoria.`); valido = false; }
+        if (!(qty > 0))      { mostrarErrorGuardar(`Ítem ${i + 1}: la cantidad debe ser mayor a 0.`); valido = false; }
+
+        // Cantidad real = cantidad en presentaciones × factor
+        const cantidadReal = Math.round(qty * fact * 1000000) / 1000000;
+
         items.push({
-            descripcion:        row.querySelector('.item-desc').value,
-            cantidad:           parseFloat(row.querySelector('.item-qty').value) || 0,
-            precio_unitario:    parseFloat(row.querySelector('.item-price').value) || 0,
+            descripcion:        desc,
+            cantidad:           cantidadReal,
+            precio_unitario:    prc || 0,
             inventory_item_id:  row.querySelector('.item-inv').value || null,
         });
     });
 
+    if (!valido) return;
+
+    const subtotal = parseFloat(document.getElementById('f-subtotal').value) || 0;
+    const iva      = parseFloat(document.getElementById('f-iva').value)      || 0;
+    const total    = parseFloat(document.getElementById('f-total').value)    || (subtotal + iva);
+
     const payload = {
         _token:         CSRF,
-        numero_factura: document.getElementById('f-numero').value,
-        fecha:          document.getElementById('f-fecha').value,
+        numero_factura: numero,
+        fecha,
         supplier_id:    document.getElementById('f-supplier').value || null,
-        subtotal:       document.getElementById('f-subtotal').value,
-        iva:            document.getElementById('f-iva').value,
-        total:          document.getElementById('f-total').value,
+        subtotal:       subtotal || total / 1.15,
+        iva:            iva      || total - (total / 1.15),
+        total:          total    || subtotal + iva,
         items,
     };
 
     const btn = document.getElementById('btn-guardar');
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = 'Guardando...';
 
     fetch('{{ route("mobile.compra.guardar") }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+        method:  'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': CSRF,
+            'Accept':       'application/json',
+        },
         body: JSON.stringify(payload),
     })
-    .then(r => r.json())
-    .then(data => {
-        btn.disabled = false;
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+        btn.disabled    = false;
         btn.textContent = 'Registrar Compra';
-        if (data.error) {
-            const el = document.getElementById('error-guardar');
-            el.textContent = data.error;
-            el.classList.remove('hidden');
+        if (!ok) {
+            if (data.errors) {
+                const primer = Object.values(data.errors).flat()[0];
+                mostrarErrorGuardar(primer || data.message || 'Error de validación.');
+            } else {
+                mostrarErrorGuardar(data.error || data.message || 'Error al guardar.');
+            }
             return;
         }
         document.getElementById('paso-formulario').classList.add('hidden');
@@ -369,26 +485,32 @@ function guardarCompra() {
         document.getElementById('exito-numero').textContent = data.number;
     })
     .catch(() => {
-        btn.disabled = false;
+        btn.disabled    = false;
         btn.textContent = 'Registrar Compra';
-        const el = document.getElementById('error-guardar');
-        el.textContent = 'Error de conexión.';
-        el.classList.remove('hidden');
+        mostrarErrorGuardar('Error de conexión. Revisa tu red e intenta de nuevo.');
     });
+}
+
+function mostrarErrorGuardar(msg) {
+    const el = document.getElementById('error-guardar');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function reiniciar() {
     itemCount = 0;
     document.getElementById('lista-items').innerHTML = '';
-    document.getElementById('input-foto').value = '';
+    document.getElementById('input-foto').value      = '';
     document.getElementById('preview-container').classList.add('hidden');
     ['f-numero','f-fecha','f-subtotal','f-iva','f-total'].forEach(id => {
         document.getElementById(id).value = '';
     });
     document.getElementById('f-supplier').value = '';
+    document.getElementById('error-ocr').classList.add('hidden');
+    document.getElementById('error-guardar').classList.add('hidden');
     document.getElementById('paso-formulario').classList.add('hidden');
     document.getElementById('paso-exito').classList.add('hidden');
-    document.getElementById('error-ocr').classList.add('hidden');
     document.getElementById('paso-foto').classList.remove('hidden');
 }
 </script>

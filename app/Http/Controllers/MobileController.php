@@ -13,6 +13,7 @@ use App\Models\SaleItem;
 use App\Models\Customer;
 use App\Models\ProductionOrder;
 use App\Models\ProductPresentation;
+use App\Models\ItemPresentation;
 use App\Models\UbicacionAlmacen;
 use App\Models\ZonaAlmacen;
 use Illuminate\Http\Request;
@@ -445,9 +446,19 @@ class MobileController extends Controller
 
         $empresa   = $this->empresa();
         $suppliers = Supplier::where('empresa_id', $empresa->id)->orderBy('nombre')->get();
-        $items     = InventoryItem::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        $items     = InventoryItem::where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get(['id', 'codigo', 'nombre', 'purchase_price']);
 
-        return view('mobile.compra-ocr', compact('empresa', 'suppliers', 'items'));
+        $presentationsByItem = ItemPresentation::where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->get(['id', 'inventory_item_id', 'nombre', 'factor_conversion'])
+            ->groupBy('inventory_item_id')
+            ->map(fn ($g) => $g->values())
+            ->toArray();
+
+        return view('mobile.compra-ocr', compact('empresa', 'suppliers', 'items', 'presentationsByItem'));
     }
 
     public function procesarOcr(Request $request)
@@ -571,7 +582,8 @@ class MobileController extends Controller
             ]);
 
             foreach ($validated['items'] as $item) {
-                $subtotalItem = round($item['cantidad'] * $item['precio_unitario'], 4);
+                $subtotalItem = round((float) $item['cantidad'] * (float) $item['precio_unitario'], 4);
+                $ivaMonto     = round($subtotalItem * 0.15, 4);
                 PurchaseItem::create([
                     'purchase_id'       => $purchase->id,
                     'inventory_item_id' => $item['inventory_item_id'] ?? null,
@@ -579,8 +591,8 @@ class MobileController extends Controller
                     'unit_price'        => $item['precio_unitario'],
                     'aplica_iva'        => true,
                     'subtotal'          => $subtotalItem,
-                    'iva_monto'         => 0,
-                    'total_item'        => $subtotalItem,
+                    'iva_monto'         => $ivaMonto,
+                    'total_item'        => $subtotalItem + $ivaMonto,
                 ]);
             }
 
@@ -667,8 +679,19 @@ class MobileController extends Controller
         }
         $empresa   = $this->empresa();
         $customers = Customer::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
-        $items     = InventoryItem::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
-        return view('mobile.venta', compact('empresa', 'customers', 'items'));
+        $items     = InventoryItem::where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get(['id', 'codigo', 'nombre', 'type', 'sale_price', 'stock_actual', 'measurement_unit_id']);
+
+        $presentationsByItem = ItemPresentation::where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->get(['id', 'inventory_item_id', 'nombre', 'factor_conversion'])
+            ->groupBy('inventory_item_id')
+            ->map(fn ($g) => $g->values())
+            ->toArray();
+
+        return view('mobile.venta', compact('empresa', 'customers', 'items', 'presentationsByItem'));
     }
 
     public function guardarVenta(Request $request)
@@ -677,18 +700,51 @@ class MobileController extends Controller
             return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
         }
         $empresa = $this->empresa();
+
         $validated = $request->validate([
-            'fecha'           => ['required', 'date'],
-            'customer_id'     => ['nullable', 'integer', 'exists:customers,id'],
-            'tipo_venta'      => ['required', 'in:contado,credito'],
-            'forma_pago'      => ['required', 'in:efectivo,transferencia,tarjeta_credito,credito'],
-            'items'           => ['required', 'array', 'min:1'],
-            'items.*.inventory_item_id' => ['nullable', 'integer'],
-            'items.*.descripcion'       => ['required', 'string'],
-            'items.*.cantidad'          => ['required', 'numeric', 'min:0.0001'],
-            'items.*.precio_unitario'   => ['required', 'numeric', 'min:0'],
-            'items.*.aplica_iva'        => ['boolean'],
+            'fecha'                          => ['required', 'date'],
+            'customer_id'                    => ['nullable', 'integer', 'exists:customers,id'],
+            'tipo_venta'                     => ['required', 'in:contado,credito'],
+            'forma_pago'                     => ['required', 'in:efectivo,transferencia,tarjeta_credito,credito'],
+            'items'                          => ['required', 'array', 'min:1'],
+            'items.*.inventory_item_id'      => ['nullable', 'integer'],
+            'items.*.item_presentation_id'   => ['nullable', 'integer'],
+            'items.*.factor_empaque'         => ['nullable', 'numeric', 'min:0.000001'],
+            'items.*.descripcion'            => ['required', 'string', 'max:500'],
+            'items.*.cantidad'               => ['required', 'numeric', 'min:0.0001'],
+            'items.*.precio_unitario'        => ['required', 'numeric', 'min:0'],
+            'items.*.aplica_iva'             => ['boolean'],
         ]);
+
+        // Verificar que los inventory_item_id pertenecen a la empresa
+        $rawItemIds = array_filter(array_column($validated['items'], 'inventory_item_id'));
+        $inventoryItemsMap = [];
+        if (!empty($rawItemIds)) {
+            $inventoryItemsMap = InventoryItem::where('empresa_id', $empresa->id)
+                ->whereIn('id', $rawItemIds)
+                ->get()
+                ->keyBy('id')
+                ->all();
+            foreach ($rawItemIds as $iid) {
+                if (!isset($inventoryItemsMap[$iid])) {
+                    return response()->json(['error' => 'Ítem de inventario no válido.'], 422);
+                }
+            }
+        }
+
+        // Verificar que las presentaciones pertenecen a la empresa
+        $presIds = array_filter(array_column($validated['items'], 'item_presentation_id'));
+        if (!empty($presIds)) {
+            $validPres = ItemPresentation::where('empresa_id', $empresa->id)
+                ->whereIn('id', $presIds)
+                ->pluck('id')
+                ->toArray();
+            foreach ($presIds as $pid) {
+                if (!in_array($pid, $validPres)) {
+                    return response()->json(['error' => 'Presentación no válida.'], 422);
+                }
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -705,17 +761,42 @@ class MobileController extends Controller
                 'total'          => 0,
             ]);
 
+            $totalSubtotal = 0;
+            $totalIva      = 0;
+
             foreach ($validated['items'] as $item) {
+                $invItem       = isset($item['inventory_item_id']) ? ($inventoryItemsMap[$item['inventory_item_id']] ?? null) : null;
+                $tipoItem      = $invItem?->type ?? 'producto_terminado';
+                $factorEmpaque = (float) ($item['factor_empaque'] ?? 1);
+
+                $subtotalItem = round((float) $item['cantidad'] * (float) $item['precio_unitario'], 4);
+                $aplicaIva    = (bool) ($item['aplica_iva'] ?? false);
+                $ivaMonto     = $aplicaIva ? round($subtotalItem * 0.15, 4) : 0;
+
+                $totalSubtotal += $subtotalItem;
+                $totalIva      += $ivaMonto;
+
                 SaleItem::create([
-                    'sale_id'           => $sale->id,
-                    'inventory_item_id' => $item['inventory_item_id'] ?? null,
-                    'tipo_item'         => 'producto',
-                    'descripcion'       => $item['descripcion'],
-                    'cantidad'          => $item['cantidad'],
-                    'precio_unitario'   => $item['precio_unitario'],
-                    'aplica_iva'        => $item['aplica_iva'] ?? false,
+                    'sale_id'              => $sale->id,
+                    'inventory_item_id'    => $item['inventory_item_id'] ?? null,
+                    'item_presentation_id' => $item['item_presentation_id'] ?? null,
+                    'tipo_item'            => $tipoItem,
+                    'descripcion_servicio' => $item['descripcion'],
+                    'cantidad'             => $item['cantidad'],
+                    'precio_unitario'      => $item['precio_unitario'],
+                    'aplica_iva'           => $aplicaIva,
+                    'subtotal'             => $subtotalItem,
+                    'iva_monto'            => $ivaMonto,
+                    'total'                => $subtotalItem + $ivaMonto,
+                    'factor_empaque'       => $factorEmpaque,
                 ]);
             }
+
+            $sale->update([
+                'subtotal' => round($totalSubtotal, 2),
+                'iva'      => round($totalIva, 2),
+                'total'    => round($totalSubtotal + $totalIva, 2),
+            ]);
 
             DB::commit();
             return response()->json(['success' => true, 'referencia' => $sale->fresh()->referencia]);
