@@ -434,9 +434,12 @@ class AccountingService
                     $cuentaCosto = self::getMapeo($sale->empresa_id, $tipoItemMapa, 'costo_venta');
                     $cuentaInventario = self::getMapeo($sale->empresa_id, $tipoItemMapa, 'compra_contado');
 
-                    // Cálculo de costo estándar solicitado
+                    // factor_empaque: cuántas unidades base por presentación (default 1)
+                    $factorEmpaque = (float)($item->factor_empaque ?? 1);
+                    $stockQty      = round((float)$item->cantidad * $factorEmpaque, 6);
+
                     $costoUnitario = (float)($item->inventoryItem->purchase_price ?? 0);
-                    $costoTotal = $costoUnitario * (float)$item->cantidad;
+                    $costoTotal    = $costoUnitario * $stockQty;
 
                     if ($costoTotal > 0) {
                         // DEBE: costo de venta
@@ -462,12 +465,12 @@ class AccountingService
                         $totalHaber += $costoTotal;
                     }
 
-                    // Movimiento inventario (siempre registrar el movimiento, aunque costo sea 0 para trazabilidad)
+                    // Movimiento inventario en unidades base
                     \App\Models\InventoryMovement::create([
                         'empresa_id'        => $sale->empresa_id,
                         'inventory_item_id' => $item->inventory_item_id,
                         'type'              => 'salida',
-                        'quantity'          => $item->cantidad,
+                        'quantity'          => $stockQty,
                         'unit_price'        => $costoUnitario,
                         'total'             => $costoTotal,
                         'reference_type'    => 'sale',
@@ -477,11 +480,11 @@ class AccountingService
                         'date'              => $sale->fecha,
                     ]);
 
-                    // Validar stock
-                    if ((float)$item->inventoryItem->stock_actual < (float)$item->cantidad) {
-                        throw new \Exception("Stock insuficiente para " . $item->inventoryItem->nombre . ": disponible " . $item->inventoryItem->stock_actual . ", requerido " . $item->cantidad);
+                    // Validar stock en unidades base
+                    if ((float)$item->inventoryItem->stock_actual < $stockQty) {
+                        throw new \Exception("Stock insuficiente para " . $item->inventoryItem->nombre . ": disponible " . $item->inventoryItem->stock_actual . ", requerido " . $stockQty);
                     }
-                    $item->inventoryItem->decrement('stock_actual', $item->cantidad);
+                    $item->inventoryItem->decrement('stock_actual', $stockQty);
                 }
             }
 

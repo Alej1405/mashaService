@@ -535,3 +535,45 @@ Este archivo contiene el historial de problemas técnicos, conflictos y errores 
 - **Paso 54**: Creación de Widget Ejecutivo para el Estado de Resultados. Incluye tarjetas de KPIs (Ingresos, Costos, Utilidad), semáforos de salud financiera, interpretación automática y gráfico de barras horizontal (Chart.js).
 - **Paso 55**: Implementación de Dashboard Ejecutivo completo para Mashaec ERP. Se crearon 6 widgets avanzados con visualización de datos NIIF y diseño de glassmorphism.
 - **Paso 56**: Rediseño integral UI/UX del Dashboard. Se implementó un sistema de diseño premium con: layout horizontal de cabecera, tarjetas con bordes de color laterales, ranking con medallas visuales, gráficos de Chart.js optimizados con degradados y áreas de impacto, y badges de estado sólidos para inventario.
+
+---
+
+## 2026-03-30 — Sistema de Presentaciones / Empaques (Paso 57)
+
+### Problema resuelto
+El sistema registraba cantidades planas sin considerar unidades de empaque.
+Ahora soporta presentaciones (caja x12, paquete x6, etc.) en Compras, Ventas y Ajustes de inventario.
+
+### Migraciones (4 archivos, todas aplicadas)
+- `2026_03_30_100001_create_item_presentations_table` — tabla `item_presentations`
+- `2026_03_30_100002_create_inventory_adjustments_table` — tabla `inventory_adjustments`
+- `2026_03_30_100003_add_empaque_to_sale_items` — columnas `item_presentation_id`, `factor_empaque` en `sale_items`
+- `2026_03_30_100004_add_empaque_to_purchase_items` — mismas columnas en `purchase_items` (trazabilidad futura)
+
+### Modelos nuevos
+- `app/Models/ItemPresentation.php`
+- `app/Models/InventoryAdjustment.php`
+- Relaciones `presentations()` y `adjustments()` agregadas a `InventoryItem`
+
+### Recursos Filament nuevos
+- `ItemPresentationResource` — CRUD de presentaciones por ítem (Inventario > Presentaciones)
+- `InventoryAdjustmentResource` — Ajustes manuales de stock con trazabilidad contable
+
+### Recursos Filament modificados
+- `PurchaseResource` — Selector virtual de presentación + campo `_pres_qty`; auto-calcula `quantity = _pres_qty × factor`
+- `SaleResource` — Selector `item_presentation_id` (persiste) + `factor_empaque` (persiste); helper text muestra stock a descontar
+
+### AccountingService modificado
+- `generarAsientoVenta`: usa `$item->factor_empaque ?? 1` para calcular unidades base descontadas del stock y el asiento contable
+
+### Flujo de datos
+```
+Compra: 3 cajas×12 → quantity=36 guardado en purchase_items → AccountingService incrementa stock ×conversion_factor
+Venta:  2 paquetes×6 → cantidad=2, factor_empaque=6 en sale_items → AccountingService descuenta 12 unidades base
+Ajuste: cantidad_presentacion × factor_empaque → total_unidades_base → InventoryMovement → asiento automático (Observer)
+```
+
+### Restricciones respetadas ✅
+- Sin tocar Observers, Providers ni modelos existentes (salvo agregar relaciones a InventoryItem)
+- `AccountingService::generarAsientoCompra` y `generarAsientoAjuste` no modificados
+- `PurchaseItem.$fillable` no violado (presentación es virtual en el formulario)

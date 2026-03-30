@@ -91,6 +91,16 @@ class InventoryItem extends Model
         return $this->hasMany(InventoryItemFile::class);
     }
 
+    public function presentations(): HasMany
+    {
+        return $this->hasMany(ItemPresentation::class);
+    }
+
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(InventoryAdjustment::class);
+    }
+
     public function getStockBajoAttribute(): bool
     {
         return $this->stock_actual <= $this->stock_minimo;
