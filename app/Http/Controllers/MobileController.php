@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Almacen;
 use App\Models\InventoryItem;
 use App\Models\MeasurementUnit;
 use App\Models\Purchase;
@@ -94,6 +95,126 @@ class MobileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('mobile.login');
+    }
+
+    // ── Almacenes ─────────────────────────────────────────────────────────
+
+    public function listAlmacenes(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        $empresa   = $this->empresa();
+        $almacenes = Almacen::where('empresa_id', $empresa->id)
+            ->orderBy('nombre')
+            ->get();
+        return view('mobile.almacenes', compact('empresa', 'almacenes'));
+    }
+
+    public function showAlmacenForm(Request $request, ?Almacen $almacen = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+
+        // Si se pasó un almacen verificar que pertenece a la empresa
+        if ($almacen && $almacen->empresa_id !== $this->empresa()->id) {
+            abort(403);
+        }
+
+        $empresa = $this->empresa();
+        return view('mobile.almacen-form', compact('empresa', 'almacen'));
+    }
+
+    public function guardarAlmacen(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+
+        $validated = $request->validate([
+            'almacen_id'  => ['nullable', 'integer'],
+            'codigo'      => ['required', 'string', 'max:20'],
+            'nombre'      => ['required', 'string', 'max:150'],
+            'tipo'        => ['required', 'in:bodega_propia,deposito_externo,area_produccion,punto_venta,transito'],
+            'responsable' => ['nullable', 'string', 'max:150'],
+            'direccion'   => ['nullable', 'string', 'max:255'],
+            'descripcion' => ['nullable', 'string', 'max:500'],
+            'activo'      => ['boolean'],
+        ]);
+
+        try {
+            $almacenId = $validated['almacen_id'] ?? null;
+
+            if ($almacenId) {
+                // Editar existente
+                $almacen = Almacen::where('empresa_id', $empresa->id)->findOrFail($almacenId);
+
+                // Verificar unicidad del código (excluyendo el registro actual)
+                $codigoExiste = Almacen::where('empresa_id', $empresa->id)
+                    ->where('codigo', $validated['codigo'])
+                    ->where('id', '!=', $almacenId)
+                    ->exists();
+                if ($codigoExiste) {
+                    return response()->json(['error' => 'Ya existe un almacén con ese código.'], 422);
+                }
+
+                $almacen->update([
+                    'codigo'      => $validated['codigo'],
+                    'nombre'      => $validated['nombre'],
+                    'tipo'        => $validated['tipo'],
+                    'responsable' => $validated['responsable'] ?? null,
+                    'direccion'   => $validated['direccion'] ?? null,
+                    'descripcion' => $validated['descripcion'] ?? null,
+                    'activo'      => $validated['activo'] ?? true,
+                ]);
+                return response()->json(['success' => true, 'modo' => 'actualizado', 'nombre' => $almacen->nombre]);
+            }
+
+            // Crear nuevo
+            $codigoExiste = Almacen::where('empresa_id', $empresa->id)
+                ->where('codigo', $validated['codigo'])
+                ->exists();
+            if ($codigoExiste) {
+                return response()->json(['error' => 'Ya existe un almacén con ese código.'], 422);
+            }
+
+            $almacen = Almacen::create([
+                'empresa_id'  => $empresa->id,
+                'codigo'      => $validated['codigo'],
+                'nombre'      => $validated['nombre'],
+                'tipo'        => $validated['tipo'],
+                'responsable' => $validated['responsable'] ?? null,
+                'direccion'   => $validated['direccion'] ?? null,
+                'descripcion' => $validated['descripcion'] ?? null,
+                'activo'      => $validated['activo'] ?? true,
+            ]);
+            return response()->json(['success' => true, 'modo' => 'creado', 'nombre' => $almacen->nombre]);
+
+        } catch (\Exception $e) {
+            Log::error('Error guardando almacén móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar el almacén.'], 500);
+        }
+    }
+
+    public function eliminarAlmacen(Request $request, Almacen $almacen)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+
+        if ($almacen->empresa_id !== $this->empresa()->id) {
+            return response()->json(['error' => 'Acceso no autorizado.'], 403);
+        }
+
+        try {
+            $almacen->delete();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Error eliminando almacén móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'No se puede eliminar el almacén.'], 500);
+        }
     }
 
     // ── Inventario ────────────────────────────────────────────────────────

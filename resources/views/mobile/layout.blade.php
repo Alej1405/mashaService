@@ -7,7 +7,9 @@
     <title>@yield('title', 'Mashaec') · Acceso Rápido</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
-        body { background: #0f0e17; color: #e8e6f0; font-family: 'Sansation', 'Inter', sans-serif; }
+        body { background: #0f0e17; color: #e8e6f0; font-family: 'Sansation', 'Inter', sans-serif; overflow-x: hidden; }
+        *, *::before, *::after { box-sizing: border-box; }
+        input, select, textarea { max-width: 100%; }
         .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10); border-radius: 1rem; }
         .btn-primary { background: #4f46e5; color: #fff; border-radius: 0.75rem; font-weight: 600; transition: background 0.2s; }
         .btn-primary:active { background: #4338ca; }
