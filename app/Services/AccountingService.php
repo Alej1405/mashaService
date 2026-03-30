@@ -131,7 +131,9 @@ class AccountingService
             };
 
             foreach ($purchase->items as $item) {
-                $tipoItem = $item->inventoryItem->type;
+                // Items sin inventory_item_id: gasto genérico sin seguimiento de stock
+                $tipoItem = $item->inventoryItem?->type ?? 'global';
+                $descItem = $item->inventoryItem?->nombre ?? ($item->descripcion ?? 'Gasto');
 
                 // 1. Línea de Gasto/Inventario (Debe)
                 $cuentaItem = self::getMapeo($purchase->empresa_id, $tipoItem, $tipoMovimiento);
@@ -139,7 +141,7 @@ class AccountingService
                 JournalEntryLine::create([
                     'journal_entry_id' => $journalEntry->id,
                     'account_plan_id'  => $cuentaItem->id,
-                    'descripcion'      => $item->inventoryItem->nombre,
+                    'descripcion'      => $descItem,
                     'debe'             => $item->subtotal,
                     'haber'            => 0,
                     'orden'            => $orden++,
@@ -157,7 +159,7 @@ class AccountingService
                     JournalEntryLine::create([
                         'journal_entry_id' => $journalEntry->id,
                         'account_plan_id'  => $cuentaIva->id,
-                        'descripcion'      => 'IVA 15% - ' . $item->inventoryItem->nombre,
+                        'descripcion'      => 'IVA 15% - ' . $descItem,
                         'debe'             => $item->iva_monto,
                         'haber'            => 0,
                         'orden'            => $orden++,
@@ -165,26 +167,27 @@ class AccountingService
                     $totalDebe += $item->iva_monto;
                 }
 
-                // 3. Registrar Movimiento de Inventario
-                // Aplicar factor de conversión: si compran en kg pero el stock se lleva en g
-                $factor   = (float) ($item->inventoryItem->conversion_factor ?? 1);
-                $stockQty = round($item->quantity * $factor, 6);
+                // 3. Registrar Movimiento de Inventario (solo si hay item de inventario vinculado)
+                if ($item->inventoryItem) {
+                    $factor   = (float) ($item->inventoryItem->conversion_factor ?? 1);
+                    $stockQty = round($item->quantity * $factor, 6);
 
-                InventoryMovement::create([
-                    'empresa_id'        => $purchase->empresa_id,
-                    'inventory_item_id' => $item->inventory_item_id,
-                    'type'              => 'entrada',
-                    'quantity'          => $stockQty,
-                    'unit_price'        => $item->unit_price / $factor,  // precio por unidad de stock
-                    'total'             => $item->subtotal,
-                    'reference_type'    => 'purchase',
-                    'reference_id'      => $purchase->id,
-                    'journal_entry_id'  => $journalEntry->id,
-                    'notes'             => 'Compra ' . $purchase->number,
-                    'date'              => $purchase->date,
-                ]);
+                    InventoryMovement::create([
+                        'empresa_id'        => $purchase->empresa_id,
+                        'inventory_item_id' => $item->inventory_item_id,
+                        'type'              => 'entrada',
+                        'quantity'          => $stockQty,
+                        'unit_price'        => $item->unit_price / $factor,
+                        'total'             => $item->subtotal,
+                        'reference_type'    => 'purchase',
+                        'reference_id'      => $purchase->id,
+                        'journal_entry_id'  => $journalEntry->id,
+                        'notes'             => 'Compra ' . $purchase->number,
+                        'date'              => $purchase->date,
+                    ]);
 
-                $item->inventoryItem->increment('stock_actual', $stockQty);
+                    $item->inventoryItem->increment('stock_actual', $stockQty);
+                }
             }
 
             // 4. Línea de Pago (Haber)

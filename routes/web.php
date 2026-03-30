@@ -17,12 +17,19 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::middleware('mobile.auth')->group(function () {
         Route::get('/',                                    [\App\Http\Controllers\MobileController::class, 'index'])->name('index');
         Route::post('/logout',                             [\App\Http\Controllers\MobileController::class, 'logout'])->name('logout');
-        Route::get('/almacenes',                           [\App\Http\Controllers\MobileController::class, 'listAlmacenes'])->name('almacenes.index');
-        Route::get('/almacenes/nuevo',                     [\App\Http\Controllers\MobileController::class, 'showAlmacenForm'])->name('almacenes.nuevo');
-        Route::get('/almacenes/{almacen}/editar',          [\App\Http\Controllers\MobileController::class, 'showAlmacenForm'])->name('almacenes.editar');
-        Route::post('/almacenes/guardar',                  [\App\Http\Controllers\MobileController::class, 'guardarAlmacen'])->name('almacenes.guardar');
-        Route::post('/almacenes/{almacen}/eliminar',       [\App\Http\Controllers\MobileController::class, 'eliminarAlmacen'])->name('almacenes.eliminar');
-        Route::get('/inventario/nuevo',                    [\App\Http\Controllers\MobileController::class, 'showInventario'])->name('inventario.nueva');
+        Route::get('/almacenes',                                              [\App\Http\Controllers\MobileController::class, 'listAlmacenes'])->name('almacenes.index');
+        Route::get('/almacenes/nuevo',                                        [\App\Http\Controllers\MobileController::class, 'showAlmacenForm'])->name('almacenes.nuevo');
+        Route::get('/almacenes/{almacen}/editar',                             [\App\Http\Controllers\MobileController::class, 'showAlmacenForm'])->name('almacenes.editar');
+        Route::post('/almacenes/guardar',                                     [\App\Http\Controllers\MobileController::class, 'guardarAlmacen'])->name('almacenes.guardar');
+        Route::post('/almacenes/{almacen}/eliminar',                          [\App\Http\Controllers\MobileController::class, 'eliminarAlmacen'])->name('almacenes.eliminar');
+        Route::get('/almacenes/{almacen}/zonas',                              [\App\Http\Controllers\MobileController::class, 'listZonas'])->name('almacenes.zonas.index');
+        Route::get('/almacenes/{almacen}/zonas/nueva',                        [\App\Http\Controllers\MobileController::class, 'showZonaForm'])->name('almacenes.zonas.nueva');
+        Route::get('/almacenes/{almacen}/zonas/{zona}/editar',                [\App\Http\Controllers\MobileController::class, 'showZonaForm'])->name('almacenes.zonas.editar');
+        Route::post('/almacenes/{almacen}/zonas/guardar',                     [\App\Http\Controllers\MobileController::class, 'guardarZona'])->name('almacenes.zonas.guardar');
+        Route::post('/almacenes/{almacen}/zonas/{zona}/eliminar',             [\App\Http\Controllers\MobileController::class, 'eliminarZona'])->name('almacenes.zonas.eliminar');
+        Route::get('/almacenes/{almacen}/zonas-json',                         [\App\Http\Controllers\MobileController::class, 'getZonasJson'])->name('almacenes.zonas-json');
+        Route::get('/zonas/{zona}/ubicaciones-json',                          [\App\Http\Controllers\MobileController::class, 'getUbicacionesJson'])->name('zonas.ubicaciones-json');
+        Route::get('/inventario/nuevo',                                       [\App\Http\Controllers\MobileController::class, 'showInventario'])->name('inventario.nueva');
         Route::post('/inventario/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarInventario'])->name('inventario.guardar');
         Route::get('/compra/nueva',                        [\App\Http\Controllers\MobileController::class, 'showCompraOcr'])->name('compra.ocr');
         Route::post('/compra/ocr',                         [\App\Http\Controllers\MobileController::class, 'procesarOcr'])->name('compra.procesar-ocr');

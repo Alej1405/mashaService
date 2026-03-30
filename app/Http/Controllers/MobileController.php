@@ -13,10 +13,13 @@ use App\Models\SaleItem;
 use App\Models\Customer;
 use App\Models\ProductionOrder;
 use App\Models\ProductPresentation;
+use App\Models\UbicacionAlmacen;
+use App\Models\ZonaAlmacen;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class MobileController extends Controller
 {
@@ -217,6 +220,147 @@ class MobileController extends Controller
         }
     }
 
+    // ── Zonas de Almacén ──────────────────────────────────────────────────
+
+    public function listZonas(Request $request, Almacen $almacen)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id) {
+            abort(403);
+        }
+        $zonas = ZonaAlmacen::where('almacen_id', $almacen->id)->orderBy('nombre')->get();
+        return view('mobile.zonas', compact('almacen', 'zonas'));
+    }
+
+    public function showZonaForm(Request $request, Almacen $almacen, ?ZonaAlmacen $zona = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id) {
+            abort(403);
+        }
+        if ($zona && $zona->almacen_id !== $almacen->id) {
+            abort(403);
+        }
+        return view('mobile.zona-form', compact('almacen', 'zona'));
+    }
+
+    public function guardarZona(Request $request, Almacen $almacen)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id) {
+            return response()->json(['error' => 'Acceso no autorizado.'], 403);
+        }
+
+        $validated = $request->validate([
+            'zona_id'     => ['nullable', 'integer'],
+            'codigo'      => ['required', 'string', 'max:20'],
+            'nombre'      => ['required', 'string', 'max:150'],
+            'tipo'        => ['required', 'in:pasillo,estanteria,anaquel,area_refrigerada,camara_fria,area_cuarentena,area_despacho,area_recepcion,piso,otro'],
+            'descripcion' => ['nullable', 'string', 'max:500'],
+            'activo'      => ['boolean'],
+        ]);
+
+        try {
+            $zonaId = $validated['zona_id'] ?? null;
+
+            if ($zonaId) {
+                $zona = ZonaAlmacen::where('almacen_id', $almacen->id)->findOrFail($zonaId);
+
+                $existe = ZonaAlmacen::where('almacen_id', $almacen->id)
+                    ->where('codigo', $validated['codigo'])
+                    ->where('id', '!=', $zonaId)->exists();
+                if ($existe) {
+                    return response()->json(['error' => 'Ya existe una zona con ese código en este almacén.'], 422);
+                }
+
+                $zona->update([
+                    'codigo'      => $validated['codigo'],
+                    'nombre'      => $validated['nombre'],
+                    'tipo'        => $validated['tipo'],
+                    'descripcion' => $validated['descripcion'] ?? null,
+                    'activo'      => $validated['activo'] ?? true,
+                ]);
+                return response()->json(['success' => true, 'modo' => 'actualizado', 'nombre' => $zona->nombre]);
+            }
+
+            $existe = ZonaAlmacen::where('almacen_id', $almacen->id)->where('codigo', $validated['codigo'])->exists();
+            if ($existe) {
+                return response()->json(['error' => 'Ya existe una zona con ese código en este almacén.'], 422);
+            }
+
+            $zona = ZonaAlmacen::create([
+                'empresa_id'  => $almacen->empresa_id,
+                'almacen_id'  => $almacen->id,
+                'codigo'      => $validated['codigo'],
+                'nombre'      => $validated['nombre'],
+                'tipo'        => $validated['tipo'],
+                'descripcion' => $validated['descripcion'] ?? null,
+                'activo'      => $validated['activo'] ?? true,
+            ]);
+            return response()->json(['success' => true, 'modo' => 'creado', 'nombre' => $zona->nombre]);
+
+        } catch (\Exception $e) {
+            Log::error('Error guardando zona móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar la zona.'], 500);
+        }
+    }
+
+    public function eliminarZona(Request $request, Almacen $almacen, ZonaAlmacen $zona)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id || $zona->almacen_id !== $almacen->id) {
+            return response()->json(['error' => 'Acceso no autorizado.'], 403);
+        }
+        try {
+            $zona->delete();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Error eliminando zona móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'No se puede eliminar la zona.'], 500);
+        }
+    }
+
+    /** JSON: zonas activas de un almacén (para cascading selects) */
+    public function getZonasJson(Request $request, Almacen $almacen)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json([], 403);
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id) {
+            return response()->json([], 403);
+        }
+        $zonas = ZonaAlmacen::where('almacen_id', $almacen->id)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'codigo']);
+        return response()->json($zonas);
+    }
+
+    /** JSON: ubicaciones de una zona (para cascading selects) */
+    public function getUbicacionesJson(Request $request, ZonaAlmacen $zona)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json([], 403);
+        }
+        $empresa = $this->empresa();
+        if ($zona->empresa_id !== $empresa->id) {
+            return response()->json([], 403);
+        }
+        $ubicaciones = UbicacionAlmacen::where('zona_id', $zona->id)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'codigo_ubicacion']);
+        return response()->json($ubicaciones);
+    }
+
     // ── Inventario ────────────────────────────────────────────────────────
 
     public function showInventario(Request $request)
@@ -224,9 +368,10 @@ class MobileController extends Controller
         if (!$this->tieneAccesoEnterprise()) {
             return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
         }
-        $empresa  = $this->empresa();
-        $unidades = MeasurementUnit::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
-        return view('mobile.inventario', compact('empresa', 'unidades'));
+        $empresa   = $this->empresa();
+        $unidades  = MeasurementUnit::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        $almacenes = Almacen::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        return view('mobile.inventario', compact('empresa', 'unidades', 'almacenes'));
     }
 
     public function guardarInventario(Request $request)
@@ -237,28 +382,46 @@ class MobileController extends Controller
         $empresa = $this->empresa();
 
         $validated = $request->validate([
-            'nombre'              => ['required', 'string', 'max:255'],
-            'type'                => ['required', 'in:insumo,materia_prima,producto_terminado,activo_fijo,servicio'],
-            'measurement_unit_id' => ['nullable', 'integer', 'exists:measurement_units,id'],
-            'descripcion'         => ['nullable', 'string', 'max:500'],
-            'purchase_price'      => ['nullable', 'numeric', 'min:0'],
-            'sale_price'          => ['nullable', 'numeric', 'min:0'],
-            'stock_actual'        => ['nullable', 'numeric', 'min:0'],
-            'stock_minimo'        => ['nullable', 'numeric', 'min:0'],
+            'nombre'               => ['required', 'string', 'max:255'],
+            'type'                 => ['required', 'in:insumo,materia_prima,producto_terminado,activo_fijo,servicio'],
+            'measurement_unit_id'  => ['nullable', 'integer', 'exists:measurement_units,id'],
+            'descripcion'          => ['nullable', 'string', 'max:500'],
+            'purchase_price'       => ['nullable', 'numeric', 'min:0'],
+            'sale_price'           => ['nullable', 'numeric', 'min:0'],
+            'stock_actual'         => ['nullable', 'numeric', 'min:0'],
+            'stock_minimo'         => ['nullable', 'numeric', 'min:0'],
+            'ubicacion_almacen_id' => ['nullable', 'integer'],
+            'foto'                 => ['nullable', 'image', 'max:5120'],
         ]);
 
+        // Verificar que ubicacion_almacen_id pertenece a la empresa
+        $ubicacionId = $validated['ubicacion_almacen_id'] ?? null;
+        if ($ubicacionId) {
+            $ubicExiste = UbicacionAlmacen::where('empresa_id', $empresa->id)->where('id', $ubicacionId)->exists();
+            if (!$ubicExiste) {
+                return response()->json(['error' => 'Ubicación no válida.'], 422);
+            }
+        }
+
         try {
+            $fotoPath = null;
+            if ($request->hasFile('foto') && $request->file('foto')->isValid()) {
+                $fotoPath = $request->file('foto')->store("inventario-fotos/{$empresa->id}", 'public');
+            }
+
             $item = InventoryItem::create([
-                'empresa_id'          => $empresa->id,
-                'nombre'              => $validated['nombre'],
-                'type'                => $validated['type'],
-                'measurement_unit_id' => $validated['measurement_unit_id'] ?? null,
-                'descripcion'         => $validated['descripcion'] ?? null,
-                'purchase_price'      => $validated['purchase_price'] ?? null,
-                'sale_price'          => $validated['sale_price'] ?? null,
-                'stock_actual'        => $validated['stock_actual'] ?? 0,
-                'stock_minimo'        => $validated['stock_minimo'] ?? 0,
-                'activo'              => true,
+                'empresa_id'           => $empresa->id,
+                'nombre'               => $validated['nombre'],
+                'type'                 => $validated['type'],
+                'measurement_unit_id'  => $validated['measurement_unit_id'] ?? null,
+                'descripcion'          => $validated['descripcion'] ?? null,
+                'purchase_price'       => $validated['purchase_price'] ?? null,
+                'sale_price'           => $validated['sale_price'] ?? null,
+                'stock_actual'         => $validated['stock_actual'] ?? 0,
+                'stock_minimo'         => $validated['stock_minimo'] ?? 0,
+                'ubicacion_almacen_id' => $ubicacionId,
+                'foto_path'            => $fotoPath,
+                'activo'               => true,
             ]);
 
             return response()->json([
