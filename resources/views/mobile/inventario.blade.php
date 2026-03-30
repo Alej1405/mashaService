@@ -294,13 +294,22 @@ function guardarItem() {
 
     fetch('{{ route("mobile.inventario.guardar") }}', {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': CSRF },
+        headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
         body: fd,
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
         btn.disabled = false; btn.textContent = 'Agregar al Inventario';
-        if (data.error) { mostrarError(data.error); return; }
+        if (!ok) {
+            // Errores de validación Laravel: { errors: { campo: ['msg'] } }
+            if (data.errors) {
+                const primer = Object.values(data.errors).flat()[0];
+                mostrarError(primer || data.message || 'Error de validación.');
+            } else {
+                mostrarError(data.error || data.message || 'Error al guardar.');
+            }
+            return;
+        }
         document.getElementById('paso-form').classList.add('hidden');
         document.getElementById('paso-exito').classList.remove('hidden');
         document.getElementById('exito-codigo').textContent = data.codigo;
@@ -308,7 +317,7 @@ function guardarItem() {
     })
     .catch(() => {
         btn.disabled = false; btn.textContent = 'Agregar al Inventario';
-        mostrarError('Error de conexión.');
+        mostrarError('Error de conexión. Verifica tu red e intenta de nuevo.');
     });
 }
 

@@ -415,7 +415,7 @@ class MobileController extends Controller
                 'type'                 => $validated['type'],
                 'measurement_unit_id'  => $validated['measurement_unit_id'] ?? null,
                 'descripcion'          => $validated['descripcion'] ?? null,
-                'purchase_price'       => $validated['purchase_price'] ?? null,
+                'purchase_price'       => $validated['purchase_price'] ?? 0,
                 'sale_price'           => $validated['sale_price'] ?? null,
                 'stock_actual'         => $validated['stock_actual'] ?? 0,
                 'stock_minimo'         => $validated['stock_minimo'] ?? 0,

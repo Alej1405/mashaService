@@ -5,9 +5,11 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\InventoryItemResource\Pages;
 use App\Filament\App\Resources\InventoryItemResource\RelationManagers;
 use App\Filament\App\Resources\SupplierResource;
+use App\Models\Almacen;
 use App\Models\InventoryItem;
 use App\Models\MeasurementUnit;
 use App\Models\UbicacionAlmacen;
+use App\Models\ZonaAlmacen;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -85,16 +87,69 @@ class InventoryItemResource extends Resource
                                     ])
                                     ->createOptionUsing(fn (array $data): int =>
                                         MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey()),
-                                Forms\Components\Select::make('ubicacion_almacen_id')
-                                    ->label('Ubicación en Almacén')
-                                    ->options(fn () => UbicacionAlmacen::where('empresa_id', Filament::getTenant()->id)
+                                // ── Ubicación en cascada: Almacén → Zona → Posición ──────
+                                Forms\Components\Select::make('almacen_id')
+                                    ->label('Almacén')
+                                    ->options(fn () => Almacen::where('empresa_id', Filament::getTenant()->id)
                                         ->where('activo', true)
-                                        ->with(['zona.almacen'])
-                                        ->get()
-                                        ->mapWithKeys(fn ($u) => [$u->id => $u->etiqueta_completa]))
-                                    ->searchable()
+                                        ->orderBy('nombre')
+                                        ->pluck('nombre', 'id'))
+                                    ->live()
+                                    ->dehydrated(false)
                                     ->nullable()
-                                    ->placeholder('Sin ubicación asignada'),
+                                    ->placeholder('— Sin almacén —')
+                                    ->afterStateHydrated(function (Forms\Components\Select $component, $record) {
+                                        if ($record?->ubicacion_almacen_id) {
+                                            $ub = UbicacionAlmacen::find($record->ubicacion_almacen_id);
+                                            $component->state(ZonaAlmacen::find($ub?->zona_id)?->almacen_id);
+                                        }
+                                    })
+                                    ->afterStateUpdated(function (Forms\Set $set) {
+                                        $set('zona_id', null);
+                                        $set('ubicacion_almacen_id', null);
+                                    }),
+
+                                Forms\Components\Select::make('zona_id')
+                                    ->label('Zona')
+                                    ->options(fn (Forms\Get $get) =>
+                                        $get('almacen_id')
+                                            ? ZonaAlmacen::where('almacen_id', $get('almacen_id'))
+                                                ->where('activo', true)
+                                                ->orderBy('nombre')
+                                                ->get()
+                                                ->mapWithKeys(fn ($z) => [$z->id => "{$z->nombre} ({$z->codigo})"])
+                                            : []
+                                    )
+                                    ->live()
+                                    ->dehydrated(false)
+                                    ->nullable()
+                                    ->placeholder('— Selecciona zona —')
+                                    ->hidden(fn (Forms\Get $get) => empty($get('almacen_id')))
+                                    ->afterStateHydrated(function (Forms\Components\Select $component, $record) {
+                                        if ($record?->ubicacion_almacen_id) {
+                                            $ub = UbicacionAlmacen::find($record->ubicacion_almacen_id);
+                                            $component->state($ub?->zona_id);
+                                        }
+                                    })
+                                    ->afterStateUpdated(function (Forms\Set $set) {
+                                        $set('ubicacion_almacen_id', null);
+                                    }),
+
+                                Forms\Components\Select::make('ubicacion_almacen_id')
+                                    ->label('Posición')
+                                    ->options(fn (Forms\Get $get) =>
+                                        $get('zona_id')
+                                            ? UbicacionAlmacen::where('zona_id', $get('zona_id'))
+                                                ->where('activo', true)
+                                                ->orderBy('nombre')
+                                                ->get()
+                                                ->mapWithKeys(fn ($u) => [$u->id => "{$u->nombre} ({$u->codigo_ubicacion})"])
+                                            : []
+                                    )
+                                    ->nullable()
+                                    ->placeholder('— Selecciona posición —')
+                                    ->hidden(fn (Forms\Get $get) => empty($get('zona_id')))
+                                    ->helperText('Solo se guarda la posición final; el almacén y zona se derivan de ella.'),
                                 Forms\Components\RichEditor::make('descripcion')
                                     ->label('Descripción')
                                     ->columnSpanFull(),
