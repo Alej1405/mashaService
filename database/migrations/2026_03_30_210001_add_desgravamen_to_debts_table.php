@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('debts', 'seguro_desgravamen_anual')) {
+            return;
+        }
+
         Schema::table('debts', function (Blueprint $table) {
             $table->decimal('seguro_desgravamen_anual', 8, 4)
                 ->default(0)

@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (!Schema::hasColumn('debts', 'frecuencia_tasa')) {
+            return;
+        }
+
         Schema::table('debts', function (Blueprint $table) {
             $table->dropColumn('frecuencia_tasa');
         });

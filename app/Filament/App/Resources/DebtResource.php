@@ -136,14 +136,64 @@ class DebtResource extends Resource
                 Forms\Components\Wizard\Step::make('Condiciones del Préstamo')
                     ->icon('heroicon-o-calculator')
                     ->schema([
+
+                        // ── Selector de modo de ingreso ──────────────────────
+                        Forms\Components\ToggleButtons::make('modo_ingreso')
+                            ->label('¿Cómo deseas registrar las condiciones?')
+                            ->options([
+                                'calcular'   => 'Calcular la cuota',
+                                'cuota_fija' => 'Ya tengo la cuota mensual',
+                            ])
+                            ->icons([
+                                'calcular'   => 'heroicon-o-calculator',
+                                'cuota_fija' => 'heroicon-o-check-badge',
+                            ])
+                            ->colors([
+                                'calcular'   => 'info',
+                                'cuota_fija' => 'success',
+                            ])
+                            ->default(fn ($record) => ($record && $record->cuota_mensual) ? 'cuota_fija' : 'calcular')
+                            ->live()
+                            ->dehydrated(false)
+                            ->grouped()
+                            ->columnSpanFull()
+                            ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                if ($state === 'cuota_fija') {
+                                    $set('sistema_amortizacion', 'frances');
+                                    static::recalcularCapitalDesdeCuota($get, $set);
+                                }
+                            }),
+
+                        // ── Monto del préstamo ────────────────────────────────
+                        // Modo calcular: el usuario lo ingresa
+                        // Modo cuota_fija: se auto-calcula y queda de solo lectura
                         Forms\Components\TextInput::make('monto_original')
-                            ->label('Monto del préstamo')
+                            ->label(fn (Get $get) => $get('modo_ingreso') === 'cuota_fija'
+                                ? 'Capital del préstamo (calculado automáticamente)'
+                                : 'Monto del préstamo')
                             ->numeric()
-                            ->required()
+                            ->required(fn (Get $get) => $get('modo_ingreso') !== 'cuota_fija')
                             ->prefix('$')
                             ->minValue(0.01)
+                            ->readOnly(fn (Get $get) => $get('modo_ingreso') === 'cuota_fija')
+                            ->helperText(fn (Get $get) => $get('modo_ingreso') === 'cuota_fija'
+                                ? 'Se calcula automáticamente desde la cuota, el plazo y la tasa ingresados.'
+                                : null)
                             ->columnSpan(1),
 
+                        // ── Cuota mensual conocida (solo modo cuota_fija) ─────
+                        Forms\Components\TextInput::make('cuota_mensual')
+                            ->label('Cuota mensual')
+                            ->numeric()
+                            ->prefix('$')
+                            ->minValue(0.01)
+                            ->required(fn (Get $get) => $get('modo_ingreso') === 'cuota_fija')
+                            ->visible(fn (Get $get) => $get('modo_ingreso') === 'cuota_fija')
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => static::recalcularCapitalDesdeCuota($get, $set))
+                            ->columnSpan(1),
+
+                        // ── Tasa de interés (compartido) ──────────────────────
                         Forms\Components\TextInput::make('tasa_interes')
                             ->label('Tasa de interés (TNA %)')
                             ->numeric()
@@ -152,8 +202,15 @@ class DebtResource extends Resource
                             ->default(0)
                             ->minValue(0)
                             ->helperText('Tasa Nominal Anual. Ej: 15.60 para 15.60% anual.')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                if ($get('modo_ingreso') === 'cuota_fija') {
+                                    static::recalcularCapitalDesdeCuota($get, $set);
+                                }
+                            })
                             ->columnSpan(1),
 
+                        // ── Seguro de desgravamen (compartido) ────────────────
                         Forms\Components\TextInput::make('seguro_desgravamen_anual')
                             ->label('Seguro de desgravamen (tasa anual nominal)')
                             ->numeric()
@@ -161,9 +218,16 @@ class DebtResource extends Resource
                             ->default(0)
                             ->minValue(0)
                             ->step(0.0001)
-                            ->helperText('Tasa anual nominal del seguro. Se aplica mensualmente sobre el saldo. Ej: 0.35 para 0.35% anual. Dejar en 0 si no aplica.')
+                            ->helperText('Tasa anual nominal. Se aplica mensualmente sobre el saldo. Ej: 0.35. Dejar en 0 si no aplica.')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                if ($get('modo_ingreso') === 'cuota_fija') {
+                                    static::recalcularCapitalDesdeCuota($get, $set);
+                                }
+                            })
                             ->columnSpan(1),
 
+                        // ── Sistema de amortización (solo modo calcular) ──────
                         Forms\Components\Select::make('sistema_amortizacion')
                             ->label('Sistema de Amortización')
                             ->options([
@@ -173,8 +237,17 @@ class DebtResource extends Resource
                             ])
                             ->required()
                             ->default('frances')
+                            ->visible(fn (Get $get) => $get('modo_ingreso') !== 'cuota_fija')
                             ->columnSpan(1),
 
+                        // ── Desglose estimado (solo modo cuota_fija) ──────────
+                        Forms\Components\Placeholder::make('desglose_preview')
+                            ->label('Desglose estimado del préstamo')
+                            ->content(fn (Get $get) => static::previewDesgloseCuotaFija($get))
+                            ->visible(fn (Get $get) => $get('modo_ingreso') === 'cuota_fija')
+                            ->columnSpanFull(),
+
+                        // ── Fecha de inicio (compartido) ──────────────────────
                         Forms\Components\DatePicker::make('fecha_inicio')
                             ->label('Fecha de inicio')
                             ->required()
@@ -188,6 +261,7 @@ class DebtResource extends Resource
                             })
                             ->columnSpan(1),
 
+                        // ── Plazo (compartido) ────────────────────────────────
                         Forms\Components\TextInput::make('plazo_meses')
                             ->label('Plazo total (meses)')
                             ->numeric()
@@ -198,22 +272,24 @@ class DebtResource extends Resource
                             ->afterStateUpdated(function (Get $get, Set $set, $state) {
                                 $plazo = (int) $state;
 
-                                // Auto-calcular fecha de vencimiento
                                 $inicio = $get('fecha_inicio');
                                 if ($inicio && $plazo > 0) {
                                     $set('fecha_vencimiento', Carbon::parse($inicio)->addMonths($plazo)->toDateString());
                                 }
 
-                                // Auto-calcular número de cuotas (= plazo en meses para cuotas mensuales)
                                 if ($plazo > 0) {
                                     $set('numero_cuotas', $plazo);
                                 }
 
-                                // Auto-calcular clasificación contable
                                 $set('clasificacion', $plazo <= 12 ? 'corriente' : 'no_corriente');
+
+                                if ($get('modo_ingreso') === 'cuota_fija') {
+                                    static::recalcularCapitalDesdeCuota($get, $set);
+                                }
                             })
                             ->columnSpan(1),
 
+                        // ── Fecha de vencimiento (compartido) ─────────────────
                         Forms\Components\DatePicker::make('fecha_vencimiento')
                             ->label('Fecha de vencimiento')
                             ->required()
@@ -226,20 +302,30 @@ class DebtResource extends Resource
                                         $set('plazo_meses', $meses);
                                         $set('numero_cuotas', $meses);
                                         $set('clasificacion', $meses <= 12 ? 'corriente' : 'no_corriente');
+                                        if ($get('modo_ingreso') === 'cuota_fija') {
+                                            static::recalcularCapitalDesdeCuota($get, $set);
+                                        }
                                     }
                                 }
                             })
                             ->columnSpan(1),
 
+                        // ── Número de cuotas (compartido) ─────────────────────
                         Forms\Components\TextInput::make('numero_cuotas')
                             ->label('Número de cuotas')
                             ->numeric()
                             ->integer()
                             ->minValue(1)
                             ->helperText('Auto-calculado del plazo. Puedes ajustarlo si las cuotas no son mensuales.')
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set) {
+                                if ($get('modo_ingreso') === 'cuota_fija') {
+                                    static::recalcularCapitalDesdeCuota($get, $set);
+                                }
+                            })
                             ->columnSpan(1),
 
-                        // Clasificación contable: auto-calculada, solo lectura
+                        // ── Clasificación contable (compartido) ───────────────
                         Forms\Components\Placeholder::make('clasificacion_preview')
                             ->label('Clasificación contable (automática)')
                             ->content(function (Get $get) {
@@ -251,7 +337,6 @@ class DebtResource extends Resource
                             })
                             ->columnSpanFull(),
 
-                        // Campo oculto que guarda la clasificación real
                         Forms\Components\Hidden::make('clasificacion')
                             ->default('corriente'),
                     ])
@@ -482,5 +567,55 @@ class DebtResource extends Resource
             'view'   => Pages\ViewDebt::route('/{record}'),
             'edit'   => Pages\EditDebt::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Back-calcula el monto del préstamo desde cuota, tasa y número de cuotas.
+     * Fórmula PV del sistema francés: PV = PMT × (1 − (1+r)^-n) / r
+     */
+    private static function recalcularCapitalDesdeCuota(Get $get, Set $set): void
+    {
+        $cuota  = (float) $get('cuota_mensual');
+        $tasa   = (float) $get('tasa_interes');
+        $seguro = (float) $get('seguro_desgravamen_anual');
+        $cuotas = (int) ($get('numero_cuotas') ?: $get('plazo_meses'));
+
+        if ($cuota > 0 && $cuotas > 0) {
+            $r = ($tasa + $seguro) / 100 / 12;
+            $monto = $r > 0
+                ? round($cuota * (1 - pow(1 + $r, -$cuotas)) / $r, 2)
+                : round($cuota * $cuotas, 2);
+            $set('monto_original', $monto);
+        }
+    }
+
+    /**
+     * Genera el HTML del desglose estimado para el modo cuota_fija.
+     */
+    private static function previewDesgloseCuotaFija(Get $get): string|\Illuminate\Support\HtmlString
+    {
+        $cuota  = (float) $get('cuota_mensual');
+        $tasa   = (float) $get('tasa_interes');
+        $seguro = (float) $get('seguro_desgravamen_anual');
+        $cuotas = (int) ($get('numero_cuotas') ?: $get('plazo_meses'));
+
+        if (!$cuota || !$cuotas) {
+            return '— Ingresa la cuota mensual, el plazo y la tasa para ver el desglose —';
+        }
+
+        $r = ($tasa + $seguro) / 100 / 12;
+        $monto        = $r > 0 ? $cuota * (1 - pow(1 + $r, -$cuotas)) / $r : $cuota * $cuotas;
+        $totalPagar   = round($cuota * $cuotas, 2);
+        $totalInteres = round($totalPagar - $monto, 2);
+        $monto        = round($monto, 2);
+
+        return new \Illuminate\Support\HtmlString(
+            '<div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">' .
+            '<div><p class="text-gray-500 dark:text-gray-400">Capital del préstamo</p><p class="font-bold text-blue-700 dark:text-blue-400 text-base">$ ' . number_format($monto, 2) . '</p></div>' .
+            '<div><p class="text-gray-500 dark:text-gray-400">Cuota mensual</p><p class="font-bold text-green-700 dark:text-green-400 text-base">$ ' . number_format($cuota, 2) . '</p></div>' .
+            '<div><p class="text-gray-500 dark:text-gray-400">Total a pagar (' . $cuotas . ' cuotas)</p><p class="font-bold text-gray-800 dark:text-gray-200">$ ' . number_format($totalPagar, 2) . '</p></div>' .
+            '<div><p class="text-gray-500 dark:text-gray-400">Total intereses + seguro</p><p class="font-bold text-orange-600 dark:text-orange-400">$ ' . number_format($totalInteres, 2) . '</p></div>' .
+            '</div>'
+        );
     }
 }

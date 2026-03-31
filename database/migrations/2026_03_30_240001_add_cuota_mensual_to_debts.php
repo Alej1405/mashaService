@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('debts', 'cuota_mensual')) {
+            return;
+        }
+
         Schema::table('debts', function (Blueprint $table) {
             $table->decimal('cuota_mensual', 12, 2)->nullable()->after('numero_cuotas');
         });

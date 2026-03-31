@@ -52,8 +52,11 @@ class DebtService
         $fechaAnterior = Carbon::parse($debt->fecha_inicio);
 
         if ($debt->sistema_amortizacion === 'frances') {
-            // Cuota fija con tasa combinada (interés + seguro)
-            $cuotaFija = $this->calcularCuotaMensual($capital, $tasaMensualCombinada, $n);
+            // Si la deuda fue registrada con cuota conocida, usarla directamente.
+            // Si no, se calcula con la fórmula PMT estándar.
+            $cuotaFija = ($debt->cuota_mensual && (float) $debt->cuota_mensual > 0)
+                ? (float) $debt->cuota_mensual
+                : $this->calcularCuotaMensual($capital, $tasaMensualCombinada, $n);
 
             for ($i = 1; $i <= $n; $i++) {
                 $fechaActual = $fechaAnterior->copy()->addMonth();

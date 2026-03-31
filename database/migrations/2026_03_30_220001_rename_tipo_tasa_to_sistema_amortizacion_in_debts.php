@@ -9,6 +9,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Si la columna todavía se llama tipo_tasa, renombrarla primero
+        if (Schema::hasColumn('debts', 'tipo_tasa')) {
+            Schema::table('debts', function (Blueprint $table) {
+                $table->renameColumn('tipo_tasa', 'sistema_amortizacion');
+            });
+        }
+
         // Nota: la columna ya fue renombrada de tipo_tasa a sistema_amortizacion
         // en un intento previo. Solo cambiamos el tipo y los datos.
         Schema::table('debts', function (Blueprint $table) {
