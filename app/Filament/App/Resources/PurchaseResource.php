@@ -28,7 +28,6 @@ use App\Filament\App\Resources\CashRegisterResource;
 use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\SupplierResource;
 use App\Filament\App\Resources\InventoryItemResource;
-use App\Models\ItemPresentation;
 
 class PurchaseResource extends Resource
 {
@@ -188,9 +187,6 @@ class PurchaseResource extends Resource
                                             $set('_conversion_factor', (float) ($item->conversion_factor ?? 1));
                                             $set('_purchase_unit_label', $item->purchaseUnit?->abreviatura ?? $item->measurementUnit?->abreviatura ?? '');
                                             $set('_stock_unit_label',    $item->measurementUnit?->abreviatura ?? '');
-                                            $set('_presentation_id', null);
-                                            $set('_pres_factor', 1);
-
                                             if ($item->purchase_price > 0) {
                                                 $qty    = max((float) $get('quantity'), 1);
                                                 $aplica = (bool) $get('aplica_iva');
@@ -200,46 +196,9 @@ class PurchaseResource extends Resource
                                             }
                                         }),
 
-                                    // ── Presentación / Empaque (virtual, no persiste) ───────
-                                    Forms\Components\Select::make('_presentation_id')
-                                        ->label('Presentación / Empaque')
-                                        ->helperText('Opcional. Selecciona si compras por caja, paquete, etc.')
-                                        ->options(fn (callable $get) => ($iid = $get('inventory_item_id'))
-                                            ? ItemPresentation::where('inventory_item_id', $iid)
-                                                ->where('activo', true)
-                                                ->get()
-                                                ->mapWithKeys(fn ($p) => [$p->id => "{$p->nombre} (×{$p->factor_conversion})"])
-                                            : [])
-                                        ->nullable()
-                                        ->dehydrated(false)
-                                        ->live()
-                                        ->columnSpan(3)
-                                        ->afterStateUpdated(function ($state, callable $set) {
-                                            $p = $state ? ItemPresentation::find($state) : null;
-                                            $set('_pres_factor', $p ? (float) $p->factor_conversion : 1);
-                                        }),
-
-                                    // ── Cantidad en presentaciones ─────────────
-                                    Forms\Components\TextInput::make('_pres_qty')
-                                        ->label('Cant. presentaciones')
-                                        ->helperText('Ej: 3 cajas. Se multiplicará por el factor.')
-                                        ->numeric()
-                                        ->nullable()
-                                        ->dehydrated(false)
-                                        ->live(onBlur: true)
-                                        ->columnSpan(2)
-                                        ->visible(fn (callable $get) => !empty($get('_presentation_id')))
-                                        ->afterStateUpdated(function ($state, callable $get, callable $set, Forms\Contracts\HasForms $livewire) {
-                                            $factor = (float) ($get('_pres_factor') ?? 1);
-                                            $qty    = round((float) $state * $factor, 6);
-                                            $set('quantity', max($qty, 0.000001));
-                                            self::recalcularLinea($get, $set);
-                                            self::updateTotals($livewire, $set);
-                                        }),
-
-                                    // ── Cantidad (en unidades de compra) ──────
+                                    // ── Cantidad ──────────────────────────────
                                     Forms\Components\TextInput::make('quantity')
-                                        ->label('Cantidad (u. compra)')
+                                        ->label('Cantidad')
                                         ->numeric()
                                         ->default(1)
                                         ->required()
@@ -308,7 +267,6 @@ class PurchaseResource extends Resource
                                     Forms\Components\Hidden::make('_conversion_factor')->default(1),
                                     Forms\Components\Hidden::make('_purchase_unit_label')->default(''),
                                     Forms\Components\Hidden::make('_stock_unit_label')->default(''),
-                                    Forms\Components\Hidden::make('_pres_factor')->default(1),
 
                                     // ── Indicador de conversión (visible solo si hay factor ≠ 1) ────
                                     Forms\Components\Placeholder::make('_conversion_display')

@@ -145,32 +145,34 @@ class DebtResource extends Resource
                             ->columnSpan(1),
 
                         Forms\Components\TextInput::make('tasa_interes')
-                            ->label('Tasa de interés')
+                            ->label('Tasa de interés (TNA %)')
                             ->numeric()
                             ->required()
+                            ->suffix('% anual')
+                            ->default(0)
+                            ->minValue(0)
+                            ->helperText('Tasa Nominal Anual. Ej: 15.60 para 15.60% anual.')
+                            ->columnSpan(1),
+
+                        Forms\Components\TextInput::make('seguro_desgravamen_anual')
+                            ->label('Seguro de desgravamen (tasa anual nominal)')
+                            ->numeric()
                             ->suffix('%')
                             ->default(0)
                             ->minValue(0)
+                            ->step(0.0001)
+                            ->helperText('Tasa anual nominal del seguro. Se aplica mensualmente sobre el saldo. Ej: 0.35 para 0.35% anual. Dejar en 0 si no aplica.')
                             ->columnSpan(1),
 
-                        Forms\Components\Select::make('tipo_tasa')
-                            ->label('Tipo de interés')
+                        Forms\Components\Select::make('sistema_amortizacion')
+                            ->label('Sistema de Amortización')
                             ->options([
-                                'simple'    => 'Simple (igual sobre capital original)',
-                                'compuesto' => 'Compuesto / Francés (cuota fija, sobre saldo)',
+                                'frances'   => 'Francés (cuota fija, interés sobre saldo decreciente)',
+                                'aleman'    => 'Alemán (capital fijo, cuota decreciente)',
+                                'americano' => 'Americano (solo intereses, capital al final)',
                             ])
                             ->required()
-                            ->default('simple')
-                            ->columnSpan(1),
-
-                        Forms\Components\Select::make('frecuencia_tasa')
-                            ->label('Frecuencia de la tasa')
-                            ->options([
-                                'mensual' => 'Mensual',
-                                'anual'   => 'Anual',
-                            ])
-                            ->required()
-                            ->default('anual')
+                            ->default('frances')
                             ->columnSpan(1),
 
                         Forms\Components\DatePicker::make('fecha_inicio')
@@ -360,8 +362,8 @@ class DebtResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('tasa_interes')
-                    ->label('Tasa')
-                    ->formatStateUsing(fn ($state, $record) => number_format($state, 2) . '% ' . ($record->frecuencia_tasa === 'anual' ? 'anual' : 'mes'))
+                    ->label('Tasa TNA')
+                    ->formatStateUsing(fn ($state) => number_format($state, 2) . '% anual')
                     ->color('gray'),
 
                 Tables\Columns\TextColumn::make('plazo_meses')

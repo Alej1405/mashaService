@@ -23,6 +23,9 @@ class DebtService
 
     /**
      * Genera la tabla de amortización completa para una deuda.
+     *
+     * Método: interés y seguro calculados con días exactos entre fechas,
+     * base 360 (práctica estándar bancos Ecuador: saldo × tasa_anual/360 × días).
      */
     public function generarTablaAmortizacion(Debt $debt): array
     {
@@ -31,75 +34,110 @@ class DebtService
             return [];
         }
 
-        $capital = (float) $debt->monto_original;
-        $tasa    = (float) $debt->tasa_interes / 100;
+        $capital     = (float) $debt->monto_original;
+        $seguroAnual = (float) $debt->seguro_desgravamen_anual; // % anual nominal
 
-        // Convertir tasa a mensual
-        $tasaMensual = $debt->frecuencia_tasa === 'anual' ? $tasa / 12 : $tasa;
+        // tasa_interes siempre es TNA (Tasa Nominal Anual) en %
+        $tasaAnual = (float) $debt->tasa_interes;
 
-        $tabla  = [];
-        $saldo  = $capital;
-        $fecha  = Carbon::parse($debt->fecha_inicio);
+        // Tasas diarias base 360 (método bancos Ecuador)
+        $tasaDiaria   = $tasaAnual / 100 / 360;
+        $seguroDiario = $seguroAnual / 100 / 360;
 
-        if ($debt->tipo_tasa === 'compuesto') {
-            // Sistema Francés: cuota fija, interés sobre saldo decreciente
-            $cuotaFija = $this->calcularCuotaMensual($capital, $tasaMensual, $n);
+        // Tasa mensual combinada para calcular cuota fija PMT
+        $tasaMensualCombinada = ($tasaAnual + $seguroAnual) / 100 / 12;
+
+        $tabla         = [];
+        $saldo         = $capital;
+        $fechaAnterior = Carbon::parse($debt->fecha_inicio);
+
+        if ($debt->sistema_amortizacion === 'frances') {
+            // Cuota fija con tasa combinada (interés + seguro)
+            $cuotaFija = $this->calcularCuotaMensual($capital, $tasaMensualCombinada, $n);
 
             for ($i = 1; $i <= $n; $i++) {
-                $fecha->addMonth();
-                $interes       = round($saldo * $tasaMensual, 2);
-                $capitalPagado = round($cuotaFija - $interes, 2);
+                $fechaActual = $fechaAnterior->copy()->addMonth();
+                $dias        = (int) $fechaAnterior->diffInDays($fechaActual);
 
-                // Última cuota: ajustar saldo exacto para evitar decimales
-                if ($i === $n) {
-                    $capitalPagado = $saldo;
-                }
+                $interes           = round($saldo * $tasaDiaria * $dias, 2);
+                $seguroDesgravamen = round($saldo * $seguroDiario * $dias, 2);
+
+                // Última cuota: salda el remanente exacto
+                $capitalPagado = ($i === $n)
+                    ? round($saldo, 2)
+                    : round($cuotaFija - $interes - $seguroDesgravamen, 2);
 
                 $saldoFinal = max(0, round($saldo - $capitalPagado, 2));
-                $totalCuota = round($capitalPagado + $interes, 2);
+                $totalCuota = round($capitalPagado + $interes + $seguroDesgravamen, 2);
 
                 $tabla[] = [
-                    'numero_cuota'    => $i,
-                    'fecha_vencimiento' => $fecha->copy()->toDateString(),
-                    'saldo_inicial'   => round($saldo, 2),
-                    'monto_interes'   => $interes,
-                    'monto_capital'   => $capitalPagado,
-                    'total_cuota'     => $totalCuota,
-                    'saldo_final'     => $saldoFinal,
-                    'estado'          => 'pendiente',
+                    'numero_cuota'       => $i,
+                    'fecha_vencimiento'  => $fechaActual->toDateString(),
+                    'saldo_inicial'      => round($saldo, 2),
+                    'monto_interes'      => $interes,
+                    'seguro_desgravamen' => $seguroDesgravamen,
+                    'monto_capital'      => $capitalPagado,
+                    'total_cuota'        => $totalCuota,
+                    'saldo_final'        => $saldoFinal,
+                    'estado'             => 'pendiente',
                 ];
 
-                $saldo = $saldoFinal;
+                $saldo         = $saldoFinal;
+                $fechaAnterior = $fechaActual;
             }
-        } else {
-            // Interés simple: interés calculado sobre el capital original
-            $plazoAnios     = ($debt->plazo_meses ?? ($n)) / 12;
-            $totalInteres   = $capital * $tasa * $plazoAnios;
-            $interesPorCuota = round($totalInteres / $n, 2);
-            $capitalPorCuota = round($capital / $n, 2);
+        } elseif ($debt->sistema_amortizacion === 'aleman') {
+            // Capital fijo = P/n; interés y seguro sobre saldo decreciente por días exactos
+            $capitalFijo = round($capital / $n, 2);
 
             for ($i = 1; $i <= $n; $i++) {
-                $fecha->addMonth();
+                $fechaActual = $fechaAnterior->copy()->addMonth();
+                $dias        = (int) $fechaAnterior->diffInDays($fechaActual);
 
-                // Última cuota ajusta residuo de redondeo
-                if ($i === $n) {
-                    $capitalPorCuota = round($saldo, 2);
-                }
-
-                $saldoFinal = max(0, round($saldo - $capitalPorCuota, 2));
+                $interes           = round($saldo * $tasaDiaria * $dias, 2);
+                $seguroDesgravamen = round($saldo * $seguroDiario * $dias, 2);
+                $capitalPagado     = ($i === $n) ? round($saldo, 2) : $capitalFijo;
+                $saldoFinal        = max(0, round($saldo - $capitalPagado, 2));
 
                 $tabla[] = [
-                    'numero_cuota'    => $i,
-                    'fecha_vencimiento' => $fecha->copy()->toDateString(),
-                    'saldo_inicial'   => round($saldo, 2),
-                    'monto_interes'   => $interesPorCuota,
-                    'monto_capital'   => $capitalPorCuota,
-                    'total_cuota'     => round($capitalPorCuota + $interesPorCuota, 2),
-                    'saldo_final'     => $saldoFinal,
-                    'estado'          => 'pendiente',
+                    'numero_cuota'       => $i,
+                    'fecha_vencimiento'  => $fechaActual->toDateString(),
+                    'saldo_inicial'      => round($saldo, 2),
+                    'monto_interes'      => $interes,
+                    'seguro_desgravamen' => $seguroDesgravamen,
+                    'monto_capital'      => $capitalPagado,
+                    'total_cuota'        => round($capitalPagado + $interes + $seguroDesgravamen, 2),
+                    'saldo_final'        => $saldoFinal,
+                    'estado'             => 'pendiente',
                 ];
 
-                $saldo = $saldoFinal;
+                $saldo         = $saldoFinal;
+                $fechaAnterior = $fechaActual;
+            }
+        } elseif ($debt->sistema_amortizacion === 'americano') {
+            // Solo intereses cada período; capital completo en la última cuota
+            for ($i = 1; $i <= $n; $i++) {
+                $fechaActual = $fechaAnterior->copy()->addMonth();
+                $dias        = (int) $fechaAnterior->diffInDays($fechaActual);
+
+                $interes           = round($saldo * $tasaDiaria * $dias, 2);
+                $seguroDesgravamen = round($saldo * $seguroDiario * $dias, 2);
+                $capitalPagado     = ($i === $n) ? round($saldo, 2) : 0.00;
+                $saldoFinal        = max(0, round($saldo - $capitalPagado, 2));
+
+                $tabla[] = [
+                    'numero_cuota'       => $i,
+                    'fecha_vencimiento'  => $fechaActual->toDateString(),
+                    'saldo_inicial'      => round($saldo, 2),
+                    'monto_interes'      => $interes,
+                    'seguro_desgravamen' => $seguroDesgravamen,
+                    'monto_capital'      => $capitalPagado,
+                    'total_cuota'        => round($capitalPagado + $interes + $seguroDesgravamen, 2),
+                    'saldo_final'        => $saldoFinal,
+                    'estado'             => 'pendiente',
+                ];
+
+                $saldo         = $saldoFinal;
+                $fechaAnterior = $fechaActual;
             }
         }
 

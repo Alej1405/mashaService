@@ -10,11 +10,10 @@ return new class extends Migration
     {
         Schema::create('item_presentations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('inventory_item_id')->constrained('inventory_items')->cascadeOnDelete();
             $table->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
-            $table->string('nombre', 150);          // Ej: "Caja x12", "Paquete x6"
-            $table->decimal('factor_conversion', 15, 6)->default(1); // cuántas unidades base contiene
-            $table->boolean('es_unidad_base')->default(false);
+            $table->string('nombre', 150);
+            $table->foreignId('measurement_unit_id')->nullable()->constrained('measurement_units')->nullOnDelete();
+            $table->decimal('capacidad', 12, 4)->nullable()->comment('Cantidad de unidades que contiene la presentación');
             $table->boolean('activo')->default(true);
             $table->timestamps();
         });

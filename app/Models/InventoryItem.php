@@ -47,6 +47,7 @@ class InventoryItem extends Model
         'purchase_unit_id',
         'conversion_factor',
         'account_plan_id',
+        'presentation_id',
         'supplier_id',
         'purchase_price',
         'sale_price',
@@ -86,19 +87,14 @@ class InventoryItem extends Model
         return $this->belongsTo(UbicacionAlmacen::class);
     }
 
+    public function presentation(): BelongsTo
+    {
+        return $this->belongsTo(ItemPresentation::class, 'presentation_id');
+    }
+
     public function files(): HasMany
     {
         return $this->hasMany(InventoryItemFile::class);
-    }
-
-    public function presentations(): HasMany
-    {
-        return $this->hasMany(ItemPresentation::class);
-    }
-
-    public function adjustments(): HasMany
-    {
-        return $this->hasMany(InventoryAdjustment::class);
     }
 
     public function getStockBajoAttribute(): bool

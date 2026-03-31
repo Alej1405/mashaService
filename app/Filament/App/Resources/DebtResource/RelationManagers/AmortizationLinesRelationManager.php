@@ -43,6 +43,12 @@ class AmortizationLinesRelationManager extends RelationManager
                     ->label('Intereses')
                     ->money('USD'),
 
+                Tables\Columns\TextColumn::make('seguro_desgravamen')
+                    ->label('Desgravamen')
+                    ->money('USD')
+                    ->toggleable()
+                    ->color('warning'),
+
                 Tables\Columns\TextColumn::make('total_cuota')
                     ->label('Total Cuota')
                     ->money('USD')

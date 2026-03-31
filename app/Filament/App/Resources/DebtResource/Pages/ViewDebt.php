@@ -158,8 +158,32 @@ class ViewDebt extends ViewRecord
                         ->color('success'),
 
                     Infolists\Components\TextEntry::make('tasa_interes')
-                        ->label('Tasa de Interés')
-                        ->formatStateUsing(fn ($state, $record) => number_format($state, 2) . '% ' . ucfirst($record->frecuencia_tasa) . ' (' . ucfirst($record->tipo_tasa) . ')'),
+                        ->label('Tasa de Interés (TNA)')
+                        ->formatStateUsing(fn ($state) => number_format($state, 2) . '% anual nominal'),
+
+                    Infolists\Components\TextEntry::make('sistema_amortizacion')
+                        ->label('Sistema de Amortización')
+                        ->badge()
+                        ->formatStateUsing(fn ($state) => match ($state) {
+                            'frances'   => 'Francés',
+                            'aleman'    => 'Alemán',
+                            'americano' => 'Americano',
+                            default     => ucfirst($state),
+                        })
+                        ->color(fn ($state) => match ($state) {
+                            'frances'   => 'info',
+                            'aleman'    => 'warning',
+                            'americano' => 'primary',
+                            default     => 'gray',
+                        }),
+
+                    Infolists\Components\TextEntry::make('seguro_desgravamen_anual')
+                        ->label('Seg. Desgravamen')
+                        ->formatStateUsing(fn ($state) => $state > 0
+                            ? number_format($state, 4) . '% anual nominal'
+                            : 'No aplica')
+                        ->badge()
+                        ->color(fn ($state) => $state > 0 ? 'warning' : 'gray'),
 
                     Infolists\Components\TextEntry::make('fecha_inicio')
                         ->label('Fecha Inicio')

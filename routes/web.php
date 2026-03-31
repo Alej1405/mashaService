@@ -29,6 +29,11 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/almacenes/{almacen}/zonas/{zona}/eliminar',             [\App\Http\Controllers\MobileController::class, 'eliminarZona'])->name('almacenes.zonas.eliminar');
         Route::get('/almacenes/{almacen}/zonas-json',                         [\App\Http\Controllers\MobileController::class, 'getZonasJson'])->name('almacenes.zonas-json');
         Route::get('/zonas/{zona}/ubicaciones-json',                          [\App\Http\Controllers\MobileController::class, 'getUbicacionesJson'])->name('zonas.ubicaciones-json');
+        Route::get('/almacenes/{almacen}/zonas/{zona}/posiciones',            [\App\Http\Controllers\MobileController::class, 'listUbicaciones'])->name('almacenes.zonas.posiciones.index');
+        Route::get('/almacenes/{almacen}/zonas/{zona}/posiciones/nueva',      [\App\Http\Controllers\MobileController::class, 'showUbicacionForm'])->name('almacenes.zonas.posiciones.nueva');
+        Route::get('/almacenes/{almacen}/zonas/{zona}/posiciones/{ubicacion}/editar', [\App\Http\Controllers\MobileController::class, 'showUbicacionForm'])->name('almacenes.zonas.posiciones.editar');
+        Route::post('/almacenes/{almacen}/zonas/{zona}/posiciones/guardar',   [\App\Http\Controllers\MobileController::class, 'guardarUbicacion'])->name('almacenes.zonas.posiciones.guardar');
+        Route::post('/almacenes/{almacen}/zonas/{zona}/posiciones/{ubicacion}/eliminar', [\App\Http\Controllers\MobileController::class, 'eliminarUbicacion'])->name('almacenes.zonas.posiciones.eliminar');
         Route::get('/inventario/nuevo',                                       [\App\Http\Controllers\MobileController::class, 'showInventario'])->name('inventario.nueva');
         Route::post('/inventario/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarInventario'])->name('inventario.guardar');
         Route::get('/compra/nueva',                        [\App\Http\Controllers\MobileController::class, 'showCompraOcr'])->name('compra.ocr');

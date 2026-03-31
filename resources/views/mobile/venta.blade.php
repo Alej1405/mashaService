@@ -132,18 +132,6 @@
             @endforeach
         </select>
 
-        {{-- Presentación / Empaque --}}
-        <div class="item-pres-wrap" style="display:none;">
-            <p class="text-xs mb-1" style="color:rgba(232,230,240,0.4);">Presentación / Empaque</p>
-            <select class="item-pres input w-full px-3 py-2 text-xs" onchange="alCambiarPresentacion(this)">
-                <option value="">— Unidad base (sin presentación) —</option>
-            </select>
-        </div>
-
-        {{-- Hint de stock --}}
-        <div class="item-stock-hint hidden text-xs px-2 py-1 rounded-lg"
-             style="background:rgba(79,70,229,0.1); color:#a5b4fc; border:1px solid rgba(79,70,229,0.2);"></div>
-
         {{-- Descripción --}}
         <input type="text" class="item-desc input w-full px-3 py-2 text-xs" placeholder="Descripción">
 
@@ -165,15 +153,11 @@
         <label class="flex items-center gap-2 text-xs" style="color:rgba(232,230,240,0.5);">
             <input type="checkbox" class="item-iva" checked onchange="recalcular(this)"> Aplica IVA 15%
         </label>
-
-        {{-- Campos ocultos para empaque --}}
-        <input type="hidden" class="item-factor" value="1">
     </div>
 </template>
 
 <script>
-const CSRF          = '{{ csrf_token() }}';
-const PRESENTATIONS = @json($presentationsByItem);
+const CSRF = '{{ csrf_token() }}';
 let itemCount = 0;
 
 // ── Agregar / eliminar ────────────────────────────────────────────────────
@@ -192,87 +176,19 @@ function eliminarItem(btn) {
 
 // ── Al cambiar producto ───────────────────────────────────────────────────
 function alCambiarProducto(sel) {
-    const row    = sel.closest('.item-row');
-    const opt    = sel.selectedOptions[0];
-    const itemId = sel.value;
-
-    // Precio
+    const row = sel.closest('.item-row');
+    const opt = sel.selectedOptions[0];
     if (opt && opt.dataset.precio) {
         row.querySelector('.item-price').value = opt.dataset.precio;
     }
-    // Nombre → descripción
     if (opt && opt.dataset.nombre) {
         row.querySelector('.item-desc').value = opt.dataset.nombre;
     }
-
-    // Presentaciones
-    const presWrap = row.querySelector('.item-pres-wrap');
-    const presSel  = row.querySelector('.item-pres');
-    row.querySelector('.item-factor').value = 1;
-
-    // Limpiar select de presentaciones
-    presSel.innerHTML = '<option value="">— Unidad base (sin presentación) —</option>';
-
-    const pres = itemId ? (PRESENTATIONS[itemId] || []) : [];
-    if (pres.length > 0) {
-        pres.forEach(p => {
-            const o = document.createElement('option');
-            o.value             = p.id;
-            o.dataset.factor    = p.factor_conversion;
-            o.textContent       = p.nombre + ' (×' + parseFloat(p.factor_conversion) + ')';
-            presSel.appendChild(o);
-        });
-        presWrap.style.display = '';
-    } else {
-        presWrap.style.display = 'none';
-    }
-
-    actualizarHintStock(row);
     recalcularTodos();
-}
-
-// ── Al cambiar presentación ───────────────────────────────────────────────
-function alCambiarPresentacion(sel) {
-    const row  = sel.closest('.item-row');
-    const opt  = sel.selectedOptions[0];
-    const fact = opt && opt.dataset.factor ? parseFloat(opt.dataset.factor) : 1;
-    row.querySelector('.item-factor').value = fact;
-    actualizarHintStock(row);
-    recalcularTodos();
-}
-
-// ── Hint de unidades a descontar ──────────────────────────────────────────
-function actualizarHintStock(row) {
-    const hint   = row.querySelector('.item-stock-hint');
-    const factor = parseFloat(row.querySelector('.item-factor').value) || 1;
-    const qty    = parseFloat(row.querySelector('.item-qty').value)    || 0;
-
-    const invSel = row.querySelector('.item-inv');
-    const opt    = invSel.selectedOptions[0];
-    const stock  = opt ? parseFloat(opt.dataset.stock || 0) : 0;
-
-    if (factor !== 1 || (qty > 0 && invSel.value)) {
-        const descuento = Math.round(qty * factor * 10000) / 10000;
-        const suficiente = stock >= descuento;
-        hint.textContent = factor !== 1
-            ? `${qty} × ${factor} = ${descuento} u. de stock` + (invSel.value ? ` | Disponible: ${stock}` : '')
-            : `Stock disponible: ${stock}`;
-        hint.style.background = suficiente || !invSel.value
-            ? 'rgba(79,70,229,0.1)'
-            : 'rgba(239,68,68,0.1)';
-        hint.style.color   = suficiente || !invSel.value ? '#a5b4fc' : '#f87171';
-        hint.style.border  = suficiente || !invSel.value
-            ? '1px solid rgba(79,70,229,0.2)'
-            : '1px solid rgba(239,68,68,0.2)';
-        hint.classList.remove('hidden');
-    } else {
-        hint.classList.add('hidden');
-    }
 }
 
 // ── Recálculo de totales ──────────────────────────────────────────────────
 function recalcular(el) {
-    if (el) actualizarHintStock(el.closest('.item-row'));
     recalcularTodos();
 }
 
@@ -315,18 +231,12 @@ function guardarVenta() {
         if (!(cantidad > 0))  { mostrarError(`Ítem ${i + 1}: la cantidad debe ser mayor a 0.`); valido = false; }
         if (!(precio >= 0))   { mostrarError(`Ítem ${i + 1}: el precio no es válido.`); valido = false; }
 
-        const presOpt  = row.querySelector('.item-pres').selectedOptions[0];
-        const presId   = presOpt && presOpt.value ? parseInt(presOpt.value) : null;
-        const factor   = parseFloat(row.querySelector('.item-factor').value) || 1;
-
         items.push({
-            inventory_item_id:    row.querySelector('.item-inv').value ? parseInt(row.querySelector('.item-inv').value) : null,
-            item_presentation_id: presId,
-            factor_empaque:       factor,
-            descripcion:          desc,
-            cantidad:             cantidad,
-            precio_unitario:      precio,
-            aplica_iva:           row.querySelector('.item-iva').checked,
+            inventory_item_id: row.querySelector('.item-inv').value ? parseInt(row.querySelector('.item-inv').value) : null,
+            descripcion:       desc,
+            cantidad:          cantidad,
+            precio_unitario:   precio,
+            aplica_iva:        row.querySelector('.item-iva').checked,
         });
     });
 

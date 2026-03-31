@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Almacen;
 use App\Models\InventoryItem;
+use App\Models\ItemPresentation;
 use App\Models\MeasurementUnit;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
@@ -13,7 +14,6 @@ use App\Models\SaleItem;
 use App\Models\Customer;
 use App\Models\ProductionOrder;
 use App\Models\ProductPresentation;
-use App\Models\ItemPresentation;
 use App\Models\UbicacionAlmacen;
 use App\Models\ZonaAlmacen;
 use Illuminate\Http\Request;
@@ -329,6 +329,116 @@ class MobileController extends Controller
         }
     }
 
+    // ── Posiciones (UbicacionAlmacen) ─────────────────────────────────────
+
+    public function listUbicaciones(Request $request, Almacen $almacen, ZonaAlmacen $zona)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id || $zona->almacen_id !== $almacen->id) {
+            abort(403);
+        }
+        $posiciones = UbicacionAlmacen::where('zona_id', $zona->id)->orderBy('nombre')->get();
+        return view('mobile.posiciones', compact('almacen', 'zona', 'posiciones'));
+    }
+
+    public function showUbicacionForm(Request $request, Almacen $almacen, ZonaAlmacen $zona, ?UbicacionAlmacen $ubicacion = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id || $zona->almacen_id !== $almacen->id) {
+            abort(403);
+        }
+        if ($ubicacion && $ubicacion->zona_id !== $zona->id) {
+            abort(403);
+        }
+        return view('mobile.posicion-form', compact('almacen', 'zona', 'ubicacion'));
+    }
+
+    public function guardarUbicacion(Request $request, Almacen $almacen, ZonaAlmacen $zona)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id || $zona->almacen_id !== $almacen->id) {
+            return response()->json(['error' => 'Acceso no autorizado.'], 403);
+        }
+
+        $validated = $request->validate([
+            'ubicacion_id'     => ['nullable', 'integer'],
+            'codigo_ubicacion' => ['required', 'string', 'max:20'],
+            'nombre'           => ['required', 'string', 'max:150'],
+            'capacidad_maxima' => ['nullable', 'numeric', 'min:0'],
+            'unidad_capacidad' => ['nullable', 'string', 'max:50'],
+            'activo'           => ['boolean'],
+        ]);
+
+        try {
+            $ubicacionId = $validated['ubicacion_id'] ?? null;
+
+            if ($ubicacionId) {
+                $ubicacion = UbicacionAlmacen::where('zona_id', $zona->id)->findOrFail($ubicacionId);
+
+                $existe = UbicacionAlmacen::where('zona_id', $zona->id)
+                    ->where('codigo_ubicacion', $validated['codigo_ubicacion'])
+                    ->where('id', '!=', $ubicacionId)->exists();
+                if ($existe) {
+                    return response()->json(['error' => 'Ya existe una posición con ese código en esta zona.'], 422);
+                }
+
+                $ubicacion->update([
+                    'codigo_ubicacion' => $validated['codigo_ubicacion'],
+                    'nombre'           => $validated['nombre'],
+                    'capacidad_maxima' => $validated['capacidad_maxima'] ?? null,
+                    'unidad_capacidad' => $validated['unidad_capacidad'] ?? null,
+                    'activo'           => $validated['activo'] ?? true,
+                ]);
+                return response()->json(['success' => true, 'modo' => 'actualizado', 'nombre' => $ubicacion->nombre]);
+            }
+
+            $existe = UbicacionAlmacen::where('zona_id', $zona->id)
+                ->where('codigo_ubicacion', $validated['codigo_ubicacion'])->exists();
+            if ($existe) {
+                return response()->json(['error' => 'Ya existe una posición con ese código en esta zona.'], 422);
+            }
+
+            $ubicacion = UbicacionAlmacen::create([
+                'empresa_id'       => $almacen->empresa_id,
+                'almacen_id'       => $almacen->id,
+                'zona_id'          => $zona->id,
+                'codigo_ubicacion' => $validated['codigo_ubicacion'],
+                'nombre'           => $validated['nombre'],
+                'capacidad_maxima' => $validated['capacidad_maxima'] ?? null,
+                'unidad_capacidad' => $validated['unidad_capacidad'] ?? null,
+                'activo'           => $validated['activo'] ?? true,
+            ]);
+            return response()->json(['success' => true, 'modo' => 'creado', 'nombre' => $ubicacion->nombre]);
+
+        } catch (\Exception $e) {
+            Log::error('Error guardando posición móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar la posición.'], 500);
+        }
+    }
+
+    public function eliminarUbicacion(Request $request, Almacen $almacen, ZonaAlmacen $zona, UbicacionAlmacen $ubicacion)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        if ($almacen->empresa_id !== $this->empresa()->id || $zona->almacen_id !== $almacen->id || $ubicacion->zona_id !== $zona->id) {
+            return response()->json(['error' => 'Acceso no autorizado.'], 403);
+        }
+        try {
+            $ubicacion->delete();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Error eliminando posición móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'No se puede eliminar la posición.'], 500);
+        }
+    }
+
     /** JSON: zonas activas de un almacén (para cascading selects) */
     public function getZonasJson(Request $request, Almacen $almacen)
     {
@@ -369,10 +479,14 @@ class MobileController extends Controller
         if (!$this->tieneAccesoEnterprise()) {
             return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
         }
-        $empresa   = $this->empresa();
-        $unidades  = MeasurementUnit::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
-        $almacenes = Almacen::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
-        return view('mobile.inventario', compact('empresa', 'unidades', 'almacenes'));
+        $empresa       = $this->empresa();
+        $unidades      = MeasurementUnit::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        $almacenes     = Almacen::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        $presentaciones = ItemPresentation::where('empresa_id', $empresa->id)->where('activo', true)
+            ->with('measurementUnit')
+            ->orderBy('nombre')
+            ->get();
+        return view('mobile.inventario', compact('empresa', 'unidades', 'almacenes', 'presentaciones'));
     }
 
     public function guardarInventario(Request $request)
@@ -393,6 +507,10 @@ class MobileController extends Controller
             'stock_minimo'         => ['nullable', 'numeric', 'min:0'],
             'ubicacion_almacen_id' => ['nullable', 'integer'],
             'foto'                 => ['nullable', 'image', 'max:5120'],
+            'presentation_id'      => ['nullable', 'integer', 'exists:item_presentations,id'],
+            'new_pres_nombre'      => ['nullable', 'string', 'max:150'],
+            'new_pres_unit'        => ['nullable', 'integer', 'exists:measurement_units,id'],
+            'new_pres_capacidad'   => ['nullable', 'numeric', 'min:0.0001'],
         ]);
 
         // Verificar que ubicacion_almacen_id pertenece a la empresa
@@ -410,6 +528,19 @@ class MobileController extends Controller
                 $fotoPath = $request->file('foto')->store("inventario-fotos/{$empresa->id}", 'public');
             }
 
+            // Presentación: usar existente o crear nueva
+            $presentacionId = $validated['presentation_id'] ?? null;
+            if (!$presentacionId && !empty($validated['new_pres_nombre'])) {
+                $nuevaPres = ItemPresentation::create([
+                    'empresa_id'          => $empresa->id,
+                    'nombre'              => $validated['new_pres_nombre'],
+                    'measurement_unit_id' => $validated['new_pres_unit'] ?? null,
+                    'capacidad'           => $validated['new_pres_capacidad'] ?? null,
+                    'activo'              => true,
+                ]);
+                $presentacionId = $nuevaPres->id;
+            }
+
             $item = InventoryItem::create([
                 'empresa_id'           => $empresa->id,
                 'nombre'               => $validated['nombre'],
@@ -421,6 +552,7 @@ class MobileController extends Controller
                 'stock_actual'         => $validated['stock_actual'] ?? 0,
                 'stock_minimo'         => $validated['stock_minimo'] ?? 0,
                 'ubicacion_almacen_id' => $ubicacionId,
+                'presentation_id'      => $presentacionId,
                 'foto_path'            => $fotoPath,
                 'activo'               => true,
             ]);
@@ -446,19 +578,9 @@ class MobileController extends Controller
 
         $empresa   = $this->empresa();
         $suppliers = Supplier::where('empresa_id', $empresa->id)->orderBy('nombre')->get();
-        $items     = InventoryItem::where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->orderBy('nombre')
-            ->get(['id', 'codigo', 'nombre', 'purchase_price']);
+        $items     = InventoryItem::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
 
-        $presentationsByItem = ItemPresentation::where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->get(['id', 'inventory_item_id', 'nombre', 'factor_conversion'])
-            ->groupBy('inventory_item_id')
-            ->map(fn ($g) => $g->values())
-            ->toArray();
-
-        return view('mobile.compra-ocr', compact('empresa', 'suppliers', 'items', 'presentationsByItem'));
+        return view('mobile.compra-ocr', compact('empresa', 'suppliers', 'items'));
     }
 
     public function procesarOcr(Request $request)
@@ -583,7 +705,6 @@ class MobileController extends Controller
 
             foreach ($validated['items'] as $item) {
                 $subtotalItem = round((float) $item['cantidad'] * (float) $item['precio_unitario'], 4);
-                $ivaMonto     = round($subtotalItem * 0.15, 4);
                 PurchaseItem::create([
                     'purchase_id'       => $purchase->id,
                     'inventory_item_id' => $item['inventory_item_id'] ?? null,
@@ -591,8 +712,8 @@ class MobileController extends Controller
                     'unit_price'        => $item['precio_unitario'],
                     'aplica_iva'        => true,
                     'subtotal'          => $subtotalItem,
-                    'iva_monto'         => $ivaMonto,
-                    'total_item'        => $subtotalItem + $ivaMonto,
+                    'iva_monto'         => 0,
+                    'total_item'        => $subtotalItem,
                 ]);
             }
 
@@ -679,19 +800,8 @@ class MobileController extends Controller
         }
         $empresa   = $this->empresa();
         $customers = Customer::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
-        $items     = InventoryItem::where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->orderBy('nombre')
-            ->get(['id', 'codigo', 'nombre', 'type', 'sale_price', 'stock_actual', 'measurement_unit_id']);
-
-        $presentationsByItem = ItemPresentation::where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->get(['id', 'inventory_item_id', 'nombre', 'factor_conversion'])
-            ->groupBy('inventory_item_id')
-            ->map(fn ($g) => $g->values())
-            ->toArray();
-
-        return view('mobile.venta', compact('empresa', 'customers', 'items', 'presentationsByItem'));
+        $items     = InventoryItem::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        return view('mobile.venta', compact('empresa', 'customers', 'items'));
     }
 
     public function guardarVenta(Request $request)
@@ -700,51 +810,18 @@ class MobileController extends Controller
             return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
         }
         $empresa = $this->empresa();
-
         $validated = $request->validate([
-            'fecha'                          => ['required', 'date'],
-            'customer_id'                    => ['nullable', 'integer', 'exists:customers,id'],
-            'tipo_venta'                     => ['required', 'in:contado,credito'],
-            'forma_pago'                     => ['required', 'in:efectivo,transferencia,tarjeta_credito,credito'],
-            'items'                          => ['required', 'array', 'min:1'],
-            'items.*.inventory_item_id'      => ['nullable', 'integer'],
-            'items.*.item_presentation_id'   => ['nullable', 'integer'],
-            'items.*.factor_empaque'         => ['nullable', 'numeric', 'min:0.000001'],
-            'items.*.descripcion'            => ['required', 'string', 'max:500'],
-            'items.*.cantidad'               => ['required', 'numeric', 'min:0.0001'],
-            'items.*.precio_unitario'        => ['required', 'numeric', 'min:0'],
-            'items.*.aplica_iva'             => ['boolean'],
+            'fecha'           => ['required', 'date'],
+            'customer_id'     => ['nullable', 'integer', 'exists:customers,id'],
+            'tipo_venta'      => ['required', 'in:contado,credito'],
+            'forma_pago'      => ['required', 'in:efectivo,transferencia,tarjeta_credito,credito'],
+            'items'           => ['required', 'array', 'min:1'],
+            'items.*.inventory_item_id' => ['nullable', 'integer'],
+            'items.*.descripcion'       => ['required', 'string'],
+            'items.*.cantidad'          => ['required', 'numeric', 'min:0.0001'],
+            'items.*.precio_unitario'   => ['required', 'numeric', 'min:0'],
+            'items.*.aplica_iva'        => ['boolean'],
         ]);
-
-        // Verificar que los inventory_item_id pertenecen a la empresa
-        $rawItemIds = array_filter(array_column($validated['items'], 'inventory_item_id'));
-        $inventoryItemsMap = [];
-        if (!empty($rawItemIds)) {
-            $inventoryItemsMap = InventoryItem::where('empresa_id', $empresa->id)
-                ->whereIn('id', $rawItemIds)
-                ->get()
-                ->keyBy('id')
-                ->all();
-            foreach ($rawItemIds as $iid) {
-                if (!isset($inventoryItemsMap[$iid])) {
-                    return response()->json(['error' => 'Ítem de inventario no válido.'], 422);
-                }
-            }
-        }
-
-        // Verificar que las presentaciones pertenecen a la empresa
-        $presIds = array_filter(array_column($validated['items'], 'item_presentation_id'));
-        if (!empty($presIds)) {
-            $validPres = ItemPresentation::where('empresa_id', $empresa->id)
-                ->whereIn('id', $presIds)
-                ->pluck('id')
-                ->toArray();
-            foreach ($presIds as $pid) {
-                if (!in_array($pid, $validPres)) {
-                    return response()->json(['error' => 'Presentación no válida.'], 422);
-                }
-            }
-        }
 
         DB::beginTransaction();
         try {
@@ -761,42 +838,17 @@ class MobileController extends Controller
                 'total'          => 0,
             ]);
 
-            $totalSubtotal = 0;
-            $totalIva      = 0;
-
             foreach ($validated['items'] as $item) {
-                $invItem       = isset($item['inventory_item_id']) ? ($inventoryItemsMap[$item['inventory_item_id']] ?? null) : null;
-                $tipoItem      = $invItem?->type ?? 'producto_terminado';
-                $factorEmpaque = (float) ($item['factor_empaque'] ?? 1);
-
-                $subtotalItem = round((float) $item['cantidad'] * (float) $item['precio_unitario'], 4);
-                $aplicaIva    = (bool) ($item['aplica_iva'] ?? false);
-                $ivaMonto     = $aplicaIva ? round($subtotalItem * 0.15, 4) : 0;
-
-                $totalSubtotal += $subtotalItem;
-                $totalIva      += $ivaMonto;
-
                 SaleItem::create([
-                    'sale_id'              => $sale->id,
-                    'inventory_item_id'    => $item['inventory_item_id'] ?? null,
-                    'item_presentation_id' => $item['item_presentation_id'] ?? null,
-                    'tipo_item'            => $tipoItem,
-                    'descripcion_servicio' => $item['descripcion'],
-                    'cantidad'             => $item['cantidad'],
-                    'precio_unitario'      => $item['precio_unitario'],
-                    'aplica_iva'           => $aplicaIva,
-                    'subtotal'             => $subtotalItem,
-                    'iva_monto'            => $ivaMonto,
-                    'total'                => $subtotalItem + $ivaMonto,
-                    'factor_empaque'       => $factorEmpaque,
+                    'sale_id'           => $sale->id,
+                    'inventory_item_id' => $item['inventory_item_id'] ?? null,
+                    'tipo_item'         => 'producto',
+                    'descripcion'       => $item['descripcion'],
+                    'cantidad'          => $item['cantidad'],
+                    'precio_unitario'   => $item['precio_unitario'],
+                    'aplica_iva'        => $item['aplica_iva'] ?? false,
                 ]);
             }
-
-            $sale->update([
-                'subtotal' => round($totalSubtotal, 2),
-                'iva'      => round($totalIva, 2),
-                'total'    => round($totalSubtotal + $totalIva, 2),
-            ]);
 
             DB::commit();
             return response()->json(['success' => true, 'referencia' => $sale->fresh()->referencia]);

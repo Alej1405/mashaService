@@ -5,33 +5,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasEmpresa;
 
 class ItemPresentation extends Model
 {
-    protected $table = 'item_presentations';
+    use HasEmpresa;
 
     protected $fillable = [
-        'inventory_item_id',
         'empresa_id',
         'nombre',
-        'factor_conversion',
-        'es_unidad_base',
+        'measurement_unit_id',
+        'capacidad',
         'activo',
     ];
 
     protected $casts = [
-        'factor_conversion' => 'decimal:6',
-        'es_unidad_base'    => 'boolean',
-        'activo'            => 'boolean',
+        'capacidad' => 'decimal:4',
+        'activo'    => 'boolean',
     ];
 
-    public function inventoryItem(): BelongsTo
+    public function measurementUnit(): BelongsTo
     {
-        return $this->belongsTo(InventoryItem::class);
+        return $this->belongsTo(MeasurementUnit::class);
     }
 
-    public function empresa(): BelongsTo
+    public function inventoryItems(): HasMany
     {
-        return $this->belongsTo(Empresa::class);
+        return $this->hasMany(InventoryItem::class, 'presentation_id');
     }
 }

@@ -207,21 +207,12 @@
             @endforeach
         </select>
 
-        {{-- Presentación / Empaque --}}
-        <div class="item-pres-wrap" style="display:none;">
-            <p class="text-xs mb-1" style="color:rgba(232,230,240,0.4);">Presentación / Empaque</p>
-            <select class="item-pres input w-full px-3 py-2 text-xs" onchange="alCambiarPresentacion(this)">
-                <option value="">— Unidad base (sin presentación) —</option>
-            </select>
-            <p class="item-pres-hint text-xs mt-1 hidden" style="color:#a5b4fc;"></p>
-        </div>
-
         {{-- Cantidad y precio --}}
         <div class="flex gap-2">
             <div class="flex-1">
                 <p class="text-xs mb-1" style="color: rgba(232,230,240,0.4);">Cantidad</p>
                 <input type="number" class="item-qty input w-full px-3 py-2 text-xs"
-                       placeholder="0" min="0.001" step="0.001" oninput="actualizarHint(this)">
+                       placeholder="0" min="0.001" step="0.001">
             </div>
             <div class="flex-1">
                 <p class="text-xs mb-1" style="color: rgba(232,230,240,0.4);">Precio unit.</p>
@@ -230,14 +221,11 @@
             </div>
         </div>
 
-        {{-- Factor oculto --}}
-        <input type="hidden" class="item-factor" value="1">
     </div>
 </template>
 
 <script>
-const CSRF          = '{{ csrf_token() }}';
-const PRESENTATIONS = @json($presentationsByItem);
+const CSRF = '{{ csrf_token() }}';
 let itemCount = 0;
 
 // ── Foto ─────────────────────────────────────────────────────────────────
@@ -342,63 +330,11 @@ function eliminarItem(btn) {
 
 // ── Al cambiar producto ───────────────────────────────────────────────────
 function alCambiarProducto(sel) {
-    const row    = sel.closest('.item-row');
-    const itemId = sel.value;
-
-    // Rellenar descripción si está vacía
+    const row = sel.closest('.item-row');
     const opt = sel.selectedOptions[0];
     if (opt && opt.dataset.nombre) {
         const descEl = row.querySelector('.item-desc');
         if (!descEl.value) descEl.value = opt.dataset.nombre;
-    }
-
-    // Presentaciones
-    const presWrap = row.querySelector('.item-pres-wrap');
-    const presSel  = row.querySelector('.item-pres');
-    row.querySelector('.item-factor').value = 1;
-    presSel.innerHTML = '<option value="">— Unidad base (sin presentación) —</option>';
-
-    const pres = itemId ? (PRESENTATIONS[itemId] || []) : [];
-    if (pres.length > 0) {
-        pres.forEach(p => {
-            const o = document.createElement('option');
-            o.value          = p.id;
-            o.dataset.factor = p.factor_conversion;
-            o.textContent    = p.nombre + ' (×' + parseFloat(p.factor_conversion) + ')';
-            presSel.appendChild(o);
-        });
-        presWrap.style.display = '';
-    } else {
-        presWrap.style.display = 'none';
-    }
-}
-
-// ── Al cambiar presentación ───────────────────────────────────────────────
-function alCambiarPresentacion(sel) {
-    const row   = sel.closest('.item-row');
-    const opt   = sel.selectedOptions[0];
-    const fact  = opt && opt.dataset.factor ? parseFloat(opt.dataset.factor) : 1;
-    const hint  = row.querySelector('.item-pres-hint');
-    row.querySelector('.item-factor').value = fact;
-
-    if (fact !== 1) {
-        const qty = parseFloat(row.querySelector('.item-qty').value) || 1;
-        hint.textContent = `${qty} × ${fact} = ${Math.round(qty * fact * 10000) / 10000} unidades de compra`;
-        hint.classList.remove('hidden');
-    } else {
-        hint.classList.add('hidden');
-    }
-}
-
-// ── Hint al cambiar cantidad ──────────────────────────────────────────────
-function actualizarHint(qtySel) {
-    const row   = qtySel.closest('.item-row');
-    const fact  = parseFloat(row.querySelector('.item-factor').value) || 1;
-    const hint  = row.querySelector('.item-pres-hint');
-    if (fact !== 1) {
-        const qty = parseFloat(qtySel.value) || 0;
-        hint.textContent = `${qty} × ${fact} = ${Math.round(qty * fact * 10000) / 10000} unidades de compra`;
-        hint.classList.remove('hidden');
     }
 }
 
@@ -421,17 +357,13 @@ function guardarCompra() {
         const desc = row.querySelector('.item-desc').value.trim();
         const qty  = parseFloat(row.querySelector('.item-qty').value);
         const prc  = parseFloat(row.querySelector('.item-price').value);
-        const fact = parseFloat(row.querySelector('.item-factor').value) || 1;
 
         if (!desc)           { mostrarErrorGuardar(`Ítem ${i + 1}: la descripción es obligatoria.`); valido = false; }
         if (!(qty > 0))      { mostrarErrorGuardar(`Ítem ${i + 1}: la cantidad debe ser mayor a 0.`); valido = false; }
 
-        // Cantidad real = cantidad en presentaciones × factor
-        const cantidadReal = Math.round(qty * fact * 1000000) / 1000000;
-
         items.push({
             descripcion:        desc,
-            cantidad:           cantidadReal,
+            cantidad:           qty,
             precio_unitario:    prc || 0,
             inventory_item_id:  row.querySelector('.item-inv').value || null,
         });

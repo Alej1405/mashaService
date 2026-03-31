@@ -7,6 +7,7 @@ use App\Filament\App\Resources\InventoryItemResource\RelationManagers;
 use App\Filament\App\Resources\SupplierResource;
 use App\Models\Almacen;
 use App\Models\InventoryItem;
+use App\Models\ItemPresentation;
 use App\Models\MeasurementUnit;
 use App\Models\UbicacionAlmacen;
 use App\Models\ZonaAlmacen;
@@ -87,6 +88,50 @@ class InventoryItemResource extends Resource
                                     ])
                                     ->createOptionUsing(fn (array $data): int =>
                                         MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey()),
+                                Forms\Components\Select::make('presentation_id')
+                                    ->label('Presentación')
+                                    ->relationship('presentation', 'nombre', fn ($query) =>
+                                        $query->where('empresa_id', Filament::getTenant()->id)->where('activo', true)
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn ($record) =>
+                                        $record->nombre . ($record->capacidad
+                                            ? ' (' . number_format((float) $record->capacidad, 0) . ' ' . ($record->measurementUnit?->abreviatura ?? 'u.') . ')'
+                                            : '')
+                                    )
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable()
+                                    ->placeholder('— Sin presentación —')
+                                    ->createOptionModalHeading('Nueva Presentación')
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('nombre')
+                                            ->label('Nombre')
+                                            ->required()
+                                            ->maxLength(150)
+                                            ->placeholder('Ej: Caja x24, Paquete x12'),
+                                        Forms\Components\Select::make('measurement_unit_id')
+                                            ->label('Unidad')
+                                            ->options(fn () => MeasurementUnit::where('empresa_id', Filament::getTenant()->id)
+                                                ->where('activo', true)
+                                                ->orderBy('nombre')
+                                                ->pluck('nombre', 'id'))
+                                            ->searchable()
+                                            ->nullable()
+                                            ->placeholder('— Sin especificar —'),
+                                        Forms\Components\TextInput::make('capacidad')
+                                            ->label('Capacidad')
+                                            ->numeric()
+                                            ->minValue(0.0001)
+                                            ->placeholder('Ej: 24')
+                                            ->helperText('Cuántas unidades contiene. Ej: caja de 24 botellas → 24.'),
+                                    ])
+                                    ->createOptionUsing(fn (array $data): int =>
+                                        ItemPresentation::create([
+                                            ...$data,
+                                            'empresa_id' => Filament::getTenant()->id,
+                                            'activo'     => true,
+                                        ])->getKey()
+                                    ),
                                 // ── Ubicación en cascada: Almacén → Zona → Posición ──────
                                 Forms\Components\Select::make('almacen_id')
                                     ->label('Almacén')
@@ -304,6 +349,17 @@ class InventoryItemResource extends Resource
                 Tables\Columns\TextColumn::make('measurementUnit.abreviatura')
                     ->label('U.M.')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('presentation.nombre')
+                    ->label('Presentación')
+                    ->formatStateUsing(function ($state, $record) {
+                        if (!$record->presentation) return '—';
+                        $cap  = $record->presentation->capacidad;
+                        $unit = $record->presentation->measurementUnit?->abreviatura ?? 'u.';
+                        return $cap
+                            ? "{$state} (" . number_format((float) $cap, 0) . " {$unit})"
+                            : $state;
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('stock_actual')
                     ->label('Stock')
                     ->numeric()

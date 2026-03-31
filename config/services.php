@@ -32,6 +32,10 @@ return [
         'key' => env('OPENAI_API_KEY'),
     ],
 
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
     'python' => [
         'executable' => env('PYTHON_EXECUTABLE', 'python3'),
     ],

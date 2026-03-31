@@ -26,7 +26,6 @@ use App\Filament\App\Resources\CashRegisterResource;
 use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\CustomerResource;
 use App\Filament\App\Resources\InventoryItemResource;
-use App\Models\ItemPresentation;
 
 class SaleResource extends Resource
 {
@@ -212,38 +211,16 @@ class SaleResource extends Resource
                                                 $set('precio_unitario', $item->precio_venta ?? $item->sale_price ?? 0);
                                                 $set('tipo_item', $item->type);
                                                 $set('aplica_iva', $item->aplica_iva ?? true);
-                                                $set('_presentation_id', null);
-                                                $set('factor_empaque', 1);
                                             }
                                         }),
 
                                     \Filament\Forms\Components\Hidden::make('tipo_item')
                                         ->required(),
 
-                                    // ── Presentación / Empaque ─────────────────
-                                    Forms\Components\Select::make('item_presentation_id')
-                                        ->label('Presentación / Empaque')
-                                        ->helperText('Opcional. Selecciona si vendes por caja, paquete, etc.')
-                                        ->options(fn (callable $get) => ($iid = $get('inventory_item_id'))
-                                            ? ItemPresentation::where('inventory_item_id', $iid)
-                                                ->where('activo', true)
-                                                ->get()
-                                                ->mapWithKeys(fn ($p) => [$p->id => "{$p->nombre} (×{$p->factor_conversion})"])
-                                            : [])
-                                        ->nullable()
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, callable $set) {
-                                            $p = $state ? ItemPresentation::find($state) : null;
-                                            $set('factor_empaque', $p ? (float) $p->factor_conversion : 1);
-                                        }),
-
                                     Forms\Components\Grid::make(4)
                                         ->schema([
                                             Forms\Components\TextInput::make('cantidad')
-                                                ->label('Cantidad (presentaciones)')
-                                                ->helperText(fn (callable $get) => (float)($get('factor_empaque') ?? 1) !== 1.0
-                                                    ? 'Stock descontado: ' . round((float)($get('cantidad') ?? 0) * (float)($get('factor_empaque') ?? 1), 4) . ' u.'
-                                                    : null)
+                                                ->label('Cantidad')
                                                 ->numeric()
                                                 ->default(1)
                                                 ->required()
@@ -275,8 +252,6 @@ class SaleResource extends Resource
                                                 }),
                                         ]),
 
-                                    // factor_empaque persiste en sale_items (SaleItem tiene $guarded=[])
-                                    \Filament\Forms\Components\Hidden::make('factor_empaque')->default(1),
                                 ])
                                 ->columns(1)
                                 ->defaultItems(1)

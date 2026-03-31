@@ -71,9 +71,15 @@
         <span>${{ number_format($debt->monto_original, 2) }}</span>
     </div>
     <div class="info-item">
-        <label>Tasa de Interés</label>
-        <span>{{ number_format($debt->tasa_interes, 2) }}% {{ ucfirst($debt->frecuencia_tasa) }} ({{ ucfirst($debt->tipo_tasa) }})</span>
+        <label>Tasa de Interés (TNA)</label>
+        <span>{{ number_format($debt->tasa_interes, 2) }}% anual &mdash; {{ match($debt->sistema_amortizacion) { 'frances' => 'Francés', 'aleman' => 'Alemán', 'americano' => 'Americano', default => ucfirst($debt->sistema_amortizacion) } }}</span>
     </div>
+    @if($debt->seguro_desgravamen_anual > 0)
+    <div class="info-item">
+        <label>Seg. Desgravamen</label>
+        <span>{{ number_format($debt->seguro_desgravamen_anual, 4) }}% anual nominal</span>
+    </div>
+    @endif
     <div class="info-item">
         <label>Plazo</label>
         <span>{{ $debt->plazo_meses ? $debt->plazo_meses . ' meses' : '—' }} {{ $debt->numero_cuotas ? '/ ' . $debt->numero_cuotas . ' cuotas' : '' }}</span>
@@ -173,6 +179,9 @@
             <th class="right">Saldo Inicial</th>
             <th class="right">Capital</th>
             <th class="right">Intereses</th>
+            @if($debt->seguro_desgravamen_anual > 0)
+            <th class="right">Desgravamen</th>
+            @endif
             <th class="right">Total Cuota</th>
             <th class="right">Saldo Final</th>
             <th class="center">Estado</th>
@@ -186,6 +195,9 @@
             <td class="right">${{ number_format($linea->saldo_inicial, 2) }}</td>
             <td class="right">${{ number_format($linea->monto_capital, 2) }}</td>
             <td class="right">${{ number_format($linea->monto_interes, 2) }}</td>
+            @if($debt->seguro_desgravamen_anual > 0)
+            <td class="right">${{ number_format($linea->seguro_desgravamen, 2) }}</td>
+            @endif
             <td class="right"><strong>${{ number_format($linea->total_cuota, 2) }}</strong></td>
             <td class="right">${{ number_format($linea->saldo_final, 2) }}</td>
             <td class="center">{{ strtoupper($linea->estado) }}</td>

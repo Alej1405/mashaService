@@ -115,6 +115,41 @@
     </div>
     @endif
 
+    {{-- Presentación --}}
+    <div class="card p-4 space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-wide" style="color: rgba(232,230,240,0.35);">
+            Presentación <span style="color: rgba(232,230,240,0.25);">(opcional)</span>
+        </p>
+        <p class="text-xs" style="color: rgba(232,230,240,0.4);">
+            Ej: Caja de 24 unidades, Paquete de 12 botellas.
+        </p>
+
+        <select id="i-pres-select" class="input w-full px-3 py-2.5 text-sm" onchange="alCambiarPres(this)">
+            <option value="">— Sin presentación —</option>
+            @foreach($presentaciones as $pres)
+                <option value="{{ $pres->id }}"
+                        data-cap="{{ $pres->capacidad }}"
+                        data-unit="{{ $pres->measurementUnit->abreviatura ?? '' }}">
+                    {{ $pres->nombre }}
+                    @if($pres->capacidad)
+                        ({{ number_format($pres->capacidad, 0) }}
+                        {{ $pres->measurementUnit->abreviatura ?? 'u.' }})
+                    @endif
+                </option>
+            @endforeach
+            <option value="__nueva__">+ Registrar nueva presentación…</option>
+        </select>
+
+        <div id="pres-resumen" class="hidden px-3 py-2 rounded-xl text-xs"
+             style="background:rgba(79,70,229,0.1); color:#a5b4fc; border:1px solid rgba(79,70,229,0.2);"></div>
+
+        {{-- Campos ocultos --}}
+        <input type="hidden" id="i-pres-id">
+        <input type="hidden" id="i-new-pres-nombre">
+        <input type="hidden" id="i-new-pres-unit">
+        <input type="hidden" id="i-new-pres-capacidad">
+    </div>
+
     {{-- Precios y stock --}}
     <div class="card p-4 space-y-3">
         <p class="text-xs font-semibold uppercase tracking-wide" style="color: rgba(232,230,240,0.35);">Precios y stock</p>
@@ -174,6 +209,55 @@
            style="background: rgba(255,255,255,0.06); color: rgba(232,230,240,0.6); border: 1px solid rgba(255,255,255,0.08);">
             Volver al inicio
         </a>
+    </div>
+</div>
+
+{{-- Modal: nueva presentación --}}
+<div id="modal-pres" class="hidden fixed inset-0 z-50 flex items-end justify-center px-4 pb-6"
+     style="background: rgba(0,0,0,0.65);">
+    <div class="card w-full p-5 max-w-sm space-y-4">
+        <p class="text-sm font-semibold text-white">Nueva Presentación</p>
+
+        <div>
+            <label class="block text-xs mb-1.5" style="color: rgba(232,230,240,0.5);">Nombre *</label>
+            <input type="text" id="m-pres-nombre" class="input w-full px-3 py-2.5 text-sm"
+                   placeholder="Ej: Caja x24, Paquete x12">
+        </div>
+
+        <div>
+            <label class="block text-xs mb-1.5" style="color: rgba(232,230,240,0.5);">Unidad</label>
+            <select id="m-pres-unit" class="input w-full px-3 py-2.5 text-sm">
+                <option value="">— Sin especificar —</option>
+                @foreach($unidades as $u)
+                    <option value="{{ $u->id }}">{{ $u->nombre }} ({{ $u->abreviatura }})</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs mb-1.5" style="color: rgba(232,230,240,0.5);">Capacidad</label>
+            <input type="number" id="m-pres-capacidad" class="input w-full px-3 py-2.5 text-sm"
+                   placeholder="Ej: 24" min="0.0001" step="any">
+            <p class="text-xs mt-1" style="color: rgba(232,230,240,0.3);">
+                Cuántas unidades contiene. Ej: una caja de 24 botellas → 24.
+            </p>
+        </div>
+
+        <div id="modal-pres-error" class="hidden text-xs text-red-300 px-3 py-2 rounded-xl"
+             style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.25);"></div>
+
+        <div class="flex gap-2 pt-1">
+            <button onclick="cerrarModalPres()"
+                    class="flex-1 py-2.5 text-sm rounded-xl"
+                    style="background:rgba(255,255,255,0.06); color:rgba(232,230,240,0.6); border:1px solid rgba(255,255,255,0.1);">
+                Cancelar
+            </button>
+            <button onclick="confirmarPres()"
+                    class="flex-1 py-2.5 text-sm rounded-xl font-semibold"
+                    style="background:rgba(79,70,229,0.25); color:#a5b4fc; border:1px solid rgba(79,70,229,0.4);">
+                Agregar
+            </button>
+        </div>
     </div>
 </div>
 
@@ -253,6 +337,90 @@ function cargarUbicaciones() {
     .catch(() => {});
 }
 
+// ── Presentación ──────────────────────────────────────────────────────────
+function alCambiarPres(sel) {
+    if (sel.value === '__nueva__') {
+        sel.value = '';
+        abrirModalPres();
+        return;
+    }
+    // Limpiar datos de "nueva"
+    document.getElementById('i-pres-id').value          = sel.value;
+    document.getElementById('i-new-pres-nombre').value  = '';
+    document.getElementById('i-new-pres-unit').value    = '';
+    document.getElementById('i-new-pres-capacidad').value = '';
+
+    const resumen = document.getElementById('pres-resumen');
+    if (sel.value) {
+        const opt = sel.selectedOptions[0];
+        const cap  = opt.dataset.cap  ? parseFloat(opt.dataset.cap) : null;
+        const unit = opt.dataset.unit || 'u.';
+        resumen.textContent = cap ? `${opt.text.split('(')[0].trim()} — ${cap} ${unit} por presentación` : opt.text;
+        resumen.classList.remove('hidden');
+    } else {
+        resumen.classList.add('hidden');
+    }
+}
+
+function abrirModalPres() {
+    document.getElementById('m-pres-nombre').value   = '';
+    document.getElementById('m-pres-unit').value     = '';
+    document.getElementById('m-pres-capacidad').value = '';
+    document.getElementById('modal-pres-error').classList.add('hidden');
+    document.getElementById('modal-pres').classList.remove('hidden');
+    setTimeout(() => document.getElementById('m-pres-nombre').focus(), 100);
+}
+
+function cerrarModalPres() {
+    document.getElementById('modal-pres').classList.add('hidden');
+}
+
+function confirmarPres() {
+    const nombre    = document.getElementById('m-pres-nombre').value.trim();
+    const unitId    = document.getElementById('m-pres-unit').value;
+    const capacidad = document.getElementById('m-pres-capacidad').value;
+    const errEl     = document.getElementById('modal-pres-error');
+
+    if (!nombre) {
+        errEl.textContent = 'El nombre es obligatorio.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    // Guardar en campos ocultos
+    document.getElementById('i-pres-id').value           = '';
+    document.getElementById('i-new-pres-nombre').value   = nombre;
+    document.getElementById('i-new-pres-unit').value     = unitId;
+    document.getElementById('i-new-pres-capacidad').value = capacidad;
+
+    // Agregar al select y seleccionar
+    const sel  = document.getElementById('i-pres-select');
+    const prev = sel.querySelector('option[data-custom]');
+    if (prev) prev.remove();
+
+    const opt = document.createElement('option');
+    opt.value          = '__nueva_registrada__';
+    opt.dataset.custom = '1';
+    const unitText = document.getElementById('m-pres-unit').selectedOptions[0]?.text?.split('(')[1]?.replace(')','') || 'u.';
+    opt.textContent = capacidad
+        ? `${nombre} (${parseFloat(capacidad)} ${unitText.trim()})`
+        : nombre;
+    sel.appendChild(opt);
+    sel.value = '__nueva_registrada__';
+
+    const resumen = document.getElementById('pres-resumen');
+    resumen.textContent = capacidad
+        ? `${nombre} — ${parseFloat(capacidad)} ${unitText.trim()} por presentación`
+        : nombre;
+    resumen.classList.remove('hidden');
+
+    cerrarModalPres();
+}
+
+document.getElementById('modal-pres').addEventListener('click', function (e) {
+    if (e.target === this) cerrarModalPres();
+});
+
 function guardarItem() {
     const nombre = document.getElementById('i-nombre').value.trim();
     const type   = document.getElementById('i-type').value;
@@ -287,6 +455,21 @@ function guardarItem() {
     if (ubicId) fd.append('ubicacion_almacen_id', ubicId);
 
     if (fotoInput.files[0]) fd.append('foto', fotoInput.files[0]);
+
+    // Presentación
+    const presId = document.getElementById('i-pres-id').value;
+    if (presId) {
+        fd.append('presentation_id', presId);
+    } else {
+        const newNombre = document.getElementById('i-new-pres-nombre').value;
+        if (newNombre) {
+            fd.append('new_pres_nombre', newNombre);
+            const newUnit = document.getElementById('i-new-pres-unit').value;
+            if (newUnit) fd.append('new_pres_unit', newUnit);
+            const newCap = document.getElementById('i-new-pres-capacidad').value;
+            if (newCap) fd.append('new_pres_capacidad', newCap);
+        }
+    }
 
     const btn = document.getElementById('btn-guardar');
     btn.disabled = true; btn.textContent = 'Guardando...';
@@ -346,6 +529,17 @@ function resetForm() {
         document.getElementById('wrap-zona').classList.add('hidden');
         document.getElementById('wrap-ubicacion').classList.add('hidden');
     }
+
+    // Limpiar presentación
+    const presSel = document.getElementById('i-pres-select');
+    const prevOpt = presSel.querySelector('option[data-custom]');
+    if (prevOpt) prevOpt.remove();
+    presSel.value = '';
+    document.getElementById('i-pres-id').value           = '';
+    document.getElementById('i-new-pres-nombre').value   = '';
+    document.getElementById('i-new-pres-unit').value     = '';
+    document.getElementById('i-new-pres-capacidad').value = '';
+    document.getElementById('pres-resumen').classList.add('hidden');
 
     document.getElementById('error-msg').classList.add('hidden');
     document.getElementById('paso-exito').classList.add('hidden');
