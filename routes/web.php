@@ -51,6 +51,88 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/deudas/{debt}/activar',              [\App\Http\Controllers\MobileController::class, 'activarDeuda'])->name('deudas.activar');
         Route::get('/diseno-producto/nuevo',               [\App\Http\Controllers\MobileController::class, 'showDisenoProducto'])->name('diseno-producto.nuevo');
         Route::post('/diseno-producto/guardar',            [\App\Http\Controllers\MobileController::class, 'guardarDisenoProducto'])->name('diseno-producto.guardar');
+
+        // ── Listas de consulta ────────────────────────────────────────────
+        Route::get('/inventario',                          [\App\Http\Controllers\MobileController::class, 'listInventario'])->name('inventario.lista');
+        Route::get('/ventas',                              [\App\Http\Controllers\MobileController::class, 'listVentas'])->name('ventas.lista');
+        Route::get('/compras',                             [\App\Http\Controllers\MobileController::class, 'listCompras'])->name('compras.lista');
+        Route::get('/deudas',                              [\App\Http\Controllers\MobileController::class, 'listDeudas'])->name('deudas.lista');
+        Route::get('/produccion/lista',                    [\App\Http\Controllers\MobileController::class, 'listProduccion'])->name('produccion.lista');
+        Route::get('/disenos-producto/lista',              [\App\Http\Controllers\MobileController::class, 'listDisenosProducto'])->name('disenos-producto.lista');
+
+        // ── Ecommerce / CMS / Tienda ──────────────────────────────────────
+        Route::get('/ecommerce',                           [\App\Http\Controllers\MobileController::class, 'showEcommerce'])->name('ecommerce.index');
+
+        // CMS Singletons
+        Route::get('/cms/hero',                            [\App\Http\Controllers\MobileController::class, 'showCmsHero'])->name('cms.hero');
+        Route::post('/cms/hero/guardar',                   [\App\Http\Controllers\MobileController::class, 'guardarCmsHero'])->name('cms.hero.guardar');
+        Route::get('/cms/about',                           [\App\Http\Controllers\MobileController::class, 'showCmsAbout'])->name('cms.about');
+        Route::post('/cms/about/guardar',                  [\App\Http\Controllers\MobileController::class, 'guardarCmsAbout'])->name('cms.about.guardar');
+        Route::get('/cms/contacto',                        [\App\Http\Controllers\MobileController::class, 'showCmsContacto'])->name('cms.contacto');
+        Route::post('/cms/contacto/guardar',               [\App\Http\Controllers\MobileController::class, 'guardarCmsContacto'])->name('cms.contacto.guardar');
+
+        // CMS Servicios
+        Route::get('/cms/servicios',                       [\App\Http\Controllers\MobileController::class, 'listCmsServicios'])->name('cms.servicios.index');
+        Route::get('/cms/servicios/nuevo',                 [\App\Http\Controllers\MobileController::class, 'showCmsServicioForm'])->name('cms.servicios.nuevo');
+        Route::get('/cms/servicios/{id}/editar',           [\App\Http\Controllers\MobileController::class, 'showCmsServicioForm'])->name('cms.servicios.editar');
+        Route::post('/cms/servicios/guardar',              [\App\Http\Controllers\MobileController::class, 'guardarCmsServicio'])->name('cms.servicios.guardar');
+        Route::post('/cms/servicios/{id}/eliminar',        [\App\Http\Controllers\MobileController::class, 'eliminarCmsServicio'])->name('cms.servicios.eliminar');
+
+        // CMS Equipo
+        Route::get('/cms/equipo',                          [\App\Http\Controllers\MobileController::class, 'listCmsEquipo'])->name('cms.equipo.index');
+        Route::get('/cms/equipo/nuevo',                    [\App\Http\Controllers\MobileController::class, 'showCmsEquipoForm'])->name('cms.equipo.nuevo');
+        Route::get('/cms/equipo/{id}/editar',              [\App\Http\Controllers\MobileController::class, 'showCmsEquipoForm'])->name('cms.equipo.editar');
+        Route::post('/cms/equipo/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarCmsEquipo'])->name('cms.equipo.guardar');
+        Route::post('/cms/equipo/{id}/eliminar',           [\App\Http\Controllers\MobileController::class, 'eliminarCmsEquipo'])->name('cms.equipo.eliminar');
+
+        // CMS Testimonios
+        Route::get('/cms/testimonios',                     [\App\Http\Controllers\MobileController::class, 'listCmsTestimonios'])->name('cms.testimonios.index');
+        Route::get('/cms/testimonios/nuevo',               [\App\Http\Controllers\MobileController::class, 'showCmsTestimonioForm'])->name('cms.testimonios.nuevo');
+        Route::get('/cms/testimonios/{id}/editar',         [\App\Http\Controllers\MobileController::class, 'showCmsTestimonioForm'])->name('cms.testimonios.editar');
+        Route::post('/cms/testimonios/guardar',            [\App\Http\Controllers\MobileController::class, 'guardarCmsTestimonio'])->name('cms.testimonios.guardar');
+        Route::post('/cms/testimonios/{id}/eliminar',      [\App\Http\Controllers\MobileController::class, 'eliminarCmsTestimonio'])->name('cms.testimonios.eliminar');
+
+        // CMS FAQs
+        Route::get('/cms/faqs',                            [\App\Http\Controllers\MobileController::class, 'listCmsFaqs'])->name('cms.faqs.index');
+        Route::get('/cms/faqs/nuevo',                      [\App\Http\Controllers\MobileController::class, 'showCmsFaqForm'])->name('cms.faqs.nuevo');
+        Route::get('/cms/faqs/{id}/editar',                [\App\Http\Controllers\MobileController::class, 'showCmsFaqForm'])->name('cms.faqs.editar');
+        Route::post('/cms/faqs/guardar',                   [\App\Http\Controllers\MobileController::class, 'guardarCmsFaq'])->name('cms.faqs.guardar');
+        Route::post('/cms/faqs/{id}/eliminar',             [\App\Http\Controllers\MobileController::class, 'eliminarCmsFaq'])->name('cms.faqs.eliminar');
+
+        // CMS Posts
+        Route::get('/cms/posts',                           [\App\Http\Controllers\MobileController::class, 'listCmsPosts'])->name('cms.posts.index');
+        Route::get('/cms/posts/nuevo',                     [\App\Http\Controllers\MobileController::class, 'showCmsPostForm'])->name('cms.posts.nuevo');
+        Route::get('/cms/posts/{id}/editar',               [\App\Http\Controllers\MobileController::class, 'showCmsPostForm'])->name('cms.posts.editar');
+        Route::post('/cms/posts/guardar',                   [\App\Http\Controllers\MobileController::class, 'guardarCmsPost'])->name('cms.posts.guardar');
+        Route::post('/cms/posts/{id}/eliminar',             [\App\Http\Controllers\MobileController::class, 'eliminarCmsPost'])->name('cms.posts.eliminar');
+
+        // CMS Logos de Clientes
+        Route::get('/cms/logos',                           [\App\Http\Controllers\MobileController::class, 'listCmsLogos'])->name('cms.logos.index');
+        Route::get('/cms/logos/nuevo',                     [\App\Http\Controllers\MobileController::class, 'showCmsLogoForm'])->name('cms.logos.nuevo');
+        Route::get('/cms/logos/{id}/editar',               [\App\Http\Controllers\MobileController::class, 'showCmsLogoForm'])->name('cms.logos.editar');
+        Route::post('/cms/logos/guardar',                   [\App\Http\Controllers\MobileController::class, 'guardarCmsLogo'])->name('cms.logos.guardar');
+        Route::post('/cms/logos/{id}/eliminar',             [\App\Http\Controllers\MobileController::class, 'eliminarCmsLogo'])->name('cms.logos.eliminar');
+
+        // Tienda — Productos
+        Route::get('/tienda/productos',                    [\App\Http\Controllers\MobileController::class, 'listTiendaProductos'])->name('tienda.productos.index');
+        Route::get('/tienda/productos/nuevo',              [\App\Http\Controllers\MobileController::class, 'showTiendaProductoForm'])->name('tienda.productos.nuevo');
+        Route::get('/tienda/productos/{id}/editar',        [\App\Http\Controllers\MobileController::class, 'showTiendaProductoForm'])->name('tienda.productos.editar');
+        Route::post('/tienda/productos/guardar',           [\App\Http\Controllers\MobileController::class, 'guardarTiendaProducto'])->name('tienda.productos.guardar');
+        Route::post('/tienda/productos/{id}/eliminar',     [\App\Http\Controllers\MobileController::class, 'eliminarTiendaProducto'])->name('tienda.productos.eliminar');
+
+        // Tienda — Pedidos
+        Route::get('/tienda/pedidos',                      [\App\Http\Controllers\MobileController::class, 'listTiendaPedidos'])->name('tienda.pedidos.index');
+        Route::post('/tienda/pedidos/{id}/estado',         [\App\Http\Controllers\MobileController::class, 'actualizarEstadoPedido'])->name('tienda.pedidos.estado');
+
+        // Tienda — Categorías
+        Route::get('/tienda/categorias',                   [\App\Http\Controllers\MobileController::class, 'listTiendaCategorias'])->name('tienda.categorias.index');
+        Route::get('/tienda/categorias/nuevo',             [\App\Http\Controllers\MobileController::class, 'showTiendaCategoriaForm'])->name('tienda.categorias.nuevo');
+        Route::get('/tienda/categorias/{id}/editar',       [\App\Http\Controllers\MobileController::class, 'showTiendaCategoriaForm'])->name('tienda.categorias.editar');
+        Route::post('/tienda/categorias/guardar',          [\App\Http\Controllers\MobileController::class, 'guardarTiendaCategoria'])->name('tienda.categorias.guardar');
+        Route::post('/tienda/categorias/{id}/eliminar',    [\App\Http\Controllers\MobileController::class, 'eliminarTiendaCategoria'])->name('tienda.categorias.eliminar');
+
+        // Tienda — Clientes
+        Route::get('/tienda/clientes',                     [\App\Http\Controllers\MobileController::class, 'listTiendaClientes'])->name('tienda.clientes.index');
     });
 });
 

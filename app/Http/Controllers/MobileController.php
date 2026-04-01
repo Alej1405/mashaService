@@ -4,6 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Almacen;
 use App\Models\Bank;
+use App\Models\CmsAbout;
+use App\Models\CmsClientLogo;
+use App\Models\CmsContact;
+use App\Models\CmsFaq;
+use App\Models\CmsHero;
+use App\Models\CmsPost;
+use App\Models\CmsService;
+use App\Models\CmsTeamMember;
+use App\Models\CmsTestimonial;
 use App\Models\Debt;
 use App\Models\InventoryItem;
 use App\Models\ItemPresentation;
@@ -16,6 +25,10 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\StoreCategory;
+use App\Models\StoreCustomer;
+use App\Models\StoreOrder;
+use App\Models\StoreProduct;
 use App\Models\Supplier;
 use App\Models\Customer;
 use App\Models\UbicacionAlmacen;
@@ -887,6 +900,7 @@ class MobileController extends Controller
             'acreedor'               => ['required', 'string', 'max:255'],
             'descripcion'            => ['required', 'string', 'max:500'],
             'monto_original'         => ['required', 'numeric', 'min:0.01'],
+            'cuota_mensual'          => ['nullable', 'numeric', 'min:0'],
             'tasa_interes'           => ['required', 'numeric', 'min:0'],
             'seguro_desgravamen_anual' => ['nullable', 'numeric', 'min:0'],
             'sistema_amortizacion'   => ['required', 'in:frances,aleman,americano'],
@@ -897,7 +911,10 @@ class MobileController extends Controller
         ]);
 
         try {
-            $plazo = (int) $validated['plazo_meses'];
+            $plazo         = (int) $validated['plazo_meses'];
+            $cuotaMensual  = isset($validated['cuota_mensual']) && (float) $validated['cuota_mensual'] > 0
+                             ? (float) $validated['cuota_mensual']
+                             : null;
             Debt::create([
                 'empresa_id'               => $empresa->id,
                 'tipo'                     => $validated['tipo'],
@@ -905,6 +922,7 @@ class MobileController extends Controller
                 'descripcion'              => $validated['descripcion'],
                 'monto_original'           => $validated['monto_original'],
                 'saldo_pendiente'          => $validated['monto_original'],
+                'cuota_mensual'            => $cuotaMensual,
                 'tasa_interes'             => $validated['tasa_interes'],
                 'seguro_desgravamen_anual' => $validated['seguro_desgravamen_anual'] ?? 0,
                 'sistema_amortizacion'     => $validated['sistema_amortizacion'],
@@ -1045,6 +1063,577 @@ class MobileController extends Controller
             Log::error('Error guardando diseño de producto móvil: ' . $e->getMessage());
             return response()->json(['error' => 'Error al guardar el diseño.'], 500);
         }
+    }
+
+    // ── Listas de consulta ────────────────────────────────────────────────────
+
+    public function listInventario(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $items = InventoryItem::where('empresa_id', $empresa->id)->with('measurementUnit')->orderByDesc('updated_at')->paginate(25);
+        return view('mobile.inventario-lista', compact('empresa', 'items'));
+    }
+
+    public function listVentas(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $ventas = Sale::where('empresa_id', $empresa->id)->with('customer')->orderByDesc('fecha')->paginate(25);
+        return view('mobile.ventas-lista', compact('empresa', 'ventas'));
+    }
+
+    public function listCompras(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $compras = Purchase::where('empresa_id', $empresa->id)->with('supplier')->orderByDesc('date')->paginate(25);
+        return view('mobile.compras-lista', compact('empresa', 'compras'));
+    }
+
+    public function listDeudas(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $deudas = Debt::where('empresa_id', $empresa->id)->with('bank')->orderByDesc('created_at')->paginate(25);
+        return view('mobile.deudas-lista', compact('empresa', 'deudas'));
+    }
+
+    public function listProduccion(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $ordenes = ProductionOrder::where('empresa_id', $empresa->id)->with('productPresentation.productDesign')->orderByDesc('fecha')->paginate(25);
+        return view('mobile.produccion-lista', compact('empresa', 'ordenes'));
+    }
+
+    public function listDisenosProducto(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $disenos = ProductDesign::where('empresa_id', $empresa->id)->with('presentations')->orderByDesc('created_at')->paginate(25);
+        return view('mobile.disenos-producto-lista', compact('empresa', 'disenos'));
+    }
+
+    // ── Ecommerce ─────────────────────────────────────────────────────────────
+
+    public function showEcommerce(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        return view('mobile.ecommerce', compact('empresa'));
+    }
+
+    // ── CMS Singletons ────────────────────────────────────────────────────────
+
+    public function showCmsHero(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $hero = CmsHero::where('empresa_id', $empresa->id)->first();
+        return view('mobile.cms-hero', compact('empresa', 'hero'));
+    }
+
+    public function guardarCmsHero(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'titulo'      => ['required', 'string', 'max:200'],
+            'subtitulo'   => ['nullable', 'string', 'max:200'],
+            'descripcion' => ['nullable', 'string'],
+            'cta_texto'   => ['nullable', 'string', 'max:100'],
+            'cta_url'     => ['nullable', 'string', 'max:300'],
+            'activo'      => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        CmsHero::updateOrCreate(['empresa_id' => $empresa->id], array_merge($data, ['empresa_id' => $empresa->id]));
+        return response()->json(['success' => true, 'message' => 'Hero actualizado.']);
+    }
+
+    public function showCmsAbout(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $about = CmsAbout::where('empresa_id', $empresa->id)->first();
+        return view('mobile.cms-about', compact('empresa', 'about'));
+    }
+
+    public function guardarCmsAbout(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'titulo'      => ['required', 'string', 'max:200'],
+            'descripcion' => ['nullable', 'string'],
+            'activo'      => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        CmsAbout::updateOrCreate(['empresa_id' => $empresa->id], array_merge($data, ['empresa_id' => $empresa->id]));
+        return response()->json(['success' => true, 'message' => 'Sección Nosotros actualizada.']);
+    }
+
+    public function showCmsContacto(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $contacto = CmsContact::where('empresa_id', $empresa->id)->first();
+        return view('mobile.cms-contacto', compact('empresa', 'contacto'));
+    }
+
+    public function guardarCmsContacto(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'direccion'  => ['nullable', 'string', 'max:300'],
+            'telefono'   => ['nullable', 'string', 'max:50'],
+            'email'      => ['nullable', 'email', 'max:150'],
+            'whatsapp'   => ['nullable', 'string', 'max:50'],
+            'facebook'   => ['nullable', 'string', 'max:300'],
+            'instagram'  => ['nullable', 'string', 'max:300'],
+            'linkedin'   => ['nullable', 'string', 'max:300'],
+            'youtube'    => ['nullable', 'string', 'max:300'],
+            'tiktok'     => ['nullable', 'string', 'max:300'],
+            'activo'     => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        CmsContact::updateOrCreate(['empresa_id' => $empresa->id], array_merge($data, ['empresa_id' => $empresa->id]));
+        return response()->json(['success' => true, 'message' => 'Contacto actualizado.']);
+    }
+
+    // ── CMS Servicios ─────────────────────────────────────────────────────────
+
+    public function listCmsServicios(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $servicios = CmsService::where('empresa_id', $empresa->id)->orderBy('sort_order')->get();
+        return view('mobile.cms-servicios', compact('empresa', 'servicios'));
+    }
+
+    public function showCmsServicioForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $servicio = $id ? CmsService::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        return view('mobile.cms-servicio-form', compact('empresa', 'servicio'));
+    }
+
+    public function guardarCmsServicio(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'          => ['nullable', 'integer'],
+            'titulo'      => ['required', 'string', 'max:200'],
+            'descripcion' => ['nullable', 'string'],
+            'sort_order'  => ['nullable', 'integer'],
+            'activo'      => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $s = CmsService::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $s->update($data);
+        } else {
+            unset($data['id']);
+            CmsService::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'Servicio guardado.']);
+    }
+
+    public function eliminarCmsServicio(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        CmsService::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── CMS Equipo ────────────────────────────────────────────────────────────
+
+    public function listCmsEquipo(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $miembros = CmsTeamMember::where('empresa_id', $empresa->id)->orderBy('sort_order')->get();
+        return view('mobile.cms-equipo', compact('empresa', 'miembros'));
+    }
+
+    public function showCmsEquipoForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $miembro = $id ? CmsTeamMember::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        return view('mobile.cms-equipo-form', compact('empresa', 'miembro'));
+    }
+
+    public function guardarCmsEquipo(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'         => ['nullable', 'integer'],
+            'nombre'     => ['required', 'string', 'max:150'],
+            'cargo'      => ['nullable', 'string', 'max:150'],
+            'bio'        => ['nullable', 'string'],
+            'sort_order' => ['nullable', 'integer'],
+            'activo'     => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $m = CmsTeamMember::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $m->update($data);
+        } else {
+            unset($data['id']);
+            CmsTeamMember::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'Miembro guardado.']);
+    }
+
+    public function eliminarCmsEquipo(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        CmsTeamMember::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── CMS Testimonios ───────────────────────────────────────────────────────
+
+    public function listCmsTestimonios(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $testimonios = CmsTestimonial::where('empresa_id', $empresa->id)->orderBy('sort_order')->get();
+        return view('mobile.cms-testimonios', compact('empresa', 'testimonios'));
+    }
+
+    public function showCmsTestimonioForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $testimonio = $id ? CmsTestimonial::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        return view('mobile.cms-testimonio-form', compact('empresa', 'testimonio'));
+    }
+
+    public function guardarCmsTestimonio(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'            => ['nullable', 'integer'],
+            'autor_nombre'  => ['required', 'string', 'max:150'],
+            'autor_cargo'   => ['nullable', 'string', 'max:150'],
+            'autor_empresa' => ['nullable', 'string', 'max:150'],
+            'contenido'     => ['required', 'string'],
+            'estrellas'     => ['nullable', 'integer', 'min:1', 'max:5'],
+            'sort_order'    => ['nullable', 'integer'],
+            'activo'        => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $t = CmsTestimonial::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $t->update($data);
+        } else {
+            unset($data['id']);
+            CmsTestimonial::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'Testimonio guardado.']);
+    }
+
+    public function eliminarCmsTestimonio(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        CmsTestimonial::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── CMS FAQs ──────────────────────────────────────────────────────────────
+
+    public function listCmsFaqs(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $faqs = CmsFaq::where('empresa_id', $empresa->id)->orderBy('sort_order')->get();
+        return view('mobile.cms-faqs', compact('empresa', 'faqs'));
+    }
+
+    public function showCmsFaqForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $faq = $id ? CmsFaq::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        return view('mobile.cms-faq-form', compact('empresa', 'faq'));
+    }
+
+    public function guardarCmsFaq(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'         => ['nullable', 'integer'],
+            'pregunta'   => ['required', 'string', 'max:300'],
+            'respuesta'  => ['required', 'string'],
+            'sort_order' => ['nullable', 'integer'],
+            'activo'     => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $f = CmsFaq::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $f->update($data);
+        } else {
+            unset($data['id']);
+            CmsFaq::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'FAQ guardada.']);
+    }
+
+    public function eliminarCmsFaq(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        CmsFaq::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── CMS Posts ─────────────────────────────────────────────────────────────
+
+    public function listCmsPosts(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $posts = CmsPost::where('empresa_id', $empresa->id)->orderByDesc('created_at')->paginate(20);
+        return view('mobile.cms-posts', compact('empresa', 'posts'));
+    }
+
+    public function showCmsPostForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $post = $id ? CmsPost::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        return view('mobile.cms-post-form', compact('empresa', 'post'));
+    }
+
+    public function guardarCmsPost(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'        => ['nullable', 'integer'],
+            'titulo'    => ['required', 'string', 'max:250'],
+            'contenido' => ['nullable', 'string'],
+            'activo'    => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $p = CmsPost::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $p->update($data);
+        } else {
+            unset($data['id']);
+            CmsPost::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'Post guardado.']);
+    }
+
+    public function eliminarCmsPost(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        CmsPost::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── CMS Logos de Clientes ─────────────────────────────────────────────────
+
+    public function listCmsLogos(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $logos = CmsClientLogo::where('empresa_id', $empresa->id)->orderBy('sort_order')->get();
+        return view('mobile.cms-logos', compact('empresa', 'logos'));
+    }
+
+    public function showCmsLogoForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $logo = $id ? CmsClientLogo::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        return view('mobile.cms-logo-form', compact('empresa', 'logo'));
+    }
+
+    public function guardarCmsLogo(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'         => ['nullable', 'integer'],
+            'nombre'     => ['required', 'string', 'max:150'],
+            'url'        => ['nullable', 'string', 'max:300'],
+            'sort_order' => ['nullable', 'integer'],
+            'activo'     => ['nullable'],
+        ]);
+        $data['activo'] = $request->boolean('activo');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $l = CmsClientLogo::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $l->update($data);
+        } else {
+            unset($data['id']);
+            CmsClientLogo::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'Logo guardado.']);
+    }
+
+    public function eliminarCmsLogo(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        CmsClientLogo::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── Tienda — Productos ────────────────────────────────────────────────────
+
+    public function listTiendaProductos(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $productos = StoreProduct::where('empresa_id', $empresa->id)->with('storeCategory')->orderBy('orden')->paginate(25);
+        return view('mobile.tienda-productos', compact('empresa', 'productos'));
+    }
+
+    public function showTiendaProductoForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $producto = $id ? StoreProduct::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        $categorias = StoreCategory::where('empresa_id', $empresa->id)->orderBy('nombre')->get();
+        $presentaciones = ProductPresentation::whereHas('productDesign', fn($q) => $q->where('empresa_id', $empresa->id))->with('productDesign')->get();
+        return view('mobile.tienda-producto-form', compact('empresa', 'producto', 'categorias', 'presentaciones'));
+    }
+
+    public function guardarTiendaProducto(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'                    => ['nullable', 'integer'],
+            'nombre'                => ['required', 'string', 'max:200'],
+            'descripcion'           => ['nullable', 'string'],
+            'precio_venta'          => ['required', 'numeric', 'min:0'],
+            'precio_distribuidor'   => ['nullable', 'numeric', 'min:0'],
+            'store_category_id'     => ['nullable', 'integer'],
+            'product_presentation_id' => ['nullable', 'integer'],
+            'publicado'             => ['nullable'],
+            'destacado'             => ['nullable'],
+            'orden'                 => ['nullable', 'integer'],
+        ]);
+        $data['publicado'] = $request->boolean('publicado');
+        $data['destacado'] = $request->boolean('destacado');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $p = StoreProduct::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $p->update($data);
+        } else {
+            unset($data['id']);
+            StoreProduct::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'Producto guardado.']);
+    }
+
+    public function eliminarTiendaProducto(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        StoreProduct::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── Tienda — Pedidos ──────────────────────────────────────────────────────
+
+    public function listTiendaPedidos(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $pedidos = StoreOrder::where('empresa_id', $empresa->id)->with('customer')->orderByDesc('created_at')->paginate(25);
+        return view('mobile.tienda-pedidos', compact('empresa', 'pedidos'));
+    }
+
+    public function actualizarEstadoPedido(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        if (!$this->esAdmin()) return response()->json(['error' => 'Solo administradores.'], 403);
+        $empresa = $this->empresa();
+        $pedido = StoreOrder::where('empresa_id', $empresa->id)->findOrFail($id);
+        $data = $request->validate(['estado' => ['required', 'in:pendiente,enviado,entregado,cancelado']]);
+        $pedido->update(['estado' => $data['estado']]);
+        return response()->json(['success' => true, 'message' => 'Estado actualizado.']);
+    }
+
+    // ── Tienda — Categorías ───────────────────────────────────────────────────
+
+    public function listTiendaCategorias(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $categorias = StoreCategory::where('empresa_id', $empresa->id)->orderBy('orden')->get();
+        return view('mobile.tienda-categorias', compact('empresa', 'categorias'));
+    }
+
+    public function showTiendaCategoriaForm(Request $request, $id = null)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $categoria = $id ? StoreCategory::where('empresa_id', $empresa->id)->findOrFail($id) : null;
+        return view('mobile.tienda-categoria-form', compact('empresa', 'categoria'));
+    }
+
+    public function guardarTiendaCategoria(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        $empresa = $this->empresa();
+        $data = $request->validate([
+            'id'          => ['nullable', 'integer'],
+            'nombre'      => ['required', 'string', 'max:150'],
+            'descripcion' => ['nullable', 'string'],
+            'publicado'   => ['nullable'],
+            'orden'       => ['nullable', 'integer'],
+        ]);
+        $data['publicado'] = $request->boolean('publicado');
+        $data['empresa_id'] = $empresa->id;
+        if (!empty($data['id'])) {
+            $c = StoreCategory::where('empresa_id', $empresa->id)->findOrFail($data['id']);
+            unset($data['id']);
+            $c->update($data);
+        } else {
+            unset($data['id']);
+            StoreCategory::create($data);
+        }
+        return response()->json(['success' => true, 'message' => 'Categoría guardada.']);
+    }
+
+    public function eliminarTiendaCategoria(Request $request, $id)
+    {
+        if (!$this->tieneAccesoEnterprise()) return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        StoreCategory::where('empresa_id', $this->empresa()->id)->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    // ── Tienda — Clientes ─────────────────────────────────────────────────────
+
+    public function listTiendaClientes(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $clientes = StoreCustomer::where('empresa_id', $empresa->id)->orderByDesc('created_at')->paginate(25);
+        return view('mobile.tienda-clientes', compact('empresa', 'clientes'));
     }
 
     // ── Orden de Producción ───────────────────────────────────────────────────

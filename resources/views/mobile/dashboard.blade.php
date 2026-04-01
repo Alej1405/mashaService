@@ -31,8 +31,44 @@
 </div>
 
 {{-- Título --}}
-<h2 class="text-lg font-bold text-white mb-1">Registros Rápidos</h2>
-<p class="text-xs mb-6" style="color: rgba(232,230,240,0.4);">¿Qué deseas registrar hoy?</p>
+<h2 class="text-lg font-bold text-white mb-1">Panel Operativo</h2>
+<p class="text-xs mb-4" style="color: rgba(232,230,240,0.4);">Registros rápidos y consultas</p>
+
+{{-- Acceso rápido a listas --}}
+<div class="grid grid-cols-3 gap-2 mb-6">
+    <a href="{{ route('mobile.inventario.lista') }}"
+       class="card p-3 text-center active:scale-95 transition-transform">
+        <p class="text-xs font-semibold text-emerald-300">Inventario</p>
+        <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver ítems</p>
+    </a>
+    <a href="{{ route('mobile.ventas.lista') }}"
+       class="card p-3 text-center active:scale-95 transition-transform">
+        <p class="text-xs font-semibold text-indigo-300">Ventas</p>
+        <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver ventas</p>
+    </a>
+    <a href="{{ route('mobile.compras.lista') }}"
+       class="card p-3 text-center active:scale-95 transition-transform">
+        <p class="text-xs font-semibold text-pink-300">Compras</p>
+        <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver compras</p>
+    </a>
+    <a href="{{ route('mobile.deudas.lista') }}"
+       class="card p-3 text-center active:scale-95 transition-transform">
+        <p class="text-xs font-semibold text-violet-300">Deudas</p>
+        <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver deudas</p>
+    </a>
+    <a href="{{ route('mobile.produccion.lista') }}"
+       class="card p-3 text-center active:scale-95 transition-transform">
+        <p class="text-xs font-semibold text-amber-300">Producción</p>
+        <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver órdenes</p>
+    </a>
+    <a href="{{ route('mobile.disenos-producto.lista') }}"
+       class="card p-3 text-center active:scale-95 transition-transform">
+        <p class="text-xs font-semibold text-teal-300">Diseños</p>
+        <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver diseños</p>
+    </a>
+</div>
+
+<p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: rgba(232,230,240,0.35);">Registrar</p>
 
 {{-- Tarjetas de acceso rápido --}}
 <div class="space-y-3">
@@ -165,6 +201,25 @@
         <div class="flex-1">
             <p class="text-sm font-semibold text-white">Diseño de Producto</p>
             <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Registrar info general y fórmula</p>
+        </div>
+        <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+
+    {{-- Ecommerce --}}
+    <a href="{{ route('mobile.ecommerce.index') }}"
+       class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+             style="background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.25);">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-white">Ecommerce & CMS</p>
+            <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Tienda online y contenido web</p>
         </div>
         <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
