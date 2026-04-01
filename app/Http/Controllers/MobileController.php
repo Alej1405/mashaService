@@ -3,17 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Almacen;
+use App\Models\Bank;
+use App\Models\Debt;
 use App\Models\InventoryItem;
 use App\Models\ItemPresentation;
 use App\Models\MeasurementUnit;
+use App\Models\ProductDesign;
+use App\Models\ProductFormulaLine;
+use App\Models\ProductPresentation;
+use App\Models\ProductionOrder;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
-use App\Models\Supplier;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\Supplier;
 use App\Models\Customer;
-use App\Models\ProductionOrder;
-use App\Models\ProductPresentation;
 use App\Models\UbicacionAlmacen;
 use App\Models\ZonaAlmacen;
 use Illuminate\Http\Request;
@@ -856,6 +860,190 @@ class MobileController extends Controller
             DB::rollBack();
             Log::error('Error guardando venta móvil: ' . $e->getMessage());
             return response()->json(['error' => 'Error al guardar la venta.'], 500);
+        }
+    }
+
+    // ── Deudas ────────────────────────────────────────────────────────────────
+
+    public function showDeuda(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        $empresa = $this->empresa();
+        $bancos  = Bank::activos()->orderBy('nombre')->get();
+        return view('mobile.deuda', compact('empresa', 'bancos'));
+    }
+
+    public function guardarDeuda(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+
+        $validated = $request->validate([
+            'tipo'                   => ['required', 'in:prestamo_bancario,tarjeta_credito,prestamo_personal,prestamo_empresarial,otro'],
+            'acreedor'               => ['required', 'string', 'max:255'],
+            'descripcion'            => ['required', 'string', 'max:500'],
+            'monto_original'         => ['required', 'numeric', 'min:0.01'],
+            'tasa_interes'           => ['required', 'numeric', 'min:0'],
+            'seguro_desgravamen_anual' => ['nullable', 'numeric', 'min:0'],
+            'sistema_amortizacion'   => ['required', 'in:frances,aleman,americano'],
+            'fecha_inicio'           => ['required', 'date'],
+            'plazo_meses'            => ['required', 'integer', 'min:1'],
+            'bank_id'                => ['nullable', 'integer', 'exists:banks,id'],
+            'notas'                  => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $plazo = (int) $validated['plazo_meses'];
+            Debt::create([
+                'empresa_id'               => $empresa->id,
+                'tipo'                     => $validated['tipo'],
+                'acreedor'                 => $validated['acreedor'],
+                'descripcion'              => $validated['descripcion'],
+                'monto_original'           => $validated['monto_original'],
+                'saldo_pendiente'          => $validated['monto_original'],
+                'tasa_interes'             => $validated['tasa_interes'],
+                'seguro_desgravamen_anual' => $validated['seguro_desgravamen_anual'] ?? 0,
+                'sistema_amortizacion'     => $validated['sistema_amortizacion'],
+                'fecha_inicio'             => $validated['fecha_inicio'],
+                'plazo_meses'              => $plazo,
+                'numero_cuotas'            => $plazo,
+                'fecha_vencimiento'        => \Carbon\Carbon::parse($validated['fecha_inicio'])->addMonths($plazo)->toDateString(),
+                'clasificacion'            => $plazo <= 12 ? 'corriente' : 'no_corriente',
+                'bank_id'                  => $validated['bank_id'] ?? null,
+                'notas'                    => $validated['notas'] ?? null,
+                'estado'                   => 'borrador',
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Deuda registrada en borrador. Un administrador debe activarla.']);
+        } catch (\Exception $e) {
+            Log::error('Error guardando deuda móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar la deuda.'], 500);
+        }
+    }
+
+    public function listValidarDeudas(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        if (!$this->esAdmin()) {
+            return view('mobile.forbidden', ['mensaje' => 'Solo los administradores de empresa pueden validar deudas.']);
+        }
+        $empresa = $this->empresa();
+        $deudas  = Debt::where('empresa_id', $empresa->id)
+            ->where('estado', 'borrador')
+            ->with('bank')
+            ->latest()
+            ->get();
+        return view('mobile.validar-deudas', compact('empresa', 'deudas'));
+    }
+
+    public function activarDeuda(Request $request, Debt $debt)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        if (!$this->esAdmin()) {
+            return response()->json(['error' => 'Solo los administradores pueden activar deudas.'], 403);
+        }
+        if ($debt->empresa_id !== $this->empresa()->id) {
+            return response()->json(['error' => 'Acceso no autorizado.'], 403);
+        }
+        if ($debt->estado !== 'borrador') {
+            return response()->json(['error' => 'Solo se pueden activar deudas en estado borrador.'], 422);
+        }
+
+        try {
+            $debt->update(['estado' => 'activa']);
+            return response()->json(['success' => true, 'message' => 'Deuda ' . $debt->numero . ' activada. Asiento contable y tabla de amortización generados.']);
+        } catch (\Exception $e) {
+            Log::error('Error activando deuda móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al activar la deuda: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // ── Diseño de Producto ────────────────────────────────────────────────────
+
+    public function showDisenoProducto(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        }
+        $empresa  = $this->empresa();
+        $unidades = MeasurementUnit::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
+        $insumos  = InventoryItem::where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->whereIn('type', ['insumo', 'materia_prima'])
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'codigo']);
+        return view('mobile.diseno-producto', compact('empresa', 'unidades', 'insumos'));
+    }
+
+    public function guardarDisenoProducto(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+
+        $validated = $request->validate([
+            'nombre'                       => ['required', 'string', 'max:150'],
+            'propuesta_valor'              => ['nullable', 'string'],
+            'notas_estrategicas'           => ['nullable', 'string', 'max:1000'],
+            'tiene_multiples_presentaciones' => ['boolean'],
+            'presentaciones'               => ['required', 'array', 'min:1'],
+            'presentaciones.*.nombre'      => ['nullable', 'string', 'max:150'],
+            'presentaciones.*.cantidad_minima_produccion' => ['required', 'numeric', 'min:0.0001'],
+            'presentaciones.*.measurement_unit_id' => ['nullable', 'integer', 'exists:measurement_units,id'],
+            'presentaciones.*.formula'     => ['nullable', 'array'],
+            'presentaciones.*.formula.*.inventory_item_id' => ['nullable', 'integer', 'exists:inventory_items,id'],
+            'presentaciones.*.formula.*.cantidad'          => ['required_with:presentaciones.*.formula.*.inventory_item_id', 'numeric', 'min:0.0001'],
+            'presentaciones.*.formula.*.measurement_unit_id' => ['nullable', 'integer', 'exists:measurement_units,id'],
+            'presentaciones.*.formula.*.notas'             => ['nullable', 'string', 'max:255'],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $design = ProductDesign::create([
+                'empresa_id'                    => $empresa->id,
+                'nombre'                        => $validated['nombre'],
+                'propuesta_valor'               => $validated['propuesta_valor'] ?? null,
+                'notas_estrategicas'            => $validated['notas_estrategicas'] ?? null,
+                'tiene_multiples_presentaciones' => $validated['tiene_multiples_presentaciones'] ?? false,
+                'activo'                        => true,
+            ]);
+
+            foreach ($validated['presentaciones'] as $presData) {
+                $pres = ProductPresentation::create([
+                    'product_design_id'          => $design->id,
+                    'nombre'                     => $presData['nombre'] ?? null,
+                    'cantidad_minima_produccion' => $presData['cantidad_minima_produccion'],
+                    'measurement_unit_id'        => $presData['measurement_unit_id'] ?? null,
+                    'activa'                     => true,
+                ]);
+
+                foreach ($presData['formula'] ?? [] as $linea) {
+                    if (empty($linea['inventory_item_id'])) continue;
+                    ProductFormulaLine::create([
+                        'presentation_id'    => $pres->id,
+                        'inventory_item_id'  => $linea['inventory_item_id'],
+                        'cantidad'           => $linea['cantidad'],
+                        'measurement_unit_id' => $linea['measurement_unit_id'] ?? null,
+                        'notas'              => $linea['notas'] ?? null,
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'nombre' => $design->nombre]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error guardando diseño de producto móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al guardar el diseño.'], 500);
         }
     }
 

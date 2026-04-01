@@ -45,6 +45,12 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/venta/guardar',                      [\App\Http\Controllers\MobileController::class, 'guardarVenta'])->name('venta.guardar');
         Route::get('/produccion/nueva',                    [\App\Http\Controllers\MobileController::class, 'showProduccion'])->name('produccion.nueva');
         Route::post('/produccion/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarProduccion'])->name('produccion.guardar');
+        Route::get('/deuda/nueva',                         [\App\Http\Controllers\MobileController::class, 'showDeuda'])->name('deuda.nueva');
+        Route::post('/deuda/guardar',                      [\App\Http\Controllers\MobileController::class, 'guardarDeuda'])->name('deuda.guardar');
+        Route::get('/deudas/validar',                      [\App\Http\Controllers\MobileController::class, 'listValidarDeudas'])->name('deudas.validar');
+        Route::post('/deudas/{debt}/activar',              [\App\Http\Controllers\MobileController::class, 'activarDeuda'])->name('deudas.activar');
+        Route::get('/diseno-producto/nuevo',               [\App\Http\Controllers\MobileController::class, 'showDisenoProducto'])->name('diseno-producto.nuevo');
+        Route::post('/diseno-producto/guardar',            [\App\Http\Controllers\MobileController::class, 'guardarDisenoProducto'])->name('diseno-producto.guardar');
     });
 });
 

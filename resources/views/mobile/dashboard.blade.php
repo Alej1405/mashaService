@@ -133,12 +133,54 @@
         </svg>
     </a>
 
+    {{-- Deuda --}}
+    <a href="{{ route('mobile.deuda.nueva') }}"
+       class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+             style="background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.25);">
+            <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-white">Deuda / Préstamo</p>
+            <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Registrar nueva deuda</p>
+        </div>
+        <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+
+    {{-- Diseño de Producto --}}
+    <a href="{{ route('mobile.diseno-producto.nuevo') }}"
+       class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+             style="background: rgba(20,184,166,0.15); border: 1px solid rgba(20,184,166,0.25);">
+            <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-white">Diseño de Producto</p>
+            <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Registrar info general y fórmula</p>
+        </div>
+        <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+
 </div>
 
-{{-- Validar compras (solo admin) --}}
+{{-- Validar compras y deudas (solo admin) --}}
 @if(auth()->user()->hasRole('admin_empresa') || auth()->user()->hasRole('super_admin'))
-@php $pendientes = \App\Models\Purchase::where('empresa_id', $empresa->id)->where('status','borrador')->count(); @endphp
-@if($pendientes > 0)
+@php
+    $pendientesCompras = \App\Models\Purchase::where('empresa_id', $empresa->id)->where('status','borrador')->count();
+    $pendientesDeudas  = \App\Models\Debt::where('empresa_id', $empresa->id)->where('estado','borrador')->count();
+@endphp
+
+@if($pendientesCompras > 0)
 <div class="mt-4">
     <a href="{{ route('mobile.compras.validar') }}"
        class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform"
@@ -153,7 +195,7 @@
         <div class="flex-1">
             <p class="text-sm font-semibold text-amber-300">Validar Compras</p>
             <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">
-                {{ $pendientes }} compra{{ $pendientes > 1 ? 's' : '' }} pendiente{{ $pendientes > 1 ? 's' : '' }} de aprobación
+                {{ $pendientesCompras }} compra{{ $pendientesCompras > 1 ? 's' : '' }} pendiente{{ $pendientesCompras > 1 ? 's' : '' }} de aprobación
             </p>
         </div>
         <svg class="w-4 h-4 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,6 +204,32 @@
     </a>
 </div>
 @endif
+
+@if($pendientesDeudas > 0)
+<div class="mt-3">
+    <a href="{{ route('mobile.deudas.validar') }}"
+       class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform"
+       style="border-color: rgba(139,92,246,0.35);">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+             style="background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);">
+            <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-violet-300">Validar Deudas</p>
+            <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">
+                {{ $pendientesDeudas }} deuda{{ $pendientesDeudas > 1 ? 's' : '' }} pendiente{{ $pendientesDeudas > 1 ? 's' : '' }} de activación
+            </p>
+        </div>
+        <svg class="w-4 h-4 flex-shrink-0 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+</div>
+@endif
+
 @endif
 
 @endsection
