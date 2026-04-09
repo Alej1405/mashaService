@@ -23,8 +23,10 @@ class Empresa extends Model implements HasName
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
         // Plan de suscripción
         'plan',
-        // Credenciales Mailgun (por empresa)
+        // Credenciales del servicio de correo (por empresa)
         'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
+        // Cuota de envíos
+        'mailing_monthly_limit', 'mailing_billing_day',
         // Logo de la empresa
         'logo_path',
         // Credenciales SMTP personalizadas (por empresa)
@@ -205,6 +207,11 @@ class Empresa extends Model implements HasName
     public function mailingContacts(): HasMany
     {
         return $this->hasMany(\App\Models\MailingContact::class, 'empresa_id');
+    }
+
+    public function mailingGroups(): HasMany
+    {
+        return $this->hasMany(\App\Models\MailingGroup::class, 'empresa_id');
     }
 
     public function mailCampaigns(): HasMany

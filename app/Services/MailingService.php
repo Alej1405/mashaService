@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Mail\EmpresaPlainMail;
 use App\Models\Empresa;
+use App\Models\EmpresaMailingStat;
+use App\Models\MailCampaign;
+use App\Models\MailingGroup;
 use App\Models\MailTemplate;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -99,7 +102,7 @@ class MailingService
     private function client()
     {
         return Http::withBasicAuth('api', $this->apiKey)
-            ->timeout(10)
+            ->timeout(30)
             ->acceptJson();
     }
 
@@ -138,54 +141,129 @@ class MailingService
     }
 
     /**
-     * Estadísticas totales de los últimos N días. Cachea 5 minutos.
+     * Estadísticas totales reales.
+     * Fuente primaria: API del servicio de correo (todos los métricas).
+     * Fuente de respaldo: DB local (cuando la retención de la API haya expirado).
+     * Cachea 5 minutos.
      */
     public function getStats(int $days = 30): array
     {
-        if (! $this->isConfigured()) {
-            return $this->emptyStats();
-        }
-
-        $cacheKey = "mailing_stats_{$this->domain}_{$days}";
+        $cacheKey = "mailing_stats_{$this->empresa->id}_{$days}";
 
         return Cache::remember($cacheKey, 300, function () use ($days) {
-            try {
-                $response = $this->client()->get("{$this->baseUrl}/{$this->domain}/stats/total", [
-                    'event'    => ['delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed'],
-                    'duration' => "{$days}d",
-                ]);
+            // ── Fuente 1: API del servicio de correo ───────────────────────
+            $apiTotals  = $this->fetchApiStats($days);
+            $apiHasData = $this->statsHaveData($apiTotals);
 
-                if (! $response->successful()) {
-                    return $this->emptyStats();
-                }
-
-                $totals = $this->emptyStats();
-
-                foreach ($response->json('stats', []) as $item) {
-                    $totals['delivered']    += $item['delivered']['total'] ?? 0;
-                    $totals['opened']       += $item['opened']['total'] ?? 0;
-                    $totals['clicked']      += $item['clicked']['total'] ?? 0;
-                    $totals['bounced']      += ($item['bounced']['permanent']['total'] ?? 0)
-                                            + ($item['bounced']['temporary']['total'] ?? 0);
-                    $totals['complained']   += $item['complained']['total'] ?? 0;
-                    $totals['unsubscribed'] += $item['unsubscribed']['total'] ?? 0;
-                }
-
-                $base = max($totals['delivered'] + $totals['bounced'], 1);
-
-                $totals['delivery_rate'] = round(($totals['delivered'] / $base) * 100, 1);
-                $totals['open_rate']     = $totals['delivered'] > 0
-                    ? round(($totals['opened'] / $totals['delivered']) * 100, 1)
-                    : 0.0;
-                $totals['click_rate']    = $totals['delivered'] > 0
-                    ? round(($totals['clicked'] / $totals['delivered']) * 100, 1)
-                    : 0.0;
-
-                return $totals;
-            } catch (\Exception) {
-                return $this->emptyStats();
+            // Si la API devolvió datos reales, persistirlos en DB
+            if ($apiHasData) {
+                $this->saveStatsToDb($apiTotals);
             }
+
+            // ── Fuente 2: DB local (respaldo cuando la API ya no tiene logs) ─
+            $db = EmpresaMailingStat::where('empresa_id', $this->empresa->id)->first();
+
+            $accepted     = $apiHasData ? $apiTotals['accepted']     : (int) ($db?->accepted     ?? 0);
+            $delivered    = $apiHasData ? $apiTotals['delivered']    : (int) ($db?->delivered    ?? 0);
+            $failed       = $apiHasData ? $apiTotals['failed']       : (int) ($db?->failed       ?? 0);
+            $opened       = $apiHasData ? $apiTotals['opened']       : (int) ($db?->opened       ?? 0);
+            $clicked      = $apiHasData ? $apiTotals['clicked']      : (int) ($db?->clicked      ?? 0);
+            $bounced      = $apiHasData ? $apiTotals['bounced']      : (int) ($db?->bounced      ?? 0);
+            $complained   = $apiHasData ? $apiTotals['complained']   : (int) ($db?->complained   ?? 0);
+            $unsubscribed = $apiHasData ? $apiTotals['unsubscribed'] : (int) ($db?->unsubscribed ?? 0);
+
+            $base = max($accepted, $delivered + $bounced + $failed, 1);
+
+            return [
+                'accepted'      => $accepted,
+                'delivered'     => $delivered,
+                'failed'        => $failed,
+                'opened'        => $opened,
+                'clicked'       => $clicked,
+                'bounced'       => $bounced,
+                'complained'    => $complained,
+                'unsubscribed'  => $unsubscribed,
+                'delivery_rate' => round(($delivered / $base) * 100, 1),
+                'open_rate'     => $delivered > 0 ? round(($opened  / $delivered) * 100, 1) : 0.0,
+                'click_rate'    => $delivered > 0 ? round(($clicked / $delivered) * 100, 1) : 0.0,
+                'from_cache'    => ! $apiHasData && $db !== null,
+                'last_synced'   => $db?->last_synced_at?->format('d/m/Y H:i'),
+            ];
         });
+    }
+
+    /** Consulta la API del servicio de correo y devuelve totales crudos. */
+    private function fetchApiStats(int $days): array
+    {
+        if (! $this->isConfigured()) {
+            return $this->emptyApiStats();
+        }
+
+        try {
+            // Eventos válidos para /stats/total: accepted, delivered, failed, opened, clicked, unsubscribed, complained
+            // NOTA: 'bounced' NO es un evento válido aquí (causa 400). Los rebotes se obtienen de failed.permanent.bounce
+            $response = $this->client()->get("{$this->baseUrl}/{$this->domain}/stats/total", [
+                'event'    => ['accepted', 'delivered', 'failed', 'opened', 'clicked', 'unsubscribed', 'complained'],
+                'duration' => "{$days}d",
+            ]);
+
+            if (! $response->successful()) {
+                return $this->emptyApiStats();
+            }
+
+            $totals = $this->emptyApiStats();
+
+            foreach ($response->json('stats', []) as $item) {
+                $totals['accepted']     += $item['accepted']['total'] ?? 0;
+                $totals['delivered']    += $item['delivered']['total'] ?? 0;
+                $totals['failed']       += ($item['failed']['permanent']['total'] ?? 0)
+                                        + ($item['failed']['temporary']['total'] ?? 0);
+                $totals['opened']       += $item['opened']['total'] ?? 0;
+                $totals['clicked']      += $item['clicked']['total'] ?? 0;
+                // bounced se extrae de failed.permanent.bounce (no es un evento separado en /stats/total)
+                $totals['bounced']      += $item['failed']['permanent']['bounce'] ?? 0;
+                $totals['complained']   += $item['complained']['total'] ?? 0;
+                $totals['unsubscribed'] += $item['unsubscribed']['total'] ?? 0;
+            }
+
+            return $totals;
+        } catch (\Exception) {
+            return $this->emptyApiStats();
+        }
+    }
+
+    /** Persiste los stats en DB (upsert por empresa, guarda el máximo de cada métrica). */
+    private function saveStatsToDb(array $api): void
+    {
+        try {
+            $existing = EmpresaMailingStat::where('empresa_id', $this->empresa->id)->first();
+
+            EmpresaMailingStat::updateOrCreate(
+                ['empresa_id' => $this->empresa->id],
+                [
+                    // Siempre tomar el mayor entre lo que ya había y lo que la API devuelve.
+                    // Así los valores nunca retroceden aunque la API devuelva un período más corto.
+                    'accepted'       => max($api['accepted'],     (int) ($existing?->accepted     ?? 0)),
+                    'delivered'      => max($api['delivered'],    (int) ($existing?->delivered    ?? 0)),
+                    'failed'         => max($api['failed'],       (int) ($existing?->failed       ?? 0)),
+                    'opened'         => max($api['opened'],       (int) ($existing?->opened       ?? 0)),
+                    'clicked'        => max($api['clicked'],      (int) ($existing?->clicked      ?? 0)),
+                    'bounced'        => max($api['bounced'],      (int) ($existing?->bounced      ?? 0)),
+                    'complained'     => max($api['complained'],   (int) ($existing?->complained   ?? 0)),
+                    'unsubscribed'   => max($api['unsubscribed'], (int) ($existing?->unsubscribed ?? 0)),
+                    'last_synced_at' => now(),
+                ]
+            );
+        } catch (\Exception) {
+            // No bloquear el dashboard si falla la escritura
+        }
+    }
+
+    private function statsHaveData(array $stats): bool
+    {
+        return ($stats['accepted'] + $stats['delivered'] + $stats['opened']
+              + $stats['clicked']  + $stats['bounced']   + $stats['complained']
+              + $stats['unsubscribed']) > 0;
     }
 
     /**
@@ -389,7 +467,10 @@ class MailingService
         $failed = 0;
         $chunks = array_chunk($contacts, 1000);
 
-        foreach ($chunks as $chunk) {
+        foreach ($chunks as $i => $chunk) {
+            if ($i > 0) {
+                usleep(500000); // 500 ms entre lotes cuando se llama directamente con >1000 contactos
+            }
             $toList             = [];
             $recipientVariables = [];
 
@@ -422,7 +503,21 @@ class MailingService
                         'recipient-variables'  => json_encode($recipientVariables),
                     ]);
 
-                if ($response->successful()) {
+                if ($response->status() === 429) {
+                    // Rate limit: esperar 60 segundos y reintentar una vez
+                    sleep(60);
+                    $retry = $this->client()
+                        ->asForm()
+                        ->post("{$this->baseUrl}/{$this->domain}/messages", [
+                            'from'                 => "{$name} <{$from}>",
+                            'to'                   => implode(',', $toList),
+                            'subject'              => $subjectTemplate,
+                            'html'                 => $htmlTemplate,
+                            'text'                 => strip_tags($htmlTemplate),
+                            'recipient-variables'  => json_encode($recipientVariables),
+                        ]);
+                    $retry->successful() ? $sent += count($chunk) : $failed += count($chunk);
+                } elseif ($response->successful()) {
                     $sent += count($chunk);
                 } else {
                     $failed += count($chunk);
@@ -447,7 +542,7 @@ class MailingService
     public function sendRawMassEmail(array $contacts, string $subject, string $html): array
     {
         if (! $this->isConfigured()) {
-            return ['success' => false, 'message' => 'No hay credenciales de Mailgun configuradas.', 'sent' => 0, 'failed' => 0];
+            return ['success' => false, 'message' => 'No hay credenciales del servicio de correo configuradas.', 'sent' => 0, 'failed' => 0];
         }
 
         if (empty($contacts)) {
@@ -580,10 +675,95 @@ class MailingService
         return $contacts;
     }
 
+    /**
+     * Devuelve la cuota de envíos del período actual para la empresa.
+     * Fuente primaria: API del servicio de correo consultada con las fechas
+     * exactas del período de facturación.
+     * Fallback: valor guardado en empresa_mailing_stats.accepted.
+     */
+    public function getQuotaInfo(): array
+    {
+        $limit      = max(1, (int) ($this->empresa->mailing_monthly_limit ?? 3000));
+        $billingDay = min(max((int) ($this->empresa->mailing_billing_day ?? 1), 1), 28);
+        $today      = now();
+
+        // ── Calcular el período de facturación actual ──────────────────────
+        // Usamos '>' (estricto): si hoy ES el día de renovación, el período
+        // actual es el que terminó HOY (mes anterior → hoy), no el que empieza hoy.
+        if ($today->day > $billingDay) {
+            $periodStart = $today->copy()->startOfMonth()->addDays($billingDay - 1);
+        } else {
+            $periodStart = $today->copy()->subMonth()->startOfMonth()->addDays($billingDay - 1);
+        }
+        $periodEnd = $periodStart->copy()->addMonth();
+
+        // ── Consultar la API con las fechas exactas del período ────────────
+        $cacheKey = "mailing_quota_{$this->empresa->id}_{$periodStart->toDateString()}";
+        $sent = Cache::remember($cacheKey, 300, function () use ($periodStart, $periodEnd) {
+            return $this->fetchAcceptedForPeriod($periodStart, $periodEnd);
+        });
+
+        // ── Fallback: DB persistida si la API no tiene logs ────────────────
+        if ($sent === 0) {
+            $db   = EmpresaMailingStat::where('empresa_id', $this->empresa->id)->first();
+            $sent = (int) ($db?->accepted ?? 0);
+        }
+
+        $remaining  = max(0, $limit - $sent);
+        $percentage = (int) round(($sent / $limit) * 100);
+
+        $resetLabel = $periodEnd->isToday()
+            ? 'hoy (' . $periodEnd->format('d/m/Y') . ')'
+            : $periodEnd->format('d/m/Y');
+
+        return [
+            'limit'       => $limit,
+            'sent'        => $sent,
+            'remaining'   => $remaining,
+            'percentage'  => min($percentage, 100),
+            'reset_date'  => $periodEnd->format('d/m/Y'),
+            'reset_label' => $resetLabel,
+        ];
+    }
+
+    /**
+     * Consulta la API para obtener el total de correos aceptados en un período exacto.
+     */
+    private function fetchAcceptedForPeriod(\Carbon\Carbon $start, \Carbon\Carbon $end): int
+    {
+        if (! $this->isConfigured()) {
+            return 0;
+        }
+
+        try {
+            $response = $this->client()->get("{$this->baseUrl}/{$this->domain}/stats/total", [
+                'event'      => ['accepted'],
+                'start'      => $start->format('D, d M Y 00:00:00') . ' UTC',
+                'end'        => $end->format('D, d M Y 00:00:00') . ' UTC',
+                'resolution' => 'day',
+            ]);
+
+            if (! $response->successful()) {
+                return 0;
+            }
+
+            $total = 0;
+            foreach ($response->json('stats', []) as $item) {
+                $total += $item['accepted']['total'] ?? 0;
+            }
+
+            return $total;
+        } catch (\Exception) {
+            return 0;
+        }
+    }
+
     private function emptyStats(): array
     {
         return [
+            'accepted'      => 0,
             'delivered'     => 0,
+            'failed'        => 0,
             'opened'        => 0,
             'clicked'       => 0,
             'bounced'       => 0,
@@ -592,6 +772,22 @@ class MailingService
             'delivery_rate' => 0.0,
             'open_rate'     => 0.0,
             'click_rate'    => 0.0,
+            'from_cache'    => false,
+            'last_synced'   => null,
+        ];
+    }
+
+    private function emptyApiStats(): array
+    {
+        return [
+            'accepted'     => 0,
+            'delivered'    => 0,
+            'failed'       => 0,
+            'opened'       => 0,
+            'clicked'      => 0,
+            'bounced'      => 0,
+            'complained'   => 0,
+            'unsubscribed' => 0,
         ];
     }
 }

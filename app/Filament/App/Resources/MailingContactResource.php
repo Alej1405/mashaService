@@ -4,6 +4,7 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\MailingContactResource\Pages;
 use App\Models\MailingContact;
+use App\Models\MailingGroup;
 use App\Services\MailingService;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -87,6 +88,13 @@ class MailingContactResource extends Resource
                     ->sortable()
                     ->description(fn (MailingContact $r) => $r->email),
 
+                Tables\Columns\TextColumn::make('mailingGroup.name')
+                    ->label('Grupo')
+                    ->badge()
+                    ->color('primary')
+                    ->placeholder('Sin grupo')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
@@ -109,6 +117,8 @@ class MailingContactResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->striped()
+            ->paginated([50, 100, 250, 500])
+            ->defaultPaginationPageOption(50)
             ->headerActions([
                 // ── Importar contactos ────────────────────────────────────
                 Tables\Actions\Action::make('importar')
@@ -151,9 +161,10 @@ class MailingContactResource extends Resource
                             return;
                         }
 
-                        $empresa  = Filament::getTenant();
-                        $imported = 0;
-                        $skipped  = 0;
+                        $empresa     = Filament::getTenant();
+                        $imported    = 0;
+                        $skipped     = 0;
+                        $groupState  = []; // estado en memoria para assignGroupBatch
 
                         foreach ($contacts as $contact) {
                             $exists = MailingContact::where('empresa_id', $empresa->id)
@@ -161,13 +172,16 @@ class MailingContactResource extends Resource
                                 ->exists();
 
                             if (! $exists) {
+                                $groupId = MailingGroup::assignGroupBatch($empresa->id, $groupState);
+
                                 MailingContact::create([
-                                    'empresa_id' => $empresa->id,
-                                    'nombre'     => $contact['nombre'] ?: '',
-                                    'email'      => $contact['email'],
-                                    'telefono'   => $contact['telefono'] ?: null,
-                                    'notas'      => $contact['notas'] ?: null,
-                                    'active'     => true,
+                                    'empresa_id'       => $empresa->id,
+                                    'mailing_group_id' => $groupId,
+                                    'nombre'           => $contact['nombre'] ?: '',
+                                    'email'            => $contact['email'],
+                                    'telefono'         => $contact['telefono'] ?: null,
+                                    'notas'            => $contact['notas'] ?: null,
+                                    'active'           => true,
                                 ]);
                                 $imported++;
                             } else {
@@ -203,14 +217,19 @@ class MailingContactResource extends Resource
                         ->label('Activar seleccionados')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->action(fn ($records) => $records->each->update(['active' => true]))
+                        ->action(function ($records) {
+                            // Usar IDs para el UPDATE, no cargar todos los modelos en memoria
+                            MailingContact::whereIn('id', $records->pluck('id'))->update(['active' => true]);
+                        })
                         ->deselectRecordsAfterCompletion(),
 
                     Tables\Actions\BulkAction::make('desactivar')
                         ->label('Desactivar seleccionados')
                         ->icon('heroicon-o-x-circle')
                         ->color('warning')
-                        ->action(fn ($records) => $records->each->update(['active' => false]))
+                        ->action(function ($records) {
+                            MailingContact::whereIn('id', $records->pluck('id'))->update(['active' => false]);
+                        })
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ]);

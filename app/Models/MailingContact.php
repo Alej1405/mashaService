@@ -12,6 +12,7 @@ class MailingContact extends Model
 
     protected $fillable = [
         'empresa_id',
+        'mailing_group_id',
         'nombre',
         'email',
         'telefono',
@@ -22,4 +23,9 @@ class MailingContact extends Model
     protected $casts = [
         'active' => 'boolean',
     ];
+
+    public function mailingGroup()
+    {
+        return $this->belongsTo(MailingGroup::class);
+    }
 }

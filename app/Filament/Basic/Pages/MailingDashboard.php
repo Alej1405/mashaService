@@ -29,8 +29,9 @@ class MailingDashboard extends Page
         return [
             'empresa'     => $empresa,
             'configurado' => $configurado,
-            'stats'       => $configurado ? $service->getStats(30) : [],
+            'stats'       => $service->getStats(30),
             'events'      => $configurado ? $service->getEvents(15) : [],
+            'quota'       => $service->getQuotaInfo(),
             'plan'        => $plan,
             'planLabel'   => PlanHelper::label($plan),
         ];

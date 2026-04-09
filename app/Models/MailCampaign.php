@@ -14,6 +14,7 @@ class MailCampaign extends Model
     protected $fillable = [
         'empresa_id',
         'mail_template_id',
+        'mailing_group_id',
         'name',
         'status',
         'total_recipients',
@@ -33,6 +34,11 @@ class MailCampaign extends Model
     public function mailTemplate(): BelongsTo
     {
         return $this->belongsTo(MailTemplate::class);
+    }
+
+    public function mailingGroup(): BelongsTo
+    {
+        return $this->belongsTo(MailingGroup::class);
     }
 
     public function statusLabel(): string

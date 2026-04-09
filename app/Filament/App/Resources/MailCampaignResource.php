@@ -3,13 +3,16 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\MailCampaignResource\Pages;
+use App\Jobs\SendMailCampaignJob;
 use App\Models\MailCampaign;
 use App\Models\MailingContact;
+use App\Models\MailingGroup;
 use App\Models\MailTemplate;
 use App\Services\MailingService;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -53,17 +56,54 @@ class MailCampaignResource extends Resource
                     ->helperText('Se usará el asunto y el diseño de la plantilla seleccionada.')
                     ->columnSpanFull(),
 
+                Forms\Components\Select::make('mailing_group_id')
+                    ->label('Grupo de contactos')
+                    ->options(function (): array {
+                        return MailingGroup::where('empresa_id', Filament::getTenant()->id)
+                            ->withCount(['contacts' => fn ($q) => $q->where('active', true)])
+                            ->orderBy('sort_order')
+                            ->get()
+                            ->mapWithKeys(fn ($g) => [
+                                $g->id => $g->name . ' — ' . number_format($g->contacts_count) . ' contactos activos',
+                            ])
+                            ->toArray();
+                    })
+                    ->required()
+                    ->live()
+                    ->helperText('Cada grupo tiene hasta 1.500 contactos. Los grupos se crean automáticamente.')
+                    ->columnSpanFull(),
+
                 Forms\Components\Placeholder::make('info_destinatarios')
-                    ->label('Destinatarios')
-                    ->content(function (): HtmlString {
-                        $total  = MailingContact::where('active', true)->count();
-                        $color  = $total > 0 ? '#059669' : '#d97706';
-                        $icon   = $total > 0 ? '✓' : '⚠';
+                    ->label('Resumen')
+                    ->content(function (Get $get): HtmlString {
+                        $groupId = $get('mailing_group_id');
+                        $empresa = Filament::getTenant();
+                        $service     = new MailingService($empresa);
+                        $quota       = $service->getQuotaInfo();
+                        $quotaReset  = $quota['reset_label'] ?? $quota['reset_date'];
+
+                        if (! $groupId) {
+                            return new HtmlString(
+                                "<span style='color:#d97706;'>Selecciona un grupo para continuar.</span>"
+                            );
+                        }
+
+                        $group = MailingGroup::withCount(['contacts' => fn ($q) => $q->where('active', true)])->find($groupId);
+                        $count = $group?->contacts_count ?? 0;
+                        $color = $count > 0 ? '#059669' : '#d97706';
+                        $icon  = $count > 0 ? '✓' : '⚠';
+
+                        $quotaColor = $quota['remaining'] >= $count ? '#059669' : '#dc2626';
+                        $quotaIcon  = $quota['remaining'] >= $count ? '✓' : '⚠';
+
                         return new HtmlString(
-                            "<span style='color:{$color};font-weight:600;'>{$icon} {$total} contacto(s) activo(s) recibirán esta campaña.</span>"
-                            . ($total === 0 ? ' <a href="../mailing-contacts" style="color:#6366f1;">Importar contactos →</a>' : '')
+                            "<div style='display:flex;flex-direction:column;gap:6px;'>"
+                            . "<span style='color:{$color};font-weight:600;'>{$icon} {$count} contacto(s) activo(s) en {$group?->name}.</span>"
+                            . "<span style='color:{$quotaColor};font-size:0.8rem;'>{$quotaIcon} Cuota disponible: <strong>{$quota['remaining']}</strong> de {$quota['limit']} — se renueva el {$quotaReset}.</span>"
+                            . "</div>"
                         );
                     })
+                    ->live()
                     ->columnSpanFull(),
             ]);
     }
@@ -77,6 +117,12 @@ class MailCampaignResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->description(fn (MailCampaign $r) => $r->mailTemplate?->subject),
+
+                Tables\Columns\TextColumn::make('mailingGroup.name')
+                    ->label('Grupo')
+                    ->badge()
+                    ->color('primary')
+                    ->placeholder('—'),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Estado')
@@ -127,12 +173,27 @@ class MailCampaignResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading(fn (MailCampaign $r) => 'Enviar campaña: ' . $r->name)
                     ->modalDescription(function (MailCampaign $r): string {
-                        $total = MailingContact::where('active', true)->count();
-                        return "Se enviara la plantilla \"{$r->mailTemplate?->name}\" a {$total} contacto(s) activo(s). Esta accion no se puede deshacer.";
+                        $empresa = Filament::getTenant();
+                        $service = new MailingService($empresa);
+                        $quota   = $service->getQuotaInfo();
+
+                        $query = MailingContact::where('empresa_id', $empresa->id)->where('active', true);
+                        if ($r->mailing_group_id) {
+                            $query->where('mailing_group_id', $r->mailing_group_id);
+                        }
+                        $total = $query->count();
+
+                        $groupName = $r->mailingGroup?->name ?? 'todos los contactos';
+                        $warning   = $quota['remaining'] < $total
+                            ? " ⚠ Solo tienes {$quota['remaining']} envíos disponibles."
+                            : " Cuota disponible: {$quota['remaining']} (se renueva el {$quota['reset_date']}).";
+
+                        return "Se enviará la plantilla \"{$r->mailTemplate?->name}\" a {$total} contacto(s) de {$groupName}. Esta acción no se puede deshacer.{$warning}";
                     })
                     ->modalSubmitActionLabel('Sí, enviar campaña')
                     ->action(function (MailCampaign $record): void {
-                        $service = new MailingService(Filament::getTenant());
+                        $empresa  = Filament::getTenant();
+                        $service  = new MailingService($empresa);
 
                         if (! $service->isConfigured()) {
                             Notification::make()
@@ -142,12 +203,13 @@ class MailCampaignResource extends Resource
                             return;
                         }
 
-                        $contacts = MailingContact::where('active', true)
-                            ->select('nombre', 'email')
-                            ->get()
-                            ->toArray();
+                        $query = MailingContact::where('empresa_id', $empresa->id)->where('active', true);
+                        if ($record->mailing_group_id) {
+                            $query->where('mailing_group_id', $record->mailing_group_id);
+                        }
+                        $total = $query->count();
 
-                        if (empty($contacts)) {
+                        if ($total === 0) {
                             Notification::make()
                                 ->title('Sin contactos activos')
                                 ->body('Importa contactos primero desde el módulo Contactos.')
@@ -155,26 +217,17 @@ class MailCampaignResource extends Resource
                             return;
                         }
 
-                        // Marcar como enviando
                         $record->update([
                             'status'           => 'sending',
-                            'total_recipients' => count($contacts),
+                            'total_recipients' => $total,
                         ]);
 
-                        $result = $service->sendMassEmail($contacts, $record->mailTemplate);
-
-                        $record->update([
-                            'status'       => $result['failed'] === 0 ? 'sent' : ($result['sent'] === 0 ? 'failed' : 'sent'),
-                            'sent_count'   => $result['sent'],
-                            'failed_count' => $result['failed'],
-                            'sent_at'      => now(),
-                            'error_log'    => $result['success'] ? null : $result['message'],
-                        ]);
+                        SendMailCampaignJob::dispatch($record->id, $empresa->id);
 
                         Notification::make()
-                            ->title($result['success'] ? 'Campaña enviada correctamente' : 'Campaña enviada con errores')
-                            ->body($result['message'])
-                            ->{$result['success'] ? 'success' : 'warning'}()
+                            ->title('Campaña en proceso')
+                            ->body("El envío a {$total} contacto(s) está procesándose en segundo plano. El estado se actualizará al terminar.")
+                            ->success()
                             ->send();
                     }),
 

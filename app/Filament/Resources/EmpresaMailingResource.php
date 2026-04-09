@@ -74,6 +74,27 @@ class EmpresaMailingResource extends Resource
                             ->maxLength(255),
                     ])
                     ->columns(2),
+
+                Forms\Components\Section::make('Cuota de envíos')
+                    ->description('Define el límite mensual de envíos y el día del mes en que se renueva la cuota.')
+                    ->icon('heroicon-o-chart-bar')
+                    ->schema([
+                        Forms\Components\TextInput::make('mailing_monthly_limit')
+                            ->label('Límite mensual de envíos')
+                            ->numeric()
+                            ->default(3000)
+                            ->minValue(0)
+                            ->helperText('Número máximo de correos permitidos por período.'),
+
+                        Forms\Components\TextInput::make('mailing_billing_day')
+                            ->label('Día de renovación (1–28)')
+                            ->numeric()
+                            ->default(1)
+                            ->minValue(1)
+                            ->maxValue(28)
+                            ->helperText('Día del mes en que la cuota se restablece.'),
+                    ])
+                    ->columns(2),
             ]);
     }
 

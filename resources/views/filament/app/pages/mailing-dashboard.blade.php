@@ -29,30 +29,81 @@
 
     @if($configurado)
 
-    {{-- ── KPIs principales ─────────────────────────────────────────────── --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {{-- ── Aviso fuente de datos ────────────────────────────────────────── --}}
+    @if($stats['from_cache'] ?? false)
+    <div class="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4 flex items-start gap-3">
+        <x-heroicon-o-clock class="w-5 h-5 text-amber-500 shrink-0 mt-0.5"/>
+        <p class="text-sm text-amber-700 dark:text-amber-300">
+            Mostrando última sincronización guardada
+            @if($stats['last_synced'] ?? null)
+                del <strong>{{ $stats['last_synced'] }}</strong>
+            @endif
+            — el servicio de correo ya no retiene logs de esa fecha (retención limitada en plan gratuito).
+            Los correos enviados (Enviados) siempre se calculan desde tus campañas locales.
+        </p>
+    </div>
+    @elseif(($stats['accepted'] ?? 0) === 0 && ($stats['delivered'] ?? 0) === 0 && ($stats['last_synced'] ?? null) === null)
+    <div class="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700 p-4 flex items-start gap-3">
+        <x-heroicon-o-information-circle class="w-5 h-5 text-blue-500 shrink-0 mt-0.5"/>
+        <p class="text-sm text-blue-700 dark:text-blue-300">
+            Aún no hay datos de envío. Crea y envía tu primera campaña para ver las estadísticas aquí.
+        </p>
+    </div>
+    @endif
 
-        {{-- Entregados --}}
+    {{-- ── KPIs de volumen (fila 1) ─────────────────────────────────────── --}}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+        {{-- Enviados / Aceptados --}}
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 flex items-center gap-4 shadow-sm">
             <div class="rounded-full p-3 bg-indigo-100 dark:bg-indigo-900/30">
                 <x-heroicon-o-paper-airplane class="w-6 h-6 text-indigo-600 dark:text-indigo-400"/>
             </div>
             <div>
-                <p class="text-2xl font-black text-gray-900 dark:text-white">{{ number_format($stats['delivered'] ?? 0) }}</p>
-                <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Entregados</p>
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">últimos 30 días</p>
+                <p class="text-2xl font-black text-gray-900 dark:text-white">{{ number_format($stats['accepted'] ?? 0) }}</p>
+                <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Enviados</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">aceptados por el servicio</p>
             </div>
         </div>
 
-        {{-- Tasa de entrega --}}
+        {{-- Entregados --}}
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 flex items-center gap-4 shadow-sm">
             <div class="rounded-full p-3 bg-emerald-100 dark:bg-emerald-900/30">
-                <x-heroicon-o-check-badge class="w-6 h-6 text-emerald-600 dark:text-emerald-400"/>
+                <x-heroicon-o-inbox-arrow-down class="w-6 h-6 text-emerald-600 dark:text-emerald-400"/>
+            </div>
+            <div>
+                <p class="text-2xl font-black text-gray-900 dark:text-white">{{ number_format($stats['delivered'] ?? 0) }}</p>
+                <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Entregados</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">llegaron al destinatario</p>
+            </div>
+        </div>
+
+        {{-- Fallidos --}}
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 flex items-center gap-4 shadow-sm">
+            <div class="rounded-full p-3 bg-rose-100 dark:bg-rose-900/30">
+                <x-heroicon-o-x-circle class="w-6 h-6 text-rose-600 dark:text-rose-400"/>
+            </div>
+            <div>
+                <p class="text-2xl font-black text-gray-900 dark:text-white">{{ number_format($stats['failed'] ?? 0) }}</p>
+                <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Fallidos</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ number_format($stats['bounced'] ?? 0) }} rebotes</p>
+            </div>
+        </div>
+
+    </div>
+
+    {{-- ── KPIs de engagement (fila 2) ─────────────────────────────────── --}}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+        {{-- Tasa de entrega --}}
+        <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 flex items-center gap-4 shadow-sm">
+            <div class="rounded-full p-3 bg-teal-100 dark:bg-teal-900/30">
+                <x-heroicon-o-check-badge class="w-6 h-6 text-teal-600 dark:text-teal-400"/>
             </div>
             <div>
                 <p class="text-2xl font-black text-gray-900 dark:text-white">{{ $stats['delivery_rate'] ?? 0 }}%</p>
                 <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Tasa de entrega</p>
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{{ number_format($stats['bounced'] ?? 0) }} rebotes</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">entregados / enviados</p>
             </div>
         </div>
 
@@ -68,7 +119,7 @@
             </div>
         </div>
 
-        {{-- Clics --}}
+        {{-- Tasa de clics --}}
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 flex items-center gap-4 shadow-sm">
             <div class="rounded-full p-3 bg-violet-100 dark:bg-violet-900/30">
                 <x-heroicon-o-cursor-arrow-rays class="w-6 h-6 text-violet-600 dark:text-violet-400"/>
@@ -82,7 +133,7 @@
 
     </div>
 
-    {{-- ── Stats secundarias ────────────────────────────────────────────── --}}
+    {{-- ── Stats de problemas (fila 3) ─────────────────────────────────── --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 flex items-center gap-3 shadow-sm">
@@ -136,7 +187,9 @@
             @endphp
             <div class="px-6 py-3 flex items-center gap-4">
 
-                @if($tipo === 'delivered')
+                @if($tipo === 'accepted')
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 shrink-0 w-24 justify-center">Enviado</span>
+                @elseif($tipo === 'delivered')
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0 w-24 justify-center">Entregado</span>
                 @elseif($tipo === 'opened')
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 shrink-0 w-24 justify-center">Abierto</span>
@@ -174,6 +227,50 @@
     @endif
 
     @endif {{-- fin $configurado --}}
+
+    {{-- ── Cuota de envíos ─────────────────────────────────────────────── --}}
+    @php
+        $quotaPct     = $quota['percentage'] ?? 0;
+        $quotaColor   = $quotaPct >= 90 ? 'rose' : ($quotaPct >= 70 ? 'amber' : 'emerald');
+        $quotaBarBg   = $quotaPct >= 90 ? 'bg-rose-500' : ($quotaPct >= 70 ? 'bg-amber-400' : 'bg-emerald-500');
+    @endphp
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Cuota de envíos del período</h3>
+            <span class="text-xs text-gray-500 dark:text-gray-400">Se renueva el {{ $quota['reset_label'] ?? $quota['reset_date'] ?? '—' }}</span>
+        </div>
+
+        {{-- Barra de progreso --}}
+        <div class="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 mb-3">
+            <div class="{{ $quotaBarBg }} h-3 rounded-full transition-all duration-300"
+                 style="width: {{ $quotaPct }}%"></div>
+        </div>
+
+        <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-600 dark:text-gray-400">
+                <strong class="text-gray-900 dark:text-white">{{ number_format($quota['sent'] ?? 0) }}</strong>
+                enviados de
+                <strong class="text-gray-900 dark:text-white">{{ number_format($quota['limit'] ?? 0) }}</strong>
+            </span>
+            @if(($quota['remaining'] ?? 0) > 0)
+                <span class="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {{ number_format($quota['remaining']) }} disponibles
+                </span>
+            @else
+                <span class="text-rose-600 dark:text-rose-400 font-semibold">Cuota agotada</span>
+            @endif
+        </div>
+
+        @if($quotaPct >= 80)
+        <p class="text-xs text-{{ $quotaColor }}-600 dark:text-{{ $quotaColor }}-400 mt-2">
+            @if($quotaPct >= 100)
+                Has alcanzado el límite del período. Los envíos se renuevan el {{ $quota['reset_label'] ?? $quota['reset_date'] ?? '—' }}.
+            @else
+                Has usado el {{ $quotaPct }}% de tu cuota. Renueva el {{ $quota['reset_label'] ?? $quota['reset_date'] ?? '—' }}.
+            @endif
+        </p>
+        @endif
+    </div>
 
     {{-- ── Información del plan ─────────────────────────────────────────── --}}
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">

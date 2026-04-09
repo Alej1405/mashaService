@@ -153,7 +153,7 @@ class EditEmpresaProfile extends EditTenantProfile
 
                 // ── Servicio de correo Mailgun ─────────────────────────────
                 Section::make('Servicio de correo')
-                    ->description('El estado del servicio de envío masivo (Mailgun).')
+                    ->description('Estado del servicio de envío masivo configurado por el administrador.')
                     ->icon('heroicon-o-envelope')
                     ->schema([
                         Placeholder::make('mailing_estado')
