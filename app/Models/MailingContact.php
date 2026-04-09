@@ -24,6 +24,18 @@ class MailingContact extends Model
         'active' => 'boolean',
     ];
 
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // Auto-asignar grupo al crear un contacto (aplica siempre: form, import, API)
+        static::creating(function (self $contact) {
+            if (empty($contact->mailing_group_id) && ! empty($contact->empresa_id)) {
+                $contact->mailing_group_id = MailingGroup::assignGroup($contact->empresa_id);
+            }
+        });
+    }
+
     public function mailingGroup()
     {
         return $this->belongsTo(MailingGroup::class);
