@@ -5,6 +5,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\CmsPostResource\Pages;
 use App\Models\CmsPost;
 use App\Models\MailingContact;
+use App\Models\MailingGroup;
 use App\Services\MailingService;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -115,12 +116,28 @@ class CmsPostResource extends Resource
                         Forms\Components\Radio::make('destinatarios')
                             ->label('¿A quién enviar?')
                             ->options([
-                                'todos'     => 'Todos los contactos activos',
-                                'seleccion' => 'Seleccionar contactos',
+                                'grupo'     => 'Grupo de contactos',
+                                'seleccion' => 'Seleccionar contactos individuales',
                             ])
-                            ->default('todos')
+                            ->default('grupo')
                             ->live()
                             ->required(),
+
+                        Forms\Components\Select::make('mailing_group_id')
+                            ->label('Grupo')
+                            ->options(function () {
+                                return MailingGroup::where('empresa_id', Filament::getTenant()->id)
+                                    ->withCount(['contacts' => fn ($q) => $q->where('active', true)])
+                                    ->orderBy('sort_order')
+                                    ->get()
+                                    ->mapWithKeys(fn ($g) => [
+                                        $g->id => $g->name . ' — ' . number_format($g->contacts_count) . ' activos',
+                                    ])
+                                    ->toArray();
+                            })
+                            ->visible(fn (Forms\Get $get) => $get('destinatarios') === 'grupo')
+                            ->required(fn (Forms\Get $get) => $get('destinatarios') === 'grupo')
+                            ->live(),
 
                         Forms\Components\Select::make('contactos_ids')
                             ->label('Contactos')
@@ -148,14 +165,15 @@ class CmsPostResource extends Resource
 
                         if (! $service->isConfigured()) {
                             Notification::make()
-                                ->title('Mailgun no configurado')
-                                ->body('El administrador debe activar el servicio Mailgun primero.')
+                                ->title('Servicio de correo no configurado')
+                                ->body('El administrador debe activar el servicio de correo primero.')
                                 ->warning()->send();
                             return;
                         }
 
-                        if ($data['destinatarios'] === 'todos') {
+                        if ($data['destinatarios'] === 'grupo') {
                             $contacts = MailingContact::where('empresa_id', $empresa->id)
+                                ->where('mailing_group_id', $data['mailing_group_id'])
                                 ->where('active', true)
                                 ->select('nombre', 'email')
                                 ->get()->toArray();

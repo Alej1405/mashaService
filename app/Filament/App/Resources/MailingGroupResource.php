@@ -3,7 +3,6 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\MailingGroupResource\Pages;
-use App\Filament\App\Resources\MailingGroupResource\RelationManagers;
 use App\Models\MailingGroup;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -83,13 +82,6 @@ class MailingGroupResource extends Resource
                     ->icon('heroicon-o-pencil'),
             ])
             ->bulkActions([]);
-    }
-
-    public static function getRelationManagers(): array
-    {
-        return [
-            RelationManagers\ContactsRelationManager::class,
-        ];
     }
 
     public static function getPages(): array

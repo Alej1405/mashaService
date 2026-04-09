@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
 class MailTemplateResource extends Resource
@@ -308,10 +309,11 @@ class MailTemplateResource extends Resource
                         ->modalHeading(fn (MailTemplate $r) => $r->name)
                         ->modalDescription(fn (MailTemplate $r) => 'Asunto: ' . $r->subject)
                         ->modalWidth('4xl')
-                        ->modalContent(fn (MailTemplate $r) => view(
-                            'filament.app.modals.mail-template-preview',
-                            ['html' => $r->toHtml(), 'template' => $r]
-                        ))
+                        ->modalContent(function (MailTemplate $r) {
+                            $t      = Filament::getTenant();
+                            $logo   = $t?->logo_path ? Storage::disk('public')->url($t->logo_path) : null;
+                            return view('filament.app.modals.mail-template-preview', ['html' => $r->toHtml($logo), 'template' => $r]);
+                        })
                         ->modalSubmitAction(false)
                         ->modalCancelActionLabel('Cerrar'),
 

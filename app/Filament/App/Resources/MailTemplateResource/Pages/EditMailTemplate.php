@@ -7,6 +7,7 @@ use App\Services\MailingService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Storage;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -24,10 +25,11 @@ class EditMailTemplate extends EditRecord
                 ->icon('heroicon-o-eye')
                 ->color('gray')
                 ->modalHeading(fn () => 'Vista previa — ' . $this->record->name)
-                ->modalContent(fn () => view(
-                    'filament.app.modals.mail-template-preview',
-                    ['html' => $this->record->toHtml(), 'template' => $this->record]
-                ))
+                ->modalContent(function () {
+                    $t    = Filament::getTenant();
+                    $logo = $t?->logo_path ? Storage::disk('public')->url($t->logo_path) : null;
+                    return view('filament.app.modals.mail-template-preview', ['html' => $this->record->toHtml($logo), 'template' => $this->record]);
+                })
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Cerrar'),
 

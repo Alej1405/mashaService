@@ -7,6 +7,7 @@ use App\Models\CmsAbout;
 use App\Models\CmsContact;
 use App\Models\CmsService;
 use App\Models\MailingContact;
+use App\Models\MailingGroup;
 use App\Services\MailingService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
@@ -260,46 +261,63 @@ class CartaPresentacionPage extends Page implements HasForms
                 ->label('Enviar a base de datos')
                 ->icon('heroicon-o-users')
                 ->color('warning')
-                ->requiresConfirmation()
-                ->modalHeading('Enviar a todos los contactos activos')
-                ->modalDescription(function () {
-                    $count = MailingContact::withoutGlobalScopes()
-                        ->where('empresa_id', Filament::getTenant()->id)
-                        ->where('active', true)
-                        ->count();
-                    return "Se enviará la carta a {$count} contacto(s) activo(s).";
-                })
-                ->action(function () {
+                ->modalHeading('Enviar carta a grupo de contactos')
+                ->modalWidth('lg')
+                ->form([
+                    \Filament\Forms\Components\Select::make('mailing_group_id')
+                        ->label('Grupo de contactos')
+                        ->options(function () {
+                            return MailingGroup::where('empresa_id', Filament::getTenant()->id)
+                                ->withCount(['contacts' => fn ($q) => $q->where('active', true)])
+                                ->orderBy('sort_order')
+                                ->get()
+                                ->mapWithKeys(fn ($g) => [
+                                    $g->id => $g->name . ' — ' . number_format($g->contacts_count) . ' activos',
+                                ])
+                                ->toArray();
+                        })
+                        ->required()
+                        ->live()
+                        ->helperText('Selecciona el grupo al que quieres enviar la carta.'),
+
+                    \Filament\Forms\Components\Placeholder::make('resumen')
+                        ->label('Destinatarios')
+                        ->content(function (\Filament\Forms\Get $get) {
+                            $groupId = $get('mailing_group_id');
+                            if (! $groupId) {
+                                return new \Illuminate\Support\HtmlString('<span style="color:#d97706;">Selecciona un grupo para ver el total.</span>');
+                            }
+                            $count = MailingContact::withoutGlobalScopes()
+                                ->where('empresa_id', Filament::getTenant()->id)
+                                ->where('mailing_group_id', $groupId)
+                                ->where('active', true)
+                                ->count();
+                            return new \Illuminate\Support\HtmlString("<strong>{$count}</strong> contacto(s) activo(s) recibirán esta carta.");
+                        })
+                        ->live(),
+                ])
+                ->action(function (array $data) {
                     $empresa  = Filament::getTenant();
                     $carta    = $this->cartaFromForm($empresa);
                     $contacts = MailingContact::withoutGlobalScopes()
                         ->where('empresa_id', $empresa->id)
+                        ->where('mailing_group_id', $data['mailing_group_id'])
                         ->where('active', true)
                         ->get(['nombre', 'email'])
                         ->toArray();
 
                     if (empty($contacts)) {
-                        Notification::make()->warning()->title('Sin contactos activos')->send();
+                        Notification::make()->warning()->title('Sin contactos activos en este grupo')->send();
                         return;
                     }
 
                     $html    = $this->buildHtml($empresa, $carta);
                     $service = new MailingService($empresa);
-                    $sent = 0; $failed = 0;
-
-                    foreach ($contacts as $contact) {
-                        $result = $service->sendRawEmail(
-                            $contact['email'],
-                            $contact['nombre'] ?? '',
-                            $carta->asunto,
-                            $html
-                        );
-                        $result['success'] ? $sent++ : $failed++;
-                    }
+                    $result  = $service->sendRawMassEmail($contacts, $carta->asunto, $html);
 
                     Notification::make()
-                        ->title("Enviados: {$sent}" . ($failed ? ", Fallidos: {$failed}" : ''))
-                        ->color($failed ? 'warning' : 'success')
+                        ->title("Enviados: {$result['sent']}" . ($result['failed'] ? ", Fallidos: {$result['failed']}" : ''))
+                        ->color($result['failed'] ? 'warning' : 'success')
                         ->send();
                 }),
 
