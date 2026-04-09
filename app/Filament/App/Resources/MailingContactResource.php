@@ -115,6 +115,19 @@ class MailingContactResource extends Resource
                     ->sortable()
                     ->color('gray'),
             ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('mailing_group_id')
+                    ->label('Grupo')
+                    ->relationship('mailingGroup', 'name')
+                    ->placeholder('Todos los grupos')
+                    ->preload(),
+
+                Tables\Filters\TernaryFilter::make('active')
+                    ->label('Estado')
+                    ->placeholder('Todos')
+                    ->trueLabel('Solo activos')
+                    ->falseLabel('Solo inactivos'),
+            ])
             ->defaultSort('created_at', 'desc')
             ->striped()
             ->paginated([50, 100, 250, 500])

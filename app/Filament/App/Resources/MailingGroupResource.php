@@ -97,6 +97,7 @@ class MailingGroupResource extends Resource
         return [
             'index' => Pages\ListMailingGroups::route('/'),
             'view'  => Pages\ViewMailingGroup::route('/{record}'),
+            'edit'  => Pages\EditMailingGroup::route('/{record}/edit'),
         ];
     }
 }

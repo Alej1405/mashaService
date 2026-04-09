@@ -64,18 +64,19 @@ class GroupMailingContactsCommand extends Command
 
         $groupState = [];
 
-        // chunk(500) para no cargar 23k filas en memoria de una vez
-        $query->orderBy('id')->chunk(500, function ($contacts) use ($empresa, &$groupState, $bar) {
+        // chunkById usa WHERE id > ? en lugar de OFFSET, así no salta registros
+        // cuando los actualizamos dentro del mismo chunk
+        $query->chunkById(500, function ($contacts) use ($empresa, &$groupState, $bar) {
             $byGroup = [];
 
             foreach ($contacts as $contact) {
-                $groupId           = MailingGroup::assignGroupBatch($empresa->id, $groupState);
+                $groupId             = MailingGroup::assignGroupBatch($empresa->id, $groupState);
                 $byGroup[$groupId][] = $contact->id;
             }
 
             // Un UPDATE por grupo, no por contacto
             foreach ($byGroup as $groupId => $ids) {
-                MailingContact::whereIn('id', $ids)->update(['mailing_group_id' => $groupId]);
+                MailingContact::withoutGlobalScopes()->whereIn('id', $ids)->update(['mailing_group_id' => $groupId]);
             }
 
             $bar->advance(count($contacts));
