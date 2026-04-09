@@ -8,7 +8,7 @@ use App\Models\MailingGroup;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms;
-use Filament\Pages\Page;
+use Filament\Resources\Pages\Page;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
