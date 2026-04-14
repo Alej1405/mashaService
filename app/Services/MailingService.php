@@ -23,6 +23,9 @@ class MailingService
     private ?string $logoUrl;
     private string  $baseUrl = 'https://api.mailgun.net/v3';
 
+    /** Caché en memoria del resultado de isSmtpPortReachable() para no repetir el socket check 1900 veces. */
+    private ?bool $smtpReachableCache = null;
+
     public function __construct(Empresa $empresa)
     {
         $this->empresa   = $empresa;
@@ -41,9 +44,13 @@ class MailingService
         return ! empty($this->empresa->smtp_host) && ! empty($this->empresa->smtp_username);
     }
 
-    /** Verifica si el puerto SMTP es alcanzable (timeout 5s). */
+    /** Verifica si el puerto SMTP es alcanzable (timeout 5s). Resultado cacheado en memoria para evitar 1900 checks en envíos masivos. */
     public function isSmtpPortReachable(): bool
     {
+        if ($this->smtpReachableCache !== null) {
+            return $this->smtpReachableCache;
+        }
+
         $host    = $this->empresa->smtp_host;
         $port    = $this->empresa->smtp_port ?? 587;
         $enc     = $this->empresa->smtp_encryption ?? 'tls';
@@ -52,10 +59,12 @@ class MailingService
 
         if ($socket) {
             fclose($socket);
-            return true;
+            $this->smtpReachableCache = true;
+        } else {
+            $this->smtpReachableCache = false;
         }
 
-        return false;
+        return $this->smtpReachableCache;
     }
 
     /**
