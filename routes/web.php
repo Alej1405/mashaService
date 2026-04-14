@@ -20,6 +20,7 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
         Route::get('/orders',         [\App\Http\Controllers\Portal\PortalController::class, 'orders'])->name('orders');
         Route::get('/orders/{id}',    [\App\Http\Controllers\Portal\PortalController::class, 'orderShow'])->name('orders.show');
         Route::get('/services',       [\App\Http\Controllers\Portal\PortalController::class, 'services'])->name('services');
+        Route::get('/packages',       [\App\Http\Controllers\Portal\PortalController::class, 'packages'])->name('packages');
         Route::get('/profile',        [\App\Http\Controllers\Portal\PortalController::class, 'profile'])->name('profile');
         Route::post('/profile',       [\App\Http\Controllers\Portal\PortalController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/password', [\App\Http\Controllers\Portal\PortalController::class, 'updatePassword'])->name('profile.password');

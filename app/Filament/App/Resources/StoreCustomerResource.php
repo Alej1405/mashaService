@@ -5,10 +5,12 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\StoreCustomerResource\Pages;
 use App\Models\StoreCustomer;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\Action;
@@ -45,34 +47,84 @@ class StoreCustomerResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('Datos personales')->schema([
-                TextInput::make('nombre')->label('Nombre')->required()->columnSpan(1),
-                TextInput::make('apellido')->label('Apellido')->nullable()->columnSpan(1),
-                TextInput::make('email')->label('Correo')->email()->required()->columnSpan(1),
-                TextInput::make('telefono')->label('Teléfono')->nullable()->columnSpan(1),
-                Toggle::make('activo')->label('Activo')->default(true)->columnSpan(1),
-                Toggle::make('is_super_admin')->label('Super Admin del portal')->default(false)->columnSpan(1),
+            Section::make('Tipo de cliente')->schema([
+                Radio::make('tipo')
+                    ->label('')
+                    ->options(\App\Models\StoreCustomer::TIPOS)
+                    ->default('persona')
+                    ->inline()
+                    ->live()
+                    ->columnSpanFull(),
+            ]),
+
+            Section::make('Datos del cliente')->schema([
+                TextInput::make('razon_social')
+                    ->label('Razón social')
+                    ->required(fn (Get $get) => $get('tipo') === 'empresa')
+                    ->visible(fn (Get $get) => $get('tipo') === 'empresa')
+                    ->placeholder('Nombre de la empresa')
+                    ->columnSpanFull(),
+
+                TextInput::make('nombre')
+                    ->label(fn (Get $get) => $get('tipo') === 'empresa' ? 'Nombre del contacto' : 'Nombre')
+                    ->required()
+                    ->columnSpan(1),
+
+                TextInput::make('apellido')
+                    ->label('Apellido')
+                    ->nullable()
+                    ->visible(fn (Get $get) => $get('tipo') !== 'empresa')
+                    ->columnSpan(1),
+
+                TextInput::make('cedula_ruc')
+                    ->label(fn (Get $get) => $get('tipo') === 'empresa' ? 'RUC' : 'Cédula / Pasaporte')
+                    ->helperText('Se usa como contraseña inicial de acceso al portal.')
+                    ->nullable()
+                    ->columnSpan(1),
+
+                TextInput::make('email')
+                    ->label('Correo')
+                    ->email()
+                    ->required()
+                    ->columnSpan(1),
+
+                TextInput::make('telefono')
+                    ->label('Teléfono')
+                    ->nullable()
+                    ->columnSpan(1),
+
+                Toggle::make('activo')
+                    ->label('Activo')
+                    ->default(true)
+                    ->columnSpan(1),
+
+                Toggle::make('is_super_admin')
+                    ->label('Super Admin del portal')
+                    ->default(false)
+                    ->columnSpan(1),
             ])->columns(2),
 
-            Section::make('Acceso al portal')->schema([
-                TextInput::make('password')
-                    ->label('Contraseña')
-                    ->password()
-                    ->revealable()
-                    ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
-                    ->dehydrated(fn ($state) => filled($state))
-                    ->required(fn (string $operation) => $operation === 'create')
-                    ->helperText('En edición, dejar vacío para no cambiar la contraseña.')
-                    ->columnSpan(1),
-                TextInput::make('password_confirmation')
-                    ->label('Confirmar contraseña')
-                    ->password()
-                    ->revealable()
-                    ->same('password')
-                    ->required(fn (string $operation) => $operation === 'create')
-                    ->dehydrated(false)
-                    ->columnSpan(1),
-            ])->columns(2),
+            Section::make('Cambiar contraseña')
+                ->description('La contraseña inicial es la cédula / RUC. Usa esta sección solo si necesitas cambiarla.')
+                ->collapsed()
+                ->visibleOn('edit')
+                ->schema([
+                    TextInput::make('password')
+                        ->label('Nueva contraseña')
+                        ->password()
+                        ->revealable()
+                        ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
+                        ->dehydrated(fn ($state) => filled($state))
+                        ->helperText('Dejar vacío para no cambiar.')
+                        ->columnSpan(1),
+                    TextInput::make('password_confirmation')
+                        ->label('Confirmar contraseña')
+                        ->password()
+                        ->revealable()
+                        ->same('password')
+                        ->dehydrated(false)
+                        ->columnSpan(1),
+                ])->columns(2),
         ]);
     }
 
@@ -80,12 +132,14 @@ class StoreCustomerResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('nombre')
-                    ->label('Nombre')
-                    ->formatStateUsing(fn ($record) =>
-                        trim($record->nombre . ' ' . ($record->apellido ?? '')))
-                    ->searchable(['nombre', 'apellido'])
-                    ->sortable(),
+                TextColumn::make('nombre_completo')
+                    ->label('Cliente')
+                    ->getStateUsing(fn ($record) => $record->nombre_completo)
+                    ->description(fn ($record) => $record->tipo === 'empresa'
+                        ? 'Empresa · ' . ($record->cedula_ruc ?? 'Sin RUC')
+                        : 'Persona · ' . ($record->cedula_ruc ?? 'Sin cédula'))
+                    ->searchable(['nombre', 'apellido', 'razon_social'])
+                    ->sortable('nombre'),
                 TextColumn::make('email')
                     ->label('Correo')
                     ->searchable(),

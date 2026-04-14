@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Empresa;
+use App\Models\LogisticsPackage;
 use App\Models\ServiceContract;
 use App\Models\StoreCustomer;
 use App\Models\StoreOrder;
@@ -86,6 +87,24 @@ class PortalController extends Controller
             ->paginate(10);
 
         return view('portal.services', compact('empresa', 'customer', 'contracts'));
+    }
+
+    public function packages(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $packages = LogisticsPackage::withoutGlobalScopes()
+            ->with([
+                'shipments' => fn ($q) => $q->orderByDesc('created_at')->limit(1),
+                'documents',
+            ])
+            ->where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->latest()
+            ->paginate(15);
+
+        return view('portal.packages', compact('empresa', 'customer', 'packages'));
     }
 
     public function profile(Request $request, string $slug)

@@ -32,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\CashMovement::observe(\App\Observers\CashMovementObserver::class);
         \App\Models\Debt::observe(\App\Observers\DebtObserver::class);
         \App\Models\DebtPayment::observe(\App\Observers\DebtPaymentObserver::class);
+        \App\Models\StoreCustomer::observe(\App\Observers\StoreCustomerObserver::class);
+        \App\Models\LogisticsShipment::observe(\App\Observers\LogisticsShipmentObserver::class);
 
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
             return $user->hasRole('super_admin') ? true : null;

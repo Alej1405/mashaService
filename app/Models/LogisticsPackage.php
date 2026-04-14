@@ -18,6 +18,11 @@ class LogisticsPackage extends Model
         'empresa_id',
         'bodega_id',
         'store_customer_id',
+        'customer_id',
+        'service_package_id',
+        'cantidad_cobro',
+        'monto_cobro',
+        'sale_id',
         'numero_tracking',
         'referencia',
         'descripcion',
@@ -37,8 +42,10 @@ class LogisticsPackage extends Model
         'largo_cm'              => 'decimal:2',
         'ancho_cm'              => 'decimal:2',
         'alto_cm'               => 'decimal:2',
-        'valor_declarado'       => 'decimal:2',
+        'valor_declarado'        => 'decimal:2',
         'fecha_recepcion_bodega' => 'date',
+        'cantidad_cobro'         => 'decimal:4',
+        'monto_cobro'            => 'decimal:2',
     ];
 
     public const ESTADOS = [
@@ -61,6 +68,55 @@ class LogisticsPackage extends Model
     public function storeCustomer(): BelongsTo
     {
         return $this->belongsTo(\App\Models\StoreCustomer::class, 'store_customer_id');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Customer::class, 'customer_id');
+    }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Sale::class, 'sale_id');
+    }
+
+    /**
+     * Devuelve el Customer ERP del paquete.
+     * Primero intenta desde customer_id directo, luego desde StoreCustomer.
+     * Si no existe, lo crea a partir del StoreCustomer.
+     */
+    public function resolverCustomerErp(): ?\App\Models\Customer
+    {
+        if ($this->customer_id) {
+            return $this->customer;
+        }
+
+        $sc = $this->storeCustomer;
+        if (! $sc) {
+            return null;
+        }
+
+        // Si el StoreCustomer ya tiene ERP customer, usar ese
+        if ($sc->customer_id) {
+            $this->updateQuietly(['customer_id' => $sc->customer_id]);
+            return $sc->customer;
+        }
+
+        // Disparar el observer manualmente para que cree el Customer ERP
+        (new \App\Observers\StoreCustomerObserver())->created($sc);
+        $sc->refresh();
+
+        if ($sc->customer_id) {
+            $this->updateQuietly(['customer_id' => $sc->customer_id]);
+            return $sc->customer;
+        }
+
+        return null;
+    }
+
+    public function servicePackage(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\ServicePackage::class, 'service_package_id');
     }
 
     public function shipments(): BelongsToMany
