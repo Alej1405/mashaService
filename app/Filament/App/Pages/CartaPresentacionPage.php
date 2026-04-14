@@ -2,7 +2,9 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Jobs\SendRawMassMailJob;
 use App\Models\CartaPresentacion;
+use App\Models\MailingSendLog;
 use App\Models\CmsAbout;
 use App\Models\CmsContact;
 use App\Models\CmsService;
@@ -304,6 +306,7 @@ class CartaPresentacionPage extends Page implements HasForms
                         ->where('mailing_group_id', $data['mailing_group_id'])
                         ->where('active', true)
                         ->get(['nombre', 'email'])
+                        ->map(fn ($c) => ['nombre' => $c->nombre, 'email' => $c->email])
                         ->toArray();
 
                     if (empty($contacts)) {
@@ -311,13 +314,36 @@ class CartaPresentacionPage extends Page implements HasForms
                         return;
                     }
 
-                    $html    = $this->buildHtml($empresa, $carta);
-                    $service = new MailingService($empresa);
-                    $result  = $service->sendRawMassEmail($contacts, $carta->asunto, $html);
+                    $html = $this->buildHtml($empresa, $carta);
+
+                    // Despachar a la cola: envía uno por uno respetando 100/hora.
+                    // tipo=carta_presentacion → dedup de 7 días por contacto.
+                    SendRawMassMailJob::dispatch(
+                        $empresa->id,
+                        $carta->asunto,
+                        $html,
+                        $contacts,
+                        MailingSendLog::TIPO_CARTA,
+                    );
+
+                    // Calcular cuántos ya fueron enviados esta semana para informar al usuario
+                    $emails     = array_column($contacts, 'email');
+                    $yaEnviados = \App\Models\MailingSendLog::where('empresa_id', $empresa->id)
+                        ->where('tipo', MailingSendLog::TIPO_CARTA)
+                        ->where('sent_at', '>=', now()->subDays(7))
+                        ->whereIn('email', $emails)
+                        ->count();
+                    $nuevos = count($contacts) - $yaEnviados;
 
                     Notification::make()
-                        ->title("Enviados: {$result['sent']}" . ($result['failed'] ? ", Fallidos: {$result['failed']}" : ''))
-                        ->color($result['failed'] ? 'warning' : 'success')
+                        ->title('Envío programado')
+                        ->body(
+                            $nuevos > 0
+                                ? "{$nuevos} correo(s) se enviarán en segundo plano."
+                                  . ($yaEnviados > 0 ? " {$yaEnviados} omitido(s) por envío reciente (últimos 7 días)." : '')
+                                : "Todos los contactos ya recibieron esta carta en los últimos 7 días. No se enviará nada."
+                        )
+                        ->color($nuevos > 0 ? 'success' : 'warning')
                         ->send();
                 }),
 

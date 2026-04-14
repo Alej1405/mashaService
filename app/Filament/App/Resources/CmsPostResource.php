@@ -3,9 +3,11 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\CmsPostResource\Pages;
+use App\Jobs\SendRawMassMailJob;
 use App\Models\CmsPost;
 use App\Models\MailingContact;
 use App\Models\MailingGroup;
+use App\Models\MailingSendLog;
 use App\Services\MailingService;
 use Filament\Facades\Filament;
 use Filament\Forms;
@@ -194,16 +196,35 @@ class CmsPostResource extends Resource
 
                         $html = self::buildPostHtml($record, $empresa);
 
-                        $result = $service->sendRawMassEmail(
-                            $contacts,
+                        // Despachar a la cola: envía uno por uno respetando 100/hora.
+                        // tipo=noticia + referencia_id=post.id → nunca re-enviar la misma noticia.
+                        SendRawMassMailJob::dispatch(
+                            $empresa->id,
                             $record->titulo,
                             $html,
+                            $contacts,
+                            MailingSendLog::TIPO_NOTICIA,
+                            $record->id,
                         );
 
+                        // Calcular omitidos para informar al usuario
+                        $emails     = array_column($contacts, 'email');
+                        $yaEnviados = \App\Models\MailingSendLog::where('empresa_id', $empresa->id)
+                            ->where('tipo', MailingSendLog::TIPO_NOTICIA)
+                            ->where('referencia_id', $record->id)
+                            ->whereIn('email', $emails)
+                            ->count();
+                        $nuevos = count($contacts) - $yaEnviados;
+
                         Notification::make()
-                            ->title($result['success'] ? 'Noticia enviada' : 'Enviada con errores')
-                            ->body($result['message'])
-                            ->{$result['success'] ? 'success' : 'warning'}()
+                            ->title('Noticia programada para envío')
+                            ->body(
+                                $nuevos > 0
+                                    ? "{$nuevos} correo(s) se enviarán en segundo plano."
+                                      . ($yaEnviados > 0 ? " {$yaEnviados} omitido(s) por envío previo de esta noticia." : '')
+                                    : "Esta noticia ya fue enviada a todos los contactos seleccionados."
+                            )
+                            ->color($nuevos > 0 ? 'success' : 'warning')
                             ->send();
                     }),
 

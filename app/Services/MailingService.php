@@ -291,6 +291,15 @@ class MailingService
     }
 
     /**
+     * Envía HTML arbitrario a UN único destinatario.
+     * Idéntico a sendRawEmail pero con firma compatible con el loop de envío masivo.
+     */
+    public function sendSingleRawEmail(string $to, string $toName, string $subject, string $html): array
+    {
+        return $this->sendRawEmail($to, $toName, $subject, $html);
+    }
+
+    /**
      * Envía HTML arbitrario a un destinatario.
      * Usa SMTP si está configurado, de lo contrario usa Mailgun.
      */

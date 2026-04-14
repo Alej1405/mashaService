@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Empresa;
 use App\Models\MailCampaign;
 use App\Models\MailingContact;
+use App\Models\MailingSendLog;
 use App\Services\MailingService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -84,13 +85,21 @@ class SendMailCampaignJob implements ShouldQueue
                 $sentThisWindow = 0;
             }
 
+            $email = strtolower(trim($contact->email));
+
+            // ── Deduplicación: omitir si esta campaña ya se envió a este contacto ──
+            if (MailingSendLog::yaEnviado($this->empresaId, $email, MailingSendLog::TIPO_CAMPANA, $this->campaignId)) {
+                return; // cursor()->each() — return actúa como continue
+            }
+
             // ── Enviar UN correo a UN destinatario ────────────────────────
             $result = $service->sendSingleEmail(
-                ['nombre' => $contact->nombre, 'email' => $contact->email],
+                ['nombre' => $contact->nombre, 'email' => $email],
                 $campaign->mailTemplate,
             );
 
             if ($result['success']) {
+                MailingSendLog::registrar($this->empresaId, $email, MailingSendLog::TIPO_CAMPANA, $this->campaignId);
                 $totalSent++;
                 $sentThisWindow++;
             } else {
