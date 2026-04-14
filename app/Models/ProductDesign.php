@@ -25,6 +25,7 @@ class ProductDesign extends Model
         'propuesta_valor',
         'notas_estrategicas',
         'activo',
+        'publicado_catalogo',
         'tiene_multiples_presentaciones',
         'capacidad_instalada_mensual',
         'dias_laborales_mes',
@@ -34,6 +35,7 @@ class ProductDesign extends Model
 
     protected $casts = [
         'activo'                          => 'boolean',
+        'publicado_catalogo'              => 'boolean',
         'tiene_multiples_presentaciones'  => 'boolean',
         'capacidad_instalada_mensual'     => 'decimal:2',
         'costo_mano_obra_persona'         => 'decimal:2',

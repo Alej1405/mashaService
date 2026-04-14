@@ -9,11 +9,14 @@ use App\Models\CmsContact;
 use App\Models\CmsFaq;
 use App\Models\CmsHero;
 use App\Models\CmsPost;
+use App\Models\CmsProduct;
 use App\Models\CmsService;
 use App\Models\CmsTeamMember;
 use App\Models\CmsTerminos;
 use App\Models\CmsTestimonial;
 use App\Models\Empresa;
+use App\Models\ProductDesign;
+use App\Models\ServiceDesign;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 
@@ -79,22 +82,115 @@ class CmsController extends Controller
 
     public function services(string $slug): JsonResponse
     {
-        $empresa  = $this->empresa($slug);
-        $services = CmsService::withoutGlobalScopes()
+        $empresa = $this->empresa($slug);
+
+        // Servicios CMS estándar
+        $cms = CmsService::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('activo', true)
             ->orderBy('sort_order')
             ->get()
             ->map(fn ($s) => [
-                'id'               => $s->id,
-                'titulo'           => $s->titulo,
-                'descripcion'      => $s->descripcion,
-                'caracteristicas'  => $s->caracteristicas ?? [],
-                'icono'            => $s->icono,
-                'imagen'           => $this->imageUrl($s->imagen),
+                'id'              => $s->id,
+                'source'          => 'cms',
+                'titulo'          => $s->titulo,
+                'descripcion'     => $s->descripcion,
+                'caracteristicas' => $s->caracteristicas ?? [],
+                'icono'           => $s->icono,
+                'imagen'          => $this->imageUrl($s->imagen),
             ]);
 
-        return response()->json($services);
+        // ServiceDesign del plan enterprise
+        $designs = collect();
+        if ($empresa->plan === 'enterprise') {
+            $designs = ServiceDesign::withoutGlobalScopes()
+                ->where('empresa_id', $empresa->id)
+                ->where('activo', true)
+                ->where('publicado_catalogo', true)
+                ->get()
+                ->map(function ($s) {
+                    $paquetes = $s->packages->map(fn ($p) => array_filter([
+                        'nombre'      => $p->nombre,
+                        'descripcion' => $p->descripcion,
+                        'precio'      => $p->precio_estimado ? (float) $p->precio_estimado : null,
+                        'base_cobro'  => $p->base_cobro,
+                        'unidad'      => $p->unidad_cobro,
+                    ]));
+
+                    return [
+                        'id'              => $s->id,
+                        'source'          => 'design',
+                        'titulo'          => $s->nombre,
+                        'descripcion'     => $s->descripcion_servicio,
+                        'propuesta_valor' => $s->propuesta_valor,
+                        'categoria'       => $s->categoria,
+                        'caracteristicas' => [],
+                        'icono'           => null,
+                        'imagen'          => null,
+                        'paquetes'        => $paquetes->values(),
+                    ];
+                });
+        }
+
+        return response()->json($cms->concat($designs)->values());
+    }
+
+    public function products(string $slug): JsonResponse
+    {
+        $empresa = $this->empresa($slug);
+
+        // Productos CMS estándar (todos los planes)
+        $cms = CmsProduct::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn ($p) => [
+                'id'              => $p->id,
+                'source'          => 'cms',
+                'nombre'          => $p->nombre,
+                'descripcion'     => $p->descripcion,
+                'precio'          => $p->precio ? (float) $p->precio : null,
+                'unidad_precio'   => $p->unidad_precio,
+                'categoria'       => $p->categoria,
+                'caracteristicas' => $p->caracteristicas ?? [],
+                'icono'           => $p->icono,
+                'imagen'          => $this->imageUrl($p->imagen),
+            ]);
+
+        // ProductDesign del plan enterprise
+        $designs = collect();
+        if ($empresa->plan === 'enterprise') {
+            $designs = ProductDesign::withoutGlobalScopes()
+                ->where('empresa_id', $empresa->id)
+                ->where('activo', true)
+                ->where('publicado_catalogo', true)
+                ->with(['presentations'])
+                ->get()
+                ->map(function ($p) {
+                    $presentaciones = $p->presentations->map(fn ($pres) => array_filter([
+                        'nombre' => $pres->nombre,
+                        'precio' => $pres->pvp_estimado ? (float) $pres->pvp_estimado : null,
+                        'margen' => $pres->margen_objetivo ? (float) $pres->margen_objetivo : null,
+                    ]));
+
+                    return [
+                        'id'              => $p->id,
+                        'source'          => 'design',
+                        'nombre'          => $p->nombre,
+                        'descripcion'     => $p->propuesta_valor,
+                        'precio'          => null,
+                        'unidad_precio'   => null,
+                        'categoria'       => $p->categoria,
+                        'caracteristicas' => [],
+                        'icono'           => null,
+                        'imagen'          => null,
+                        'presentaciones'  => $presentaciones->values(),
+                    ];
+                });
+        }
+
+        return response()->json($cms->concat($designs)->values());
     }
 
     public function team(string $slug): JsonResponse
@@ -270,7 +366,8 @@ class CmsController extends Controller
                 'numeros'          => $about->numeros          ?? [],
                 'caracteristicas'  => $about->caracteristicas  ?? [],
             ] : null,
-            'servicios' => CmsService::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($s) => ['id' => $s->id, 'titulo' => $s->titulo, 'descripcion' => $s->descripcion, 'caracteristicas' => $s->caracteristicas ?? [], 'icono' => $s->icono, 'imagen' => $this->imageUrl($s->imagen)]),
+            'servicios' => $this->services($slug)->getData(true),
+            'productos' => $this->products($slug)->getData(true),
             'equipo' => CmsTeamMember::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($m) => ['nombre' => $m->nombre, 'cargo' => $m->cargo, 'bio' => $m->bio, 'foto' => $this->imageUrl($m->foto)]),
             'clientes' => CmsClientLogo::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($c) => ['nombre' => $c->nombre, 'logo' => $this->imageUrl($c->logo), 'url' => $c->url]),
             'testimonios' => CmsTestimonial::withoutGlobalScopes()->where('empresa_id', $id)->where('activo', true)->orderBy('sort_order')->get()->map(fn ($t) => ['autor_nombre' => $t->autor_nombre, 'autor_cargo' => $t->autor_cargo, 'autor_empresa' => $t->autor_empresa, 'autor_foto' => $this->imageUrl($t->autor_foto), 'contenido' => $t->contenido, 'estrellas' => $t->estrellas]),

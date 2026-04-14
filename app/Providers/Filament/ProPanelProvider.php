@@ -82,6 +82,10 @@ class ProPanelProvider extends PanelProvider
                     ->icon('heroicon-o-star')
                     ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? ''))
                     ->visible(fn (): bool => \App\Helpers\PlanHelper::can('enterprise')),
+                MenuItem::make()
+                    ->label('Panel Logística')
+                    ->icon('heroicon-o-truck')
+                    ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
             ])
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,

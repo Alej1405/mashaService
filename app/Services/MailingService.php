@@ -431,6 +431,71 @@ class MailingService
     }
 
     /**
+     * Envía un correo a UN único destinatario personalizando las variables de la plantilla.
+     * Usa SMTP si está configurado, de lo contrario usa Mailgun API.
+     *
+     * $contact = ['nombre' => '...', 'email' => '...']
+     */
+    public function sendSingleEmail(array $contact, MailTemplate $template): array
+    {
+        $email  = $contact['email'] ?? '';
+        $nombre = ! empty($contact['nombre']) ? $contact['nombre'] : $email;
+
+        if (empty($email)) {
+            return ['success' => false, 'message' => 'Email vacío.', 'sent' => 0, 'failed' => 1];
+        }
+
+        $name = ! empty($this->fromName) ? $this->fromName : 'Mashaec ERP';
+
+        $vars = [
+            '{{nombre}}'  => $nombre,
+            '{{empresa}}' => $name,
+            '{{email}}'   => $email,
+            '{{fecha}}'   => now()->format('d/m/Y'),
+            '{{numero}}'  => '',
+            '{{url}}'     => '',
+            '{{portal}}'  => '',
+        ];
+
+        $html    = str_replace(array_keys($vars), array_values($vars), $template->toHtml($this->logoUrl));
+        $subject = str_replace(array_keys($vars), array_values($vars), $template->subject);
+
+        // ── Enviar por SMTP si está configurado ───────────────────────────
+        if ($this->hasSmtp() && $this->isSmtpPortReachable()) {
+            $result = $this->sendViaSMTP($email, $nombre, $subject, $html);
+            return array_merge($result, ['sent' => $result['success'] ? 1 : 0, 'failed' => $result['success'] ? 0 : 1]);
+        }
+
+        // ── Enviar por Mailgun API ─────────────────────────────────────────
+        if (! $this->isConfigured()) {
+            return ['success' => false, 'message' => 'No hay credenciales configuradas.', 'sent' => 0, 'failed' => 1];
+        }
+
+        $from = ! empty($this->fromEmail) ? $this->fromEmail : "noreply@{$this->domain}";
+
+        try {
+            $response = $this->client()
+                ->asForm()
+                ->post("{$this->baseUrl}/{$this->domain}/messages", [
+                    'from'    => "{$name} <{$from}>",
+                    'to'      => "{$nombre} <{$email}>",
+                    'subject' => $subject,
+                    'html'    => $html,
+                    'text'    => strip_tags($html),
+                ]);
+
+            if ($response->successful()) {
+                return ['success' => true, 'message' => "Enviado a {$email}", 'sent' => 1, 'failed' => 0];
+            }
+
+            $errMsg = $response->json('message') ?? "Error HTTP {$response->status()}";
+            return ['success' => false, 'message' => $errMsg, 'sent' => 0, 'failed' => 1];
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage(), 'sent' => 0, 'failed' => 1];
+        }
+    }
+
+    /**
      * Envía un correo masivo a múltiples destinatarios usando Mailgun batch sending.
      * Usa recipient-variables para personalización por destinatario.
      * Procesa en lotes de 1 000 contactos máximo (límite de Mailgun).

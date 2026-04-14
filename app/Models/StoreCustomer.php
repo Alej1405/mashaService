@@ -21,6 +21,7 @@ class StoreCustomer extends Authenticatable
         'password',
         'email_verified_at',
         'activo',
+        'is_super_admin',
     ];
 
     protected $hidden = [
@@ -30,6 +31,7 @@ class StoreCustomer extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'activo'            => 'boolean',
+        'is_super_admin'    => 'boolean',
     ];
 
     public function empresa(): BelongsTo
@@ -45,5 +47,10 @@ class StoreCustomer extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(StoreOrder::class);
+    }
+
+    public function serviceContracts(): HasMany
+    {
+        return $this->hasMany(ServiceContract::class);
     }
 }

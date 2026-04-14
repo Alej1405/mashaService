@@ -18,6 +18,7 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Illuminate\Support\HtmlString;
 use Filament\Navigation\MenuItem;
+use Filament\Navigation\NavigationItem;
 use Filament\Facades\Filament;
 
 class EnterprisePanelProvider extends PanelProvider
@@ -72,12 +73,22 @@ class EnterprisePanelProvider extends PanelProvider
                 \App\Filament\App\Resources\StoreCategoryResource::class,
                 \App\Filament\App\Resources\StoreOrderResource::class,
                 \App\Filament\App\Resources\StoreCustomerResource::class,
+                \App\Filament\App\Resources\ServiceContractResource::class,
                 \App\Filament\App\Resources\StoreCouponResource::class,
                 \App\Filament\App\Resources\InventoryItemResource::class,
                 \App\Filament\App\Resources\ProductDesignResource::class,
+                \App\Filament\App\Resources\ServiceDesignResource::class,
             ])
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,
+                \App\Filament\App\Pages\EcommerceApiDocsPage::class,
+            ])
+            ->navigationItems([
+                NavigationItem::make('Portal de Clientes')
+                    ->icon('heroicon-o-globe-alt')
+                    ->sort(-1)
+                    ->url(fn (): string => route('portal.login', ['slug' => Filament::getTenant()?->slug ?? '']))
+                    ->openUrlInNewTab(),
             ])
             ->userMenuItems([
                 MenuItem::make()
@@ -88,6 +99,10 @@ class EnterprisePanelProvider extends PanelProvider
                     ->label('Panel Pro (ERP)')
                     ->icon('heroicon-o-building-office-2')
                     ->url(fn (): string => '/pro/' . (Filament::getTenant()?->slug ?? '')),
+                MenuItem::make()
+                    ->label('Panel Logística')
+                    ->icon('heroicon-o-truck')
+                    ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
             ])
             ->widgets([
                 \App\Filament\App\Widgets\CompromisosFinancierosWidget::class,

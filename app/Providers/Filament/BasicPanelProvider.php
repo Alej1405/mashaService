@@ -75,6 +75,7 @@ class BasicPanelProvider extends PanelProvider
                 \App\Filament\App\Resources\CmsFaqResource::class,
                 \App\Filament\App\Resources\CmsPostResource::class,
                 \App\Filament\App\Resources\SupportTicketResource::class,
+                \App\Filament\App\Resources\CmsProductResource::class,
             ])
             ->pages([
                 \App\Filament\Basic\Pages\Dashboard::class,
@@ -98,8 +99,11 @@ class BasicPanelProvider extends PanelProvider
                     ->label('Panel Enterprise')
                     ->icon('heroicon-o-star')
                     ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? ''))
-
                     ->visible(fn (): bool => \App\Helpers\PlanHelper::can('enterprise')),
+                MenuItem::make()
+                    ->label('Panel Logística')
+                    ->icon('heroicon-o-truck')
+                    ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
             ])
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,

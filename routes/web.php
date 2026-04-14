@@ -9,6 +9,24 @@ Route::get('/', function () {
     return redirect('/app/login');
 });
 
+// ── Portal Cliente ────────────────────────────────────────────────────────
+Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
+    Route::get('/login',  [\App\Http\Controllers\Portal\PortalAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\Portal\PortalAuthController::class, 'login'])->name('login.post');
+    Route::post('/logout',[\App\Http\Controllers\Portal\PortalAuthController::class, 'logout'])->name('logout');
+
+    Route::middleware(\App\Http\Middleware\AuthenticateStoreCustomer::class)->group(function () {
+        Route::get('/',               [\App\Http\Controllers\Portal\PortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/orders',         [\App\Http\Controllers\Portal\PortalController::class, 'orders'])->name('orders');
+        Route::get('/orders/{id}',    [\App\Http\Controllers\Portal\PortalController::class, 'orderShow'])->name('orders.show');
+        Route::get('/services',       [\App\Http\Controllers\Portal\PortalController::class, 'services'])->name('services');
+        Route::get('/profile',        [\App\Http\Controllers\Portal\PortalController::class, 'profile'])->name('profile');
+        Route::post('/profile',       [\App\Http\Controllers\Portal\PortalController::class, 'updateProfile'])->name('profile.update');
+        Route::post('/profile/password', [\App\Http\Controllers\Portal\PortalController::class, 'updatePassword'])->name('profile.password');
+        Route::get('/customers',      [\App\Http\Controllers\Portal\PortalController::class, 'customers'])->name('customers');
+    });
+});
+
 // ── Portal Móvil ──────────────────────────────────────────────────────────
 Route::prefix('mobile')->name('mobile.')->group(function () {
     Route::get('/login',  [\App\Http\Controllers\MobileController::class, 'showLogin'])->name('login');

@@ -35,6 +35,7 @@ class ProductDesignResource extends Resource
     protected static ?string $navigationIcon  = 'heroicon-o-beaker';
     protected static ?string $navigationLabel = 'Diseño de Productos';
     protected static ?string $navigationGroup = 'Diseño de Producto';
+    protected static ?int    $navigationSort  = 1;
     protected static ?string $modelLabel      = 'Diseño de Producto';
     protected static ?string $pluralModelLabel = 'Diseño de Productos';
 
@@ -94,6 +95,12 @@ class ProductDesignResource extends Resource
                             Toggle::make('activo')
                                 ->label('Activo')
                                 ->default(true)
+                                ->inline(false)
+                                ->columnSpan(1),
+                            Toggle::make('publicado_catalogo')
+                                ->label('Publicar en catálogo web')
+                                ->helperText('Aparece en la API pública del sitio web y ecommerce.')
+                                ->default(false)
                                 ->inline(false)
                                 ->columnSpan(1),
                             Toggle::make('tiene_multiples_presentaciones')

@@ -234,6 +234,16 @@ class Empresa extends Model implements HasName
         return $this->hasMany(\App\Models\ProductDesign::class, 'empresa_id');
     }
 
+    public function serviceDesigns(): HasMany
+    {
+        return $this->hasMany(\App\Models\ServiceDesign::class, 'empresa_id');
+    }
+
+    public function cmsProducts(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsProduct::class, 'empresa_id');
+    }
+
     public function itemRequests(): HasMany
     {
         return $this->hasMany(\App\Models\ItemRequest::class, 'empresa_id');
@@ -277,5 +287,37 @@ class Empresa extends Model implements HasName
     public function storeCoupons(): HasMany
     {
         return $this->hasMany(\App\Models\StoreCoupon::class, 'empresa_id');
+    }
+
+    public function serviceContracts(): HasMany
+    {
+        return $this->hasMany(\App\Models\ServiceContract::class, 'empresa_id');
+    }
+
+    // ── Logística ─────────────────────────────────────────────────────────────
+
+    public function logisticsBodegas(): HasMany
+    {
+        return $this->hasMany(\App\Models\LogisticsBodega::class, 'empresa_id');
+    }
+
+    public function logisticsConsignatarios(): HasMany
+    {
+        return $this->hasMany(\App\Models\LogisticsConsignatario::class, 'empresa_id');
+    }
+
+    public function logisticsPackages(): HasMany
+    {
+        return $this->hasMany(\App\Models\LogisticsPackage::class, 'empresa_id');
+    }
+
+    public function logisticsShipments(): HasMany
+    {
+        return $this->hasMany(\App\Models\LogisticsShipment::class, 'empresa_id');
+    }
+
+    public function logisticsDocuments(): HasMany
+    {
+        return $this->hasMany(\App\Models\LogisticsDocument::class, 'empresa_id');
     }
 }

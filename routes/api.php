@@ -102,6 +102,7 @@ Route::prefix('cms/{slug}')
         Route::get('hero',         [CmsController::class, 'hero']);
         Route::get('about',        [CmsController::class, 'about']);
         Route::get('services',     [CmsController::class, 'services']);
+        Route::get('products',     [CmsController::class, 'products']);
         Route::get('team',         [CmsController::class, 'team']);
         Route::get('clients',      [CmsController::class, 'clients']);
         Route::get('testimonials', [CmsController::class, 'testimonials']);
