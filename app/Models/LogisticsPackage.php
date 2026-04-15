@@ -33,6 +33,7 @@ class LogisticsPackage extends Model
         'valor_declarado',
         'moneda',
         'estado',
+        'estado_secundario',
         'notas',
         'fecha_recepcion_bodega',
     ];
@@ -48,11 +49,47 @@ class LogisticsPackage extends Model
         'monto_cobro'            => 'decimal:2',
     ];
 
+    // Estados principales (columnas del Kanban)
     public const ESTADOS = [
-        'registrado' => 'Registrado',
-        'en_bodega'  => 'En Bodega',
-        'asignado'   => 'Asignado a embarque',
-        'entregado'  => 'Entregado',
+        'embarque_solicitado' => ['label' => 'Embarque Solicitado',                  'color' => '#64748b'],
+        'registrado'          => ['label' => 'Registrado',                            'color' => '#6366f1'],
+        'en_aduana'           => ['label' => 'Arribo e Inicio de Proceso en Aduana', 'color' => '#f59e0b'],
+        'finalizado_aduana'   => ['label' => 'Finalizado en Aduana',                 'color' => '#06b6d4'],
+        'pago_servicios'      => ['label' => 'Pago de Servicios',                    'color' => '#f97316'],
+        'en_entrega'          => ['label' => 'En Coordinación de Entrega',           'color' => '#22c55e'],
+    ];
+
+    // Estados secundarios agrupados por su estado principal
+    public const ESTADOS_SECUNDARIOS = [
+        'embarque_solicitado' => [
+            'embarque_confirmado' => ['label' => 'Embarque Confirmado',  'color' => '#22c55e'],
+            'embarque_retraso'    => ['label' => 'Embarque con Retraso', 'color' => '#ef4444'],
+        ],
+        'registrado' => [
+            'arribo_miami' => ['label' => 'Arribo a Miami', 'color' => '#3b82f6'],
+            'con_retraso'  => ['label' => 'Con Retraso',    'color' => '#ef4444'],
+        ],
+        'en_aduana' => [
+            'declaracion_transmitida' => ['label' => 'Declaración Transmitida', 'color' => '#f97316'],
+            'aforo_automatico'        => ['label' => 'Aforo Automático',        'color' => '#10b981'],
+            'aforo_documental'        => ['label' => 'Aforo Documental',        'color' => '#f97316'],
+            'aforo_fisico'            => ['label' => 'Aforo Físico',            'color' => '#ef4444'],
+            'liquidada'               => ['label' => 'Liquidada',               'color' => '#06b6d4'],
+        ],
+        'finalizado_aduana' => [
+            'en_ubicacion_despacho' => ['label' => 'En Ubicación para Despacho', 'color' => '#8b5cf6'],
+            'en_despacho'           => ['label' => 'En Despacho',               'color' => '#3b82f6'],
+        ],
+        'pago_servicios' => [
+            'factura_enviada' => ['label' => 'Factura Enviada',  'color' => '#f97316'],
+            'pago_pendiente'  => ['label' => 'Pago Pendiente',   'color' => '#ef4444'],
+            'pago_confirmado' => ['label' => 'Pago Confirmado',  'color' => '#22c55e'],
+        ],
+        'en_entrega' => [
+            'retiro_oficina'    => ['label' => 'Retiro de Oficina',    'color' => '#6366f1'],
+            'entrega_domicilio' => ['label' => 'Entrega en Domicilio', 'color' => '#3b82f6'],
+            'entregado'         => ['label' => 'Entregado',            'color' => '#15803d'],
+        ],
     ];
 
     public function empresa(): BelongsTo

@@ -14,8 +14,8 @@ class EditPackage extends EditRecord
 {
     protected static string $resource = PackageResource::class;
 
-    /** Estado anterior al guardar, para detectar cambio. */
-    private ?string $estadoAnterior = null;
+    private ?string $estadoAnterior           = null;
+    private ?string $estadoSecundarioAnterior = null;
 
     protected function getHeaderActions(): array
     {
@@ -24,8 +24,8 @@ class EditPackage extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // Guardar estado actual antes de que el usuario lo cambie
-        $this->estadoAnterior = $this->record->estado;
+        $this->estadoAnterior           = $this->record->estado;
+        $this->estadoSecundarioAnterior = $this->record->estado_secundario;
         return $data;
     }
 
@@ -33,16 +33,18 @@ class EditPackage extends EditRecord
     {
         $package = $this->record->fresh();
 
-        // Notificar solo si cambió el estado o si acaba de asignarse cliente
-        $estadoCambio    = $package->estado !== $this->estadoAnterior;
-        $clientePresente = (bool) $package->store_customer_id;
+        $estadoCambio     = $package->estado !== $this->estadoAnterior;
+        $secundarioCambio = $package->estado_secundario !== $this->estadoSecundarioAnterior;
 
-        if ($estadoCambio && $clientePresente) {
-            $this->notificarCliente($package);
+        if (! ($estadoCambio || $secundarioCambio) || ! $package->store_customer_id) {
+            return;
         }
+
+        $solicitarPago = $estadoCambio && $package->estado === 'finalizado_aduana';
+        $this->notificarCliente($package, $solicitarPago);
     }
 
-    private function notificarCliente(\App\Models\LogisticsPackage $package): void
+    private function notificarCliente(\App\Models\LogisticsPackage $package, bool $solicitarPago = false): void
     {
         $customer = StoreCustomer::find($package->store_customer_id);
         $empresa  = Empresa::find($package->empresa_id);
@@ -51,13 +53,20 @@ class EditPackage extends EditRecord
             return;
         }
 
-        $mail = new LogisticsPackageStatusMail($package, $customer, $empresa);
+        $mail = new LogisticsPackageStatusMail($package, $customer, $empresa, $solicitarPago);
 
-        Resend::emails()->send([
-            'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
-            'to'      => [$customer->email],
-            'subject' => $mail->envelope()->subject,
-            'html'    => $mail->buildHtml(),
-        ]);
+        try {
+            Resend::emails()->send([
+                'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
+                'to'      => [$customer->email],
+                'subject' => $mail->envelope()->subject,
+                'html'    => $mail->buildHtml(),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error enviando notificación logística', [
+                'package_id' => $package->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
     }
 }

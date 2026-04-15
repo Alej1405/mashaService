@@ -2,99 +2,137 @@
 
 namespace App\Filament\Logistics\Pages;
 
-use App\Models\LogisticsShipment;
-use App\Models\LogisticsShipmentHistory;
+use App\Mail\LogisticsPackageStatusMail;
+use App\Models\Empresa;
+use App\Models\LogisticsPackage;
+use App\Models\StoreCustomer;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Resend\Laravel\Facades\Resend;
 
 class ShipmentKanban extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-view-columns';
-    protected static ?string $navigationLabel = 'Kanban Embarques';
+    protected static ?string $navigationLabel = 'Kanban';
     protected static ?string $navigationGroup = 'Importaciones';
-    protected static ?string $title           = 'Tablero de Embarques';
+    protected static ?string $title           = 'Tablero de Paquetes';
     protected static ?int    $navigationSort  = 1;
     protected static string  $view            = 'filament.logistics.pages.shipment-kanban';
 
-    // ── Datos reactivos ───────────────────────────────────────────────────────
-
-    public string $filtroEstado = '';
-    public string $filtroTipo   = '';
-
-    // ── Livewire lifecycle ────────────────────────────────────────────────────
+    // ── Livewire ──────────────────────────────────────────────────────────────
 
     public function mount(): void {}
 
-    // ── Métodos llamados desde la vista via $wire ─────────────────────────────
+    // ── Mover paquete (drag-and-drop cambia estado principal) ─────────────────
 
-    public function moverEmbarque(int $shipmentId, string $nuevoEstado): void
+    public function moverPaquete(int $packageId, string $nuevoEstado): void
     {
-        $estadosValidos = array_keys(LogisticsShipment::ESTADOS);
-
-        if (! in_array($nuevoEstado, $estadosValidos)) {
+        if (! array_key_exists($nuevoEstado, LogisticsPackage::ESTADOS)) {
             return;
         }
 
-        $shipment = LogisticsShipment::withoutGlobalScopes()
+        $package = LogisticsPackage::withoutGlobalScopes()
             ->where('empresa_id', Filament::getTenant()->id)
-            ->with('consignatario')
-            ->find($shipmentId);
+            ->find($packageId);
 
-        if (! $shipment) {
+        if (! $package || $package->estado === $nuevoEstado) {
             return;
         }
 
-        $estadoAnterior = $shipment->estado;
+        $package->update([
+            'estado'            => $nuevoEstado,
+            'estado_secundario' => null,
+        ]);
 
-        if ($estadoAnterior === $nuevoEstado) {
-            return;
-        }
-
-        $shipment->update(['estado' => $nuevoEstado]);
-
-        // Registrar en historial
-        $labelAnterior = LogisticsShipment::ESTADOS[$estadoAnterior]['label'] ?? $estadoAnterior;
-        $labelNuevo    = LogisticsShipment::ESTADOS[$nuevoEstado]['label'] ?? $nuevoEstado;
-        LogisticsShipmentHistory::registrar(
-            shipmentId:     $shipment->id,
-            tipo:           'cambio_estado',
-            descripcion:    "Estado cambiado de «{$labelAnterior}» a «{$labelNuevo}»",
-            estadoAnterior: $estadoAnterior,
-            estadoNuevo:    $nuevoEstado,
-        );
-
-        // Cuando se entrega, actualizar acumulado del consignatario
-        if ($nuevoEstado === 'entregada' && $estadoAnterior !== 'entregada') {
-            $shipment->consignatario?->recalcularAcumulado();
-        }
+        $solicitarPago = $nuevoEstado === 'finalizado_aduana';
+        $this->notificarCliente($package->fresh(), $solicitarPago);
 
         Notification::make()
-            ->title('Embarque ' . $shipment->numero_embarque . ' movido a «' . LogisticsShipment::ESTADOS[$nuevoEstado]['label'] . '»')
+            ->title('Paquete movido a «' . (LogisticsPackage::ESTADOS[$nuevoEstado]['label'] ?? $nuevoEstado) . '»')
             ->success()
             ->send();
     }
 
+    // ── Cambiar estado secundario desde la tarjeta ────────────────────────────
+
+    public function setEstadoSecundario(int $packageId, string $estadoSecundario): void
+    {
+        $package = LogisticsPackage::withoutGlobalScopes()
+            ->where('empresa_id', Filament::getTenant()->id)
+            ->find($packageId);
+
+        if (! $package) {
+            return;
+        }
+
+        $disponibles = LogisticsPackage::ESTADOS_SECUNDARIOS[$package->estado] ?? [];
+
+        if (! array_key_exists($estadoSecundario, $disponibles)) {
+            return;
+        }
+
+        // Toggle: si ya está activo, lo quita
+        $nuevo = $package->estado_secundario === $estadoSecundario ? null : $estadoSecundario;
+        $package->update(['estado_secundario' => $nuevo]);
+
+        if ($nuevo) {
+            $this->notificarCliente($package->fresh(), false);
+
+            Notification::make()
+                ->title('Estado: «' . ($disponibles[$nuevo]['label'] ?? $nuevo) . '»')
+                ->success()
+                ->send();
+        }
+    }
+
+    // ── Notificación al cliente ───────────────────────────────────────────────
+
+    private function notificarCliente(LogisticsPackage $package, bool $solicitarPago = false): void
+    {
+        if (! $package->store_customer_id) {
+            return;
+        }
+
+        $customer = StoreCustomer::find($package->store_customer_id);
+        $empresa  = Empresa::find($package->empresa_id);
+
+        if (! $customer || ! $empresa || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $mail = new LogisticsPackageStatusMail($package, $customer, $empresa, $solicitarPago);
+
+        try {
+            Resend::emails()->send([
+                'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
+                'to'      => [$customer->email],
+                'subject' => $mail->envelope()->subject,
+                'html'    => $mail->buildHtml(),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error enviando notificación logística', [
+                'package_id' => $package->id,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+    }
+
     // ── Datos para la vista ───────────────────────────────────────────────────
 
-    public function getShipmentsByStateProperty(): array
+    public function getPackagesByStateProperty(): array
     {
         $tenant = Filament::getTenant();
 
-        $query = LogisticsShipment::withoutGlobalScopes()
+        $packages = LogisticsPackage::withoutGlobalScopes()
             ->where('empresa_id', $tenant->id)
-            ->with(['consignatario', 'bodega'])
-            ->withCount('packages');
-
-        if ($this->filtroTipo) {
-            $query->where('tipo', $this->filtroTipo);
-        }
-
-        $shipments = $query->latest()->get();
+            ->with(['storeCustomer', 'bodega'])
+            ->latest()
+            ->get();
 
         $grouped = [];
-        foreach (array_keys(LogisticsShipment::ESTADOS) as $estado) {
-            $grouped[$estado] = $shipments->where('estado', $estado)->values()->all();
+        foreach (array_keys(LogisticsPackage::ESTADOS) as $estado) {
+            $grouped[$estado] = $packages->where('estado', $estado)->values()->all();
         }
 
         return $grouped;
@@ -102,16 +140,23 @@ class ShipmentKanban extends Page
 
     public function getColumnsProperty(): array
     {
-        return LogisticsShipment::ESTADOS;
+        return LogisticsPackage::ESTADOS;
     }
 
     public function getTotalesProperty(): array
     {
         $tenant = Filament::getTenant();
+        $total      = LogisticsPackage::withoutGlobalScopes()->where('empresa_id', $tenant->id)->count();
+        $entregados = LogisticsPackage::withoutGlobalScopes()
+            ->where('empresa_id', $tenant->id)
+            ->where('estado', 'en_entrega')
+            ->where('estado_secundario', 'entregado')
+            ->count();
+
         return [
-            'total'     => LogisticsShipment::withoutGlobalScopes()->where('empresa_id', $tenant->id)->count(),
-            'en_curso'  => LogisticsShipment::withoutGlobalScopes()->where('empresa_id', $tenant->id)->whereNotIn('estado', ['entregada'])->count(),
-            'entregada' => LogisticsShipment::withoutGlobalScopes()->where('empresa_id', $tenant->id)->where('estado', 'entregada')->count(),
+            'total'      => $total,
+            'en_curso'   => $total - $entregados,
+            'entregados' => $entregados,
         ];
     }
 }

@@ -22,15 +22,26 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
         public readonly LogisticsPackage $package,
         public readonly StoreCustomer    $customer,
         public readonly Empresa          $empresa,
+        public readonly bool             $solicitarPago = false,
     ) {}
 
     public function envelope(): Envelope
     {
-        $estadoLabel = LogisticsPackage::ESTADOS[$this->package->estado] ?? $this->package->estado;
+        $info  = LogisticsPackage::ESTADOS[$this->package->estado] ?? [];
+        $label = $info['label'] ?? $this->package->estado;
 
-        return new Envelope(
-            subject: '[' . $this->empresa->name . '] Tu carga: ' . $estadoLabel,
-        );
+        if ($this->package->estado_secundario) {
+            $sec = LogisticsPackage::ESTADOS_SECUNDARIOS[$this->package->estado][$this->package->estado_secundario] ?? null;
+            if ($sec) {
+                $label .= ' › ' . $sec['label'];
+            }
+        }
+
+        $asunto = $this->solicitarPago
+            ? '[' . $this->empresa->name . '] Tu carga está lista — Solicitud de pago'
+            : '[' . $this->empresa->name . '] Tu carga: ' . $label;
+
+        return new Envelope(subject: $asunto);
     }
 
     public function content(): Content
@@ -48,7 +59,19 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
         $package   = $this->package;
         $customer  = $this->customer;
 
-        $estadoLabel = LogisticsPackage::ESTADOS[$package->estado] ?? $package->estado;
+        $estadoInfo  = LogisticsPackage::ESTADOS[$package->estado] ?? [];
+        $estadoLabel = $estadoInfo['label'] ?? $package->estado;
+        $estadoColor = $estadoInfo['color'] ?? '#6366f1';
+
+        // Estado secundario
+        $secInfo  = $package->estado_secundario
+            ? (LogisticsPackage::ESTADOS_SECUNDARIOS[$package->estado][$package->estado_secundario] ?? null)
+            : null;
+        $secLabel    = $secInfo['label'] ?? null;
+        $secColor    = $secInfo['color'] ?? '#6366f1';
+        $secBadgeHtml = $secLabel
+            ? "<br><span style='display:inline-block;margin-top:6px;background:{$secColor}18;color:{$secColor};border:1px solid {$secColor}44;border-radius:999px;padding:3px 12px;font-size:11px;font-weight:600;'>{$secLabel}</span>"
+            : '';
 
         // Estado del embarque (si existe)
         $shipment      = $package->shipments()->latest()->first();
@@ -101,6 +124,35 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
             $detalles .= $this->fila('Llegada estimada', $shipment->fecha_llegada_ecuador->format('d/m/Y'));
         }
 
+        // Sección de solicitud de pago
+        $pagoHtml = '';
+        if ($this->solicitarPago && $package->monto_cobro) {
+            $monto    = '$' . number_format($package->monto_cobro, 2);
+            $pagoHtml = <<<HTML
+  <tr>
+    <td style="padding:0 40px 24px;">
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:20px 24px;">
+        <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#92400e;">
+          Solicitud de Pago
+        </p>
+        <p style="margin:0 0 12px;font-size:14px;color:#78350f;line-height:1.5;">
+          Tu carga ha finalizado el proceso en aduana y está lista para ser despachada.
+          Para proceder con la entrega, realiza el pago de los servicios de importación.
+        </p>
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    background:#fff;border-radius:8px;padding:12px 16px;border:1px solid #fde68a;">
+          <span style="font-size:13px;color:#92400e;font-weight:600;">Monto a pagar</span>
+          <span style="font-size:22px;font-weight:800;color:#b45309;">{$monto}</span>
+        </div>
+        <p style="margin:12px 0 0;font-size:12px;color:#a16207;line-height:1.5;">
+          Comunícate con nosotros para coordinar el pago y la entrega de tu carga.
+        </p>
+      </div>
+    </td>
+  </tr>
+HTML;
+        }
+
         // Sección del estado del embarque
         $embarqueHtml = '';
         if ($shipment && $estadoEmbLabel) {
@@ -139,7 +191,6 @@ HTML;
 <table width="560" cellpadding="0" cellspacing="0" border="0"
        style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);">
 
-  {{-- Header --}}
   <tr>
     <td style="background:#1e293b;padding:32px 40px 24px;text-align:center;">
       {$logoHtml}
@@ -149,17 +200,16 @@ HTML;
     </td>
   </tr>
 
-  {{-- Badge de estado --}}
   <tr>
     <td style="padding:28px 40px 4px;text-align:center;">
-      <span style="display:inline-block;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;
+      <span style="display:inline-block;background:{$estadoColor}18;color:{$estadoColor};border:1px solid {$estadoColor}44;
                    border-radius:999px;padding:6px 18px;font-size:13px;font-weight:700;">
         {$estadoLabel}
       </span>
+      {$secBadgeHtml}
     </td>
   </tr>
 
-  {{-- Saludo --}}
   <tr>
     <td style="padding:20px 40px 8px;">
       <p style="margin:0;font-size:17px;font-weight:700;color:#1e293b;">
@@ -171,7 +221,6 @@ HTML;
     </td>
   </tr>
 
-  {{-- Detalles del paquete --}}
   <tr>
     <td style="padding:20px 40px;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -183,7 +232,8 @@ HTML;
 
   {$embarqueHtml}
 
-  {{-- Botón portal --}}
+  {$pagoHtml}
+
   <tr>
     <td style="padding:4px 40px 28px;text-align:center;">
       <a href="{$portalUrl}" target="_blank"
@@ -194,7 +244,6 @@ HTML;
     </td>
   </tr>
 
-  {{-- Credenciales --}}
   <tr>
     <td style="padding:0 40px 32px;text-align:center;">
       <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.7;">
@@ -204,7 +253,6 @@ HTML;
     </td>
   </tr>
 
-  {{-- Footer --}}
   <tr>
     <td style="background:#f8fafc;padding:16px 40px;text-align:center;border-top:1px solid #e2e8f0;">
       <p style="margin:0;font-size:11px;color:#94a3b8;">

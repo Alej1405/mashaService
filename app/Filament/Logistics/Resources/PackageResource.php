@@ -410,6 +410,24 @@ class PackageResource extends Resource
                 ])
                 ->columns(4),
 
+            Section::make('Estado')->schema([
+                Select::make('estado')
+                    ->label('Estado principal')
+                    ->options(fn () => collect(LogisticsPackage::ESTADOS)
+                        ->mapWithKeys(fn ($v, $k) => [$k => $v['label']]))
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(fn (Set $set) => $set('estado_secundario', null)),
+
+                Select::make('estado_secundario')
+                    ->label('Estado secundario')
+                    ->options(fn (Get $get) => collect(LogisticsPackage::ESTADOS_SECUNDARIOS[$get('estado')] ?? [])
+                        ->mapWithKeys(fn ($v, $k) => [$k => $v['label']]))
+                    ->placeholder('Sin estado secundario')
+                    ->nullable()
+                    ->visible(fn (Get $get) => ! empty(LogisticsPackage::ESTADOS_SECUNDARIOS[$get('estado')])),
+            ])->columns(2)->visibleOn('edit'),
+
             Section::make('Notas')->collapsed()->schema([
                 Textarea::make('notas')->label('Notas')->rows(2)->columnSpanFull(),
             ]),
@@ -454,13 +472,24 @@ class PackageResource extends Resource
                 TextColumn::make('estado')
                     ->label('Estado')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => LogisticsPackage::ESTADOS[$state] ?? $state)
+                    ->formatStateUsing(function ($state, $record) {
+                        $label = LogisticsPackage::ESTADOS[$state]['label'] ?? $state;
+                        if ($record->estado_secundario) {
+                            $sec = LogisticsPackage::ESTADOS_SECUNDARIOS[$state][$record->estado_secundario] ?? null;
+                            if ($sec) {
+                                $label .= ' › ' . $sec['label'];
+                            }
+                        }
+                        return $label;
+                    })
                     ->color(fn ($state) => match ($state) {
-                        'registrado' => 'gray',
-                        'en_bodega'  => 'info',
-                        'asignado'   => 'warning',
-                        'entregado'  => 'success',
-                        default      => 'gray',
+                        'embarque_solicitado' => 'gray',
+                        'registrado'          => 'info',
+                        'en_aduana'           => 'warning',
+                        'finalizado_aduana'   => 'primary',
+                        'pago_servicios'      => 'danger',
+                        'en_entrega'          => 'success',
+                        default               => 'gray',
                     }),
                 TextColumn::make('created_at')
                     ->label('Registrado')
@@ -487,7 +516,8 @@ class PackageResource extends Resource
                     ->label('Bodega')
                     ->relationship('bodega', 'nombre'),
                 SelectFilter::make('estado')
-                    ->options(LogisticsPackage::ESTADOS),
+                    ->options(fn () => collect(LogisticsPackage::ESTADOS)
+                        ->mapWithKeys(fn ($v, $k) => [$k => $v['label']])),
             ])
             ->actions([
                 EditAction::make(),
