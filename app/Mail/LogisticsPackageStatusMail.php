@@ -42,7 +42,7 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
 
     // ── HTML del correo ──────────────────────────────────────────────────────
 
-    private function buildHtml(): string
+    public function buildHtml(): string
     {
         $empresa   = $this->empresa;
         $package   = $this->package;

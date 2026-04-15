@@ -8,7 +8,7 @@ use App\Models\Empresa;
 use App\Models\StoreCustomer;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Mail;
+use Resend\Laravel\Facades\Resend;
 
 class EditPackage extends EditRecord
 {
@@ -51,8 +51,13 @@ class EditPackage extends EditRecord
             return;
         }
 
-        Mail::mailer('resend')
-            ->to($customer->email, $customer->nombre_completo)
-            ->send(new LogisticsPackageStatusMail($package, $customer, $empresa));
+        $mail = new LogisticsPackageStatusMail($package, $customer, $empresa);
+
+        Resend::emails()->send([
+            'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
+            'to'      => [$customer->email],
+            'subject' => $mail->envelope()->subject,
+            'html'    => $mail->buildHtml(),
+        ]);
     }
 }

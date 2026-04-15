@@ -8,7 +8,7 @@ use App\Models\Empresa;
 use App\Models\StoreCustomer;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Mail;
+use Resend\Laravel\Facades\Resend;
 
 class CreatePackage extends CreateRecord
 {
@@ -39,8 +39,13 @@ class CreatePackage extends CreateRecord
             return;
         }
 
-        Mail::mailer('resend')
-            ->to($customer->email, $customer->nombre_completo)
-            ->send(new LogisticsPackageStatusMail($package, $customer, $empresa));
+        $mail = new LogisticsPackageStatusMail($package, $customer, $empresa);
+
+        Resend::emails()->send([
+            'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
+            'to'      => [$customer->email],
+            'subject' => $mail->envelope()->subject,
+            'html'    => $mail->buildHtml(),
+        ]);
     }
 }
