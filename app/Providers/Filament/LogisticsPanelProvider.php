@@ -50,7 +50,6 @@ class LogisticsPanelProvider extends PanelProvider
             ->brandLogoHeight('2rem')
             ->darkMode(false)
             ->font('Sansation')
-            ->login(\App\Filament\Auth\Login::class)
             ->renderHook(
                 'panels::head.done',
                 fn (): HtmlString => new HtmlString('

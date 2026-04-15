@@ -78,7 +78,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
         }
 
         $levels  = ['basic' => 1, 'pro' => 2, 'enterprise' => 3];
-        $panelMap = ['app' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
+        $panelMap = ['basic' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
         $userLevel  = $levels[$this->empresa?->plan ?? 'basic'] ?? 1;
         $panelLevel = $panelMap[$panelId] ?? 99;
 
