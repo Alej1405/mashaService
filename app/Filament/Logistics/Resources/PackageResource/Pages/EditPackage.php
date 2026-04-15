@@ -51,7 +51,8 @@ class EditPackage extends EditRecord
             return;
         }
 
-        Mail::to($customer->email, $customer->nombre_completo)
+        Mail::mailer('resend')
+            ->to($customer->email, $customer->nombre_completo)
             ->send(new LogisticsPackageStatusMail($package, $customer, $empresa));
     }
 }
