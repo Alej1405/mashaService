@@ -50,7 +50,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
     public function canAccessTenant(Model $tenant): bool
     {
         // El path 'app' corresponde al plan 'basic'
-        $pathToLevel = ['app' => 1, 'pro' => 2, 'enterprise' => 3];
+        $pathToLevel = ['app' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
         $panelLevel  = $pathToLevel[request()->segment(1)] ?? 1;
         $tenantLevel = self::PLAN_LEVELS[$tenant->plan ?? 'basic'] ?? 1;
 
@@ -78,8 +78,9 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
         }
 
         $levels  = ['basic' => 1, 'pro' => 2, 'enterprise' => 3];
+        $panelMap = ['app' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
         $userLevel  = $levels[$this->empresa?->plan ?? 'basic'] ?? 1;
-        $panelLevel = $levels[$panelId] ?? 99;
+        $panelLevel = $panelMap[$panelId] ?? 99;
 
         return $userLevel >= $panelLevel;
     }
