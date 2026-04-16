@@ -207,6 +207,25 @@
         </svg>
     </a>
 
+    {{-- Logística --}}
+    <a href="{{ route('mobile.logistica.index') }}"
+       class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+             style="background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.25);">
+            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-white">Logística</p>
+            <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Cargas y embarques</p>
+        </div>
+        <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+
     {{-- Ecommerce --}}
     <a href="{{ route('mobile.ecommerce.index') }}"
        class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">

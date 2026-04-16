@@ -153,8 +153,27 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
 
         // Tienda — Clientes
         Route::get('/tienda/clientes',                     [\App\Http\Controllers\MobileController::class, 'listTiendaClientes'])->name('tienda.clientes.index');
+
+        // ── Logística ──────────────────────────────────────────────────────
+        Route::get('/logistica',                                [\App\Http\Controllers\MobileController::class, 'showLogistica'])->name('logistica.index');
+        Route::get('/logistica/cargas',                         [\App\Http\Controllers\MobileController::class, 'listCargas'])->name('logistica.cargas.lista');
+        Route::get('/logistica/carga/nueva',                    [\App\Http\Controllers\MobileController::class, 'showCargaNueva'])->name('logistica.carga.nueva');
+        Route::post('/logistica/carga/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarCarga'])->name('logistica.carga.guardar');
+        Route::post('/logistica/carga/{packageId}/estado',      [\App\Http\Controllers\MobileController::class, 'actualizarEstadoCarga'])->name('logistica.carga.estado');
+        Route::get('/logistica/embarques',                      [\App\Http\Controllers\MobileController::class, 'listEmbarques'])->name('logistica.embarques.lista');
+        Route::get('/logistica/embarque/nuevo',                 [\App\Http\Controllers\MobileController::class, 'showEmbarqueNuevo'])->name('logistica.embarque.nuevo');
+        Route::post('/logistica/embarque/guardar',              [\App\Http\Controllers\MobileController::class, 'guardarEmbarque'])->name('logistica.embarque.guardar');
     });
 });
+
+// ── Portal de clientes — acceso móvil ─────────────────────────────────────────
+// Estas rutas usan el mismo PortalAuthController del portal normal.
+// Al estar definidas DESPUÉS del grupo /mobile, las rutas explícitas del ERP
+// (/mobile/login, /mobile/almacenes, etc.) toman prioridad. El wildcard {slug}
+// solo captura slugs de empresa (ej: /mobile/mashaec → portal de mashaec).
+Route::get( '/mobile/{slug}',        [\App\Http\Controllers\Portal\PortalAuthController::class, 'showLogin'])->name('mobile.portal.login');
+Route::post('/mobile/{slug}',        [\App\Http\Controllers\Portal\PortalAuthController::class, 'login'])->name('mobile.portal.login.post');
+Route::post('/mobile/{slug}/logout', [\App\Http\Controllers\Portal\PortalAuthController::class, 'logout'])->name('mobile.portal.logout');
 
 Route::get('/panel', function () {
     $user = Auth::user();

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Almacen;
 use App\Models\Bank;
 use App\Models\CmsAbout;
+use App\Models\LogisticsBodega;
+use App\Models\LogisticsPackage;
+use App\Models\LogisticsShipment;
 use App\Models\CmsClientLogo;
 use App\Models\CmsContact;
 use App\Models\CmsFaq;
@@ -1686,5 +1689,245 @@ class MobileController extends Controller
             Log::error('Error guardando orden producción móvil: ' . $e->getMessage());
             return response()->json(['error' => 'Error al guardar la orden.'], 500);
         }
+    }
+
+    // ── Logística ─────────────────────────────────────────────────────────────
+
+    public function showLogistica(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa       = $this->empresa();
+        $totalCargas   = LogisticsPackage::withoutGlobalScopes()->where('empresa_id', $empresa->id)->count();
+        $totalEmbarques = LogisticsShipment::withoutGlobalScopes()->where('empresa_id', $empresa->id)->count();
+        return view('mobile.logistica', compact('empresa', 'totalCargas', 'totalEmbarques'));
+    }
+
+    public function showCargaNueva(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa   = $this->empresa();
+        $bodegas   = LogisticsBodega::withoutGlobalScopes()->where('empresa_id', $empresa->id)->orderBy('nombre')->get();
+        $clientes  = StoreCustomer::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->where('is_super_admin', false)
+            ->orderBy('nombre')
+            ->get();
+        return view('mobile.logistica-carga', compact('empresa', 'bodegas', 'clientes'));
+    }
+
+    public function guardarCarga(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+
+        $request->validate([
+            'descripcion'       => ['required', 'string', 'max:500'],
+            'numero_tracking'   => ['nullable', 'string', 'max:100'],
+            'referencia'        => ['nullable', 'string', 'max:100'],
+            'bodega_id'         => ['required', 'integer'],
+            'store_customer_id' => ['nullable'],
+            'peso_kg'           => ['nullable', 'numeric', 'min:0'],
+            'valor_declarado'   => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        // Validar que la bodega pertenece a la empresa
+        $bodega = LogisticsBodega::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->find($request->bodega_id);
+        if (!$bodega) {
+            return response()->json(['error' => 'Bodega no válida.'], 422);
+        }
+
+        // Resolver store_customer_id
+        $storeCustomerId = null;
+        $rawCustomer = $request->store_customer_id;
+        if ($rawCustomer) {
+            $scId = (int) str_replace('sc_', '', (string) $rawCustomer);
+            if (StoreCustomer::withoutGlobalScopes()->where('empresa_id', $empresa->id)->where('id', $scId)->exists()) {
+                $storeCustomerId = $scId;
+            }
+        }
+
+        try {
+            $package = LogisticsPackage::create([
+                'empresa_id'       => $empresa->id,
+                'bodega_id'        => $request->bodega_id,
+                'store_customer_id'=> $storeCustomerId,
+                'descripcion'      => $request->descripcion,
+                'numero_tracking'  => $request->numero_tracking ?: null,
+                'referencia'       => $request->referencia ?: null,
+                'peso_kg'          => $request->peso_kg ?: null,
+                'valor_declarado'  => $request->valor_declarado ?: null,
+                'moneda'           => 'USD',
+                'estado'           => 'registrado',
+                'fecha_recepcion_bodega' => now()->toDateString(),
+            ]);
+
+            return response()->json([
+                'success'  => true,
+                'tracking' => $package->numero_tracking ?? 'PKG-' . $package->id,
+                'id'       => $package->id,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error guardando carga logística móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al registrar la carga.'], 500);
+        }
+    }
+
+    public function listCargas(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $cargas  = LogisticsPackage::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->with('storeCustomer', 'bodega')
+            ->orderByDesc('created_at')
+            ->paginate(30);
+        return view('mobile.logistica-cargas', compact('empresa', 'cargas'));
+    }
+
+    public function actualizarEstadoCarga(Request $request, int $packageId)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+
+        $package = LogisticsPackage::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->find($packageId);
+
+        if (!$package) {
+            return response()->json(['error' => 'Carga no encontrada.'], 404);
+        }
+
+        $request->validate([
+            'estado'            => ['required', 'string', 'in:' . implode(',', array_keys(LogisticsPackage::ESTADOS))],
+            'estado_secundario' => ['nullable', 'string'],
+        ]);
+
+        $estadoAnterior = $package->estado;
+        $package->update([
+            'estado'            => $request->estado,
+            'estado_secundario' => $request->estado_secundario ?: null,
+        ]);
+
+        // Notificar al cliente si tiene correo y el estado cambió
+        if ($estadoAnterior !== $request->estado && $package->store_customer_id) {
+            try {
+                $customer = StoreCustomer::withoutGlobalScopes()->find($package->store_customer_id);
+                $emp      = \App\Models\Empresa::find($package->empresa_id);
+                if ($customer && $emp && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+                    $solicitarPago = $request->estado === 'finalizado_aduana';
+                    $mail = new \App\Mail\LogisticsPackageStatusMail($package, $customer, $emp, $solicitarPago);
+                    \Resend\Laravel\Facades\Resend::emails()->send([
+                        'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
+                        'to'      => [$customer->email],
+                        'subject' => $mail->envelope()->subject,
+                        'html'    => $mail->buildHtml(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::warning('No se pudo notificar al cliente: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json(['success' => true, 'estado' => $request->estado]);
+    }
+
+    public function showEmbarqueNuevo(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa = $this->empresa();
+        $bodegas = LogisticsBodega::withoutGlobalScopes()->where('empresa_id', $empresa->id)->orderBy('nombre')->get();
+        // Paquetes sin embarque asignado (registrados o en_aduana)
+        $paquetesSinEmbarque = LogisticsPackage::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->whereDoesntHave('shipments')
+            ->whereIn('estado', ['registrado', 'embarque_solicitado'])
+            ->with('storeCustomer')
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+        return view('mobile.logistica-embarque', compact('empresa', 'bodegas', 'paquetesSinEmbarque'));
+    }
+
+    public function guardarEmbarque(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) {
+            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
+        }
+        $empresa = $this->empresa();
+
+        $request->validate([
+            'tipo'                 => ['required', 'in:individual,consolidado,fraccionado'],
+            'bodega_id'            => ['required', 'integer'],
+            'fecha_embarque'       => ['nullable', 'date'],
+            'fecha_llegada_ecuador'=> ['nullable', 'date'],
+            'numero_guia_aerea'    => ['nullable', 'string', 'max:100'],
+            'observaciones'        => ['nullable', 'string', 'max:500'],
+            'package_ids'          => ['nullable', 'array'],
+            'package_ids.*'        => ['integer'],
+        ]);
+
+        $bodega = LogisticsBodega::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->find($request->bodega_id);
+        if (!$bodega) {
+            return response()->json(['error' => 'Bodega no válida.'], 422);
+        }
+
+        try {
+            $shipment = LogisticsShipment::create([
+                'empresa_id'            => $empresa->id,
+                'bodega_id'             => $request->bodega_id,
+                'numero_embarque'       => LogisticsShipment::generarNumero($empresa->id),
+                'tipo'                  => $request->tipo,
+                'estado'                => 'embarque_solicitado',
+                'fecha_embarque'        => $request->fecha_embarque ?: null,
+                'fecha_llegada_ecuador' => $request->fecha_llegada_ecuador ?: null,
+                'numero_guia_aerea'     => $request->numero_guia_aerea ?: null,
+                'observaciones'         => $request->observaciones ?: null,
+            ]);
+
+            // Asignar paquetes seleccionados
+            if (!empty($request->package_ids)) {
+                $validIds = LogisticsPackage::withoutGlobalScopes()
+                    ->where('empresa_id', $empresa->id)
+                    ->whereIn('id', $request->package_ids)
+                    ->pluck('id');
+                if ($validIds->isNotEmpty()) {
+                    $shipment->packages()->attach($validIds);
+                    // Actualizar estado de los paquetes a embarque_solicitado
+                    LogisticsPackage::withoutGlobalScopes()
+                        ->whereIn('id', $validIds)
+                        ->update(['estado' => 'embarque_solicitado']);
+                }
+            }
+
+            return response()->json([
+                'success'  => true,
+                'numero'   => $shipment->numero_embarque,
+                'paquetes' => $shipment->packages()->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error guardando embarque móvil: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al registrar el embarque.'], 500);
+        }
+    }
+
+    public function listEmbarques(Request $request)
+    {
+        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
+        $empresa   = $this->empresa();
+        $embarques = LogisticsShipment::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->withCount('packages')
+            ->orderByDesc('created_at')
+            ->paginate(25);
+        return view('mobile.logistica-embarques', compact('empresa', 'embarques'));
     }
 }
