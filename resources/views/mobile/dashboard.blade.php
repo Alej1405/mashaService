@@ -226,6 +226,25 @@
         </svg>
     </a>
 
+    {{-- Cliente --}}
+    <a href="{{ route('mobile.cliente.nuevo') }}"
+       class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+             style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.25);">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm font-semibold text-white">Nuevo Cliente</p>
+            <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Registrar acceso al portal</p>
+        </div>
+        <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>
+    </a>
+
     {{-- Ecommerce --}}
     <a href="{{ route('mobile.ecommerce.index') }}"
        class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">

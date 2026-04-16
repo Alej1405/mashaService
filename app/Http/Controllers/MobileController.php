@@ -1930,4 +1930,62 @@ class MobileController extends Controller
             ->paginate(25);
         return view('mobile.logistica-embarques', compact('empresa', 'embarques'));
     }
+
+    // ── Clientes ─────────────────────────────────────────────────────────────
+
+    public function showClienteNuevo(Request $request)
+    {
+        $empresa = $this->empresa();
+        return view('mobile.cliente-nuevo', compact('empresa'));
+    }
+
+    public function guardarCliente(Request $request)
+    {
+        $data = $request->validate([
+            'tipo'        => 'required|in:persona,empresa',
+            'nombre'      => 'required|string|max:120',
+            'apellido'    => 'nullable|string|max:120',
+            'razon_social'=> 'nullable|string|max:200',
+            'email'       => 'required|email|max:200',
+            'telefono'    => 'nullable|string|max:30',
+            'cedula_ruc'  => 'nullable|string|max:20',
+        ]);
+
+        $empresa = $this->empresa();
+
+        // Email único dentro de la empresa
+        $existe = StoreCustomer::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('email', $data['email'])
+            ->exists();
+
+        if ($existe) {
+            return response()->json(['error' => 'Ya existe un cliente con ese correo.'], 422);
+        }
+
+        $passwordInicial = filled($data['cedula_ruc'] ?? null)
+            ? $data['cedula_ruc']
+            : \Illuminate\Support\Str::random(10);
+
+        $cliente = StoreCustomer::create([
+            'empresa_id'   => $empresa->id,
+            'tipo'         => $data['tipo'],
+            'nombre'       => $data['nombre'],
+            'apellido'     => $data['apellido'] ?? null,
+            'razon_social' => $data['razon_social'] ?? null,
+            'email'        => $data['email'],
+            'telefono'     => $data['telefono'] ?? null,
+            'cedula_ruc'   => $data['cedula_ruc'] ?? null,
+            'password'     => \Illuminate\Support\Facades\Hash::make($passwordInicial),
+            'activo'       => true,
+        ]);
+
+        $nombre = $cliente->nombre_completo;
+
+        return response()->json([
+            'success' => true,
+            'id'      => $cliente->id,
+            'nombre'  => $nombre,
+        ]);
+    }
 }

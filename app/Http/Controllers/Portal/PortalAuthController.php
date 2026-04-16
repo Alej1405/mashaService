@@ -23,7 +23,11 @@ class PortalAuthController extends Controller
             return redirect()->route('portal.dashboard', $slug);
         }
 
-        return view('portal.login', compact('empresa'));
+        $loginAction = request()->routeIs('mobile.portal.login')
+            ? route('mobile.portal.login.post', $slug)
+            : route('portal.login.post', $slug);
+
+        return view('portal.login', compact('empresa', 'loginAction'));
     }
 
     public function login(Request $request, string $slug)

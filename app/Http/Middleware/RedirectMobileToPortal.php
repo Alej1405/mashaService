@@ -36,6 +36,11 @@ class RedirectMobileToPortal
             return $next($request);
         }
 
+        // No redirigir el portal de clientes (rutas /tienda/): ya son responsive
+        if (str_starts_with($request->path(), 'tienda/')) {
+            return $next($request);
+        }
+
         $userAgent = $request->userAgent() ?? '';
 
         if (preg_match(self::PHONE_PATTERN, $userAgent)) {

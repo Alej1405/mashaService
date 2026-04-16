@@ -72,6 +72,10 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/diseno-producto/nuevo',               [\App\Http\Controllers\MobileController::class, 'showDisenoProducto'])->name('diseno-producto.nuevo');
         Route::post('/diseno-producto/guardar',            [\App\Http\Controllers\MobileController::class, 'guardarDisenoProducto'])->name('diseno-producto.guardar');
 
+        // ── Clientes ─────────────────────────────────────────────────────
+        Route::get('/cliente/nuevo',               [\App\Http\Controllers\MobileController::class, 'showClienteNuevo'])->name('cliente.nuevo');
+        Route::post('/cliente/guardar',            [\App\Http\Controllers\MobileController::class, 'guardarCliente'])->name('cliente.guardar');
+
         // ── Listas de consulta ────────────────────────────────────────────
         Route::get('/inventario',                          [\App\Http\Controllers\MobileController::class, 'listInventario'])->name('inventario.lista');
         Route::get('/ventas',                              [\App\Http\Controllers\MobileController::class, 'listVentas'])->name('ventas.lista');

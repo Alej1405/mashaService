@@ -34,7 +34,7 @@
             </div>
         @endif
 
-        <form action="{{ route('portal.login.post', $empresa->slug) }}" method="POST" class="space-y-4">
+        <form action="{{ $loginAction }}" method="POST" class="space-y-4">
             @csrf
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
