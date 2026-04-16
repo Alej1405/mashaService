@@ -9,6 +9,7 @@ use App\Models\LogisticsShipment;
 use App\Models\LogisticsShipmentHistory;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\DB;
 
 class CreateShipment extends CreateRecord
 {
@@ -33,8 +34,11 @@ class CreateShipment extends CreateRecord
             estadoNuevo: $this->record->estado,
         );
 
-        // Marcar los paquetes asignados a este embarque
-        $packageIds = $this->record->packages()->pluck('logistics_packages.id');
+        // Leer el pivot directamente para evitar que EmpresaScope filtre paquetes
+        // de clientes distintos (consolidado con múltiples dueños).
+        $packageIds = DB::table('logistics_shipment_packages')
+            ->where('shipment_id', $this->record->id)
+            ->pluck('package_id');
         if ($packageIds->isNotEmpty()) {
             LogisticsPackage::withoutGlobalScopes()
                 ->whereIn('id', $packageIds)

@@ -14,6 +14,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Resend\Laravel\Facades\Resend;
 
@@ -21,15 +22,15 @@ class EditShipment extends EditRecord
 {
     protected static string $resource = ShipmentResource::class;
 
-    /** IDs de paquetes antes de guardar */
+    /** IDs de paquetes antes de guardar (leídos directo del pivot, sin scopes) */
     private Collection $packageIdsBefore;
 
     /** Estado del embarque antes de guardar */
     private string $estadoAntes;
 
     /**
-     * Mapeo: estado del embarque → estado del paquete (para Kanban y notificaciones).
-     * Refleja la progresión del flujo courier SENAE.
+     * Mapeo estado del embarque → estado del paquete.
+     * Determina en qué columna del Kanban aparece el paquete.
      */
     private const ESTADO_PAQUETE = [
         'embarque_solicitado'        => 'embarque_solicitado',
@@ -55,23 +56,29 @@ class EditShipment extends EditRecord
 
     protected function beforeSave(): void
     {
-        $this->packageIdsBefore = $this->record->packages()
-            ->pluck('logistics_packages.id');
+        // Leemos el pivot directamente para no depender de EmpresaScope.
+        // En embarques consolidados con paquetes de distintos clientes el scope
+        // puede devolver un conjunto incompleto si el tenant no está resuelto aún.
+        $this->packageIdsBefore = DB::table('logistics_shipment_packages')
+            ->where('shipment_id', $this->record->id)
+            ->pluck('package_id');
 
         $this->estadoAntes = $this->record->estado;
     }
 
     protected function afterSave(): void
     {
-        $packageIdsAfter = $this->record->packages()
-            ->pluck('logistics_packages.id');
+        // IDs actuales en el pivot (post-sync de Filament)
+        $packageIdsAfter = DB::table('logistics_shipment_packages')
+            ->where('shipment_id', $this->record->id)
+            ->pluck('package_id');
 
-        // ── Paquetes removidos → liberar al estado en_bodega ──────────────────
+        // ── Paquetes removidos → liberar ──────────────────────────────────────
         $quitados = $this->packageIdsBefore->diff($packageIdsAfter);
         if ($quitados->isNotEmpty()) {
             LogisticsPackage::withoutGlobalScopes()
                 ->whereIn('id', $quitados)
-                ->update(['estado' => 'en_bodega', 'estado_secundario' => null]);
+                ->update(['estado' => 'registrado', 'estado_secundario' => null]);
 
             LogisticsShipmentHistory::registrar(
                 shipmentId:  $this->record->id,
@@ -80,7 +87,7 @@ class EditShipment extends EditRecord
             );
         }
 
-        // ── Paquetes añadidos → embarque_solicitado (aparecen en Kanban) ──────
+        // ── Paquetes añadidos → aparecen en columna Kanban ───────────────────
         $agregados = $packageIdsAfter->diff($this->packageIdsBefore);
         if ($agregados->isNotEmpty()) {
             LogisticsPackage::withoutGlobalScopes()
@@ -100,14 +107,14 @@ class EditShipment extends EditRecord
         if ($estadoNuevo !== $this->estadoAntes) {
             $packageEstado = self::ESTADO_PAQUETE[$estadoNuevo] ?? null;
 
-            // Actualizar estado de TODOS los paquetes actuales del embarque
+            // Actualizar estado de TODOS los paquetes del embarque
             if ($packageEstado && $packageIdsAfter->isNotEmpty()) {
                 LogisticsPackage::withoutGlobalScopes()
                     ->whereIn('id', $packageIdsAfter)
                     ->update(['estado' => $packageEstado, 'estado_secundario' => null]);
             }
 
-            // Registrar en historial del embarque
+            // Historial del embarque
             LogisticsShipmentHistory::registrar(
                 shipmentId:    $this->record->id,
                 tipo:          'cambio_estado',
@@ -119,13 +126,13 @@ class EditShipment extends EditRecord
                 estadoNuevo:    $estadoNuevo,
             );
 
-            // Notificar a todos los clientes con paquetes en este embarque
+            // Notificar a cada cliente dueño de un paquete en este embarque
             if ($packageIdsAfter->isNotEmpty()) {
                 $this->notificarClientesEmbarque($packageIdsAfter, $estadoNuevo);
             }
         }
 
-        // ── Recalcular acumulado del consignatario si entregado ───────────────
+        // ── Recalcular acumulado del consignatario si fue entregado ───────────
         if ($estadoNuevo === 'entregada') {
             $this->record->consignatario?->recalcularAcumulado();
         }
@@ -134,8 +141,9 @@ class EditShipment extends EditRecord
     }
 
     /**
-     * Notifica a cada cliente dueño de un paquete en este embarque.
-     * Envía un correo individual por paquete.
+     * Notifica por email a cada cliente dueño de un paquete en el embarque.
+     * Carga paquetes y clientes sin scopes para garantizar que encontramos
+     * TODOS los registros independientemente de empresa/tenant.
      */
     private function notificarClientesEmbarque(Collection $packageIds, string $estadoEmbarque): void
     {
@@ -144,24 +152,24 @@ class EditShipment extends EditRecord
             return;
         }
 
-        // solicitar_pago = true cuando el embarque está autorizado para salida
         $solicitarPago = $estadoEmbarque === 'autorizado_salida';
 
+        // Sin scopes: paquetes de distintos clientes siempre se cargan completos
         $packages = LogisticsPackage::withoutGlobalScopes()
             ->whereIn('id', $packageIds)
             ->whereNotNull('store_customer_id')
-            ->with('storeCustomer')
             ->get();
 
         foreach ($packages as $package) {
-            $customer = $package->storeCustomer;
+            // Cliente sin scope para evitar filtrado por empresa/tenant
+            $customer = StoreCustomer::withoutGlobalScopes()->find($package->store_customer_id);
 
             if (! $customer || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
                 continue;
             }
 
             $mail = new LogisticsPackageStatusMail(
-                $package->fresh(), // estado actualizado
+                $package->fresh(),
                 $customer,
                 $empresa,
                 $solicitarPago,
