@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Empresa;
 use App\Models\LogisticsPackage;
+use App\Models\LogisticsPaymentClaim;
 use App\Models\ServiceContract;
 use App\Models\StoreCustomer;
 use App\Models\StoreOrder;
@@ -45,7 +47,46 @@ class PortalController extends Controller
         $totalOrders    = StoreOrder::withoutGlobalScopes()->where('store_customer_id', $customer->id)->count();
         $totalContracts = ServiceContract::withoutGlobalScopes()->where('store_customer_id', $customer->id)->where('estado', 'activo')->count();
 
-        return view('portal.dashboard', compact('empresa', 'customer', 'recentOrders', 'activeContracts', 'totalOrders', 'totalContracts'));
+        $pendingPackages = LogisticsPackage::withoutGlobalScopes()
+            ->where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->where(function ($q) {
+                // Finalizado en aduana (en espera de pago)
+                $q->where('estado', 'finalizado_aduana')
+                  // O marcado explícitamente como pago pendiente
+                  ->orWhere('estado_secundario', 'pago_pendiente');
+            })
+            ->latest()
+            ->get();
+
+        $totalPendingPago = $pendingPackages->sum('monto_cobro');
+
+        $totalPackages = LogisticsPackage::withoutGlobalScopes()
+            ->where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->count();
+
+        $recentPackages = LogisticsPackage::withoutGlobalScopes()
+            ->where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $cuentasBancarias = BankAccount::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->with('bank')
+            ->get();
+
+        return view('portal.dashboard', compact(
+            'empresa', 'customer',
+            'recentOrders', 'activeContracts',
+            'totalOrders', 'totalContracts',
+            'pendingPackages', 'totalPendingPago',
+            'totalPackages', 'recentPackages',
+            'cuentasBancarias',
+        ));
     }
 
     public function orders(Request $request, string $slug)
@@ -98,6 +139,7 @@ class PortalController extends Controller
             ->with([
                 'shipments' => fn ($q) => $q->orderByDesc('created_at')->limit(1),
                 'documents',
+                'items',
             ])
             ->where('store_customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
@@ -146,6 +188,51 @@ class PortalController extends Controller
         $customer->update(['password' => Hash::make($request->password)]);
 
         return back()->with('success', 'Contraseña actualizada correctamente.');
+    }
+
+    public function submitPayment(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $request->validate([
+            'package_ids'    => 'required|array|min:1',
+            'package_ids.*'  => 'integer',
+            'monto_manual'   => 'required|numeric|min:0.01',
+            'comprobante'    => 'nullable|image|max:5120',
+            'notas_cliente'  => 'nullable|string|max:500',
+        ]);
+
+        // Verificar que los paquetes pertenecen al cliente
+        $packageIds = LogisticsPackage::withoutGlobalScopes()
+            ->whereIn('id', $request->package_ids)
+            ->where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->pluck('id');
+
+        if ($packageIds->isEmpty()) {
+            return back()->withErrors(['package_ids' => 'Selecciona al menos un paquete válido.']);
+        }
+
+        $monto = (float) $request->monto_manual;
+
+        $comprobantePath = null;
+        if ($request->hasFile('comprobante')) {
+            $comprobantePath = $request->file('comprobante')
+                ->store('comprobantes/' . $empresa->id, 'public');
+        }
+
+        LogisticsPaymentClaim::create([
+            'empresa_id'       => $empresa->id,
+            'store_customer_id' => $customer->id,
+            'package_ids'      => $packageIds->toArray(),
+            'monto_declarado'  => $monto,
+            'comprobante_path' => $comprobantePath,
+            'notas_cliente'    => $request->notas_cliente,
+            'estado'           => 'pendiente',
+        ]);
+
+        return back()->with('payment_sent', '¡Pago registrado! Verificaremos tu transferencia a la brevedad.');
     }
 
     public function customers(Request $request, string $slug)

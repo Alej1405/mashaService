@@ -11,9 +11,11 @@ use App\Models\ServicePackage;
 use App\Models\StoreCustomer;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -59,7 +61,7 @@ class PackageResource extends Resource
                     ->required()
                     ->rows(2)
                     ->columnSpanFull(),
-            ])->columns(2),
+            ])->columns(['default' => 1, 'sm' => 2]),
 
             Section::make('Cliente')->schema([
                 Select::make('store_customer_id')
@@ -214,7 +216,7 @@ class PackageResource extends Resource
                 DatePicker::make('fecha_recepcion_bodega')
                     ->label('Fecha recepción en bodega')
                     ->columnSpan(1),
-            ])->columns(2),
+            ])->columns(['default' => 1, 'sm' => 2]),
 
             Section::make('Dimensiones y valor')->schema([
                 TextInput::make('peso_kg')
@@ -254,11 +256,11 @@ class PackageResource extends Resource
                         }
                     })
                     ->columnSpan(1),
-                Grid::make(3)->schema([
+                Grid::make(['default' => 1, 'sm' => 3])->schema([
                     TextInput::make('largo_cm')->label('Largo (cm)')->numeric()->step(0.01)->suffix('cm'),
                     TextInput::make('ancho_cm')->label('Ancho (cm)')->numeric()->step(0.01)->suffix('cm'),
                     TextInput::make('alto_cm')->label('Alto (cm)')->numeric()->step(0.01)->suffix('cm'),
-                ])->columnSpan(2),
+                ])->columnSpan(['default' => 1, 'sm' => 2]),
                 TextInput::make('valor_declarado')
                     ->label('Valor declarado')
                     ->numeric()
@@ -270,7 +272,22 @@ class PackageResource extends Resource
                     ->options(['USD' => 'USD', 'EUR' => 'EUR', 'GBP' => 'GBP'])
                     ->default('USD')
                     ->columnSpan(1),
-            ])->columns(3),
+                TextInput::make('gastos_envio')
+                    ->label('Gastos de envío ($)')
+                    ->numeric()
+                    ->prefix('$')
+                    ->step(0.01)
+                    ->nullable()
+                    ->columnSpan(1),
+                TextInput::make('impuestos_amazon')
+                    ->label('Impuestos Amazon ($)')
+                    ->numeric()
+                    ->prefix('$')
+                    ->step(0.01)
+                    ->nullable()
+                    ->helperText('Impuestos cobrados por Amazon. Informativo.')
+                    ->columnSpan(1),
+            ])->columns(['default' => 1, 'sm' => 2, 'md' => 3]),
 
             // ── Servicio y cobro ──────────────────────────────────────────────
             Section::make('Servicio y cobro')
@@ -408,7 +425,7 @@ class PackageResource extends Resource
                         ->visible(fn (Get $get) => (bool) $get('service_package_id'))
                         ->columnSpan(1),
                 ])
-                ->columns(4),
+                ->columns(['default' => 1, 'sm' => 2, 'md' => 4]),
 
             Section::make('Estado')->schema([
                 Select::make('estado')
@@ -426,7 +443,47 @@ class PackageResource extends Resource
                     ->placeholder('Sin estado secundario')
                     ->nullable()
                     ->visible(fn (Get $get) => ! empty(LogisticsPackage::ESTADOS_SECUNDARIOS[$get('estado')])),
-            ])->columns(2)->visibleOn('edit'),
+            ])->columns(['default' => 1, 'sm' => 2])->visibleOn('edit'),
+
+            Section::make('Productos del paquete')
+                ->description('Artículos que contiene este paquete. Solo informativo para el cliente.')
+                ->icon('heroicon-o-shopping-bag')
+                ->collapsed()
+                ->schema([
+                    Repeater::make('items')
+                        ->relationship()
+                        ->schema([
+                            TextInput::make('nombre')
+                                ->label('Nombre del producto')
+                                ->required()
+                                ->columnSpan(['default' => 2, 'sm' => 3]),
+                            TextInput::make('valor')
+                                ->label('Valor ($)')
+                                ->numeric()
+                                ->prefix('$')
+                                ->step(0.01)
+                                ->nullable()
+                                ->columnSpan(1),
+                            FileUpload::make('foto_path')
+                                ->label('Foto')
+                                ->image()
+                                ->disk('public')
+                                ->directory('package-items')
+                                ->imageEditor()
+                                ->nullable()
+                                ->columnSpan(['default' => 2, 'sm' => 2]),
+                            Textarea::make('descripcion')
+                                ->label('Descripción')
+                                ->rows(2)
+                                ->nullable()
+                                ->columnSpan(['default' => 2, 'sm' => 2]),
+                        ])
+                        ->columns(['default' => 2, 'sm' => 4])
+                        ->addActionLabel('Agregar producto')
+                        ->reorderableWithButtons()
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => $state['nombre'] ?? null),
+                ]),
 
             Section::make('Notas')->collapsed()->schema([
                 Textarea::make('notas')->label('Notas')->rows(2)->columnSpanFull(),

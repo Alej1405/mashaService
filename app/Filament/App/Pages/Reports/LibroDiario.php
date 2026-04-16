@@ -92,11 +92,15 @@ class LibroDiario extends Page implements HasTable, HasForms
                 Select::make('tipo')
                     ->label('Tipo')
                     ->options([
-                        'compra'  => 'Compra',
-                        'venta'   => 'Venta',
-                        'ajuste'  => 'Ajuste',
-                        'apertura'=> 'Apertura',
-                        'manual'  => 'Manual',
+                        'compra'          => 'Compra',
+                        'venta'           => 'Venta',
+                        'ajuste'          => 'Ajuste',
+                        'apertura'        => 'Apertura',
+                        'manual'          => 'Manual',
+                        'manufactura'     => 'Manufactura',
+                        'cobro_logistico' => 'Cobro logístico',
+                        'cierre'          => 'Cierre',
+                        'depreciacion'    => 'Depreciación',
                     ])
                     ->placeholder('Todos')
                     ->nullable()

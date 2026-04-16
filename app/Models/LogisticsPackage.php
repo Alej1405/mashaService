@@ -6,6 +6,7 @@ use App\Traits\HasEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class LogisticsPackage extends Model
@@ -31,6 +32,8 @@ class LogisticsPackage extends Model
         'ancho_cm',
         'alto_cm',
         'valor_declarado',
+        'gastos_envio',
+        'impuestos_amazon',
         'moneda',
         'estado',
         'estado_secundario',
@@ -44,6 +47,8 @@ class LogisticsPackage extends Model
         'ancho_cm'              => 'decimal:2',
         'alto_cm'               => 'decimal:2',
         'valor_declarado'        => 'decimal:2',
+        'gastos_envio'           => 'decimal:2',
+        'impuestos_amazon'       => 'decimal:2',
         'fecha_recepcion_bodega' => 'date',
         'cantidad_cobro'         => 'decimal:4',
         'monto_cobro'            => 'decimal:2',
@@ -169,6 +174,11 @@ class LogisticsPackage extends Model
     public function documents(): MorphMany
     {
         return $this->morphMany(LogisticsDocument::class, 'documentable');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(LogisticsPackageItem::class, 'logistics_package_id');
     }
 
     /** Peso volumétrico en kg (largo × ancho × alto / 5000) */

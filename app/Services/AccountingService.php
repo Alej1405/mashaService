@@ -831,4 +831,97 @@ class AccountingService
             return $journalEntry;
         });
     }
+
+    /**
+     * Genera el asiento contable para un cobro de servicio logístico verificado.
+     *
+     * Estructura:
+     *   DEBE  → Banco / Caja (activo, cuenta donde ingresa el dinero)
+     *   HABER → Ingreso por servicios logísticos (cuenta de ingreso)
+     */
+    public function generarAsientoCobroLogistico(\App\Models\LogisticsPaymentClaim $claim): JournalEntry
+    {
+        $empresaId = $claim->empresa_id;
+        $monto     = (float) $claim->monto_declarado;
+        $cliente   = $claim->storeCustomer?->nombre_completo ?? 'Cliente';
+
+        if ($monto <= 0) {
+            throw new Exception("El monto del cobro debe ser mayor a cero para generar el asiento contable.");
+        }
+
+        return DB::transaction(function () use ($claim, $empresaId, $monto, $cliente) {
+
+            $journalEntry = JournalEntry::create([
+                'empresa_id'      => $empresaId,
+                'fecha'           => now()->toDateString(),
+                'descripcion'     => "Cobro servicios logísticos — {$cliente} (Pago #{$claim->id})",
+                'tipo'            => 'cobro_logistico',
+                'origen'          => 'automatico',
+                'referencia_tipo' => 'logistics_payment_claim',
+                'referencia_id'   => $claim->id,
+                'status'          => 'confirmado',
+                'total_debe'      => 0,
+                'total_haber'     => 0,
+                'esta_cuadrado'   => true,
+                'confirmado_por'  => Auth::id(),
+                'confirmado_at'   => now(),
+            ]);
+
+            // DEBE: cuenta bancaria activa de la empresa (transferencia)
+            $cuentaBanco = AccountPlan::where('empresa_id', $empresaId)
+                ->where('code', '1.1.01.03')   // Bancos — cuenta corriente
+                ->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)
+                    ->where('code', 'like', '1.1.01%')
+                    ->where('type', 'activo')
+                    ->first();
+
+            if (! $cuentaBanco) {
+                $cuentaBanco = self::getMapeo($empresaId, 'global', 'venta_contado');
+            }
+
+            JournalEntryLine::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_plan_id'  => $cuentaBanco->id,
+                'descripcion'      => "Ingreso transferencia — {$cliente}",
+                'debe'             => $monto,
+                'haber'            => 0,
+                'orden'            => 1,
+            ]);
+
+            // HABER: ingreso por servicios logísticos
+            $cuentaIngreso = null;
+            try {
+                $cuentaIngreso = self::getMapeo($empresaId, 'servicio', 'venta_contado');
+            } catch (Exception $e) {
+                // Fallback: buscar cuenta de ingresos por código estándar
+                $cuentaIngreso = AccountPlan::where('empresa_id', $empresaId)
+                    ->where('code', '4.1.01.01')
+                    ->first()
+                    ?? AccountPlan::where('empresa_id', $empresaId)
+                        ->where('type', 'ingreso')
+                        ->first();
+            }
+
+            if (! $cuentaIngreso) {
+                throw new Exception("Sin cuenta de ingresos configurada para la empresa [{$empresaId}].");
+            }
+
+            JournalEntryLine::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_plan_id'  => $cuentaIngreso->id,
+                'descripcion'      => "Servicios logísticos — {$cliente}",
+                'debe'             => 0,
+                'haber'            => $monto,
+                'orden'            => 2,
+            ]);
+
+            $journalEntry->update([
+                'total_debe'  => $monto,
+                'total_haber' => $monto,
+            ]);
+
+            return $journalEntry;
+        });
+    }
 }

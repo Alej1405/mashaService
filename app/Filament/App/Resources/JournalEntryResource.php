@@ -156,13 +156,26 @@ class JournalEntryResource extends Resource
                 Tables\Columns\TextColumn::make('tipo')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'apertura' => 'info',
-                        'manual' => 'gray',
-                        'compra' => 'success',
-                        'venta' => 'warning',
-                        'manufactura' => 'primary',
-                        'ajuste' => 'danger',
-                        default => 'gray',
+                        'apertura'        => 'info',
+                        'manual'          => 'gray',
+                        'compra'          => 'success',
+                        'venta'           => 'warning',
+                        'manufactura'     => 'primary',
+                        'ajuste'          => 'danger',
+                        'cobro_logistico' => 'success',
+                        default           => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'apertura'        => 'Apertura',
+                        'manual'          => 'Manual',
+                        'compra'          => 'Compra',
+                        'venta'           => 'Venta',
+                        'manufactura'     => 'Manufactura',
+                        'ajuste'          => 'Ajuste',
+                        'cobro_logistico' => 'Cobro logístico',
+                        'cierre'          => 'Cierre',
+                        'depreciacion'    => 'Depreciación',
+                        default           => $state,
                     }),
                 Tables\Columns\TextColumn::make('descripcion')
                     ->label('Descripción')
@@ -192,9 +205,15 @@ class JournalEntryResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('tipo')
                     ->options([
-                        'manual' => 'Manual',
-                        'apertura' => 'Apertura',
-                        'ajuste' => 'Ajuste',
+                        'manual'          => 'Manual',
+                        'apertura'        => 'Apertura',
+                        'ajuste'          => 'Ajuste',
+                        'compra'          => 'Compra',
+                        'venta'           => 'Venta',
+                        'manufactura'     => 'Manufactura',
+                        'cobro_logistico' => 'Cobro logístico',
+                        'cierre'          => 'Cierre',
+                        'depreciacion'    => 'Depreciación',
                     ]),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([

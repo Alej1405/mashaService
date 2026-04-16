@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\BankAccount;
 use App\Models\Empresa;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsShipment;
@@ -127,7 +128,53 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
         // Sección de solicitud de pago
         $pagoHtml = '';
         if ($this->solicitarPago && $package->monto_cobro) {
-            $monto    = '$' . number_format($package->monto_cobro, 2);
+            $monto = '$' . number_format($package->monto_cobro, 2);
+
+            // Cuentas bancarias de la empresa
+            $cuentas = BankAccount::withoutGlobalScopes()
+                ->where('empresa_id', $empresa->id)
+                ->where('activo', true)
+                ->with('bank')
+                ->get();
+
+            $cuentasHtml = '';
+            foreach ($cuentas as $cuenta) {
+                $banco    = e($cuenta->bank->nombre ?? '—');
+                $tipo     = $cuenta->tipo_cuenta === 'ahorros' ? 'Ahorros' : 'Corriente';
+                $numero   = e($cuenta->numero_cuenta);
+                $titular  = e($cuenta->nombre_titular);
+                $cuentasHtml .= <<<HTML
+
+        <table width="100%" cellpadding="0" cellspacing="6" border="0"
+               style="background:#fff;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px;">
+          <tr>
+            <td style="color:#92400e;width:50%;vertical-align:top;">
+              <span style="display:block;font-size:10px;color:#a16207;text-transform:uppercase;letter-spacing:.5px;">Banco</span>
+              <strong>{$banco}</strong>
+            </td>
+            <td style="color:#92400e;vertical-align:top;">
+              <span style="display:block;font-size:10px;color:#a16207;text-transform:uppercase;letter-spacing:.5px;">Tipo</span>
+              <strong>{$tipo}</strong>
+            </td>
+          </tr>
+          <tr>
+            <td style="color:#92400e;vertical-align:top;padding-top:6px;">
+              <span style="display:block;font-size:10px;color:#a16207;text-transform:uppercase;letter-spacing:.5px;">N.° de cuenta</span>
+              <strong style="font-family:monospace;">{$numero}</strong>
+            </td>
+            <td style="color:#92400e;vertical-align:top;padding-top:6px;">
+              <span style="display:block;font-size:10px;color:#a16207;text-transform:uppercase;letter-spacing:.5px;">Titular</span>
+              <strong>{$titular}</strong>
+            </td>
+          </tr>
+        </table>
+HTML;
+            }
+
+            $cuentasSeccionHtml = $cuentasHtml
+                ? "<p style='margin:16px 0 6px;font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;'>Datos para transferencia</p>{$cuentasHtml}"
+                : '';
+
             $pagoHtml = <<<HTML
   <tr>
     <td style="padding:0 40px 24px;">
@@ -144,8 +191,9 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
           <span style="font-size:13px;color:#92400e;font-weight:600;">Monto a pagar</span>
           <span style="font-size:22px;font-weight:800;color:#b45309;">{$monto}</span>
         </div>
-        <p style="margin:12px 0 0;font-size:12px;color:#a16207;line-height:1.5;">
-          Comunícate con nosotros para coordinar el pago y la entrega de tu carga.
+        {$cuentasSeccionHtml}
+        <p style="margin:14px 0 0;font-size:12px;color:#a16207;line-height:1.5;">
+          Una vez realizado el pago, comunícate con nosotros para coordinar la entrega de tu carga.
         </p>
       </div>
     </td>

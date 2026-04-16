@@ -25,6 +25,7 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
         Route::post('/profile',       [\App\Http\Controllers\Portal\PortalController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/password', [\App\Http\Controllers\Portal\PortalController::class, 'updatePassword'])->name('profile.password');
         Route::get('/customers',      [\App\Http\Controllers\Portal\PortalController::class, 'customers'])->name('customers');
+        Route::post('/payments',      [\App\Http\Controllers\Portal\PortalController::class, 'submitPayment'])->name('payments.store');
     });
 });
 
