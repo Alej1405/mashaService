@@ -21,7 +21,9 @@
             @foreach($packages as $pkg)
                 @php
                     $shipment   = $pkg->shipments->first();
-                    $estadoPkg  = \App\Models\LogisticsPackage::ESTADOS[$pkg->estado] ?? $pkg->estado;
+                    $pkgInfo    = \App\Models\LogisticsPackage::ESTADOS[$pkg->estado] ?? [];
+                    $estadoPkg  = $pkgInfo['label'] ?? $pkg->estado;
+                    $colorPkg   = $pkgInfo['color'] ?? '#6b7280';
                     $estadoEmb  = $shipment ? (\App\Models\LogisticsShipment::ESTADOS[$shipment->estado] ?? null) : null;
                     $colorEmb   = $estadoEmb['color'] ?? '#6b7280';
                 @endphp
@@ -37,7 +39,8 @@
                                 <p class="text-xs text-gray-500 mt-0.5 font-mono">{{ $pkg->numero_tracking }}</p>
                             @endif
                         </div>
-                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-700">
+                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                              style="background-color:{{ $colorPkg }}18;color:{{ $colorPkg }};border:1px solid {{ $colorPkg }}44;">
                             {{ $estadoPkg }}
                         </span>
                     </div>
