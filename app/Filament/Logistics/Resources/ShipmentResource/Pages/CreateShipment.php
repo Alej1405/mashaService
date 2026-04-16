@@ -38,7 +38,7 @@ class CreateShipment extends CreateRecord
         if ($packageIds->isNotEmpty()) {
             LogisticsPackage::withoutGlobalScopes()
                 ->whereIn('id', $packageIds)
-                ->update(['estado' => 'asignado']);
+                ->update(['estado' => 'embarque_solicitado']);
 
             $count = $packageIds->count();
             LogisticsShipmentHistory::registrar(
