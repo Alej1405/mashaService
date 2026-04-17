@@ -24,9 +24,19 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
         Route::get('/profile',        [\App\Http\Controllers\Portal\PortalController::class, 'profile'])->name('profile');
         Route::post('/profile',       [\App\Http\Controllers\Portal\PortalController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/password', [\App\Http\Controllers\Portal\PortalController::class, 'updatePassword'])->name('profile.password');
-        Route::get('/customers',      [\App\Http\Controllers\Portal\PortalController::class, 'customers'])->name('customers');
-        Route::post('/payments',      [\App\Http\Controllers\Portal\PortalController::class, 'submitPayment'])->name('payments.store');
+        Route::get('/customers',                    [\App\Http\Controllers\Portal\PortalController::class, 'customers'])->name('customers');
+        Route::post('/payments',                    [\App\Http\Controllers\Portal\PortalController::class, 'submitPayment'])->name('payments.store');
+        Route::get('/companies',                    [\App\Http\Controllers\Portal\PortalController::class, 'companies'])->name('companies');
+        Route::get('/companies/create',             [\App\Http\Controllers\Portal\PortalController::class, 'companiesCreate'])->name('companies.create');
+        Route::post('/companies',                   [\App\Http\Controllers\Portal\PortalController::class, 'companiesStore'])->name('companies.store');
+        Route::get('/companies/{company}/edit',     [\App\Http\Controllers\Portal\PortalController::class, 'companiesEdit'])->name('companies.edit');
+        Route::put('/companies/{company}',          [\App\Http\Controllers\Portal\PortalController::class, 'companiesUpdate'])->name('companies.update');
+        Route::delete('/companies/{company}',       [\App\Http\Controllers\Portal\PortalController::class, 'companiesDestroy'])->name('companies.destroy');
     });
+
+    // Aceptación de nota de venta — accesible sin sesión (link del correo)
+    Route::get('/billing/{token}',  [\App\Http\Controllers\Portal\PortalController::class, 'billingAccept'])->name('billing.accept');
+    Route::post('/billing/{token}', [\App\Http\Controllers\Portal\PortalController::class, 'billingConfirm'])->name('billing.confirm');
 });
 
 // ── Portal Móvil ──────────────────────────────────────────────────────────

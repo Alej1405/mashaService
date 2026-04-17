@@ -1783,7 +1783,7 @@ class MobileController extends Controller
         $empresa = $this->empresa();
         $cargas  = LogisticsPackage::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->with('storeCustomer', 'bodega')
+            ->with('storeCustomer', 'bodega', 'items')
             ->orderByDesc('created_at')
             ->paginate(30);
         return view('mobile.logistica-cargas', compact('empresa', 'cargas'));

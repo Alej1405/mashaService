@@ -58,13 +58,86 @@
                     {{ $carga->created_at->format('d/m/Y') }}
                     @if($carga->bodega) · {{ $carga->bodega->pais }} @endif
                 </p>
-                <button onclick="abrirModalEstado({{ $carga->id }}, '{{ $carga->estado }}', '{{ $carga->estado_secundario }}')"
-                        class="text-xs px-3 py-1 rounded-lg"
-                        style="background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25);">
-                    Cambiar estado
-                </button>
+                <div class="flex items-center gap-2">
+                    @if($carga->items->isNotEmpty())
+                        <button onclick="abrirDetalle({{ $carga->id }})"
+                                class="text-xs px-3 py-1 rounded-lg"
+                                style="background: rgba(6,182,212,0.12); color: #67e8f9; border: 1px solid rgba(6,182,212,0.25);">
+                            Productos ({{ $carga->items->count() }})
+                        </button>
+                    @endif
+                    <button onclick="abrirModalEstado({{ $carga->id }}, '{{ $carga->estado }}', '{{ $carga->estado_secundario }}')"
+                            class="text-xs px-3 py-1 rounded-lg"
+                            style="background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25);">
+                        Cambiar estado
+                    </button>
+                </div>
             </div>
         </div>
+
+        {{-- Modal detalle de productos --}}
+        @if($carga->items->isNotEmpty())
+        <div id="modal-detalle-{{ $carga->id }}"
+             class="hidden fixed inset-0 z-50 flex items-end justify-center px-4 pb-6"
+             style="background: rgba(0,0,0,0.75);">
+            <div class="card w-full max-w-sm overflow-hidden flex flex-col" style="max-height: 80vh;">
+                {{-- Header --}}
+                <div class="flex items-center justify-between px-5 py-4 shrink-0"
+                     style="border-bottom: 1px solid rgba(255,255,255,0.07);">
+                    <div>
+                        <p class="text-sm font-semibold text-white">
+                            {{ $carga->descripcion ?? 'Carga #' . $carga->id }}
+                        </p>
+                        @if($carga->numero_tracking)
+                            <p class="text-xs font-mono mt-0.5" style="color: rgba(232,230,240,0.4);">{{ $carga->numero_tracking }}</p>
+                        @endif
+                    </div>
+                    <button onclick="cerrarDetalle({{ $carga->id }})"
+                            class="w-7 h-7 flex items-center justify-center rounded-lg ml-3 shrink-0"
+                            style="background:rgba(255,255,255,0.06); color:rgba(232,230,240,0.5);">✕</button>
+                </div>
+                {{-- Lista de artículos (scrolleable) --}}
+                <div class="overflow-y-auto flex-1 px-4 py-3 space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide mb-1" style="color: rgba(232,230,240,0.35);">
+                        {{ $carga->items->count() }} {{ $carga->items->count() === 1 ? 'producto' : 'productos' }}
+                    </p>
+                    @foreach($carga->items as $item)
+                    <div class="rounded-xl p-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
+                        @if($item->foto_path)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($item->foto_path) }}"
+                                 alt="{{ $item->nombre }}"
+                                 class="w-full h-36 object-cover rounded-lg mb-2">
+                        @endif
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="text-sm font-semibold text-white">{{ $item->nombre }}</p>
+                            @if($item->valor)
+                                <span class="shrink-0 text-sm font-bold text-cyan-300">${{ number_format($item->valor, 2) }}</span>
+                            @endif
+                        </div>
+                        @if($item->descripcion)
+                            <p class="text-xs mt-1 leading-relaxed" style="color: rgba(232,230,240,0.45);">{{ $item->descripcion }}</p>
+                        @endif
+                    </div>
+                    @endforeach
+                    @php $totalItems = $carga->items->whereNotNull('valor')->sum('valor'); @endphp
+                    @if($carga->items->count() > 1 && $totalItems > 0)
+                    <div class="flex items-center justify-between rounded-xl px-3 py-2.5"
+                         style="background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2);">
+                        <span class="text-xs font-semibold" style="color: #67e8f9;">Total artículos</span>
+                        <span class="text-sm font-bold" style="color: #67e8f9;">${{ number_format($totalItems, 2) }}</span>
+                    </div>
+                    @endif
+                </div>
+                {{-- Footer --}}
+                <div class="px-4 py-3 shrink-0" style="border-top: 1px solid rgba(255,255,255,0.07);">
+                    <button onclick="cerrarDetalle({{ $carga->id }})"
+                            class="btn-primary w-full py-2.5 text-sm font-semibold">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+        @endif
         @endforeach
     </div>
 
@@ -139,6 +212,23 @@
 <script>
 const CSRF    = '{{ csrf_token() }}';
 const ESTADOS_SEC = @json(\App\Models\LogisticsPackage::ESTADOS_SECUNDARIOS);
+
+function abrirDetalle(id) {
+    var m = document.getElementById('modal-detalle-' + id);
+    if (m) { m.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+}
+function cerrarDetalle(id) {
+    var m = document.getElementById('modal-detalle-' + id);
+    if (m) { m.classList.add('hidden'); document.body.style.overflow = ''; }
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('[id^="modal-detalle-"]').forEach(function(m) {
+            m.classList.add('hidden');
+        });
+        document.body.style.overflow = '';
+    }
+});
 let pkgActualId = null;
 
 function abrirModalEstado(id, estadoActual, secundarioActual) {

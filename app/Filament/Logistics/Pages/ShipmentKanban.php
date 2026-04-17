@@ -4,6 +4,7 @@ namespace App\Filament\Logistics\Pages;
 
 use App\Mail\LogisticsPackageStatusMail;
 use App\Models\Empresa;
+use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\StoreCustomer;
 use Filament\Facades\Filament;
@@ -45,8 +46,15 @@ class ShipmentKanban extends Page
             'estado_secundario' => null,
         ]);
 
-        $solicitarPago = $nuevoEstado === 'finalizado_aduana';
-        $this->notificarCliente($package->fresh(), $solicitarPago);
+        $fresh = $package->fresh();
+
+        // Al entrar en aduana: crear nota de venta y notificar con el link de aceptación
+        if ($nuevoEstado === 'en_aduana' && $fresh->store_customer_id && $fresh->monto_cobro > 0) {
+            $billingRequest = LogisticsBillingRequest::crearParaPaquete($fresh);
+            $this->notificarCliente($fresh, true, $billingRequest);
+        } else {
+            $this->notificarCliente($fresh, false);
+        }
 
         Notification::make()
             ->title('Paquete movido a «' . (LogisticsPackage::ESTADOS[$nuevoEstado]['label'] ?? $nuevoEstado) . '»')
@@ -88,7 +96,7 @@ class ShipmentKanban extends Page
 
     // ── Notificación al cliente ───────────────────────────────────────────────
 
-    private function notificarCliente(LogisticsPackage $package, bool $solicitarPago = false): void
+    private function notificarCliente(LogisticsPackage $package, bool $solicitarPago = false, ?LogisticsBillingRequest $billingRequest = null): void
     {
         if (! $package->store_customer_id) {
             return;
@@ -101,7 +109,7 @@ class ShipmentKanban extends Page
             return;
         }
 
-        $mail = new LogisticsPackageStatusMail($package, $customer, $empresa, $solicitarPago);
+        $mail = new LogisticsPackageStatusMail($package, $customer, $empresa, $solicitarPago, $billingRequest);
 
         try {
             Resend::emails()->send([
@@ -126,7 +134,13 @@ class ShipmentKanban extends Page
 
         $packages = LogisticsPackage::withoutGlobalScopes()
             ->where('empresa_id', $tenant->id)
-            ->with(['storeCustomer', 'bodega'])
+            ->with([
+                'storeCustomer' => fn ($q) => $q->withoutGlobalScopes(),
+                'bodega'        => fn ($q) => $q->withoutGlobalScopes(),
+                'shipments'     => fn ($q) => $q->withoutGlobalScopes()
+                                               ->orderByDesc('created_at')
+                                               ->limit(1),
+            ])
             ->latest()
             ->get();
 

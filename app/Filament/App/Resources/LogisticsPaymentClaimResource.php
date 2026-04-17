@@ -3,8 +3,12 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\LogisticsPaymentClaimResource\Pages;
+use App\Models\Customer;
+use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsPaymentClaim;
+use App\Models\Sale;
+use App\Models\SaleItem;
 use App\Services\AccountingService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
@@ -18,6 +22,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -151,37 +156,141 @@ class LogisticsPaymentClaimResource extends Resource
     private static function verificarCobro(LogisticsPaymentClaim $claim, ?string $notas): void
     {
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($claim, $notas) {
-                // 1. Generar asiento contable
-                $service = new AccountingService();
-                $entry   = $service->generarAsientoCobroLogistico($claim);
+            DB::transaction(function () use ($claim, $notas) {
+                $empresaId   = $claim->empresa_id;
+                $storeCustomer = $claim->storeCustomer;
+                $packageIds  = $claim->package_ids ?? [];
 
-                // 2. Actualizar estado del cobro
+                // ── 1. Resolver datos de facturación desde el billing request ──────
+                // Busca la billing request aceptada del primer paquete con una
+                $billingRequest = LogisticsBillingRequest::whereIn('package_id', $packageIds)
+                    ->whereIn('estado', ['aceptado', 'facturado'])
+                    ->with('billingCompany')
+                    ->latest()
+                    ->first();
+
+                $billingNombre = $billingRequest?->billing_nombre
+                    ?? $storeCustomer?->nombre_completo
+                    ?? 'Cliente';
+                $billingRuc = $billingRequest?->billing_ruc
+                    ?? $storeCustomer?->cedula_ruc
+                    ?? null;
+
+                // ── 2. Encontrar o crear Customer ERP ────────────────────────────
+                $customer = null;
+                if ($billingRuc) {
+                    $customer = Customer::withoutGlobalScopes()
+                        ->where('empresa_id', $empresaId)
+                        ->where('numero_identificacion', $billingRuc)
+                        ->first();
+                }
+                if (! $customer) {
+                    $customer = Customer::create([
+                        'empresa_id'             => $empresaId,
+                        'nombre'                 => $billingNombre,
+                        'tipo_persona'           => 'juridica',
+                        'tipo_identificacion'    => strlen($billingRuc ?? '') === 13 ? 'ruc' : 'cedula',
+                        'numero_identificacion'  => $billingRuc ?? '9999999999999',
+                        'activo'                 => true,
+                    ]);
+                }
+
+                // ── 3. Construir ítems de la venta ────────────────────────────────
+                // Consolidar items de todas las billing requests de estos paquetes
+                $allBillings = LogisticsBillingRequest::whereIn('package_id', $packageIds)
+                    ->whereIn('estado', ['aceptado', 'facturado'])
+                    ->get();
+
+                $saleItemsData = [];
+                if ($allBillings->isNotEmpty()) {
+                    foreach ($allBillings as $br) {
+                        foreach ($br->items as $item) {
+                            $saleItemsData[] = [
+                                'descripcion_servicio' => $item['descripcion'],
+                                'tipo_item'            => 'servicio',
+                                'cantidad'             => (float) $item['cantidad'],
+                                'precio_unitario'      => (float) $item['precio'],
+                                'aplica_iva'           => $item['iva_pct'] > 0,
+                            ];
+                        }
+                    }
+                }
+
+                // Fallback: si no hay billing requests, un ítem genérico
+                if (empty($saleItemsData)) {
+                    $saleItemsData[] = [
+                        'descripcion_servicio' => 'Servicios logísticos de importación',
+                        'tipo_item'            => 'servicio',
+                        'cantidad'             => 1,
+                        'precio_unitario'      => (float) $claim->monto_declarado,
+                        'aplica_iva'           => true,
+                    ];
+                }
+
+                // ── 4. Crear la venta ─────────────────────────────────────────────
+                $sale = Sale::create([
+                    'empresa_id'      => $empresaId,
+                    'customer_id'     => $customer->id,
+                    'fecha'           => now()->toDateString(),
+                    'tipo_venta'      => 'contado',
+                    'tipo_operacion'  => 'servicios',
+                    'forma_pago'      => 'transferencia',
+                    'estado'          => 'confirmado',
+                    'confirmado_por'  => Auth::id(),
+                    'confirmado_at'   => now(),
+                    'notas'           => 'Generada automáticamente al verificar cobro #'
+                                        . $claim->id
+                                        . ($notas ? "\n" . $notas : ''),
+                ]);
+
+                foreach ($saleItemsData as $itemData) {
+                    SaleItem::create(array_merge($itemData, ['sale_id' => $sale->id]));
+                }
+
+                $sale->refresh();
+
+                // ── 5. Generar asiento contable de venta ──────────────────────────
+                $service = new AccountingService();
+                $entry   = $service->generarAsientoVenta($sale);
+
+                // Vincular asiento a la venta y al claim
+                $sale->update(['journal_entry_id' => $entry->id]);
+
+                // Marcar billing requests como facturadas
+                LogisticsBillingRequest::whereIn('package_id', $packageIds)
+                    ->whereIn('estado', ['aceptado'])
+                    ->update(['estado' => 'facturado']);
+
+                // ── 6. Actualizar estado del cobro ────────────────────────────────
                 $claim->update([
                     'estado'            => 'verificado',
                     'notas_verificador' => $notas,
                     'journal_entry_id'  => $entry->id,
+                    'sale_id'           => $sale->id,
                     'verificado_por'    => Auth::id(),
                     'verificado_at'     => now(),
                 ]);
 
-                // 3. Mover las cargas a "Coordinación de Entrega"
+                // ── 7. Mover las cargas a "Coordinación de Entrega" ───────────────
                 LogisticsPackage::withoutGlobalScopes()
-                    ->whereIn('id', $claim->package_ids ?? [])
+                    ->whereIn('id', $packageIds)
                     ->update([
                         'estado'            => 'en_entrega',
                         'estado_secundario' => null,
+                        'sale_id'           => $sale->id,
                     ]);
             });
 
             Notification::make()
-                ->title('Pago verificado — asiento contable generado')
+                ->title('Pago verificado — venta y asiento contable generados')
                 ->success()
                 ->send();
+
         } catch (\Throwable $e) {
             Log::error('Error verificando cobro logístico', [
                 'claim_id' => $claim->id,
                 'error'    => $e->getMessage(),
+                'trace'    => $e->getTraceAsString(),
             ]);
 
             Notification::make()

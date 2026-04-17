@@ -135,19 +135,34 @@ class ShipmentResource extends Resource
                         ->relationship(
                             name: 'packages',
                             titleAttribute: 'descripcion',
-                            modifyQueryUsing: fn (Builder $query) => $query
-                                ->where(function (Builder $q) {
-                                    // Paquetes sin embarque asignado
-                                    $q->whereDoesntHave('shipments')
-                                      // O paquetes ya en este embarque (para edición)
-                                      ->orWhereHas('shipments', fn (Builder $sq) =>
-                                          $sq->where(
-                                              'logistics_shipments.id',
-                                              request()->route('record')
-                                          )
-                                      );
+                            modifyQueryUsing: function (Builder $query) {
+                                // En embarques consolidados con paquetes de distintos clientes,
+                                // whereDoesntHave/whereHas pasan por EmpresaScope en LogisticsShipment
+                                // y pueden devolver resultados incompletos. Usamos SQL directo sobre
+                                // el pivot para evitar cualquier filtrado por scope.
+                                $record     = request()->route('record');
+                                $shipmentId = $record instanceof LogisticsShipment
+                                    ? $record->getKey()
+                                    : (is_numeric($record) ? (int) $record : null);
+
+                                return $query->where(function (Builder $q) use ($shipmentId) {
+                                    // Paquetes que no están asignados a ningún embarque
+                                    $q->whereNotIn('logistics_packages.id', function ($sub) {
+                                        $sub->from('logistics_shipment_packages')
+                                            ->select('package_id');
+                                    });
+
+                                    // O paquetes ya asignados a ESTE embarque (modo edición)
+                                    if ($shipmentId) {
+                                        $q->orWhereIn('logistics_packages.id', function ($sub) use ($shipmentId) {
+                                            $sub->from('logistics_shipment_packages')
+                                                ->select('package_id')
+                                                ->where('shipment_id', $shipmentId);
+                                        });
+                                    }
                                 })
-                                ->where('estado', '!=', 'entregado'),
+                                ->where('estado', '!=', 'en_entrega');
+                            },
                         )
                         ->getOptionLabelFromRecordUsing(fn (LogisticsPackage $p) =>
                             '[' . ($p->numero_tracking ?? 'PKG-' . $p->id) . '] '

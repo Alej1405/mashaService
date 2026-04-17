@@ -3,12 +3,16 @@
 namespace App\Filament\Logistics\Resources;
 
 use App\Filament\Logistics\Resources\PackageResource\Pages;
+use App\Mail\LogisticsBillingApprovedMail;
 use App\Models\Customer;
+use App\Models\Empresa;
+use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsBodega;
 use App\Models\LogisticsPackage;
 use App\Models\ServiceDesign;
 use App\Models\ServicePackage;
 use App\Models\StoreCustomer;
+use App\Models\StoreCustomerCompany;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -20,9 +24,13 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\ActionGroup;
 use Illuminate\Support\HtmlString;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\EditAction;
@@ -31,7 +39,9 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Resend\Laravel\Facades\Resend;
 
 class PackageResource extends Resource
 {
@@ -280,13 +290,50 @@ class PackageResource extends Resource
                     ->nullable()
                     ->columnSpan(1),
                 TextInput::make('impuestos_amazon')
-                    ->label('Impuestos Amazon ($)')
+                    ->label('Impuestos de origen ($)')
                     ->numeric()
                     ->prefix('$')
                     ->step(0.01)
                     ->nullable()
-                    ->helperText('Impuestos cobrados por Amazon. Informativo.')
+                    ->helperText('Impuestos cobrados en el país de origen.')
                     ->columnSpan(1),
+                TextInput::make('impuestos_aduana')
+                    ->label('Impuestos de aduana / liquidación ($)')
+                    ->numeric()
+                    ->prefix('$')
+                    ->step(0.01)
+                    ->nullable()
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                        if (! $get('impuestos_paga_empresa')) {
+                            return;
+                        }
+                        // Si el toggle está activo, recalcular monto incluyendo nuevos impuestos
+                        $monto     = (float) ($get('monto_cobro') ?? 0);
+                        $anterior  = (float) ($get('_impuestos_aduana_prev') ?? 0);
+                        $nuevo     = (float) ($state ?? 0);
+                        $set('monto_cobro', round(max(0, $monto - $anterior + $nuevo), 2));
+                    })
+                    ->helperText('Impuestos generados en aduana por la liquidación.')
+                    ->columnSpan(1),
+                Toggle::make('impuestos_paga_empresa')
+                    ->label('¿Los impuestos de aduana los paga la empresa?')
+                    ->helperText('Al activar, los impuestos de aduana / liquidación se suman al monto a cobrar.')
+                    ->default(false)
+                    ->live()
+                    ->afterStateUpdated(function (Get $get, Set $set, bool $state) {
+                        $impuestos = (float) ($get('impuestos_aduana') ?? 0);
+                        if ($impuestos <= 0) {
+                            return;
+                        }
+                        $monto = (float) ($get('monto_cobro') ?? 0);
+                        if ($state) {
+                            $set('monto_cobro', round($monto + $impuestos, 2));
+                        } else {
+                            $set('monto_cobro', round(max(0, $monto - $impuestos), 2));
+                        }
+                    })
+                    ->columnSpan(['default' => 1, 'sm' => 2]),
             ])->columns(['default' => 1, 'sm' => 2, 'md' => 3]),
 
             // ── Servicio y cobro ──────────────────────────────────────────────
@@ -577,8 +624,120 @@ class PackageResource extends Resource
                         ->mapWithKeys(fn ($v, $k) => [$k => $v['label']])),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                // ── Aprobar valores de facturación ────────────────────────────
+                Action::make('aprobar_valores')
+                    ->label('Aprobar valores')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->visible(function (LogisticsPackage $record): bool {
+                        return LogisticsBillingRequest::where('package_id', $record->id)
+                            ->where('estado', 'pendiente')
+                            ->exists();
+                    })
+                    ->modalHeading('Aprobar valores del cliente')
+                    ->modalDescription('Se enviará un correo al cliente notificando que los valores han sido aprobados.')
+                    ->modalWidth('lg')
+                    ->form(function (LogisticsPackage $record): array {
+                        $billing = LogisticsBillingRequest::where('package_id', $record->id)
+                            ->where('estado', 'pendiente')
+                            ->with('storeCustomer')
+                            ->first();
+
+                        $resumen = $billing
+                            ? new HtmlString(
+                                '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;font-size:13px;">'
+                                . '<strong>Nota de venta:</strong> ' . e($billing->numero_nota_venta)
+                                . ' &nbsp;|&nbsp; <strong>Total:</strong> $' . number_format($billing->total, 2)
+                                . '<br><strong>Cliente:</strong> ' . e($billing->storeCustomer?->nombre_completo ?? '—')
+                                . '</div>'
+                            )
+                            : new HtmlString('<p style="color:#ef4444;">No se encontró solicitud pendiente.</p>');
+
+                        $companiesOpts = [];
+                        if ($billing) {
+                            $companiesOpts['customer'] = 'A nombre del cliente ('
+                                . trim(($billing->storeCustomer->nombre ?? '') . ' ' . ($billing->storeCustomer->apellido ?? ''))
+                                . ')';
+                            $companies = StoreCustomerCompany::where('store_customer_id', $billing->store_customer_id)
+                                ->where('empresa_id', Filament::getTenant()->id)
+                                ->get();
+                            foreach ($companies as $c) {
+                                $companiesOpts['company_' . $c->id] = 'Empresa: ' . $c->nombre . ' (RUC ' . $c->ruc . ')';
+                            }
+                        }
+
+                        return [
+                            \Filament\Forms\Components\Placeholder::make('resumen')
+                                ->label('Solicitud de facturación')
+                                ->content($resumen),
+
+                            Select::make('billing_type')
+                                ->label('¿A nombre de quién se factura?')
+                                ->options($companiesOpts)
+                                ->required()
+                                ->default('customer'),
+
+                            Textarea::make('observacion')
+                                ->label('Observación / cómo aprobó el cliente')
+                                ->placeholder('Ej. El cliente llamó y confirmó los valores por teléfono.')
+                                ->required()
+                                ->rows(3),
+                        ];
+                    })
+                    ->action(function (LogisticsPackage $record, array $data): void {
+                        $billing = LogisticsBillingRequest::where('package_id', $record->id)
+                            ->where('estado', 'pendiente')
+                            ->with(['storeCustomer', 'package'])
+                            ->first();
+
+                        if (! $billing) {
+                            Notification::make()->title('No se encontró solicitud pendiente')->warning()->send();
+                            return;
+                        }
+
+                        // Resolver empresa / cliente para facturación
+                        $billingType = $data['billing_type'];
+                        $company     = null;
+                        if (str_starts_with($billingType, 'company_')) {
+                            $companyId   = (int) str_replace('company_', '', $billingType);
+                            $company     = StoreCustomerCompany::find($companyId);
+                            $billingType = 'company';
+                        }
+
+                        $billing->aceptar('erp', $billingType, $company, $billing->storeCustomer);
+                        $billing->update(['notas' => $data['observacion']]);
+
+                        // Enviar correo de confirmación por Resend
+                        $customer = $billing->storeCustomer;
+                        $empresa  = Empresa::find($record->empresa_id);
+
+                        if ($customer && $empresa && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
+                            $mail = new LogisticsBillingApprovedMail($billing, $customer, $empresa, $data['observacion']);
+                            try {
+                                Resend::emails()->send([
+                                    'from'    => config('mail.from.name') . ' <' . config('mail.from.address') . '>',
+                                    'to'      => [$customer->email],
+                                    'subject' => $mail->envelope()->subject,
+                                    'html'    => $mail->buildHtml(),
+                                ]);
+                            } catch (\Exception $e) {
+                                Log::error('Error enviando correo de aprobación de facturación', [
+                                    'billing_id' => $billing->id,
+                                    'error'      => $e->getMessage(),
+                                ]);
+                            }
+                        }
+
+                        Notification::make()
+                            ->title('Valores aprobados y cliente notificado')
+                            ->success()
+                            ->send();
+                    }),
+
+                ActionGroup::make([
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
             ]);
     }
 

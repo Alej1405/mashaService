@@ -306,6 +306,16 @@ class Empresa extends Model implements HasName
         return $this->hasMany(\App\Models\LogisticsConsignatario::class, 'empresa_id');
     }
 
+    public function storeCustomerCompanies(): HasMany
+    {
+        return $this->hasMany(\App\Models\StoreCustomerCompany::class, 'empresa_id');
+    }
+
+    public function logisticsBillingRequests(): HasMany
+    {
+        return $this->hasMany(\App\Models\LogisticsBillingRequest::class, 'empresa_id');
+    }
+
     public function logisticsPackages(): HasMany
     {
         return $this->hasMany(\App\Models\LogisticsPackage::class, 'empresa_id');

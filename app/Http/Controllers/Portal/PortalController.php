@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use App\Models\Empresa;
+use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsPaymentClaim;
 use App\Models\ServiceContract;
 use App\Models\StoreCustomer;
+use App\Models\StoreCustomerCompany;
 use App\Models\StoreOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -137,16 +139,34 @@ class PortalController extends Controller
 
         $packages = LogisticsPackage::withoutGlobalScopes()
             ->with([
-                'shipments' => fn ($q) => $q->orderByDesc('created_at')->limit(1),
+                'shipments'       => fn ($q) => $q->orderByDesc('created_at')->limit(1),
                 'documents',
                 'items',
+                'servicePackage',
+                'billingRequests' => fn ($q) => $q->latest()->limit(1),
             ])
             ->where('store_customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->latest()
             ->paginate(15);
 
-        return view('portal.packages', compact('empresa', 'customer', 'packages'));
+        // Cargar payment claims del cliente para estos paquetes
+        $packageIds   = $packages->pluck('id')->toArray();
+        $paymentClaims = LogisticsPaymentClaim::withoutGlobalScopes()
+            ->where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->get()
+            ->filter(fn ($claim) => count(array_intersect($claim->package_ids ?? [], $packageIds)) > 0);
+
+        // Indexar por package_id para acceso rápido en la vista
+        $claimsByPackage = [];
+        foreach ($paymentClaims as $claim) {
+            foreach ($claim->package_ids ?? [] as $pid) {
+                $claimsByPackage[$pid][] = $claim;
+            }
+        }
+
+        return view('portal.packages', compact('empresa', 'customer', 'packages', 'claimsByPackage'));
     }
 
     public function profile(Request $request, string $slug)
@@ -199,7 +219,7 @@ class PortalController extends Controller
             'package_ids'    => 'required|array|min:1',
             'package_ids.*'  => 'integer',
             'monto_manual'   => 'required|numeric|min:0.01',
-            'comprobante'    => 'nullable|image|max:5120',
+            'comprobante'    => 'nullable|file|mimes:jpeg,jpg,png,gif,pdf|max:10240',
             'notas_cliente'  => 'nullable|string|max:500',
         ]);
 
@@ -233,6 +253,167 @@ class PortalController extends Controller
         ]);
 
         return back()->with('payment_sent', '¡Pago registrado! Verificaremos tu transferencia a la brevedad.');
+    }
+
+    // ── Empresas ──────────────────────────────────────────────────────────────
+
+    public function companies(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $companies = StoreCustomerCompany::where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->latest()
+            ->get();
+
+        return view('portal.companies', compact('empresa', 'customer', 'companies'));
+    }
+
+    public function companiesCreate(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        return view('portal.companies-form', compact('empresa', 'customer'));
+    }
+
+    public function companiesStore(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $data = $request->validate([
+            'ruc'       => 'required|string|size:13',
+            'nombre'    => 'required|string|max:200',
+            'direccion' => 'nullable|string|max:300',
+            'correo'    => 'nullable|email|max:200',
+            'cargo'     => 'nullable|string|max:150',
+        ]);
+
+        $data['store_customer_id'] = $customer->id;
+        $data['empresa_id']        = $empresa->id;
+
+        StoreCustomerCompany::create($data);
+
+        return redirect()
+            ->route('portal.companies', $slug)
+            ->with('success', 'Empresa registrada correctamente.');
+    }
+
+    public function companiesEdit(Request $request, string $slug, int $company)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $companyRecord = StoreCustomerCompany::where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->findOrFail($company);
+
+        return view('portal.companies-form', compact('empresa', 'customer', 'companyRecord'));
+    }
+
+    public function companiesUpdate(Request $request, string $slug, int $company)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $companyRecord = StoreCustomerCompany::where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->findOrFail($company);
+
+        $data = $request->validate([
+            'ruc'       => 'required|string|size:13',
+            'nombre'    => 'required|string|max:200',
+            'direccion' => 'nullable|string|max:300',
+            'correo'    => 'nullable|email|max:200',
+            'cargo'     => 'nullable|string|max:150',
+        ]);
+
+        $companyRecord->update($data);
+
+        return redirect()
+            ->route('portal.companies', $slug)
+            ->with('success', 'Empresa actualizada correctamente.');
+    }
+
+    public function companiesDestroy(Request $request, string $slug, int $company)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        StoreCustomerCompany::where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->findOrFail($company)
+            ->delete();
+
+        return redirect()
+            ->route('portal.companies', $slug)
+            ->with('success', 'Empresa eliminada.');
+    }
+
+    // ── Aceptación de nota de venta (link del correo o portal) ───────────────
+
+    public function billingAccept(Request $request, string $slug, string $token)
+    {
+        $empresa = $this->empresa($slug);
+
+        $billing = LogisticsBillingRequest::where('token', $token)
+            ->where('empresa_id', $empresa->id)
+            ->with(['package', 'storeCustomer'])
+            ->firstOrFail();
+
+        if ($billing->estado === 'aceptado') {
+            return view('portal.billing-accepted', compact('empresa', 'billing'));
+        }
+
+        if ($billing->estado !== 'pendiente') {
+            abort(410, 'Esta solicitud ya no está disponible.');
+        }
+
+        $customer = $billing->storeCustomer;
+
+        // Listar empresas del cliente
+        $companies = StoreCustomerCompany::where('store_customer_id', $customer->id)
+            ->where('empresa_id', $empresa->id)
+            ->get();
+
+        return view('portal.billing-accept', compact('empresa', 'billing', 'customer', 'companies'));
+    }
+
+    public function billingConfirm(Request $request, string $slug, string $token)
+    {
+        $empresa = $this->empresa($slug);
+
+        $billing = LogisticsBillingRequest::where('token', $token)
+            ->where('empresa_id', $empresa->id)
+            ->with('storeCustomer')
+            ->firstOrFail();
+
+        if ($billing->estado !== 'pendiente') {
+            return redirect()->back()->withErrors(['error' => 'Esta solicitud ya no está disponible.']);
+        }
+
+        $request->validate([
+            'billing_type'       => 'required|in:customer,company',
+            'billing_company_id' => 'required_if:billing_type,company|nullable|integer',
+        ]);
+
+        $billingType = $request->billing_type;
+        $company     = null;
+
+        if ($billingType === 'company') {
+            $company = StoreCustomerCompany::where('id', $request->billing_company_id)
+                ->where('store_customer_id', $billing->store_customer_id)
+                ->where('empresa_id', $empresa->id)
+                ->firstOrFail();
+        }
+
+        $billing->aceptar('email', $billingType, $company, $billing->storeCustomer);
+
+        return redirect()
+            ->route('portal.billing.accept', [$slug, $token])
+            ->with('accepted', true);
     }
 
     public function customers(Request $request, string $slug)

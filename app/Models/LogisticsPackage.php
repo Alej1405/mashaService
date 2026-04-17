@@ -34,6 +34,8 @@ class LogisticsPackage extends Model
         'valor_declarado',
         'gastos_envio',
         'impuestos_amazon',
+        'impuestos_paga_empresa',
+        'impuestos_aduana',
         'moneda',
         'estado',
         'estado_secundario',
@@ -48,8 +50,10 @@ class LogisticsPackage extends Model
         'alto_cm'               => 'decimal:2',
         'valor_declarado'        => 'decimal:2',
         'gastos_envio'           => 'decimal:2',
-        'impuestos_amazon'       => 'decimal:2',
-        'fecha_recepcion_bodega' => 'date',
+        'impuestos_amazon'         => 'decimal:2',
+        'impuestos_paga_empresa'   => 'boolean',
+        'impuestos_aduana'         => 'decimal:2',
+        'fecha_recepcion_bodega'   => 'date',
         'cantidad_cobro'         => 'decimal:4',
         'monto_cobro'            => 'decimal:2',
     ];
@@ -179,6 +183,11 @@ class LogisticsPackage extends Model
     public function items(): HasMany
     {
         return $this->hasMany(LogisticsPackageItem::class, 'logistics_package_id');
+    }
+
+    public function billingRequests(): HasMany
+    {
+        return $this->hasMany(LogisticsBillingRequest::class, 'package_id');
     }
 
     /** Peso volumétrico en kg (largo × ancho × alto / 5000) */

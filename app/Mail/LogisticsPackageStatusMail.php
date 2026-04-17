@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\BankAccount;
 use App\Models\Empresa;
+use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsShipment;
 use App\Models\StoreCustomer;
@@ -20,10 +21,11 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public function __construct(
-        public readonly LogisticsPackage $package,
-        public readonly StoreCustomer    $customer,
-        public readonly Empresa          $empresa,
-        public readonly bool             $solicitarPago = false,
+        public readonly LogisticsPackage       $package,
+        public readonly StoreCustomer          $customer,
+        public readonly Empresa                $empresa,
+        public readonly bool                   $solicitarPago   = false,
+        public readonly ?LogisticsBillingRequest $billingRequest = null,
     ) {}
 
     public function envelope(): Envelope
@@ -38,9 +40,11 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
             }
         }
 
-        $asunto = $this->solicitarPago
-            ? '[' . $this->empresa->name . '] Tu carga está lista — Solicitud de pago'
-            : '[' . $this->empresa->name . '] Tu carga: ' . $label;
+        $asunto = $this->solicitarPago && $this->billingRequest
+            ? '[' . $this->empresa->name . '] Nota de venta ' . $this->billingRequest->numero_nota_venta . ' — Confirma los valores de tu carga'
+            : ($this->solicitarPago
+                ? '[' . $this->empresa->name . '] Tu carga está lista — Solicitud de pago'
+                : '[' . $this->empresa->name . '] Tu carga: ' . $label);
 
         return new Envelope(subject: $asunto);
     }
@@ -123,6 +127,12 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
         }
         if ($shipment?->fecha_llegada_ecuador) {
             $detalles .= $this->fila('Llegada estimada', $shipment->fecha_llegada_ecuador->format('d/m/Y'));
+        }
+
+        // ── Nota de venta SRI ─────────────────────────────────────────────────
+        $notaVentaHtml = '';
+        if ($this->billingRequest) {
+            $notaVentaHtml = $this->buildNotaVentaHtml($this->billingRequest, $empresa, $customer);
         }
 
         // Sección de solicitud de pago
@@ -280,6 +290,8 @@ HTML;
 
   {$embarqueHtml}
 
+  {$notaVentaHtml}
+
   {$pagoHtml}
 
   <tr>
@@ -315,6 +327,160 @@ HTML;
 </table>
 </body>
 </html>
+HTML;
+    }
+
+    // ── Nota de venta en formato SRI ─────────────────────────────────────────
+
+    private function buildNotaVentaHtml(
+        \App\Models\LogisticsBillingRequest $billing,
+        Empresa $empresa,
+        StoreCustomer $customer
+    ): string {
+        $numero   = e($billing->numero_nota_venta);
+        $fecha    = now()->format('d/m/Y');
+        $empName  = e($empresa->name);
+        $empRuc   = e($empresa->numero_identificacion ?? '');
+        $empDir   = e($empresa->direccion ?? '');
+        $custName = e($customer->nombre_completo);
+        $custId   = e($customer->cedula_ruc ?? 'S/I');
+        $acceptUrl = $billing->getAcceptUrl();
+
+        // Filas de ítems
+        $itemsHtml = '';
+        foreach ($billing->items as $item) {
+            $cod   = e($item['codigo']);
+            $desc  = e($item['descripcion']);
+            $qty   = number_format($item['cantidad'], 0);
+            $price = number_format($item['precio'], 2);
+            $total = number_format($item['total'], 2);
+            $ivaPct = $item['iva_pct'] . '%';
+            $itemsHtml .= <<<HTML
+<tr>
+  <td style="padding:7px 8px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;">{$cod}</td>
+  <td style="padding:7px 8px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;">{$desc}</td>
+  <td style="padding:7px 8px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;text-align:center;">{$qty}</td>
+  <td style="padding:7px 8px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;text-align:right;">\${$price}</td>
+  <td style="padding:7px 8px;font-size:11px;color:#374151;border-bottom:1px solid #e5e7eb;text-align:center;">{$ivaPct}</td>
+  <td style="padding:7px 8px;font-size:11px;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;text-align:right;">\${$total}</td>
+</tr>
+HTML;
+        }
+
+        $sub0  = '$' . number_format($billing->subtotal_0,  2);
+        $sub15 = '$' . number_format($billing->subtotal_15, 2);
+        $iva   = '$' . number_format($billing->iva,         2);
+        $total = '$' . number_format($billing->total,       2);
+
+        return <<<HTML
+<tr>
+  <td style="padding:0 40px 28px;">
+
+    {{-- Título de sección --}}
+    <p style="margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#374151;">
+      Nota de Venta / Proforma
+    </p>
+
+    <div style="border:1px solid #d1d5db;border-radius:10px;overflow:hidden;font-family:Arial,sans-serif;">
+
+      {{-- Encabezado empresa --}}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="background:#1e293b;padding:16px 20px;">
+        <tr>
+          <td style="width:60%;vertical-align:top;">
+            <p style="margin:0;color:#f1f5f9;font-size:14px;font-weight:700;">{$empName}</p>
+            <p style="margin:2px 0 0;color:#94a3b8;font-size:11px;">RUC: {$empRuc}</p>
+            <p style="margin:2px 0 0;color:#94a3b8;font-size:11px;">{$empDir}</p>
+          </td>
+          <td style="vertical-align:top;text-align:right;">
+            <p style="margin:0;color:#f97316;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Nota de Venta</p>
+            <p style="margin:4px 0 0;color:#f1f5f9;font-size:13px;font-weight:700;font-family:monospace;">{$numero}</p>
+            <p style="margin:2px 0 0;color:#94a3b8;font-size:11px;">Fecha: {$fecha}</p>
+          </td>
+        </tr>
+      </table>
+
+      {{-- Datos del cliente --}}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="background:#f8fafc;padding:12px 20px;border-bottom:1px solid #e5e7eb;">
+        <tr>
+          <td style="width:50%;vertical-align:top;">
+            <p style="margin:0;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;">Cliente</p>
+            <p style="margin:2px 0 0;font-size:12px;font-weight:600;color:#111827;">{$custName}</p>
+          </td>
+          <td style="vertical-align:top;">
+            <p style="margin:0;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;">Identificación</p>
+            <p style="margin:2px 0 0;font-size:12px;font-weight:600;color:#111827;font-family:monospace;">{$custId}</p>
+          </td>
+        </tr>
+      </table>
+
+      {{-- Detalle de ítems --}}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding:0 0 0 0;">
+        <thead>
+          <tr style="background:#f1f5f9;">
+            <th style="padding:8px 8px;font-size:10px;text-transform:uppercase;color:#6b7280;text-align:left;font-weight:600;">Cód.</th>
+            <th style="padding:8px 8px;font-size:10px;text-transform:uppercase;color:#6b7280;text-align:left;font-weight:600;">Descripción</th>
+            <th style="padding:8px 8px;font-size:10px;text-transform:uppercase;color:#6b7280;text-align:center;font-weight:600;">Cant.</th>
+            <th style="padding:8px 8px;font-size:10px;text-transform:uppercase;color:#6b7280;text-align:right;font-weight:600;">P. Unit.</th>
+            <th style="padding:8px 8px;font-size:10px;text-transform:uppercase;color:#6b7280;text-align:center;font-weight:600;">IVA</th>
+            <th style="padding:8px 8px;font-size:10px;text-transform:uppercase;color:#6b7280;text-align:right;font-weight:600;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {$itemsHtml}
+        </tbody>
+      </table>
+
+      {{-- Totales --}}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-top:2px solid #e5e7eb;background:#f8fafc;padding:12px 20px;">
+        <tr>
+          <td style="width:60%;"></td>
+          <td style="padding:3px 8px;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="font-size:11px;color:#6b7280;padding:2px 0;">SUBTOTAL 0%</td>
+                <td style="font-size:11px;color:#374151;text-align:right;padding:2px 0;">{$sub0}</td>
+              </tr>
+              <tr>
+                <td style="font-size:11px;color:#6b7280;padding:2px 0;">SUBTOTAL 15%</td>
+                <td style="font-size:11px;color:#374151;text-align:right;padding:2px 0;">{$sub15}</td>
+              </tr>
+              <tr>
+                <td style="font-size:11px;color:#6b7280;padding:2px 0;">IVA 15%</td>
+                <td style="font-size:11px;color:#374151;text-align:right;padding:2px 0;">{$iva}</td>
+              </tr>
+              <tr style="border-top:1px solid #d1d5db;">
+                <td style="font-size:13px;font-weight:800;color:#111827;padding:6px 0 2px;">VALOR TOTAL</td>
+                <td style="font-size:15px;font-weight:800;color:#b45309;text-align:right;padding:6px 0 2px;">{$total}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    {{-- Botones de acción --}}
+    <table width="100%" cellpadding="0" cellspacing="16" border="0" style="margin-top:20px;">
+      <tr>
+        <td style="text-align:center;">
+          <a href="{$acceptUrl}" target="_blank"
+             style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;
+                    padding:13px 32px;border-radius:8px;font-size:14px;font-weight:700;
+                    border:2px solid #15803d;">
+            ✓ Estoy de acuerdo →
+          </a>
+          <p style="margin:10px 0 0;font-size:11px;color:#94a3b8;">
+            Al confirmar, podrás indicar a qué nombre emitir la factura.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+  </td>
+</tr>
 HTML;
     }
 

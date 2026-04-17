@@ -66,12 +66,14 @@ class LogisticsPanelProvider extends PanelProvider
             ->navigationGroups([
                 NavigationGroup::make('Bodegas')->collapsible(false),
                 NavigationGroup::make('Importaciones')->collapsible(false),
+                NavigationGroup::make('Clientes')->collapsible(),
                 NavigationGroup::make('Configuración')->collapsible(),
             ])
             ->resources([
                 \App\Filament\Logistics\Resources\PackageResource::class,
                 \App\Filament\Logistics\Resources\ConsignatarioResource::class,
                 \App\Filament\Logistics\Resources\ShipmentResource::class,
+                \App\Filament\Logistics\Resources\StoreCustomerCompanyResource::class,
             ])
             ->pages([
                 \App\Filament\Logistics\Pages\Dashboard::class,

@@ -21,6 +21,7 @@ class LogisticsPaymentClaim extends Model
         'estado',
         'notas_verificador',
         'journal_entry_id',
+        'sale_id',
         'verificado_por',
         'verificado_at',
     ];

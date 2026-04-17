@@ -38,7 +38,7 @@
             @foreach($columns as $estado => $info)
             @php $cards = $packagesByState[$estado] ?? []; @endphp
 
-            <div class="flex flex-col shrink-0" style="width: 260px;">
+            <div class="flex flex-col shrink-0" style="width: 272px;">
 
                 {{-- Cabecera columna --}}
                 <div class="rounded-t-xl px-3 py-2.5 flex items-center justify-between"
@@ -82,94 +82,117 @@
 
                     @foreach($cards as $package)
                     @php
-                        $secundarios  = \App\Models\LogisticsPackage::ESTADOS_SECUNDARIOS[$package->estado] ?? [];
-                        $secActivo    = $package->estado_secundario;
-                        $secInfo      = $secActivo ? ($secundarios[$secActivo] ?? null) : null;
+                        $secundarios   = \App\Models\LogisticsPackage::ESTADOS_SECUNDARIOS[$package->estado] ?? [];
+                        $secActivo     = $package->estado_secundario;
                         $clienteNombre = $package->storeCustomer
                             ? trim($package->storeCustomer->nombre . ' ' . ($package->storeCustomer->apellido ?? ''))
                             : '—';
+                        $shipment   = $package->shipments->first();
+                        $shipEstado = $shipment ? (\App\Models\LogisticsShipment::ESTADOS[$shipment->estado] ?? null) : null;
                     @endphp
 
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm
+                                border border-gray-100 dark:border-gray-700
                                 cursor-grab active:cursor-grabbing select-none
-                                hover:shadow-md transition-all duration-150 p-3"
+                                hover:shadow-md transition-all duration-150"
                          data-id="{{ $package->id }}"
                          wire:key="pkg-{{ $package->id }}">
 
-                        {{-- Tracking + origen --}}
-                        <div class="flex items-start justify-between mb-1.5">
-                            <span class="font-mono text-xs font-bold text-gray-800 dark:text-gray-100 truncate max-w-[140px]"
-                                  title="{{ $package->numero_tracking }}">
-                                {{ $package->numero_tracking ?? 'Sin tracking' }}
-                            </span>
-                            @if($package->bodega)
-                            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 shrink-0">
-                                {{ $package->bodega->pais ?? '—' }}
-                            </span>
-                            @endif
-                        </div>
-
-                        {{-- Cliente --}}
-                        <p class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate leading-snug">
-                            {{ $clienteNombre }}
-                        </p>
-
-                        {{-- Descripción breve --}}
-                        @if($package->descripcion)
-                        <p class="text-[11px] text-gray-400 truncate mt-0.5">{{ $package->descripcion }}</p>
-                        @endif
-
-                        {{-- Métricas --}}
-                        <div class="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
-                            @if($package->peso_kg)
-                                <span>⚖️ {{ $package->peso_kg }} kg</span>
-                            @endif
-                            @if($package->valor_declarado)
-                                <span>💵 ${{ number_format($package->valor_declarado, 0) }}</span>
-                            @endif
-                            @if($package->monto_cobro)
-                                <span class="text-orange-500 font-semibold">💰 ${{ number_format($package->monto_cobro, 2) }}</span>
-                            @endif
-                        </div>
-
-                        {{-- Estado secundario activo --}}
-                        @if($secInfo)
-                        <div class="mt-1.5">
-                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
-                                  style="background-color: {{ $secInfo['color'] }}">
-                                <span class="w-1.5 h-1.5 rounded-full bg-white opacity-80"></span>
-                                {{ $secInfo['label'] }}
-                            </span>
+                        {{-- ── Cabecera de la tarjeta: embarque prominente ── --}}
+                        @if($shipment)
+                        <div class="px-3 pt-2.5 pb-2 border-b border-gray-100 dark:border-gray-700">
+                            <a href="{{ \App\Filament\Logistics\Resources\ShipmentResource::getUrl('edit', ['record' => $shipment->id], tenant: \Filament\Facades\Filament::getTenant()) }}"
+                               wire:navigate.stop
+                               class="flex items-center justify-between gap-2 group">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <svg class="w-3.5 h-3.5 shrink-0 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                    </svg>
+                                    <span class="font-mono text-sm font-bold text-primary-600 dark:text-primary-400 truncate group-hover:underline">
+                                        {{ $shipment->numero_embarque }}
+                                    </span>
+                                </div>
+                                @if($shipEstado)
+                                <span class="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white whitespace-nowrap"
+                                      style="background-color: {{ $shipEstado['color'] }}">
+                                    {{ $shipEstado['label'] }}
+                                </span>
+                                @endif
+                            </a>
                         </div>
                         @endif
 
-                        {{-- Selector de estados secundarios --}}
-                        @if(count($secundarios) > 0)
-                        <div class="mt-2 pt-1.5 border-t border-gray-50 dark:border-gray-700">
-                            <div class="flex flex-wrap gap-1">
-                                @foreach($secundarios as $key => $sec)
-                                <button
-                                    wire:click.stop="setEstadoSecundario({{ $package->id }}, '{{ $key }}')"
-                                    class="text-[10px] px-1.5 py-0.5 rounded-full font-medium border transition-all cursor-pointer"
-                                    style="{{ $secActivo === $key
-                                        ? 'background:' . $sec['color'] . ';color:#fff;border-color:' . $sec['color'] . ';'
-                                        : 'background:#f8fafc;color:#94a3b8;border-color:#e2e8f0;' }}"
-                                    title="{{ $sec['label'] }}">
-                                    {{ $sec['label'] }}
-                                </button>
-                                @endforeach
+                        {{-- ── Cuerpo ── --}}
+                        <div class="px-3 pt-2 pb-1">
+
+                            {{-- Tracking + origen --}}
+                            <div class="flex items-center justify-between gap-1 mb-1">
+                                <span class="font-mono text-[11px] font-semibold text-gray-500 dark:text-gray-400 truncate"
+                                      title="{{ $package->numero_tracking }}">
+                                    {{ $package->numero_tracking ?? 'Sin tracking' }}
+                                </span>
+                                @if($package->bodega)
+                                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 shrink-0">
+                                    {{ $package->bodega->pais ?? '—' }}
+                                </span>
+                                @endif
                             </div>
+
+                            {{-- Cliente --}}
+                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate leading-snug">
+                                {{ $clienteNombre }}
+                            </p>
+
+                            {{-- Descripción --}}
+                            @if($package->descripcion)
+                            <p class="text-[11px] text-gray-400 truncate mt-0.5">{{ $package->descripcion }}</p>
+                            @endif
+
+                            {{-- Métricas --}}
+                            <div class="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                                @if($package->peso_kg)
+                                    <span>⚖️ {{ $package->peso_kg }} kg</span>
+                                @endif
+                                @if($package->valor_declarado)
+                                    <span>💵 ${{ number_format($package->valor_declarado, 0) }}</span>
+                                @endif
+                                @if($package->monto_cobro)
+                                    <span class="text-orange-500 font-semibold">💰 ${{ number_format($package->monto_cobro, 2) }}</span>
+                                @endif
+                            </div>
+
+                        </div>
+
+                        {{-- ── Estado secundario (select) ── --}}
+                        @if(count($secundarios) > 0)
+                        <div class="px-3 pb-2">
+                            <select
+                                wire:change.stop="setEstadoSecundario({{ $package->id }}, $event.target.value)"
+                                class="w-full text-[11px] rounded-lg border px-2 py-1.5 font-medium
+                                       focus:outline-none focus:ring-2 focus:ring-primary-400 transition
+                                       bg-gray-50 dark:bg-gray-700 dark:border-gray-600
+                                       border-gray-200 text-gray-600 dark:text-gray-300 cursor-pointer">
+                                <option value="">— sin subestado —</option>
+                                @foreach($secundarios as $key => $sec)
+                                <option value="{{ $key }}" {{ $secActivo === $key ? 'selected' : '' }}>
+                                    {{ $sec['label'] }}
+                                </option>
+                                @endforeach
+                            </select>
                         </div>
                         @endif
 
-                        {{-- Editar --}}
-                        <div class="mt-1.5 pt-1 border-t border-gray-50 dark:border-gray-700">
+                        {{-- ── Enlace editar ── --}}
+                        <div class="px-3 pb-2.5">
                             <a href="{{ \App\Filament\Logistics\Resources\PackageResource::getUrl('edit', ['record' => $package->id], tenant: \Filament\Facades\Filament::getTenant()) }}"
                                wire:navigate
-                               class="block text-center text-[11px] text-gray-400 hover:text-primary-600 transition py-0.5 rounded hover:bg-primary-50">
+                               class="block text-center text-[11px] text-gray-400 hover:text-primary-600 transition
+                                      py-1 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 border border-transparent hover:border-primary-100">
                                 Ver / editar →
                             </a>
                         </div>
+
                     </div>
                     @endforeach
 
