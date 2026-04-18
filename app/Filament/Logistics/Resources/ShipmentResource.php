@@ -229,6 +229,7 @@ class ShipmentResource extends Resource
                                 ->directory('logistics/documents')
                                 ->acceptedFileTypes(['application/pdf', 'image/*'])
                                 ->required()
+                                ->dehydrateStateUsing(fn ($state) => is_array($state) ? (string) reset($state) : (string) $state)
                                 ->columnSpan(2),
                             Textarea::make('notas')
                                 ->label('Notas')

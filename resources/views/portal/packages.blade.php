@@ -43,7 +43,7 @@
                     $claims        = $claimsByPackage[$pkg->id] ?? [];
                     $lastClaim     = collect($claims)->sortByDesc('created_at')->first();
                     $claimPendiente = $lastClaim && $lastClaim->estado === 'pendiente';
-                    $claimVerif     = $lastClaim && $lastClaim->estado === 'verificado';
+                    $claimVerif     = ($billing && $billing->estado === 'cobrado');
                     $claimRechazado = $lastClaim && $lastClaim->estado === 'rechazado';
                     $mostrarPago    = $billing && in_array($billing->estado, ['aceptado', 'facturado']);
                 @endphp
@@ -244,8 +244,8 @@
                             </div>
                         </div>
 
-                        {{-- Verificación de pago (solo cuando billing está aceptado o facturado) --}}
-                        @if($mostrarPago)
+                        {{-- Verificación de pago --}}
+                        @if($mostrarPago || $claimVerif)
                         <div>
                             <p class="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">Verificación de pago</p>
 
@@ -257,7 +257,7 @@
                                     </svg>
                                     <div>
                                         <p class="text-sm font-semibold text-green-800">Pago verificado</p>
-                                        <p class="text-xs text-green-600">Monto: ${{ number_format($lastClaim->monto_declarado, 2) }}</p>
+                                        <p class="text-xs text-green-600">Total: ${{ number_format($billing->total, 2) }}</p>
                                     </div>
                                 </div>
 

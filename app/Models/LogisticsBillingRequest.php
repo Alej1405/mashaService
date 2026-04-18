@@ -30,6 +30,9 @@ class LogisticsBillingRequest extends Model
         'accepted_channel',
         'accepted_at',
         'notas',
+        'sale_id',
+        'verificado_por',
+        'verificado_at',
     ];
 
     protected $casts = [
@@ -38,14 +41,16 @@ class LogisticsBillingRequest extends Model
         'subtotal_15'  => 'decimal:2',
         'iva'          => 'decimal:2',
         'total'        => 'decimal:2',
-        'accepted_at'  => 'datetime',
+        'accepted_at'   => 'datetime',
+        'verificado_at' => 'datetime',
     ];
 
     const ESTADOS = [
         'pendiente'  => ['label' => 'Pendiente de aceptación', 'color' => 'warning'],
         'aceptado'   => ['label' => 'Aceptado',               'color' => 'success'],
         'rechazado'  => ['label' => 'Rechazado',              'color' => 'danger'],
-        'facturado'  => ['label' => 'Facturado',              'color' => 'info'],
+        'facturado'  => ['label' => 'Por cobrar',             'color' => 'info'],
+        'cobrado'    => ['label' => 'Cobrado',                'color' => 'primary'],
     ];
 
     // ── Relaciones ────────────────────────────────────────────────────────────
