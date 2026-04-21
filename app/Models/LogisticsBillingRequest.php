@@ -92,28 +92,43 @@ class LogisticsBillingRequest extends Model
         }
 
         // Calcular líneas e importes
-        $impOrigen = (float) ($package->impuestos_amazon ?? 0);
-        $impAduana  = ($package->impuestos_paga_empresa ? (float) ($package->impuestos_aduana ?? 0) : 0);
-        $subtotal0  = $impOrigen + $impAduana;
-        $subtotal15 = max(0, (float) ($package->monto_cobro ?? 0) - $subtotal0);
+        $impOrigen           = (float) ($package->impuestos_amazon ?? 0);
+        $impAduana           = ($package->impuestos_paga_empresa ? (float) ($package->impuestos_aduana ?? 0) : 0);
+        $cargoNacional       = (float) ($package->cobro_nacionalizacion ?? 0);
+        $cargoTransporte     = (float) ($package->cobro_transporte_interno ?? 0);
+        $cargoOtro           = (float) ($package->cobro_otro ?? 0);
+
+        // Impuestos (origen/aduana): paso al cliente sin IVA
+        // Servicios (cobro + cargos): gravan 15% IVA
+        $base0  = $impOrigen + $impAduana;
+        $base15 = max(0, (float) ($package->monto_cobro ?? 0) - $impAduana)
+                  + $cargoNacional + $cargoTransporte + $cargoOtro;
+
+        $subtotal0  = $base0;
+        $subtotal15 = $base15;
         $iva        = round($subtotal15 * 0.15, 2);
         $total      = round($subtotal0 + $subtotal15 + $iva, 2);
 
-        $items = [];
-        if ($subtotal15 > 0) {
+        $items  = [];
+        $codigo = 1;
+
+        // Servicio de importación (base gravable 15%)
+        $servicioBase = max(0, (float) ($package->monto_cobro ?? 0) - ($impOrigen + $impAduana));
+        if ($servicioBase > 0) {
             $items[] = [
-                'codigo'      => '001',
+                'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
                 'descripcion' => 'Servicio de importación courier'
                     . ($package->numero_tracking ? ' — ' . $package->numero_tracking : ''),
                 'cantidad'    => 1,
-                'precio'      => round($subtotal15, 2),
+                'precio'      => round($servicioBase, 2),
                 'iva_pct'     => 15,
-                'total'       => round($subtotal15, 2),
+                'total'       => round($servicioBase, 2),
             ];
         }
+
         if ($impOrigen > 0) {
             $items[] = [
-                'codigo'      => '002',
+                'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
                 'descripcion' => 'Impuestos de origen',
                 'cantidad'    => 1,
                 'precio'      => $impOrigen,
@@ -123,7 +138,7 @@ class LogisticsBillingRequest extends Model
         }
         if ($impAduana > 0) {
             $items[] = [
-                'codigo'      => '003',
+                'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
                 'descripcion' => 'Impuestos de aduana / liquidación',
                 'cantidad'    => 1,
                 'precio'      => $impAduana,
@@ -131,7 +146,38 @@ class LogisticsBillingRequest extends Model
                 'total'       => $impAduana,
             ];
         }
-        // Fallback si monto_cobro = 0 y no hay items
+        if ($cargoNacional > 0) {
+            $items[] = [
+                'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
+                'descripcion' => 'Nacionalización',
+                'cantidad'    => 1,
+                'precio'      => $cargoNacional,
+                'iva_pct'     => 15,
+                'total'       => $cargoNacional,
+            ];
+        }
+        if ($cargoTransporte > 0) {
+            $items[] = [
+                'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
+                'descripcion' => 'Transporte interno',
+                'cantidad'    => 1,
+                'precio'      => $cargoTransporte,
+                'iva_pct'     => 15,
+                'total'       => $cargoTransporte,
+            ];
+        }
+        if ($cargoOtro > 0) {
+            $items[] = [
+                'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
+                'descripcion' => $package->cobro_otro_descripcion ?: 'Otros cargos',
+                'cantidad'    => 1,
+                'precio'      => $cargoOtro,
+                'iva_pct'     => 15,
+                'total'       => $cargoOtro,
+            ];
+        }
+
+        // Fallback si no hay ítems
         if (empty($items)) {
             $items[] = [
                 'codigo'      => '001',

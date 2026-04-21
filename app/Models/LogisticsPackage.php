@@ -36,6 +36,10 @@ class LogisticsPackage extends Model
         'impuestos_amazon',
         'impuestos_paga_empresa',
         'impuestos_aduana',
+        'cobro_nacionalizacion',
+        'cobro_transporte_interno',
+        'cobro_otro',
+        'cobro_otro_descripcion',
         'moneda',
         'estado',
         'estado_secundario',
@@ -54,8 +58,11 @@ class LogisticsPackage extends Model
         'impuestos_paga_empresa'   => 'boolean',
         'impuestos_aduana'         => 'decimal:2',
         'fecha_recepcion_bodega'   => 'date',
-        'cantidad_cobro'         => 'decimal:4',
-        'monto_cobro'            => 'decimal:2',
+        'cantidad_cobro'              => 'decimal:4',
+        'monto_cobro'                 => 'decimal:2',
+        'cobro_nacionalizacion'       => 'decimal:2',
+        'cobro_transporte_interno'    => 'decimal:2',
+        'cobro_otro'                  => 'decimal:2',
     ];
 
     // Estados principales (columnas del Kanban)

@@ -452,7 +452,7 @@ class PackageResource extends Resource
                         ->columnSpan(1),
 
                     TextInput::make('monto_cobro')
-                        ->label('Monto a cobrar')
+                        ->label('Monto a cobrar (servicio)')
                         ->numeric()
                         ->prefix('$')
                         ->step(0.01)
@@ -473,6 +473,43 @@ class PackageResource extends Resource
                         ->columnSpan(1),
                 ])
                 ->columns(['default' => 1, 'sm' => 2, 'md' => 4]),
+
+            Section::make('Cargos adicionales')
+                ->description('Cargos extras que se incluirán en la factura del cliente (IVA según tipo).')
+                ->icon('heroicon-o-plus-circle')
+                ->collapsed()
+                ->schema([
+                    TextInput::make('cobro_nacionalizacion')
+                        ->label('Nacionalización ($)')
+                        ->numeric()
+                        ->prefix('$')
+                        ->step(0.01)
+                        ->nullable()
+                        ->helperText('Costos de trámite de nacionalización — se factura con 15% IVA.')
+                        ->columnSpan(1),
+                    TextInput::make('cobro_transporte_interno')
+                        ->label('Transporte interno ($)')
+                        ->numeric()
+                        ->prefix('$')
+                        ->step(0.01)
+                        ->nullable()
+                        ->helperText('Flete / transporte dentro del país — se factura con 15% IVA.')
+                        ->columnSpan(1),
+                    TextInput::make('cobro_otro')
+                        ->label('Otro cargo ($)')
+                        ->numeric()
+                        ->prefix('$')
+                        ->step(0.01)
+                        ->nullable()
+                        ->helperText('Cargo adicional — se factura con 15% IVA.')
+                        ->columnSpan(1),
+                    TextInput::make('cobro_otro_descripcion')
+                        ->label('Descripción del otro cargo')
+                        ->placeholder('Ej. Almacenaje, seguro, manejo...')
+                        ->nullable()
+                        ->visible(fn (Get $get) => (float)($get('cobro_otro') ?? 0) > 0)
+                        ->columnSpan(1),
+                ])->columns(['default' => 1, 'sm' => 2, 'md' => 4]),
 
             Section::make('Estado')->schema([
                 Select::make('estado')
