@@ -239,6 +239,11 @@ class Empresa extends Model implements HasName
         return $this->hasMany(\App\Models\ServiceDesign::class, 'empresa_id');
     }
 
+    public function serviceChargeConfigs(): HasMany
+    {
+        return $this->hasMany(\App\Models\ServiceChargeConfig::class, 'empresa_id');
+    }
+
     public function cmsProducts(): HasMany
     {
         return $this->hasMany(\App\Models\CmsProduct::class, 'empresa_id');

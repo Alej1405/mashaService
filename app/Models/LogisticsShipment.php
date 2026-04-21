@@ -162,6 +162,11 @@ class LogisticsShipment extends Model
         return $this->hasMany(LogisticsShipmentHistory::class, 'shipment_id')->latest();
     }
 
+    public function charges(): HasMany
+    {
+        return $this->hasMany(LogisticsShipmentCharge::class, 'shipment_id');
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     public static function generarNumero(int $empresaId): string

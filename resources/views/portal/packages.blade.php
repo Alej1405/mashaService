@@ -426,6 +426,8 @@
                                         <thead class="bg-gray-100">
                                             <tr>
                                                 <th class="px-4 py-2 text-left text-xs text-gray-500 uppercase font-semibold">Descripción</th>
+                                                <th class="px-4 py-2 text-center text-xs text-gray-500 uppercase font-semibold w-16">Cant.</th>
+                                                <th class="px-4 py-2 text-right text-xs text-gray-500 uppercase font-semibold w-24">P. Unit.</th>
                                                 <th class="px-4 py-2 text-center text-xs text-gray-500 uppercase font-semibold w-14">IVA</th>
                                                 <th class="px-4 py-2 text-right text-xs text-gray-500 uppercase font-semibold w-24">Total</th>
                                             </tr>
@@ -437,6 +439,13 @@
                                                     <span class="text-gray-400 font-mono text-xs mr-1">{{ $item['codigo'] }}</span>
                                                     {{ $item['descripcion'] }}
                                                 </td>
+                                                <td class="px-4 py-2.5 text-center text-gray-600 text-xs">
+                                                    {{ $item['cantidad'] }}
+                                                    @if(!empty($item['unidad']))
+                                                        <span class="block text-gray-400 text-[10px]">{{ $item['unidad'] }}</span>
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-2.5 text-right text-gray-600 text-xs">${{ number_format($item['precio'] ?? $item['total'], 2) }}</td>
                                                 <td class="px-4 py-2.5 text-center text-gray-500 text-xs">{{ $item['iva_pct'] }}%</td>
                                                 <td class="px-4 py-2.5 text-right font-semibold text-gray-800">${{ number_format($item['total'], 2) }}</td>
                                             </tr>

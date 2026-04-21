@@ -255,14 +255,28 @@ class PackageResource extends Resource
                     ->step(0.0001)
                     ->live(onBlur: true)
                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                        $pkg = ServicePackage::find($get('service_package_id'));
-                        if (! $pkg || $pkg->base_cobro !== 'peso') {
-                            return;
+                        $pkg    = ServicePackage::find($get('service_package_id'));
+                        $pesoKg = (float) ($state ?? 0);
+
+                        if ($pkg && $pkg->base_cobro === 'peso') {
+                            $set('cantidad_cobro', $pesoKg);
+                            if ($pesoKg > 0) {
+                                $set('monto_cobro', round((float) $pkg->precio_estimado * $pesoKg, 2));
+                            }
                         }
-                        $cantidad = (float) ($state ?? 0);
-                        $set('cantidad_cobro', $cantidad);
-                        if ($cantidad > 0) {
-                            $set('monto_cobro', round((float) $pkg->precio_estimado * $cantidad, 2));
+
+                        // Recalcular cargos con base peso al cambiar el peso del paquete
+                        if ($pkg && $pesoKg > 0) {
+                            foreach ([
+                                ['cobro' => 'cobro_nacionalizacion',    'tipo' => 'cobro_nacionalizacion_tipo'],
+                                ['cobro' => 'cobro_transporte_interno', 'tipo' => 'cobro_transporte_interno_tipo'],
+                                ['cobro' => 'cobro_otro',               'tipo' => 'cobro_otro_tipo'],
+                            ] as $cfg) {
+                                $valor = (float) ($pkg->{$cfg['cobro']} ?? 0);
+                                if ($valor > 0 && ($pkg->{$cfg['tipo']} ?? 'tramite') === 'peso') {
+                                    $set($cfg['cobro'], round($valor * $pesoKg, 2));
+                                }
+                            }
                         }
                     })
                     ->columnSpan(1),
@@ -414,6 +428,26 @@ class PackageResource extends Resource
                                     $set('cantidad_cobro', $volumen);
                                     $set('monto_cobro', round((float) $pkg->precio_estimado * $volumen, 2));
                                 }
+                            }
+
+                            // Auto-fill cargos adicionales desde el diseño de servicio
+                            $pesoKg = (float) ($get('peso_kg') ?? 0);
+                            foreach ([
+                                ['cobro' => 'cobro_nacionalizacion',    'tipo' => 'cobro_nacionalizacion_tipo'],
+                                ['cobro' => 'cobro_transporte_interno', 'tipo' => 'cobro_transporte_interno_tipo'],
+                                ['cobro' => 'cobro_otro',               'tipo' => 'cobro_otro_tipo'],
+                            ] as $cfg) {
+                                $valor = (float) ($pkg->{$cfg['cobro']} ?? 0);
+                                if ($valor <= 0) {
+                                    continue;
+                                }
+                                $tipo = $pkg->{$cfg['tipo']} ?? 'tramite';
+                                $set($cfg['cobro'], $tipo === 'peso' && $pesoKg > 0
+                                    ? round($valor * $pesoKg, 2)
+                                    : $valor);
+                            }
+                            if ($pkg->cobro_otro_descripcion) {
+                                $set('cobro_otro_descripcion', $pkg->cobro_otro_descripcion);
                             }
                         })
                         ->disabled(fn (Get $get) => ! $get('_service_design_id'))

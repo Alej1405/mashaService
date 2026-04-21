@@ -3,6 +3,7 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\ServiceDesignResource\Pages;
+use App\Models\ServiceChargeConfig;
 use App\Models\ServiceDesign;
 use App\Models\ServiceSimulation;
 use Filament\Facades\Filament;
@@ -312,6 +313,55 @@ class ServiceDesignResource extends Resource
                                                     }
                                                 })
                                                 ->columnSpan(1),
+
+                                            // ── Cargos adicionales ─────────────────────
+                                            Select::make('chargeConfigs')
+                                                ->label('Cargos adicionales aplicables')
+                                                ->relationship('chargeConfigs', 'nombre')
+                                                ->multiple()
+                                                ->preload()
+                                                ->searchable()
+                                                ->getOptionLabelFromRecordUsing(fn (ServiceChargeConfig $r) =>
+                                                    $r->nombre
+                                                    . ' — $' . number_format((float) $r->monto, 2)
+                                                    . ' (' . ($r->tipo === 'peso' ? 'por kg' : 'por trámite') . ')'
+                                                    . ' · IVA ' . $r->iva_pct . '%'
+                                                )
+                                                ->createOptionModalHeading('Nuevo cargo adicional')
+                                                ->createOptionForm([
+                                                    TextInput::make('nombre')
+                                                        ->label('Nombre del cargo')
+                                                        ->required()
+                                                        ->maxLength(150),
+                                                    TextInput::make('monto')
+                                                        ->label('Monto ($)')
+                                                        ->numeric()
+                                                        ->prefix('$')
+                                                        ->required(),
+                                                    Select::make('tipo')
+                                                        ->label('Tipo de cobro')
+                                                        ->options([
+                                                            'tramite' => 'Por trámite (monto fijo)',
+                                                            'peso'    => 'Por peso (monto × kg)',
+                                                        ])
+                                                        ->default('tramite')
+                                                        ->required(),
+                                                    Select::make('iva_pct')
+                                                        ->label('IVA')
+                                                        ->options([
+                                                            15 => '15% — Servicio',
+                                                            0  => '0% — Impuesto / paso directo',
+                                                        ])
+                                                        ->default(15)
+                                                        ->required(),
+                                                ])
+                                                ->createOptionUsing(function (array $data) {
+                                                    $data['empresa_id'] = Filament::getTenant()->id;
+                                                    $data['activo']     = true;
+                                                    return ServiceChargeConfig::create($data)->id;
+                                                })
+                                                ->helperText('Selecciona cargos del catálogo o crea uno nuevo directamente.')
+                                                ->columnSpanFull(),
 
                                             // ── Resumen visual ─────────────────────────
                                             Placeholder::make('_resumen_cobro')

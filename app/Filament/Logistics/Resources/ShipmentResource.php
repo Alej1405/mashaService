@@ -23,6 +23,7 @@ use Filament\Forms\Components\ViewField;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Builder;
@@ -201,6 +202,80 @@ class ShipmentResource extends Resource
                     ->nullable()
                     ->columnSpan(1),
             ])->columns(2),
+
+            // ── Cargos extras del embarque ────────────────────────────────────
+            Section::make('Cargos extras del embarque')
+                ->description('Costos adicionales que se distribuirán entre los paquetes al generar las notas de venta.')
+                ->icon('heroicon-o-plus-circle')
+                ->collapsed()
+                ->visibleOn('edit')
+                ->schema([
+                    Placeholder::make('_info_distribucion')
+                        ->label('')
+                        ->content(function ($record) {
+                            if (! $record) {
+                                return new HtmlString('');
+                            }
+                            $tipo  = $record->tipo ?? 'individual';
+                            $count = \Illuminate\Support\Facades\DB::table('logistics_shipment_packages')
+                                ->where('shipment_id', $record->id)
+                                ->count();
+
+                            $color = $tipo === 'consolidado' ? '#f59e0b' : '#6366f1';
+                            $msg   = $tipo === 'consolidado'
+                                ? "Embarque <strong>consolidado</strong> con {$count} paquete(s). Cada cargo se dividirá en partes iguales entre todos los paquetes."
+                                : "Embarque <strong>{$tipo}</strong> con {$count} paquete(s). Cada cargo se asigna íntegro al paquete del cliente.";
+
+                            return new HtmlString(
+                                "<div style='background:{$color}12;border:1px solid {$color}44;border-radius:6px;padding:10px 14px;font-size:12px;color:#374151;'>{$msg}</div>"
+                            );
+                        })
+                        ->columnSpanFull(),
+
+                    Repeater::make('charges')
+                        ->relationship()
+                        ->label('Cargos')
+                        ->schema([
+                            TextInput::make('descripcion')
+                                ->label('Descripción')
+                                ->required()
+                                ->placeholder('Ej. Fumigación, almacenaje, seguro...')
+                                ->columnSpan(3),
+
+                            TextInput::make('monto')
+                                ->label('Monto total ($)')
+                                ->numeric()
+                                ->prefix('$')
+                                ->step(0.01)
+                                ->required()
+                                ->columnSpan(2),
+
+                            Select::make('iva_pct')
+                                ->label('IVA')
+                                ->options([
+                                    15 => '15% — Servicio',
+                                    0  => '0% — Impuesto / paso directo',
+                                ])
+                                ->default(15)
+                                ->required()
+                                ->columnSpan(1),
+                        ])
+                        ->columns(6)
+                        ->addActionLabel('+ Agregar cargo')
+                        ->defaultItems(0)
+                        ->reorderableWithButtons()
+                        ->itemLabel(fn (array $state): ?string =>
+                            ($state['descripcion'] ?? null)
+                                ? e($state['descripcion'])
+                                  . (isset($state['monto']) && $state['monto'] > 0
+                                      ? '  —  $' . number_format((float) $state['monto'], 2)
+                                      : '')
+                                  . '  (' . ($state['iva_pct'] == 0 ? '0%' : '15%') . ' IVA)'
+                                : null
+                        )
+                        ->collapsible()
+                        ->columnSpanFull(),
+                ]),
 
             // ── Observaciones y soporte (solo si aplica) ──────────────────────
             Section::make('Observaciones y documentos de soporte')

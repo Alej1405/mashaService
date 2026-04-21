@@ -78,6 +78,7 @@ class EnterprisePanelProvider extends PanelProvider
                 \App\Filament\App\Resources\InventoryItemResource::class,
                 \App\Filament\App\Resources\ProductDesignResource::class,
                 \App\Filament\App\Resources\ServiceDesignResource::class,
+                \App\Filament\App\Resources\ServiceChargeConfigResource::class,
             ])
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,

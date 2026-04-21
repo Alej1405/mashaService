@@ -83,8 +83,13 @@
                     <tr class="border-t border-gray-100">
                         <td class="px-4 py-2.5 text-gray-500 text-xs font-mono">{{ $item['codigo'] }}</td>
                         <td class="px-4 py-2.5 text-gray-700">{{ $item['descripcion'] }}</td>
-                        <td class="px-4 py-2.5 text-center text-gray-600">{{ $item['cantidad'] }}</td>
-                        <td class="px-4 py-2.5 text-right text-gray-600">${{ number_format($item['precio'], 2) }}</td>
+                        <td class="px-4 py-2.5 text-center text-gray-600">
+                            {{ $item['cantidad'] }}
+                            @if(!empty($item['unidad']))
+                                <span class="block text-gray-400 text-xs">{{ $item['unidad'] }}</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-2.5 text-right text-gray-600">${{ number_format($item['precio'], 4) }}</td>
                         <td class="px-4 py-2.5 text-center text-gray-500 text-xs">{{ $item['iva_pct'] }}%</td>
                         <td class="px-4 py-2.5 text-right font-semibold text-gray-800">${{ number_format($item['total'], 2) }}</td>
                     </tr>
