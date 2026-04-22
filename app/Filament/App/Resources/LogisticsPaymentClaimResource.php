@@ -158,18 +158,31 @@ class LogisticsPaymentClaimResource extends Resource
 
                 // ── 1. Encontrar o crear Customer ERP ────────────────────────────
                 $customer = null;
+
+                // Prioridad: RUC/cédula del billing
                 if ($billingRuc) {
                     $customer = Customer::withoutGlobalScopes()
                         ->where('empresa_id', $empresaId)
                         ->where('numero_identificacion', $billingRuc)
                         ->first();
                 }
+
+                // Fallback: usar el Customer ERP ya vinculado al StoreCustomer
+                if (! $customer && $billing->storeCustomer?->customer_id) {
+                    $customer = Customer::withoutGlobalScopes()->find($billing->storeCustomer->customer_id);
+                }
+
                 if (! $customer) {
+                    $esEmpresa     = $billing->billing_type === 'company';
+                    $tipoPersType  = $esEmpresa ? 'juridica' : ($billing->storeCustomer?->tipo === 'empresa' ? 'juridica' : 'natural');
+                    $tipoIdent     = $billingRuc
+                        ? (strlen($billingRuc) === 13 ? 'ruc' : 'cedula')
+                        : 'consumidor_final';
                     $customer = Customer::create([
                         'empresa_id'            => $empresaId,
                         'nombre'                => $billingNombre,
-                        'tipo_persona'          => 'juridica',
-                        'tipo_identificacion'   => strlen($billingRuc ?? '') === 13 ? 'ruc' : 'cedula',
+                        'tipo_persona'          => $tipoPersType,
+                        'tipo_identificacion'   => $tipoIdent,
                         'numero_identificacion' => $billingRuc ?? '9999999999999',
                         'activo'                => true,
                     ]);

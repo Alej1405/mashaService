@@ -149,25 +149,49 @@
                                             <p class="text-xs text-gray-500">Llegada estimada: {{ $shipment->fecha_llegada_ecuador->format('d/m/Y') }}</p>
                                         @endif
                                     </div>
+                                    {{-- Badge usa el estado del PAQUETE (fuente de verdad del Kanban) --}}
                                     <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white"
-                                          style="background-color: {{ $colorEmb }}">
+                                          style="background-color: {{ $colorPkg }}">
                                         <span class="w-1.5 h-1.5 rounded-full bg-white/60 inline-block"></span>
-                                        {{ $estadoEmb['label'] ?? $shipment->estado }}
+                                        {{ $estadoPkg }}
                                     </span>
                                 </div>
                                 @php
-                                    $estados   = array_keys(\App\Models\LogisticsShipment::ESTADOS);
-                                    $idx       = array_search($shipment->estado, $estados);
-                                    $total     = count($estados);
-                                    $pct       = $total > 1 ? round(($idx / ($total - 1)) * 100) : 0;
+                                    // La barra se basa en el estado DEL PAQUETE (Kanban), no del embarque
+                                    $pkgPct = [
+                                        'embarque_solicitado' => 10,
+                                        'registrado'          => 25,
+                                        'en_aduana'           => 55,
+                                        'finalizado_aduana'   => 75,
+                                        'pago_servicios'      => 85,
+                                        'en_entrega'          => 95,
+                                    ];
+                                    $pct = ($pkg->estado === 'en_entrega' && $pkg->estado_secundario === 'entregado')
+                                        ? 100
+                                        : ($pkgPct[$pkg->estado] ?? 5);
+
+                                    $pasoLabel = match(true) {
+                                        $pct <= 10  => 'Registrando embarque',
+                                        $pct <= 25  => 'En bodega de origen',
+                                        $pct <= 55  => 'En aduana Ecuador',
+                                        $pct <= 75  => 'Liquidando en aduana',
+                                        $pct <= 85  => 'Pago de servicios',
+                                        $pct < 100  => 'En coordinación de entrega',
+                                        default     => 'Entregado ✓',
+                                    };
+                                    $barColor = $colorPkg;
                                 @endphp
                                 <div class="mt-3">
-                                    <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
-                                        <span>Solicitado</span><span>{{ $pct }}%</span><span>Entregado</span>
+                                    <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                                        <span class="font-medium" style="color:{{ $barColor }}">{{ $pasoLabel }}</span>
+                                        <span class="font-semibold">{{ $pct }}%</span>
                                     </div>
                                     <div class="w-full bg-gray-200 rounded-full h-2">
-                                        <div class="h-2 rounded-full transition-all duration-500"
-                                             style="width:{{ $pct }}%;background-color:{{ $colorEmb }}"></div>
+                                        <div class="h-2 rounded-full transition-all duration-700"
+                                             style="width:{{ $pct }}%;background-color:{{ $barColor }}"></div>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-gray-300 mt-1">
+                                        <span>Registrado</span><span>En tránsito</span><span>Aduana</span><span>Entrega</span>
                                     </div>
                                 </div>
                             </div>
@@ -220,9 +244,10 @@
                                 @php
                                     $bEstados = [
                                         'pendiente' => ['label' => 'Pendiente de aceptación', 'bg' => 'bg-yellow-50', 'text' => 'text-yellow-700', 'border' => 'border-yellow-200'],
-                                        'aceptado'  => ['label' => 'Aceptado',  'bg' => 'bg-green-50',  'text' => 'text-green-700',  'border' => 'border-green-200'],
+                                        'aceptado'  => ['label' => 'Aceptado — pendiente de cobro', 'bg' => 'bg-green-50',  'text' => 'text-green-700',  'border' => 'border-green-200'],
                                         'rechazado' => ['label' => 'Rechazado', 'bg' => 'bg-red-50',    'text' => 'text-red-700',    'border' => 'border-red-200'],
-                                        'facturado' => ['label' => 'Facturado', 'bg' => 'bg-blue-50',   'text' => 'text-blue-700',   'border' => 'border-blue-200'],
+                                        'facturado' => ['label' => 'Por cobrar', 'bg' => 'bg-blue-50',   'text' => 'text-blue-700',   'border' => 'border-blue-200'],
+                                        'cobrado'   => ['label' => 'Cobrado ✓', 'bg' => 'bg-emerald-50', 'text' => 'text-emerald-700', 'border' => 'border-emerald-300'],
                                     ];
                                     $bEstado = $bEstados[$billing->estado] ?? $bEstados['pendiente'];
                                 @endphp

@@ -6,6 +6,7 @@ use App\Mail\LogisticsPackageStatusMail;
 use App\Models\Empresa;
 use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
+use App\Models\LogisticsShipment;
 use App\Models\StoreCustomer;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -23,7 +24,14 @@ class ShipmentKanban extends Page
 
     // ── Livewire ──────────────────────────────────────────────────────────────
 
+    public bool $mostrarEntregados = false;
+
     public function mount(): void {}
+
+    public function toggleEntregados(): void
+    {
+        $this->mostrarEntregados = ! $this->mostrarEntregados;
+    }
 
     // ── Mover paquete (drag-and-drop cambia estado principal) ─────────────────
 
@@ -47,6 +55,8 @@ class ShipmentKanban extends Page
         ]);
 
         $fresh = $package->fresh();
+
+        $this->sincronizarEmbarques($fresh);
 
         // Al entrar en aduana: crear nota de venta y notificar con el link de aceptación
         if ($nuevoEstado === 'en_aduana' && $fresh->store_customer_id && $fresh->monto_cobro > 0) {
@@ -84,13 +94,109 @@ class ShipmentKanban extends Page
         $nuevo = $package->estado_secundario === $estadoSecundario ? null : $estadoSecundario;
         $package->update(['estado_secundario' => $nuevo]);
 
+        $fresh = $package->fresh();
+
         if ($nuevo) {
-            $this->notificarCliente($package->fresh(), false);
+            $this->sincronizarEmbarques($fresh);
+            $this->notificarCliente($fresh, false);
 
             Notification::make()
                 ->title('Estado: «' . ($disponibles[$nuevo]['label'] ?? $nuevo) . '»')
                 ->success()
                 ->send();
+        }
+    }
+
+    // ── Sincronizar estado del embarque basado en los paquetes ───────────────
+
+    /**
+     * Prioridad numérica de los estados del embarque (mayor = más avanzado).
+     * Permite comparar sin retroceder el estado del embarque.
+     */
+    private static function prioridadEmbarque(string $estado): int
+    {
+        static $orden = [
+            'embarque_solicitado'        => 1,
+            'carga_registrada'           => 2,
+            'consolidando'               => 3,
+            'fraccionamiento_en_proceso' => 4,
+            'carga_embarcada'            => 5,
+            'en_aduana'                  => 6,
+            'declaracion_transmitida'    => 7,
+            'aforo_automatico'           => 8,
+            'aforo_documental'           => 8,
+            'aforo_fisico'               => 8,
+            'liquidada'                  => 9,
+            'pagada'                     => 10,
+            'autorizado_salida'          => 11,
+            'entregada'                  => 12,
+        ];
+
+        return $orden[$estado] ?? 0;
+    }
+
+    /**
+     * Devuelve el estado de embarque que corresponde al estado actual de un paquete.
+     * Los estados secundarios de 'en_aduana' coinciden exactamente con estados del embarque.
+     */
+    private static function estadoEmbarqueDesde(string $pkgEstado, ?string $pkgSecundario): ?string
+    {
+        return match(true) {
+            $pkgEstado === 'embarque_solicitado' && $pkgSecundario === 'embarque_confirmado'
+                => 'carga_registrada',
+            $pkgEstado === 'embarque_solicitado'
+                => 'embarque_solicitado',
+            $pkgEstado === 'registrado' && $pkgSecundario === 'arribo_miami'
+                => 'carga_embarcada',
+            $pkgEstado === 'registrado'
+                => 'carga_registrada',
+            // Los secundarios de en_aduana coinciden con estados del embarque
+            $pkgEstado === 'en_aduana' && $pkgSecundario !== null
+                => $pkgSecundario,
+            $pkgEstado === 'en_aduana'
+                => 'en_aduana',
+            $pkgEstado === 'finalizado_aduana' && $pkgSecundario === 'en_despacho'
+                => 'autorizado_salida',
+            $pkgEstado === 'finalizado_aduana'
+                => 'pagada',
+            $pkgEstado === 'pago_servicios'
+                => 'pagada',
+            $pkgEstado === 'en_entrega' && $pkgSecundario === 'entregado'
+                => 'entregada',
+            $pkgEstado === 'en_entrega'
+                => 'autorizado_salida',
+            default => null,
+        };
+    }
+
+    private function sincronizarEmbarques(LogisticsPackage $package): void
+    {
+        $shipments = LogisticsShipment::withoutGlobalScopes()
+            ->whereHas('packages', fn ($q) => $q->where('logistics_packages.id', $package->id))
+            ->get();
+
+        foreach ($shipments as $shipment) {
+            // Para embarques con varios paquetes: usa el estado mínimo (más conservador)
+            $paquetes = $shipment->packages()
+                ->withoutGlobalScopes()
+                ->get();
+
+            $estadoMinimo = null;
+            $prioMin      = PHP_INT_MAX;
+
+            foreach ($paquetes as $pkg) {
+                $est  = self::estadoEmbarqueDesde($pkg->estado, $pkg->estado_secundario);
+                $prio = self::prioridadEmbarque($est ?? 'embarque_solicitado');
+
+                if ($prio < $prioMin) {
+                    $prioMin      = $prio;
+                    $estadoMinimo = $est;
+                }
+            }
+
+            if ($estadoMinimo && array_key_exists($estadoMinimo, LogisticsShipment::ESTADOS)) {
+                $shipment->update(['estado' => $estadoMinimo]);
+            }
         }
     }
 
@@ -132,7 +238,7 @@ class ShipmentKanban extends Page
     {
         $tenant = Filament::getTenant();
 
-        $packages = LogisticsPackage::withoutGlobalScopes()
+        $query = LogisticsPackage::withoutGlobalScopes()
             ->where('empresa_id', $tenant->id)
             ->with([
                 'storeCustomer' => fn ($q) => $q->withoutGlobalScopes(),
@@ -141,8 +247,18 @@ class ShipmentKanban extends Page
                                                ->orderByDesc('created_at')
                                                ->limit(1),
             ])
-            ->latest()
-            ->get();
+            ->latest();
+
+        // Ocultar los paquetes ya entregados (estado_secundario = 'entregado')
+        if (! $this->mostrarEntregados) {
+            $query->where(fn ($q) => $q
+                ->where('estado', '!=', 'en_entrega')
+                ->orWhereNull('estado_secundario')
+                ->orWhere('estado_secundario', '!=', 'entregado')
+            );
+        }
+
+        $packages = $query->get();
 
         $grouped = [];
         foreach (array_keys(LogisticsPackage::ESTADOS) as $estado) {

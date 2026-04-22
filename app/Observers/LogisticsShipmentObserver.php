@@ -53,11 +53,12 @@ class LogisticsShipmentObserver
 
     private function generarFacturasServicio(LogisticsShipment $shipment): void
     {
-        // Paquetes del embarque que tengan servicio y cliente ERP
+        // Solo paquetes sin factura previa; evita duplicados si el estado retrocede y vuelve a avanzar
         $packages = $shipment->packages()
             ->with(['servicePackage.serviceDesign', 'storeCustomer.customer'])
             ->whereNotNull('service_package_id')
             ->whereNotNull('monto_cobro')
+            ->whereNull('sale_id')
             ->get();
 
         if ($packages->isEmpty()) {

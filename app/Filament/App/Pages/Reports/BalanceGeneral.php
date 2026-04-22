@@ -80,6 +80,20 @@ class BalanceGeneral extends Page implements HasForms
     }
 
     // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Verifica si un código pertenece a un prefijo respetando límites de segmento.
+     * bajoPrefijo('1.1.01.01', '1.1') → true   bajoPrefijo('1.10.01', '1.1') → false
+     */
+    private function bajoPrefijo(string $code, string $prefix): bool
+    {
+        $p = rtrim($prefix, '.');
+        return $code === $p || str_starts_with($code, $p . '.');
+    }
+
+    // -------------------------------------------------------------------------
     // Carga de saldos
     // -------------------------------------------------------------------------
 
@@ -126,12 +140,13 @@ class BalanceGeneral extends Page implements HasForms
         $empresa  = Filament::getTenant();
         $cuentas  = $this->getSaldos();
 
-        // Agrupaciones según CUC Supercias
-        $activosCte    = $cuentas->filter(fn($c) => str_starts_with($c->code, '1.1'));
-        $activosNoCte  = $cuentas->filter(fn($c) => str_starts_with($c->code, '1.2'));
-        $pasivosCte    = $cuentas->filter(fn($c) => str_starts_with($c->code, '2.1'));
-        $pasivosNoCte  = $cuentas->filter(fn($c) => str_starts_with($c->code, '2.2'));
-        $patrimonioAll = $cuentas->filter(fn($c) => $c->type === 'patrimonio');
+        // Agrupaciones con límite de segmento → '1.1' no matchea '1.10.xx'
+        // Todos los activos van a Corriente (1.1) o No Corriente (resto), sin perder ninguno
+        $activosCte    = $cuentas->filter(fn ($c) => $c->type === 'activo'    && $this->bajoPrefijo($c->code, '1.1'));
+        $activosNoCte  = $cuentas->filter(fn ($c) => $c->type === 'activo'    && ! $this->bajoPrefijo($c->code, '1.1'));
+        $pasivosCte    = $cuentas->filter(fn ($c) => $c->type === 'pasivo'    && $this->bajoPrefijo($c->code, '2.1'));
+        $pasivosNoCte  = $cuentas->filter(fn ($c) => $c->type === 'pasivo'    && ! $this->bajoPrefijo($c->code, '2.1'));
+        $patrimonioAll = $cuentas->filter(fn ($c) => $c->type === 'patrimonio');
 
         $tActCte   = $activosCte->sum('saldo');
         $tActNoCte = $activosNoCte->sum('saldo');

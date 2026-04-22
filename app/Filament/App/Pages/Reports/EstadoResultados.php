@@ -104,63 +104,84 @@ class EstadoResultados extends Page implements HasForms
             ]);
     }
 
-    protected function getCuentasMonto($codes, $type, $sumField = 'haber'): Collection
+    /**
+     * Verifica si un código de cuenta pertenece a un prefijo, respetando límites de segmento.
+     * bajoPrefijo('4.1.01', '4.1')  → true   bajoPrefijo('4.10.01', '4.1') → false
+     */
+    private function bajoPrefijo(string $code, string $prefix): bool
     {
-        $empresaId = Filament::getTenant()->id;
+        $p = rtrim($prefix, '.');
+        return $code === $p || str_starts_with($code, $p . '.');
+    }
+
+    /**
+     * Obtiene cuentas de un type con sus saldos netos en el período.
+     * Sin $codes, devuelve TODAS las cuentas del type → el informe no depende
+     * de que existan códigos con un prefijo concreto.
+     */
+    protected function getCuentasMonto(array $codes, string $type, string $sumField = 'haber'): Collection
+    {
+        $empresaId  = Filament::getTenant()->id;
         $fechaDesde = $this->fecha_desde;
         $fechaHasta = $this->fecha_hasta;
 
-        return AccountPlan::withoutGlobalScopes()
+        $query = AccountPlan::withoutGlobalScopes()
             ->where('empresa_id', $empresaId)
             ->where('type', $type)
-            ->where(function($q) use ($codes) {
-                foreach((array)$codes as $code) {
-                    $q->orWhere('code', 'like', $code . '%');
-                }
-            })
             ->where('accepts_movements', true)
-            ->get()
-            ->map(function($cuenta) use ($empresaId, $fechaDesde, $fechaHasta, $sumField) {
-                $baseQuery = fn() => JournalEntryLine::where('account_plan_id', $cuenta->id)
-                    ->whereHas('journalEntry', fn($q) => $q
+            ->where('is_active', true);
+
+        // Solo aplica filtro de código si se pasan prefijos; usa límite de segmento
+        // para evitar que '4.1' matchee '4.10.xx'
+        if (! empty($codes)) {
+            $query->where(function ($q) use ($codes) {
+                foreach ($codes as $prefix) {
+                    $p = rtrim($prefix, '.');
+                    $q->orWhere('code', $p)
+                      ->orWhere('code', 'like', $p . '.%');
+                }
+            });
+        }
+
+        return $query->orderBy('code')->get()
+            ->map(function ($cuenta) use ($empresaId, $fechaDesde, $fechaHasta, $sumField) {
+                $baseQuery = fn () => JournalEntryLine::where('account_plan_id', $cuenta->id)
+                    ->whereHas('journalEntry', fn ($q) => $q
                         ->withoutGlobalScopes()
                         ->where('empresa_id', $empresaId)
                         ->where('status', 'confirmado')
                         ->where('esta_cuadrado', true)
-                        ->when($fechaDesde, fn($q) => $q->whereDate('fecha', '>=', $fechaDesde))
-                        ->when($fechaHasta, fn($q) => $q->whereDate('fecha', '<=', $fechaHasta))
+                        ->when($fechaDesde, fn ($q) => $q->whereDate('fecha', '>=', $fechaDesde))
+                        ->when($fechaHasta,  fn ($q) => $q->whereDate('fecha', '<=', $fechaHasta))
                     );
 
-                // Saldo neto: considera tanto débitos como créditos (incluye asientos de anulación)
                 $debe  = (float) $baseQuery()->sum('debe');
                 $haber = (float) $baseQuery()->sum('haber');
-
-                // Para ingresos (naturaleza acreedora): saldo = haber - debe
-                // Para costos/gastos (naturaleza deudora): saldo = debe - haber
                 $monto = ($sumField === 'haber') ? ($haber - $debe) : ($debe - $haber);
 
-                return [
-                    'code'  => $cuenta->code,
-                    'name'  => $cuenta->name,
-                    'monto' => $monto,
-                ];
+                return ['code' => $cuenta->code, 'name' => $cuenta->name, 'monto' => $monto];
             })
-            ->filter(fn($row) => round($row['monto'], 2) != 0)
+            ->filter(fn ($row) => round($row['monto'], 2) != 0)
             ->values();
     }
 
     public function renderReport(): string
     {
         $empresa = Filament::getTenant();
-        
-        // Carga de datos según agrupaciones SUPERCIAS
-        $ingresosOrd = $this->getCuentasMonto(['4.1'], 'ingreso', 'haber');
-        $otrosIngresos = $this->getCuentasMonto(['4.2', '4.3'], 'ingreso', 'haber');
-        
-        $costos = $this->getCuentasMonto(['5'], 'costo', 'debe');
-        
-        $gastosOp = $this->getCuentasMonto(['6.1', '6.2'], 'gasto', 'debe');
-        $gastosNoOp = $this->getCuentasMonto(['6.3', '6.4'], 'gasto', 'debe');
+
+        // Obtener TODOS los registros por type — sin filtrar por código.
+        // La sub-clasificación se hace con bajoPrefijo() sobre los datos ya en memoria.
+        $todosIngresos = $this->getCuentasMonto([], 'ingreso', 'haber');
+        $ingresosOrd   = $todosIngresos->filter(fn ($r) => $this->bajoPrefijo($r['code'], '4.1'));
+        $otrosIngresos = $todosIngresos->reject(fn ($r) => $this->bajoPrefijo($r['code'], '4.1'));
+
+        $costos = $this->getCuentasMonto([], 'costo', 'debe');
+
+        $todosGastos = $this->getCuentasMonto([], 'gasto', 'debe');
+        $gastosOp    = $todosGastos->filter(fn ($r) =>
+            $this->bajoPrefijo($r['code'], '6.1') || $this->bajoPrefijo($r['code'], '6.2'));
+        $gastosNoOp  = $todosGastos->reject(fn ($r) =>
+            $this->bajoPrefijo($r['code'], '6.1') || $this->bajoPrefijo($r['code'], '6.2'));
 
         // Totales base
         $totalIngOrd = $ingresosOrd->sum('monto');

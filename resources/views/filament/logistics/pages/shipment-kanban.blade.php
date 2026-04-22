@@ -14,7 +14,28 @@
                 Entregados: <strong>{{ $totales['entregados'] }}</strong>
             </span>
         </div>
-        <div class="ml-auto">
+        <div class="ml-auto flex items-center gap-2">
+            {{-- Toggle entregados --}}
+            <button wire:click="toggleEntregados"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition
+                           {{ $this->mostrarEntregados
+                               ? 'bg-green-600 border-green-600 text-white hover:bg-green-700'
+                               : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-green-500 hover:text-green-600' }}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    @if($this->mostrarEntregados)
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    @else
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    @endif
+                </svg>
+                {{ $this->mostrarEntregados ? 'Ocultar entregados' : 'Ver entregados' }}
+                @if(! $this->mostrarEntregados && $totales['entregados'] > 0)
+                <span class="ml-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+                    {{ $totales['entregados'] }}
+                </span>
+                @endif
+            </button>
+
             <a href="{{ \App\Filament\Logistics\Resources\PackageResource::getUrl('create', tenant: \Filament\Facades\Filament::getTenant()) }}"
                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
                       bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium transition">
