@@ -14,6 +14,7 @@
         "laravel/tinker": "^2.10.1",
         "phpoffice/phpspreadsheet": "^5.5",
         "resend/resend-laravel": "^1.3",
+        "smalot/pdfparser": "^2.12",
         "spatie/laravel-permission": "^7.2"
     },
     "require-dev": {
