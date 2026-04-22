@@ -2,6 +2,8 @@
 
 namespace App\Filament\App\Widgets;
 
+use App\Models\LogisticsBillingRequest;
+use App\Models\LogisticsShipmentBill;
 use App\Models\Sale;
 use App\Models\Purchase;
 use Filament\Facades\Filament;
@@ -33,17 +35,38 @@ class VentasComprasWidget extends Widget
             $fecha = now()->subMonths($i);
             $meses[] = ucfirst($fecha->translatedFormat('M'));
             
-            $ventasData[] = (float) Sale::where('empresa_id', $tenantId)
+            // Ventas: productos confirmados + servicios logísticos facturados/cobrados sin venta aún
+            $ventas = (float) Sale::where('empresa_id', $tenantId)
                 ->where('estado', 'confirmado')
                 ->whereMonth('fecha', $fecha->month)
                 ->whereYear('fecha', $fecha->year)
                 ->sum('total');
 
-            $comprasData[] = (float) Purchase::where('empresa_id', $tenantId)
+            $ventas += (float) LogisticsBillingRequest::withoutGlobalScopes()
+                ->where('empresa_id', $tenantId)
+                ->whereIn('estado', ['facturado', 'cobrado'])
+                ->whereNull('sale_id')
+                ->whereMonth('updated_at', $fecha->month)
+                ->whereYear('updated_at', $fecha->year)
+                ->sum('total');
+
+            $ventasData[] = $ventas;
+
+            // Compras: productos + facturas proveedor logística pagadas
+            $compras = (float) Purchase::where('empresa_id', $tenantId)
                 ->where('status', 'confirmado')
                 ->whereMonth('date', $fecha->month)
                 ->whereYear('date', $fecha->year)
                 ->sum('total');
+
+            $compras += (float) LogisticsShipmentBill::withoutGlobalScopes()
+                ->where('empresa_id', $tenantId)
+                ->where('estado', 'pagada')
+                ->whereMonth('fecha_pago', $fecha->month)
+                ->whereYear('fecha_pago', $fecha->year)
+                ->sum('total');
+
+            $comprasData[] = $compras;
         }
 
         return [

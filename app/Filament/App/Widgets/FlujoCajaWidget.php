@@ -4,6 +4,8 @@ namespace App\Filament\App\Widgets;
 
 use App\Models\CashMovement;
 use App\Models\DebtPayment;
+use App\Models\LogisticsBillingRequest;
+use App\Models\LogisticsShipmentBill;
 use App\Models\Sale;
 use App\Models\Purchase;
 use Filament\Facades\Filament;
@@ -60,29 +62,42 @@ class FlujoCajaWidget extends Widget
         foreach ($period as $date) {
             $labels[] = $date->format('d M');
             
-            // Ingresos del día (ventas contado + movimientos caja ingreso)
+            // Ingresos: ventas confirmadas + movimientos caja + servicios logísticos facturados sin venta aún
             $ingDia = Sale::where('empresa_id', $tenantId)
                 ->where('estado', 'confirmado')
                 ->whereDate('fecha', $date)
                 ->sum('total');
-            
+
             $ingDia += CashMovement::where('empresa_id', $tenantId)
                 ->where('tipo', 'ingreso')
                 ->whereDate('fecha', $date)
                 ->sum('monto');
 
-            // Egresos del día (compras contado + movimientos caja egreso)
+            $ingDia += LogisticsBillingRequest::withoutGlobalScopes()
+                ->where('empresa_id', $tenantId)
+                ->whereIn('estado', ['facturado', 'cobrado'])
+                ->whereNull('sale_id')
+                ->whereDate('updated_at', $date)
+                ->sum('total');
+
+            // Egresos: compras + movimientos caja + pagos deuda + facturas proveedor logística
             $egrDia = Purchase::where('empresa_id', $tenantId)
                 ->where('status', 'confirmado')
                 ->whereDate('date', $date)
                 ->sum('total');
-            
+
             $egrDia += CashMovement::where('empresa_id', $tenantId)
                 ->where('tipo', 'egreso')
                 ->whereDate('fecha', $date)
                 ->sum('monto');
 
             $egrDia += DebtPayment::where('empresa_id', $tenantId)
+                ->whereDate('fecha_pago', $date)
+                ->sum('total');
+
+            $egrDia += LogisticsShipmentBill::withoutGlobalScopes()
+                ->where('empresa_id', $tenantId)
+                ->where('estado', 'pagada')
                 ->whereDate('fecha_pago', $date)
                 ->sum('total');
 
@@ -122,19 +137,27 @@ class FlujoCajaWidget extends Widget
                 ->whereMonth('fecha', $date->month)
                 ->whereYear('fecha', $date->year)
                 ->sum('total');
-            
+
             $ingMes += CashMovement::where('empresa_id', $tenantId)
                 ->where('tipo', 'ingreso')
                 ->whereMonth('fecha', $date->month)
                 ->whereYear('fecha', $date->year)
                 ->sum('monto');
 
+            $ingMes += LogisticsBillingRequest::withoutGlobalScopes()
+                ->where('empresa_id', $tenantId)
+                ->whereIn('estado', ['facturado', 'cobrado'])
+                ->whereNull('sale_id')
+                ->whereMonth('updated_at', $date->month)
+                ->whereYear('updated_at', $date->year)
+                ->sum('total');
+
             $egrMes = Purchase::where('empresa_id', $tenantId)
                 ->where('status', 'confirmado')
                 ->whereMonth('date', $date->month)
                 ->whereYear('date', $date->year)
                 ->sum('total');
-            
+
             $egrMes += CashMovement::where('empresa_id', $tenantId)
                 ->where('tipo', 'egreso')
                 ->whereMonth('fecha', $date->month)
@@ -142,6 +165,13 @@ class FlujoCajaWidget extends Widget
                 ->sum('monto');
 
             $egrMes += DebtPayment::where('empresa_id', $tenantId)
+                ->whereMonth('fecha_pago', $date->month)
+                ->whereYear('fecha_pago', $date->year)
+                ->sum('total');
+
+            $egrMes += LogisticsShipmentBill::withoutGlobalScopes()
+                ->where('empresa_id', $tenantId)
+                ->where('estado', 'pagada')
                 ->whereMonth('fecha_pago', $date->month)
                 ->whereYear('fecha_pago', $date->year)
                 ->sum('total');
