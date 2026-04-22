@@ -716,10 +716,19 @@ class PackageResource extends Resource
 
                         $resumen = $billing
                             ? new HtmlString(
-                                '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;font-size:13px;">'
+                                '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;font-size:13px;line-height:1.8;">'
                                 . '<strong>Nota de venta:</strong> ' . e($billing->numero_nota_venta)
+                                . ' &nbsp;|&nbsp; <strong>Cliente:</strong> ' . e($billing->storeCustomer?->nombre_completo ?? '—')
+                                . '<br><strong>Subtotal 15%:</strong> $' . number_format($billing->subtotal_15, 2)
+                                . ($billing->descuento_monto > 0
+                                    ? ' &nbsp;|&nbsp; <strong style="color:#16a34a;">Descuento (' . match($billing->descuento_tipo) {
+                                        'cliente_fijo' => 'cliente fijo',
+                                        'promocion'    => 'promoción',
+                                        default        => $billing->descuento_descripcion ?? 'otro',
+                                    } . '):</strong> <span style="color:#16a34a;">− $' . number_format($billing->descuento_monto, 2) . '</span>'
+                                    : '')
+                                . '<br><strong>IVA 15%:</strong> $' . number_format($billing->iva, 2)
                                 . ' &nbsp;|&nbsp; <strong>Total:</strong> $' . number_format($billing->total, 2)
-                                . '<br><strong>Cliente:</strong> ' . e($billing->storeCustomer?->nombre_completo ?? '—')
                                 . '</div>'
                             )
                             : new HtmlString('<p style="color:#ef4444;">No se encontró solicitud pendiente.</p>');

@@ -16,6 +16,7 @@ class LogisticsBillingRequest extends Model
         'package_id',
         'store_customer_id',
         'numero_nota_venta',
+        'numero_factura',
         'token',
         'subtotal_0',
         'subtotal_15',
@@ -31,19 +32,23 @@ class LogisticsBillingRequest extends Model
         'accepted_channel',
         'accepted_at',
         'notas',
+        'descuento_tipo',
+        'descuento_descripcion',
+        'descuento_monto',
         'sale_id',
         'verificado_por',
         'verificado_at',
     ];
 
     protected $casts = [
-        'items'        => 'array',
-        'subtotal_0'   => 'decimal:2',
-        'subtotal_15'  => 'decimal:2',
-        'iva'          => 'decimal:2',
-        'total'        => 'decimal:2',
-        'accepted_at'   => 'datetime',
-        'verificado_at' => 'datetime',
+        'items'           => 'array',
+        'subtotal_0'      => 'decimal:2',
+        'subtotal_15'     => 'decimal:2',
+        'iva'             => 'decimal:2',
+        'total'           => 'decimal:2',
+        'descuento_monto' => 'decimal:2',
+        'accepted_at'     => 'datetime',
+        'verificado_at'   => 'datetime',
     ];
 
     const ESTADOS = [
@@ -302,6 +307,41 @@ class LogisticsBillingRequest extends Model
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    public function aplicarDescuento(string $tipo, float $monto, ?string $descripcion = null): void
+    {
+        $monto = round(max(0, $monto), 2);
+
+        // subtotal_15 permanece intacto — el descuento se muestra como línea separada
+        $baseDescontada = max(0, (float) $this->subtotal_15 - $monto);
+        $nuevoIva       = round($baseDescontada * 0.15, 2);
+        $nuevoTotal     = round((float) $this->subtotal_0 + (float) $this->subtotal_15 - $monto + $nuevoIva, 2);
+
+        $this->update([
+            'descuento_tipo'        => $tipo,
+            'descuento_descripcion' => $descripcion,
+            'descuento_monto'       => $monto,
+            'iva'                   => $nuevoIva,
+            'total'                 => $nuevoTotal,
+        ]);
+    }
+
+    public function asignarNumeroFactura(): string
+    {
+        if ($this->numero_factura) {
+            return $this->numero_factura;
+        }
+
+        $seq = self::where('empresa_id', $this->empresa_id)
+            ->whereNotNull('numero_factura')
+            ->count() + 1;
+
+        $numero = '001-001-' . str_pad($seq, 9, '0', STR_PAD_LEFT);
+
+        $this->update(['numero_factura' => $numero]);
+
+        return $numero;
+    }
 
     public function aceptar(string $channel, string $billingType, ?StoreCustomerCompany $company = null, ?StoreCustomer $customer = null): void
     {

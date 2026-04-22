@@ -43,6 +43,8 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="text-left px-3 py-2 text-gray-500">Descripción</th>
+                    <th class="text-center px-3 py-2 text-gray-500">Cant.</th>
+                    <th class="text-right px-3 py-2 text-gray-500">P. Unit.</th>
                     <th class="text-center px-3 py-2 text-gray-500">IVA</th>
                     <th class="text-right px-3 py-2 text-gray-500">Total</th>
                 </tr>
@@ -51,6 +53,13 @@
                 @foreach($billing->items as $item)
                 <tr>
                     <td class="px-3 py-2 text-gray-700">{{ $item['descripcion'] }}</td>
+                    <td class="px-3 py-2 text-center text-gray-600">
+                        {{ $item['cantidad'] }}
+                        @if(!empty($item['unidad']))
+                            <span class="block text-gray-400 text-[10px]">{{ $item['unidad'] }}</span>
+                        @endif
+                    </td>
+                    <td class="px-3 py-2 text-right text-gray-600">${{ number_format($item['precio'], 4) }}</td>
                     <td class="px-3 py-2 text-center text-gray-500">{{ $item['iva_pct'] }}%</td>
                     <td class="px-3 py-2 text-right font-semibold">${{ number_format($item['total'], 2) }}</td>
                 </tr>
@@ -59,22 +68,34 @@
             <tfoot class="bg-gray-50 border-t border-gray-200">
                 @if($billing->subtotal_0 > 0)
                 <tr>
-                    <td colspan="2" class="px-3 py-1 text-gray-500">Subtotal 0%</td>
+                    <td colspan="4" class="px-3 py-1 text-gray-500">Subtotal 0%</td>
                     <td class="px-3 py-1 text-right">${{ number_format($billing->subtotal_0, 2) }}</td>
                 </tr>
                 @endif
                 @if($billing->subtotal_15 > 0)
                 <tr>
-                    <td colspan="2" class="px-3 py-1 text-gray-500">Subtotal 15%</td>
+                    <td colspan="4" class="px-3 py-1 text-gray-500">Subtotal 15%</td>
                     <td class="px-3 py-1 text-right">${{ number_format($billing->subtotal_15, 2) }}</td>
                 </tr>
-                <tr>
-                    <td colspan="2" class="px-3 py-1 text-gray-500">IVA 15%</td>
-                    <td class="px-3 py-1 text-right">${{ number_format($billing->iva, 2) }}</td>
+                @endif
+                @if((float)($billing->descuento_monto ?? 0) > 0)
+                <tr class="text-green-600 font-medium">
+                    <td colspan="4" class="px-3 py-1">
+                        Descuento
+                        @if($billing->descuento_tipo === 'cliente_fijo') (cliente fijo)
+                        @elseif($billing->descuento_tipo === 'promocion') (promoción)
+                        @else ({{ $billing->descuento_descripcion ?? 'otro' }})
+                        @endif
+                    </td>
+                    <td class="px-3 py-1 text-right">− ${{ number_format($billing->descuento_monto, 2) }}</td>
                 </tr>
                 @endif
+                <tr>
+                    <td colspan="4" class="px-3 py-1 text-gray-500">IVA 15%</td>
+                    <td class="px-3 py-1 text-right">${{ number_format($billing->iva, 2) }}</td>
+                </tr>
                 <tr class="font-bold text-base">
-                    <td colspan="2" class="px-3 py-2 text-gray-700">TOTAL</td>
+                    <td colspan="4" class="px-3 py-2 text-gray-700">TOTAL</td>
                     <td class="px-3 py-2 text-right text-emerald-700">${{ number_format($billing->total, 2) }}</td>
                 </tr>
             </tfoot>

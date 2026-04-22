@@ -466,6 +466,18 @@
                                                 <span>Subtotal 15% IVA</span>
                                                 <span>${{ number_format($billing->subtotal_15, 2) }}</span>
                                             </div>
+                                            @if((float)$billing->descuento_monto > 0)
+                                            <div class="flex justify-between text-green-600 text-xs font-medium">
+                                                <span>
+                                                    Descuento
+                                                    @if($billing->descuento_tipo === 'cliente_fijo') (cliente fijo)
+                                                    @elseif($billing->descuento_tipo === 'promocion') (promoción)
+                                                    @else ({{ $billing->descuento_descripcion ?? 'otro' }})
+                                                    @endif
+                                                </span>
+                                                <span>− ${{ number_format($billing->descuento_monto, 2) }}</span>
+                                            </div>
+                                            @endif
                                             <div class="flex justify-between text-gray-500 text-xs">
                                                 <span>IVA 15%</span>
                                                 <span>${{ number_format($billing->iva, 2) }}</span>
