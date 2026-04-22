@@ -35,6 +35,7 @@ class LogisticsBillingRequest extends Model
         'descuento_tipo',
         'descuento_descripcion',
         'descuento_monto',
+        'factura_comercial_path',
         'sale_id',
         'verificado_por',
         'verificado_at',

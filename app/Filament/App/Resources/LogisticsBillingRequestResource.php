@@ -6,6 +6,7 @@ use App\Filament\App\Resources\LogisticsBillingRequestResource\Pages;
 use App\Models\LogisticsBillingRequest;
 use App\Models\StoreCustomerCompany;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -241,12 +242,17 @@ class LogisticsBillingRequestResource extends Resource
                             Notification::make()->title('Solicitud aceptada')->success()->send();
                         }),
 
-                    // Aplicar descuento
+                    // Aplicar / editar descuento
                     Action::make('aplicar_descuento')
-                        ->label('Aplicar descuento')
+                        ->label(fn ($record) => (float) $record->descuento_monto > 0 ? 'Editar descuento' : 'Aplicar descuento')
                         ->icon('heroicon-o-tag')
                         ->color('warning')
                         ->visible(fn ($record) => in_array($record->estado, ['pendiente', 'aceptado']))
+                        ->fillForm(fn ($record) => [
+                            'tipo'        => $record->descuento_tipo,
+                            'descripcion' => $record->descuento_descripcion,
+                            'monto'       => $record->descuento_monto > 0 ? $record->descuento_monto : null,
+                        ])
                         ->form(function ($record) {
                             return [
                                 Select::make('tipo')
@@ -269,7 +275,7 @@ class LogisticsBillingRequestResource extends Resource
                                     ->prefix('$')
                                     ->step(0.01)
                                     ->required()
-                                    ->helperText('Total actual: $' . number_format((float) $record->total, 2)),
+                                    ->helperText('Subtotal 15%: $' . number_format((float) $record->subtotal_15, 2)),
                             ];
                         })
                         ->action(function ($record, array $data) {
@@ -282,7 +288,29 @@ class LogisticsBillingRequestResource extends Resource
                                 return;
                             }
                             $record->aplicarDescuento($data['tipo'], $monto, $data['descripcion'] ?? null);
-                            Notification::make()->title('Descuento aplicado')->success()->send();
+                            Notification::make()
+                                ->title((float) $record->descuento_monto > 0 ? 'Descuento actualizado' : 'Descuento aplicado')
+                                ->success()->send();
+                        }),
+
+                    // Adjuntar factura comercial
+                    Action::make('adjuntar_factura')
+                        ->label(fn ($record) => $record->factura_comercial_path ? 'Reemplazar factura' : 'Adjuntar factura')
+                        ->icon('heroicon-o-paper-clip')
+                        ->color('info')
+                        ->visible(fn ($record) => in_array($record->estado, ['aceptado', 'facturado', 'cobrado']))
+                        ->form([
+                            FileUpload::make('factura_comercial_path')
+                                ->label('Factura comercial (PDF)')
+                                ->disk('public')
+                                ->directory('logistics/facturas')
+                                ->acceptedFileTypes(['application/pdf'])
+                                ->required()
+                                ->dehydrateStateUsing(fn ($state) => is_array($state) ? (string) reset($state) : (string) $state),
+                        ])
+                        ->action(function ($record, array $data) {
+                            $record->update(['factura_comercial_path' => $data['factura_comercial_path']]);
+                            Notification::make()->title('Factura adjuntada')->success()->send();
                         }),
 
                     // Marcar como facturado
