@@ -51,7 +51,25 @@ class EditShipment extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [
+            DeleteAction::make()
+                ->visible(fn () => ShipmentResource::esEditable($this->record)),
+        ];
+    }
+
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        if (! ShipmentResource::esEditable($this->record)) {
+            \Filament\Notifications\Notification::make()
+                ->title('Este embarque ya no puede editarse')
+                ->body('Los embarques que han arribado a Ecuador son de solo lectura.')
+                ->warning()
+                ->send();
+
+            $this->redirect(ShipmentResource::getUrl('index', tenant: Filament::getTenant()));
+        }
     }
 
     protected function beforeSave(): void

@@ -394,9 +394,25 @@ class ShipmentResource extends Resource
                     ->icon('heroicon-o-view-columns')
                     ->color('gray')
                     ->url(fn () => ShipmentKanban::getUrl(tenant: Filament::getTenant())),
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->visible(fn (LogisticsShipment $record) => static::esEditable($record)),
+                DeleteAction::make()
+                    ->visible(fn (LogisticsShipment $record) => static::esEditable($record)),
             ]);
+    }
+
+    // Estados previos al arribo a Ecuador — únicos en los que se puede editar/eliminar
+    public const ESTADOS_EDITABLES = [
+        'embarque_solicitado',
+        'carga_registrada',
+        'consolidando',
+        'fraccionamiento_en_proceso',
+        'carga_embarcada',
+    ];
+
+    public static function esEditable(LogisticsShipment $record): bool
+    {
+        return in_array($record->estado, self::ESTADOS_EDITABLES, true);
     }
 
     public static function getPages(): array
