@@ -12,7 +12,7 @@ class SaleObserver
     public function updated(Sale $sale): void
     {
         // Solo actuar si el estado cambia a 'confirmado'
-        if (!$sale->isDirty('estado') || $sale->estado !== 'confirmado') {
+        if (!$sale->wasChanged('estado') || $sale->estado !== 'confirmado') {
             return;
         }
 

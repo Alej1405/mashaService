@@ -16,7 +16,7 @@ class ProductionOrderObserver
     public function updated(ProductionOrder $order): void
     {
         // 1. Detectar cambio a 'completado' y evitar re-ejecución
-        if ($order->isDirty('estado') && $order->estado === 'completado' && is_null($order->journal_entry_id)) {
+        if ($order->wasChanged('estado') && $order->estado === 'completado' && is_null($order->journal_entry_id)) {
             
             $order->refresh();
             

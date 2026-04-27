@@ -11,7 +11,7 @@ class PurchaseObserver
 {
     public function updated(Purchase $purchase): void
     {
-        if (!$purchase->isDirty('status') || 
+        if (!$purchase->wasChanged('status') ||
             $purchase->status !== 'confirmado') {
             return;
         }

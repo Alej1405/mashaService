@@ -125,7 +125,7 @@ class AccountingService
             $orden      = 1;
 
             $tipoMovimiento = match($purchase->forma_pago) {
-                'efectivo', 'transferencia', 'tarjeta_credito' => 'compra_contado',
+                'efectivo', 'transferencia', 'tarjeta', 'tarjeta_credito', 'cheque' => 'compra_contado',
                 'credito' => 'compra_credito_local',
                 default   => 'compra_contado',
             };

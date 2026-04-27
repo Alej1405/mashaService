@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class DebtPayment extends Model
 {
@@ -18,11 +19,18 @@ class DebtPayment extends Model
 
         static::creating(function (DebtPayment $payment) {
             if (empty($payment->numero)) {
-                $year = now()->year;
-                $last = static::withoutGlobalScopes()
-                    ->where('numero', 'like', "PAD-{$year}-%")
-                    ->count();
-                $payment->numero = sprintf('PAD-%d-%05d', $year, $last + 1);
+                $year   = now()->year;
+                $prefix = "PAD-{$year}-";
+
+                $seq = DB::transaction(function () use ($prefix) {
+                    $max = static::withoutGlobalScopes()
+                        ->where('numero', 'like', "{$prefix}%")
+                        ->lockForUpdate()
+                        ->max('numero');
+                    return $max ? ((int) substr($max, -5)) + 1 : 1;
+                });
+
+                $payment->numero = sprintf('PAD-%d-%05d', $year, $seq);
             }
 
             $payment->total = ($payment->monto_capital ?? 0)

@@ -11,14 +11,12 @@ class InventoryMovementObserver
      */
     public function created(InventoryMovement $inventoryMovement): void
     {
-        if ($inventoryMovement->reference_type === 'purchase') {
-            // Ya lo genera PurchaseObserver al confirmar
+        // Compras y producción tienen su propio Observer que genera el asiento
+        if (in_array($inventoryMovement->reference_type, ['purchase', 'purchase_void', 'production_order', 'manufacture'])) {
             return;
         }
 
-        if ($inventoryMovement->reference_type === 'manufacture') {
-            \App\Services\AccountingService::generarAsientoConsumo($inventoryMovement);
-        } elseif ($inventoryMovement->reference_type === 'adjustment' || $inventoryMovement->reference_type === 'ajuste') {
+        if ($inventoryMovement->reference_type === 'adjustment' || $inventoryMovement->reference_type === 'ajuste') {
             \App\Services\AccountingService::generarAsientoAjuste($inventoryMovement);
         }
     }

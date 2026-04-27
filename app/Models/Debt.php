@@ -6,6 +6,7 @@ use App\Traits\HasEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Debt extends Model
 {
@@ -19,11 +20,18 @@ class Debt extends Model
 
         static::creating(function (Debt $debt) {
             if (empty($debt->numero)) {
-                $year = now()->year;
-                $last = static::withoutGlobalScopes()
-                    ->where('numero', 'like', "DEU-{$year}-%")
-                    ->count();
-                $debt->numero = sprintf('DEU-%d-%05d', $year, $last + 1);
+                $year   = now()->year;
+                $prefix = "DEU-{$year}-";
+
+                $seq = DB::transaction(function () use ($prefix) {
+                    $max = static::withoutGlobalScopes()
+                        ->where('numero', 'like', "{$prefix}%")
+                        ->lockForUpdate()
+                        ->max('numero');
+                    return $max ? ((int) substr($max, -5)) + 1 : 1;
+                });
+
+                $debt->numero = sprintf('DEU-%d-%05d', $year, $seq);
             }
 
             if (empty($debt->saldo_pendiente)) {

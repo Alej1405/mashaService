@@ -23,7 +23,7 @@ class LogisticsShipmentObserver
 
     public function updated(LogisticsShipment $shipment): void
     {
-        if (! $shipment->isDirty('estado')) {
+        if (! $shipment->wasChanged('estado')) {
             return;
         }
 

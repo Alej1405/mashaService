@@ -380,7 +380,7 @@ class SaleResource extends Resource
                             DB::transaction(function () use ($record) {
                                 // Revertir inventario si aplica
                                 foreach ($record->items as $item) {
-                                    if ($item->tipo_item === 'producto' && $item->inventory_item_id) {
+                                    if (in_array($item->tipo_item, ['producto_terminado', 'insumo', 'materia_prima']) && $item->inventory_item_id) {
                                         InventoryMovement::create([
                                             'empresa_id' => $record->empresa_id,
                                             'inventory_item_id' => $item->inventory_item_id,

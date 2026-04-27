@@ -82,7 +82,7 @@ class PurchaseResource extends Resource
                                 ->options([
                                     'efectivo'     => 'Efectivo',
                                     'transferencia' => 'Transferencia / Débito',
-                                    'tarjeta_credito' => 'Tarjeta de Crédito',
+                                    'tarjeta' => 'Tarjeta de Crédito',
                                     'credito'      => 'Crédito (Cuentas por Pagar)',
                                 ])
                                 ->default('efectivo')
@@ -127,8 +127,8 @@ class PurchaseResource extends Resource
                             Forms\Components\Select::make('credit_card_id')
                                 ->label('Tarjeta de Crédito')
                                 ->relationship('creditCard', 'nombre', fn($query) => $query->where('activo', true))
-                                ->visible(fn ($get) => $get('forma_pago') === 'tarjeta_credito')
-                                ->required(fn ($get) => $get('forma_pago') === 'tarjeta_credito')
+                                ->visible(fn ($get) => $get('forma_pago') === 'tarjeta')
+                                ->required(fn ($get) => $get('forma_pago') === 'tarjeta')
                                 ->searchable()
                                 ->preload()
                                 ->columnSpan(1)
@@ -447,14 +447,14 @@ class PurchaseResource extends Resource
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'efectivo'       => 'Efectivo',
                         'transferencia'  => 'Transferencia',
-                        'tarjeta_credito' => 'Tarjeta',
+                        'tarjeta'        => 'Tarjeta',
                         'credito'        => 'Crédito',
                         default          => $state,
                     })
                     ->color(fn ($state) => match ($state) {
                         'efectivo'       => 'success',
                         'transferencia'  => 'info',
-                        'tarjeta_credito' => 'warning',
+                        'tarjeta'        => 'warning',
                         'credito'        => 'danger',
                         default          => 'gray',
                     }),
