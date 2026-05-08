@@ -93,7 +93,10 @@ class SaleObserver
                 'sale_id' => $sale->id,
                 'error'   => $e->getMessage(),
             ]);
-            throw $e;
+            $sale->updateQuietly([
+                'error_contable'     => true,
+                'error_contable_msg' => $e->getMessage(),
+            ]);
         }
     }
 }

@@ -20,7 +20,7 @@ class SupplierResource extends Resource
     protected static ?string $tenantRelationshipName = 'suppliers';
 
     protected static ?string $navigationIcon = 'heroicon-o-truck';
-    protected static ?string $navigationGroup = 'Compras';
+    protected static ?string $navigationGroup = 'Contabilidad';
     protected static ?string $modelLabel = 'Proveedor';
     protected static ?string $pluralModelLabel = 'Proveedores';
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';

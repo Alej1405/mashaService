@@ -33,7 +33,13 @@ class ServiceChargeConfigResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::can('pro');
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'enterprise'
+            && \App\Helpers\PlanHelper::can('enterprise');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
     }
 
     public static function form(Form $form): Form

@@ -31,7 +31,7 @@ class LogisticsPaymentClaimResource extends Resource
     protected static ?string $tenantRelationshipName  = 'logisticsBillingRequests';
     protected static ?string $navigationIcon          = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel    = 'Verificar Cobros';
-    protected static ?string $navigationGroup    = 'Ventas';
+    protected static ?string $navigationGroup    = 'Logística';
     protected static ?string $modelLabel         = 'Cobro';
     protected static ?string $pluralModelLabel   = 'Cobros logísticos';
     protected static ?int    $navigationSort     = 99;

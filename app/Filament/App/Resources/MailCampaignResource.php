@@ -33,7 +33,7 @@ class MailCampaignResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+        return (bool) \Filament\Facades\Filament::getTenant()?->servicio_mailing_activo;
     }
 
     public static function form(Form $form): Form
@@ -116,7 +116,27 @@ class MailCampaignResource extends Resource
                     ->label('Campaña')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (MailCampaign $r) => $r->mailTemplate?->subject),
+                    ->description(fn (MailCampaign $r) => match ($r->tipo) {
+                        'carta_presentacion' => 'Carta de Presentación',
+                        'noticia'            => 'Noticia',
+                        default              => $r->mailTemplate?->subject,
+                    }),
+
+                Tables\Columns\TextColumn::make('tipo')
+                    ->label('Tipo')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'campana'            => 'Campaña',
+                        'carta_presentacion' => 'Carta',
+                        'noticia'            => 'Noticia',
+                        default              => $state,
+                    })
+                    ->color(fn (string $state) => match ($state) {
+                        'campana'            => 'primary',
+                        'carta_presentacion' => 'warning',
+                        'noticia'            => 'info',
+                        default              => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('mailingGroup.name')
                     ->label('Grupo')
@@ -250,8 +270,70 @@ class MailCampaignResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar'),
 
+                // ── Ver destinatarios (carta y noticia) ───────────────────
+                Tables\Actions\Action::make('verDestinatarios')
+                    ->label('Ver destinatarios')
+                    ->icon('heroicon-o-users')
+                    ->color('info')
+                    ->visible(fn (MailCampaign $r) => in_array($r->tipo, ['carta_presentacion', 'noticia']))
+                    ->modalHeading(fn (MailCampaign $r) => 'Destinatarios — ' . $r->name)
+                    ->modalContent(function (MailCampaign $r): HtmlString {
+                        // Carta: pivote es mailing_send_log.referencia_id = campaign.id
+                        // Noticia: pivote es mailing_send_log.referencia_id = post.id (guardado en campaign.referencia_id)
+                        $logRefId = $r->tipo === 'carta_presentacion' ? $r->id : $r->referencia_id;
+                        $logTipo  = $r->tipo === 'carta_presentacion'
+                            ? \App\Models\MailingSendLog::TIPO_CARTA
+                            : \App\Models\MailingSendLog::TIPO_NOTICIA;
+
+                        $logs = \App\Models\MailingSendLog::query()
+                            ->leftJoin('mailing_contacts', function ($join) use ($r) {
+                                $join->on('mailing_contacts.email', '=', 'mailing_send_log.email')
+                                     ->where('mailing_contacts.empresa_id', '=', $r->empresa_id);
+                            })
+                            ->where('mailing_send_log.empresa_id', $r->empresa_id)
+                            ->where('mailing_send_log.tipo', $logTipo)
+                            ->where('mailing_send_log.referencia_id', $logRefId)
+                            ->select(
+                                'mailing_send_log.email',
+                                'mailing_send_log.sent_at',
+                                'mailing_contacts.nombre',
+                            )
+                            ->orderBy('mailing_send_log.sent_at')
+                            ->get();
+
+                        if ($logs->isEmpty()) {
+                            return new HtmlString('<p style="color:#9ca3af;text-align:center;padding:24px;">Aún no se han registrado envíos.</p>');
+                        }
+
+                        $rows = $logs->map(fn ($log) =>
+                            '<tr>'
+                            . '<td style="padding:7px 12px;border-bottom:1px solid #f3f4f6;">' . e($log->nombre ?? '—') . '</td>'
+                            . '<td style="padding:7px 12px;border-bottom:1px solid #f3f4f6;color:#6b7280;">' . e($log->email) . '</td>'
+                            . '<td style="padding:7px 12px;border-bottom:1px solid #f3f4f6;color:#9ca3af;font-size:.8rem;white-space:nowrap;">' . ($log->sent_at ? \Carbon\Carbon::parse($log->sent_at)->format('d/m/Y H:i') : '—') . '</td>'
+                            . '</tr>'
+                        )->join('');
+
+                        return new HtmlString(
+                            '<div style="max-height:420px;overflow-y:auto;">'
+                            . '<table style="width:100%;border-collapse:collapse;">'
+                            . '<thead><tr style="background:#f9fafb;">'
+                            . '<th style="padding:8px 12px;text-align:left;font-size:.75rem;color:#6b7280;border-bottom:2px solid #e5e7eb;">Nombre</th>'
+                            . '<th style="padding:8px 12px;text-align:left;font-size:.75rem;color:#6b7280;border-bottom:2px solid #e5e7eb;">Correo</th>'
+                            . '<th style="padding:8px 12px;text-align:left;font-size:.75rem;color:#6b7280;border-bottom:2px solid #e5e7eb;">Enviado el</th>'
+                            . '</tr></thead>'
+                            . '<tbody>' . $rows . '</tbody>'
+                            . '</table>'
+                            . '</div>'
+                            . '<p style="color:#9ca3af;font-size:.75rem;margin-top:10px;">'
+                            . number_format($logs->count()) . ' destinatario(s) registrados.'
+                            . '</p>'
+                        );
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar'),
+
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\EditAction::make()->label('Editar')->visible(fn (MailCampaign $r) => $r->status === 'draft'),
+                    Tables\Actions\EditAction::make()->label('Editar')->visible(fn (MailCampaign $r) => $r->status === 'draft' && $r->tipo === 'campana'),
                     Tables\Actions\DeleteAction::make()->label('Eliminar'),
                 ])
                 ->icon('heroicon-m-ellipsis-horizontal')

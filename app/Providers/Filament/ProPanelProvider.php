@@ -61,6 +61,7 @@ class ProPanelProvider extends PanelProvider
                 fn (): string => view('filament.loading')->render(),
             )
             ->navigationGroups(\App\Helpers\PlanHelper::navigationGroups())
+            ->broadcasting()
             ->discoverResources(
                 in: app_path('Filament/App/Resources'),
                 for: 'App\\Filament\\App\\Resources'
@@ -89,13 +90,7 @@ class ProPanelProvider extends PanelProvider
             ])
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,
-                \App\Filament\App\Widgets\ResumenFinancieroWidget::class,
-                \App\Filament\App\Widgets\VentasComprasWidget::class,
-                \App\Filament\App\Widgets\StockBajoWidget::class,
-                \App\Filament\App\Widgets\TopProductosWidget::class,
-                \App\Filament\App\Widgets\FlujoCajaWidget::class,
-                \App\Filament\App\Widgets\EstadoResultadosWidget::class,
-                \App\Filament\App\Widgets\CompromisosFinancierosWidget::class,
+                \App\Filament\App\Widgets\KpiFinancieroWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

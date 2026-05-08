@@ -1,6 +1,17 @@
 <x-filament-panels::page>
 <div class="space-y-6">
 
+    {{-- ── Servicio suspendido ──────────────────────────────────────────── --}}
+    @if(! $empresa->servicio_mailing_activo)
+    <div class="rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 p-10 flex flex-col items-center justify-center text-center gap-4">
+        <x-heroicon-o-lock-closed class="w-12 h-12 text-gray-400 dark:text-gray-600"/>
+        <div>
+            <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">Tu plan actual no tiene estas funciones habilitadas</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Contacta al administrador para activar el servicio de Mailing.</p>
+        </div>
+    </div>
+    @else
+
     {{-- ── Banner de estado ─────────────────────────────────────────────── --}}
     @if(! $configurado)
     <div class="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-5 flex items-start gap-4">
@@ -289,6 +300,8 @@
             @endif
         </div>
     </div>
+
+    @endif {{-- fin $servicio_activo --}}
 
 </div>
 </x-filament-panels::page>

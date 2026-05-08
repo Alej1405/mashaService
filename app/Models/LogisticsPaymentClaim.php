@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasEmpresa;
+use App\Models\Sale;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,6 +52,11 @@ class LogisticsPaymentClaim extends Model
     public function journalEntry(): BelongsTo
     {
         return $this->belongsTo(JournalEntry::class);
+    }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     /** Devuelve los paquetes incluidos en este cobro */

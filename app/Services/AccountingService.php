@@ -833,6 +833,102 @@ class AccountingService
     }
 
     /**
+     * Genera el asiento contable cuando se paga una factura de proveedor logístico.
+     *
+     * Estructura:
+     *   DEBE  → Gasto servicios logísticos (6.1.x)
+     *   HABER → Banco / Caja (salida de fondos)
+     */
+    public function generarAsientoEgresoLogistico(\App\Models\LogisticsShipmentBill $bill): JournalEntry
+    {
+        $empresaId = $bill->empresa_id;
+        $monto     = (float) $bill->total;
+        $proveedor = $bill->supplier?->nombre ?? 'Proveedor';
+
+        if ($monto <= 0) {
+            throw new Exception("El monto de la factura logística debe ser mayor a cero.");
+        }
+
+        return DB::transaction(function () use ($bill, $empresaId, $monto, $proveedor) {
+
+            $ref = $bill->numero_factura_proveedor ? " Fact. {$bill->numero_factura_proveedor}" : '';
+
+            $journalEntry = JournalEntry::create([
+                'empresa_id'      => $empresaId,
+                'fecha'           => $bill->fecha_pago ?? now()->toDateString(),
+                'descripcion'     => "Pago factura logística — {$proveedor}{$ref}",
+                'tipo'            => 'pago_proveedor_logistico',
+                'origen'          => 'automatico',
+                'referencia_tipo' => 'logistics_shipment_bill',
+                'referencia_id'   => $bill->id,
+                'status'          => 'confirmado',
+                'total_debe'      => 0,
+                'total_haber'     => 0,
+                'esta_cuadrado'   => true,
+                'confirmado_por'  => Auth::id(),
+                'confirmado_at'   => now(),
+            ]);
+
+            // DEBE: Gasto servicios logísticos
+            $cuentaGasto = null;
+            try {
+                $cuentaGasto = self::getMapeo($empresaId, 'servicio', 'compra_contado');
+            } catch (Exception $e) {
+                $cuentaGasto = AccountPlan::where('empresa_id', $empresaId)
+                    ->where('code', 'like', '6.1%')
+                    ->where('type', 'gasto')
+                    ->first();
+            }
+
+            if (! $cuentaGasto) {
+                throw new Exception("Sin cuenta de gastos configurada para la empresa [{$empresaId}].");
+            }
+
+            JournalEntryLine::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_plan_id'  => $cuentaGasto->id,
+                'descripcion'      => "Gasto factura logística — {$proveedor}",
+                'debe'             => $monto,
+                'haber'            => 0,
+                'orden'            => 1,
+            ]);
+
+            // HABER: Banco (salida de fondos)
+            $cuentaBanco = AccountPlan::where('empresa_id', $empresaId)
+                ->where('code', '1.1.01.03')
+                ->first()
+                ?? AccountPlan::where('empresa_id', $empresaId)
+                    ->where('code', 'like', '1.1.01%')
+                    ->where('type', 'activo')
+                    ->first();
+
+            if (! $cuentaBanco) {
+                try {
+                    $cuentaBanco = self::getMapeo($empresaId, 'global', 'compra_contado');
+                } catch (Exception $e) {
+                    throw new Exception("Sin cuenta bancaria configurada para la empresa [{$empresaId}].");
+                }
+            }
+
+            JournalEntryLine::create([
+                'journal_entry_id' => $journalEntry->id,
+                'account_plan_id'  => $cuentaBanco->id,
+                'descripcion'      => "Egreso pago logístico — {$proveedor}",
+                'debe'             => 0,
+                'haber'            => $monto,
+                'orden'            => 2,
+            ]);
+
+            $journalEntry->update([
+                'total_debe'  => $monto,
+                'total_haber' => $monto,
+            ]);
+
+            return $journalEntry;
+        });
+    }
+
+    /**
      * Genera el asiento contable para un cobro de servicio logístico verificado.
      *
      * Estructura:

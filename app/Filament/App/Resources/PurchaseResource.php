@@ -28,6 +28,7 @@ use App\Filament\App\Resources\CashRegisterResource;
 use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\SupplierResource;
 use App\Filament\App\Resources\InventoryItemResource;
+use App\Services\AccountingService;
 
 class PurchaseResource extends Resource
 {
@@ -36,7 +37,7 @@ class PurchaseResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
     protected static ?string $navigationLabel = 'Registro de Compras';
-    protected static ?string $navigationGroup = 'Compras';
+    protected static ?string $navigationGroup = 'Contabilidad';
     protected static ?string $modelLabel = 'Compra';
     protected static ?string $pluralModelLabel = 'Compras';
 
@@ -585,6 +586,39 @@ class PurchaseResource extends Resource
                             ])
                             : null
                         ),
+                    Action::make('regenerarAsiento')
+                        ->label('Regenerar asiento')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->visible(fn (Purchase $record) =>
+                            $record->status === 'confirmado'
+                            && ($record->journal_entry_id === null || $record->error_contable)
+                            && (float) $record->total > 0
+                        )
+                        ->requiresConfirmation()
+                        ->modalHeading('Regenerar asiento contable')
+                        ->modalDescription('Se generará el asiento contable para esta compra. Si ya existe uno, se mantendrá intacto.')
+                        ->action(function (Purchase $record) {
+                            if ($record->journal_entry_id) {
+                                Notification::make()->title('Esta compra ya tiene asiento contable.')->warning()->send();
+                                return;
+                            }
+                            try {
+                                $entry = app(AccountingService::class)->generarAsientoCompra($record);
+                                $record->updateQuietly([
+                                    'journal_entry_id'   => $entry->id,
+                                    'error_contable'     => false,
+                                    'error_contable_msg' => null,
+                                ]);
+                                Notification::make()->title('Asiento #' . $entry->id . ' generado correctamente')->success()->send();
+                            } catch (\Throwable $e) {
+                                $record->updateQuietly([
+                                    'error_contable'     => true,
+                                    'error_contable_msg' => $e->getMessage(),
+                                ]);
+                                Notification::make()->title('Error: ' . $e->getMessage())->danger()->send();
+                            }
+                        }),
                 ]),
             ])
             ->bulkActions([

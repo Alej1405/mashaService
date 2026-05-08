@@ -30,7 +30,7 @@ class MailTemplateResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+        return (bool) \Filament\Facades\Filament::getTenant()?->servicio_mailing_activo;
     }
 
     public static function form(Form $form): Form

@@ -25,6 +25,8 @@ class Purchase extends Model
         'status',
         'notas',
         'journal_entry_id',
+        'error_contable',
+        'error_contable_msg',
         'cash_register_id',
         'bank_account_id',
         'credit_card_id',

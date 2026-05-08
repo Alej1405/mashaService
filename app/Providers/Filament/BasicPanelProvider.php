@@ -61,6 +61,7 @@ class BasicPanelProvider extends PanelProvider
                 'panels::body.start',
                 fn (): string => view('filament.loading')->render(),
             )
+            ->broadcasting()
             ->resources([
                 \App\Filament\App\Resources\MailTemplateResource::class,
                 \App\Filament\App\Resources\MailingGroupResource::class,
@@ -88,6 +89,8 @@ class BasicPanelProvider extends PanelProvider
                 \App\Filament\App\Pages\ApiDocsPage::class,
                 // Carta de Presentación
                 \App\Filament\App\Pages\CartaPresentacionPage::class,
+                // Soporte
+                \App\Filament\App\Pages\MiChatSoportePage::class,
             ])
             ->userMenuItems([
                 MenuItem::make()

@@ -16,9 +16,10 @@ class CreditCardResource extends Resource
 {
     protected static ?string $model = CreditCard::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
-
-    protected static ?string $navigationGroup = 'Contabilidad General';
+    protected static ?string $navigationIcon  = 'heroicon-o-credit-card';
+    protected static ?string $navigationLabel = 'Tarjetas';
+    protected static ?string $navigationGroup = 'Contabilidad';
+    protected static ?int    $navigationSort  = 8;
 
     protected static ?string $tenantRelationshipName = 'creditCards';
 

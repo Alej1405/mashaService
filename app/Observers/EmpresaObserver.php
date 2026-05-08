@@ -79,6 +79,8 @@ class EmpresaObserver
 
         if (!empty($modulesToEnable)) {
             $this->cloneAccountsForEmpresa($empresa, $modulesToEnable);
+            // Re-sincronizar mapas contables para que los nuevos módulos queden mapeados
+            $this->cloneAccountingMapsForEmpresa($empresa);
         }
 
         if (!empty($modulesToDisable)) {

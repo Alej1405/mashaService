@@ -8,198 +8,104 @@ use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsShipmentBill;
 use App\Models\Sale;
 use App\Models\Purchase;
-use Filament\Facades\Filament;
-use Filament\Widgets\Widget;
+use App\Traits\HasDashboardPeriodo;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
-use Livewire\Attributes\On;
+use Filament\Facades\Filament;
+use Filament\Widgets\Widget;
 
 class FlujoCajaWidget extends Widget
 {
+    use HasDashboardPeriodo;
+
     protected static string $view = 'filament.app.widgets.flujo-caja';
-    
-    protected int | string | array $columnSpan = 'full';
 
-    protected static ?int $sort = 6;
+    protected int|string|array $columnSpan = 'full';
 
-    public string $periodo;
-
-    public function mount()
-    {
-        $this->periodo = session('dashboard_periodo', 'mes');
-    }
-
-    #[On('dashboard-periodo-updated')]
-    public function updatePeriodo($periodo)
-    {
-        $this->periodo = $periodo;
-    }
+    protected static ?int $sort = 7;
 
     protected function getViewData(): array
     {
         $tenantId = Filament::getTenant()->id;
         [$desde, $hasta] = $this->getFechas($this->periodo);
 
-        // Si el periodo es muy largo (año), agrupamos por mes
-        if ($this->periodo === 'año') {
-            return $this->getDataMensual($tenantId, $desde, $hasta);
-        }
-
-        return $this->getDataDiaria($tenantId, $desde, $hasta);
+        return $this->periodo === 'año'
+            ? $this->getDataMensual($tenantId, $desde, $hasta)
+            : $this->getDataDiaria($tenantId, $desde, $hasta);
     }
 
-    protected function getDataDiaria($tenantId, $desde, $hasta): array
+    protected function getDataDiaria(int $tenantId, $desde, $hasta): array
     {
-        $period = CarbonPeriod::create($desde, $hasta);
-        $labels = [];
-        $ingresosData = [];
-        $egresosData = [];
-        $netoData = [];
+        $desdeStr = $desde->toDateString();
+        $hastaStr = $hasta->toDateString();
 
-        $ingAcum = 0;
-        $egrAcum = 0;
+        $ingVentas    = $this->fetchAndGroup(Sale::where('empresa_id', $tenantId)->where('estado', 'confirmado')->whereBetween('fecha', [$desdeStr, $hastaStr])->get(['fecha', 'total']), 'fecha', 'total');
+        $ingCaja      = $this->fetchAndGroup(CashMovement::where('empresa_id', $tenantId)->where('tipo', 'ingreso')->whereBetween('fecha', [$desdeStr, $hastaStr])->get(['fecha', 'monto']), 'fecha', 'monto');
+        $ingLogistica = $this->fetchAndGroup(LogisticsBillingRequest::withoutGlobalScopes()->where('empresa_id', $tenantId)->whereIn('estado', ['facturado', 'cobrado'])->whereNull('sale_id')->whereBetween('updated_at', [$desdeStr . ' 00:00:00', $hastaStr . ' 23:59:59'])->get(['updated_at', 'total']), 'updated_at', 'total');
+        $egrCompras   = $this->fetchAndGroup(Purchase::where('empresa_id', $tenantId)->where('status', 'confirmado')->whereBetween('date', [$desdeStr, $hastaStr])->get(['date', 'total']), 'date', 'total');
+        $egrCaja      = $this->fetchAndGroup(CashMovement::where('empresa_id', $tenantId)->where('tipo', 'egreso')->whereBetween('fecha', [$desdeStr, $hastaStr])->get(['fecha', 'monto']), 'fecha', 'monto');
+        $egrDeudas    = $this->fetchAndGroup(DebtPayment::where('empresa_id', $tenantId)->whereBetween('fecha_pago', [$desdeStr, $hastaStr])->get(['fecha_pago', 'total']), 'fecha_pago', 'total');
+        $egrLogistica = $this->fetchAndGroup(LogisticsShipmentBill::withoutGlobalScopes()->where('empresa_id', $tenantId)->where('estado', 'pagada')->whereBetween('fecha_pago', [$desdeStr, $hastaStr])->get(['fecha_pago', 'total']), 'fecha_pago', 'total');
 
-        foreach ($period as $date) {
+        $labels = $ingresos = $egresos = $neto = [];
+        $ingAcum = $egrAcum = 0;
+
+        foreach (CarbonPeriod::create($desde, $hasta) as $date) {
+            $dia      = $date->toDateString();
             $labels[] = $date->format('d M');
-            
-            // Ingresos: ventas confirmadas + movimientos caja + servicios logísticos facturados sin venta aún
-            $ingDia = Sale::where('empresa_id', $tenantId)
-                ->where('estado', 'confirmado')
-                ->whereDate('fecha', $date)
-                ->sum('total');
-
-            $ingDia += CashMovement::where('empresa_id', $tenantId)
-                ->where('tipo', 'ingreso')
-                ->whereDate('fecha', $date)
-                ->sum('monto');
-
-            $ingDia += LogisticsBillingRequest::withoutGlobalScopes()
-                ->where('empresa_id', $tenantId)
-                ->whereIn('estado', ['facturado', 'cobrado'])
-                ->whereNull('sale_id')
-                ->whereDate('updated_at', $date)
-                ->sum('total');
-
-            // Egresos: compras + movimientos caja + pagos deuda + facturas proveedor logística
-            $egrDia = Purchase::where('empresa_id', $tenantId)
-                ->where('status', 'confirmado')
-                ->whereDate('date', $date)
-                ->sum('total');
-
-            $egrDia += CashMovement::where('empresa_id', $tenantId)
-                ->where('tipo', 'egreso')
-                ->whereDate('fecha', $date)
-                ->sum('monto');
-
-            $egrDia += DebtPayment::where('empresa_id', $tenantId)
-                ->whereDate('fecha_pago', $date)
-                ->sum('total');
-
-            $egrDia += LogisticsShipmentBill::withoutGlobalScopes()
-                ->where('empresa_id', $tenantId)
-                ->where('estado', 'pagada')
-                ->whereDate('fecha_pago', $date)
-                ->sum('total');
-
-            $ingAcum += $ingDia;
-            $egrAcum += $egrDia;
-
-            $ingresosData[] = (float) $ingAcum;
-            $egresosData[] = (float) $egrAcum;
-            $netoData[] = (float) ($ingAcum - $egrAcum);
+            $ingAcum += ($ingVentas[$dia] ?? 0) + ($ingCaja[$dia] ?? 0) + ($ingLogistica[$dia] ?? 0);
+            $egrAcum += ($egrCompras[$dia] ?? 0) + ($egrCaja[$dia] ?? 0) + ($egrDeudas[$dia] ?? 0) + ($egrLogistica[$dia] ?? 0);
+            $ingresos[] = (float) $ingAcum;
+            $egresos[]  = (float) $egrAcum;
+            $neto[]     = (float) ($ingAcum - $egrAcum);
         }
 
-        return [
-            'labels' => $labels,
-            'ingresos' => $ingresosData,
-            'egresos' => $egresosData,
-            'neto' => $netoData,
-        ];
+        return compact('labels', 'ingresos', 'egresos', 'neto');
     }
 
-    protected function getDataMensual($tenantId, $desde, $hasta): array
+    protected function getDataMensual(int $tenantId, $desde, $hasta): array
     {
-        $labels = [];
-        $ingresosData = [];
-        $egresosData = [];
-        $netoData = [];
-        $ingAcum = 0;
-        $egrAcum = 0;
+        $desdeStr = $desde->toDateString();
+        $hastaStr = now()->endOfMonth()->toDateString();
+
+        $ingVentas    = $this->fetchAndGroupMes(Sale::where('empresa_id', $tenantId)->where('estado', 'confirmado')->whereBetween('fecha', [$desdeStr, $hastaStr])->get(['fecha', 'total']), 'fecha', 'total');
+        $ingCaja      = $this->fetchAndGroupMes(CashMovement::where('empresa_id', $tenantId)->where('tipo', 'ingreso')->whereBetween('fecha', [$desdeStr, $hastaStr])->get(['fecha', 'monto']), 'fecha', 'monto');
+        $ingLogistica = $this->fetchAndGroupMes(LogisticsBillingRequest::withoutGlobalScopes()->where('empresa_id', $tenantId)->whereIn('estado', ['facturado', 'cobrado'])->whereNull('sale_id')->whereBetween('updated_at', [$desdeStr . ' 00:00:00', $hastaStr . ' 23:59:59'])->get(['updated_at', 'total']), 'updated_at', 'total');
+        $egrCompras   = $this->fetchAndGroupMes(Purchase::where('empresa_id', $tenantId)->where('status', 'confirmado')->whereBetween('date', [$desdeStr, $hastaStr])->get(['date', 'total']), 'date', 'total');
+        $egrCaja      = $this->fetchAndGroupMes(CashMovement::where('empresa_id', $tenantId)->where('tipo', 'egreso')->whereBetween('fecha', [$desdeStr, $hastaStr])->get(['fecha', 'monto']), 'fecha', 'monto');
+        $egrDeudas    = $this->fetchAndGroupMes(DebtPayment::where('empresa_id', $tenantId)->whereBetween('fecha_pago', [$desdeStr, $hastaStr])->get(['fecha_pago', 'total']), 'fecha_pago', 'total');
+        $egrLogistica = $this->fetchAndGroupMes(LogisticsShipmentBill::withoutGlobalScopes()->where('empresa_id', $tenantId)->where('estado', 'pagada')->whereBetween('fecha_pago', [$desdeStr, $hastaStr])->get(['fecha_pago', 'total']), 'fecha_pago', 'total');
+
+        $labels = $ingresos = $egresos = $neto = [];
+        $ingAcum = $egrAcum = 0;
 
         for ($i = 0; $i < 12; $i++) {
             $date = (clone $desde)->addMonths($i);
             if ($date > now()->endOfMonth()) break;
 
+            $mes      = $date->format('Y-m');
             $labels[] = ucfirst($date->translatedFormat('M'));
-
-            $ingMes = Sale::where('empresa_id', $tenantId)
-                ->where('estado', 'confirmado')
-                ->whereMonth('fecha', $date->month)
-                ->whereYear('fecha', $date->year)
-                ->sum('total');
-
-            $ingMes += CashMovement::where('empresa_id', $tenantId)
-                ->where('tipo', 'ingreso')
-                ->whereMonth('fecha', $date->month)
-                ->whereYear('fecha', $date->year)
-                ->sum('monto');
-
-            $ingMes += LogisticsBillingRequest::withoutGlobalScopes()
-                ->where('empresa_id', $tenantId)
-                ->whereIn('estado', ['facturado', 'cobrado'])
-                ->whereNull('sale_id')
-                ->whereMonth('updated_at', $date->month)
-                ->whereYear('updated_at', $date->year)
-                ->sum('total');
-
-            $egrMes = Purchase::where('empresa_id', $tenantId)
-                ->where('status', 'confirmado')
-                ->whereMonth('date', $date->month)
-                ->whereYear('date', $date->year)
-                ->sum('total');
-
-            $egrMes += CashMovement::where('empresa_id', $tenantId)
-                ->where('tipo', 'egreso')
-                ->whereMonth('fecha', $date->month)
-                ->whereYear('fecha', $date->year)
-                ->sum('monto');
-
-            $egrMes += DebtPayment::where('empresa_id', $tenantId)
-                ->whereMonth('fecha_pago', $date->month)
-                ->whereYear('fecha_pago', $date->year)
-                ->sum('total');
-
-            $egrMes += LogisticsShipmentBill::withoutGlobalScopes()
-                ->where('empresa_id', $tenantId)
-                ->where('estado', 'pagada')
-                ->whereMonth('fecha_pago', $date->month)
-                ->whereYear('fecha_pago', $date->year)
-                ->sum('total');
-
-            $ingAcum += $ingMes;
-            $egrAcum += $egrMes;
-
-            $ingresosData[] = (float) $ingAcum;
-            $egresosData[] = (float) $egrAcum;
-            $netoData[] = (float) ($ingAcum - $egrAcum);
+            $ingAcum += ($ingVentas[$mes] ?? 0) + ($ingCaja[$mes] ?? 0) + ($ingLogistica[$mes] ?? 0);
+            $egrAcum += ($egrCompras[$mes] ?? 0) + ($egrCaja[$mes] ?? 0) + ($egrDeudas[$mes] ?? 0) + ($egrLogistica[$mes] ?? 0);
+            $ingresos[] = (float) $ingAcum;
+            $egresos[]  = (float) $egrAcum;
+            $neto[]     = (float) ($ingAcum - $egrAcum);
         }
 
-        return [
-            'labels' => $labels,
-            'ingresos' => $ingresosData,
-            'egresos' => $egresosData,
-            'neto' => $netoData,
-        ];
+        return compact('labels', 'ingresos', 'egresos', 'neto');
     }
 
-    protected function getFechas($p): array
+    private function fetchAndGroup($collection, string $campoFecha, string $campoValor): \Illuminate\Support\Collection
     {
-        return match($p) {
-            'hoy'     => [today(), today()],
-            'semana'  => [now()->startOfWeek(), now()->endOfWeek()],
-            'mes'     => [now()->startOfMonth(), now()->endOfMonth()],
-            'año'     => [now()->startOfYear(), now()->endOfYear()],
-            default   => [now()->startOfMonth(), now()->endOfMonth()],
-        };
+        return $collection
+            ->groupBy(fn($r) => Carbon::parse($r->{$campoFecha})->toDateString())
+            ->map(fn($rows) => $rows->sum($campoValor));
+    }
+
+    private function fetchAndGroupMes($collection, string $campoFecha, string $campoValor): \Illuminate\Support\Collection
+    {
+        return $collection
+            ->groupBy(fn($r) => Carbon::parse($r->{$campoFecha})->format('Y-m'))
+            ->map(fn($rows) => $rows->sum($campoValor));
     }
 }

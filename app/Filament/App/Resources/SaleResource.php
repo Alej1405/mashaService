@@ -26,6 +26,7 @@ use App\Filament\App\Resources\CashRegisterResource;
 use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\CustomerResource;
 use App\Filament\App\Resources\InventoryItemResource;
+use App\Services\AccountingService;
 
 class SaleResource extends Resource
 {
@@ -417,6 +418,39 @@ class SaleResource extends Resource
                             'record' => $record->journal_entry_id,
                             'tenant' => Filament::getTenant(),
                         ])),
+                    Action::make('regenerarAsiento')
+                        ->label('Regenerar asiento')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->visible(fn (Sale $record) =>
+                            $record->estado === 'confirmado'
+                            && ($record->journal_entry_id === null || $record->error_contable)
+                            && (float) $record->total > 0
+                        )
+                        ->requiresConfirmation()
+                        ->modalHeading('Regenerar asiento contable')
+                        ->modalDescription('Se generará el asiento contable para esta venta. Si ya existe uno, se mantendrá intacto.')
+                        ->action(function (Sale $record) {
+                            if ($record->journal_entry_id) {
+                                Notification::make()->title('Esta venta ya tiene asiento contable.')->warning()->send();
+                                return;
+                            }
+                            try {
+                                $entry = app(AccountingService::class)->generarAsientoVenta($record);
+                                $record->updateQuietly([
+                                    'journal_entry_id'   => $entry->id,
+                                    'error_contable'     => false,
+                                    'error_contable_msg' => null,
+                                ]);
+                                Notification::make()->title('Asiento #' . $entry->id . ' generado correctamente')->success()->send();
+                            } catch (\Throwable $e) {
+                                $record->updateQuietly([
+                                    'error_contable'     => true,
+                                    'error_contable_msg' => $e->getMessage(),
+                                ]);
+                                Notification::make()->title('Error: ' . $e->getMessage())->danger()->send();
+                            }
+                        }),
                 ]),
             ])
             ->bulkActions([

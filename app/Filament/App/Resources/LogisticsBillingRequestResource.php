@@ -27,10 +27,20 @@ class LogisticsBillingRequestResource extends Resource
     protected static ?string $tenantRelationshipName = 'logisticsBillingRequests';
     protected static ?string $navigationIcon     = 'heroicon-o-document-text';
     protected static ?string $navigationLabel    = 'Órdenes por cobrar';
-    protected static ?string $navigationGroup    = 'Ventas';
+    protected static ?string $navigationGroup    = 'Logística';
     protected static ?string $modelLabel         = 'Orden de cobro';
     protected static ?string $pluralModelLabel   = 'Órdenes por cobrar';
     protected static ?int    $navigationSort     = 25;
+
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::can('pro');
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
 
     public static function form(Form $form): Form
     {

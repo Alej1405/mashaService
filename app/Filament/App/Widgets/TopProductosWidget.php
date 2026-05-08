@@ -3,17 +3,18 @@
 namespace App\Filament\App\Widgets;
 
 use App\Models\SaleItem;
-use App\Models\Sale;
+use App\Traits\HasDashboardPeriodo;
 use Filament\Facades\Filament;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\On;
 
 class TopProductosWidget extends Widget
 {
+    use HasDashboardPeriodo;
+
     protected static string $view = 'filament.app.widgets.top-productos';
-    
-    protected int | string | array $columnSpan = [
+
+    protected int|string|array $columnSpan = [
         'default' => 1,
         'sm'      => 1,
         'md'      => 1,
@@ -21,20 +22,7 @@ class TopProductosWidget extends Widget
         'xl'      => 1,
     ];
 
-    protected static ?int $sort = 5;
-
-    public string $periodo;
-
-    public function mount()
-    {
-        $this->periodo = session('dashboard_periodo', 'mes');
-    }
-
-    #[On('dashboard-periodo-updated')]
-    public function updatePeriodo($periodo)
-    {
-        $this->periodo = $periodo;
-    }
+    protected static ?int $sort = 6;
 
     protected function getViewData(): array
     {
@@ -42,12 +30,8 @@ class TopProductosWidget extends Widget
         [$desde, $hasta] = $this->getFechas($this->periodo);
 
         $top = SaleItem::query()
-            ->select(
-                'inventory_item_id',
-                DB::raw('SUM(cantidad) as total_qty'),
-                DB::raw('SUM(subtotal) as total_revenue')
-            )
-            ->whereHas('sale', function($q) use ($tenantId, $desde, $hasta) {
+            ->select('inventory_item_id', DB::raw('SUM(cantidad) as total_qty'), DB::raw('SUM(subtotal) as total_revenue'))
+            ->whereHas('sale', function ($q) use ($tenantId, $desde, $hasta) {
                 $q->where('empresa_id', $tenantId)
                   ->where('estado', 'confirmado')
                   ->whereBetween('fecha', [$desde->toDateString(), $hasta->toDateString()]);
@@ -62,22 +46,11 @@ class TopProductosWidget extends Widget
 
         return [
             'productos' => $top->map(fn($item) => [
-                'name' => $item->inventoryItem->nombre ?? 'Producto Eliminado',
-                'qty' => $item->total_qty,
+                'name'    => $item->inventoryItem->nombre ?? 'Producto Eliminado',
+                'qty'     => $item->total_qty,
                 'revenue' => $item->total_revenue,
-                'percent' => ($item->total_qty / $maxQty) * 100
+                'percent' => ($item->total_qty / $maxQty) * 100,
             ]),
         ];
-    }
-
-    protected function getFechas($p): array
-    {
-        return match($p) {
-            'hoy'     => [today(), today()],
-            'semana'  => [now()->startOfWeek(), now()->endOfWeek()],
-            'mes'     => [now()->startOfMonth(), now()->endOfMonth()],
-            'año'     => [now()->startOfYear(), now()->endOfYear()],
-            default   => [now()->startOfMonth(), now()->endOfMonth()],
-        };
     }
 }

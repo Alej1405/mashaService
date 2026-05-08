@@ -10,7 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class EstadoSituacionFinanciera extends Page
 {
     protected static ?string $navigationIcon       = 'heroicon-o-document-currency-dollar';
-    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationGroup      = 'Contabilidad';
     protected static ?string $navigationParentItem = 'Informes';
     protected static ?string $navigationLabel      = 'Estado de Resultados (SUPERCIAS)';
     protected static ?string $title = 'Estado de Resultados Integrales (SUPERCIAS)';

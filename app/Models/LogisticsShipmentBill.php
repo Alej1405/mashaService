@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasEmpresa;
+use App\Models\JournalEntry;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -27,6 +28,7 @@ class LogisticsShipmentBill extends Model
         'fecha_pago',
         'factura_pdf_path',
         'notas',
+        'journal_entry_id',
     ];
 
     protected $casts = [
@@ -45,5 +47,10 @@ class LogisticsShipmentBill extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
+    public function journalEntry(): BelongsTo
+    {
+        return $this->belongsTo(JournalEntry::class);
     }
 }

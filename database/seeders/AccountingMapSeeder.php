@@ -85,6 +85,14 @@ class AccountingMapSeeder extends Seeder
             ['insumo', 'salida_produccion', '1.1.03.01'],
             ['insumo', 'entrada_produccion', '1.1.03.01'],
 
+            // Venta de materias primas / insumos (edge case: fallback a cuenta genérica)
+            ['materia_prima', 'venta_contado', '4.1.01'],
+            ['materia_prima', 'venta_credito', '4.1.01'],
+            ['materia_prima', 'costo_venta',   '5.1.04'],
+            ['insumo', 'venta_contado', '4.1.01'],
+            ['insumo', 'venta_credito', '4.1.01'],
+            ['insumo', 'costo_venta',   '5.1.04'],
+
             // Contrapartidas Globales
             ['global', 'compra_contado', '1.1.01.03'], // Bancos
             ['global', 'compra_credito_local', '2.1.01.01'], // Proveedores locales
@@ -93,6 +101,7 @@ class AccountingMapSeeder extends Seeder
             ['global', 'venta_credito', '1.1.02.01'], // CxC clientes
             ['global', 'iva_compras', '1.1.05.01'], // Fallback IVA compras
             ['global', 'iva_ventas', '2.1.04.01'],  // Fallback IVA ventas
+            ['global', 'costo_venta', '5.1.04'],    // Fallback costo de ventas
         ];
 
         foreach ($map as $m) {

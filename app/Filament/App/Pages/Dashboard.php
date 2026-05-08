@@ -2,6 +2,8 @@
 
 namespace App\Filament\App\Pages;
 
+use App\Filament\App\Widgets\DashboardHeaderWidget;
+use App\Filament\App\Widgets\KpiFinancieroWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 
 class Dashboard extends BaseDashboard
@@ -10,7 +12,7 @@ class Dashboard extends BaseDashboard
     protected static ?string $title = 'Dashboard';
     protected static ?int $navigationSort = -2;
 
-    public function getColumns(): int | string | array
+    public function getColumns(): int|string|array
     {
         return [
             'default' => 1,
@@ -19,6 +21,14 @@ class Dashboard extends BaseDashboard
             'lg'      => 3,
             'xl'      => 3,
             '2xl'     => 3,
+        ];
+    }
+
+    public function getWidgets(): array
+    {
+        return [
+            DashboardHeaderWidget::class,
+            KpiFinancieroWidget::class,
         ];
     }
 }

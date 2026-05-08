@@ -4,6 +4,7 @@ namespace App\Filament\App\Pages;
 
 use App\Jobs\SendRawMassMailJob;
 use App\Models\CartaPresentacion;
+use App\Models\MailCampaign;
 use App\Models\MailingSendLog;
 use App\Models\CmsAbout;
 use App\Models\CmsContact;
@@ -43,7 +44,7 @@ class CartaPresentacionPage extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+        return (bool) \Filament\Facades\Filament::getTenant()?->servicio_mailing_activo;
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -314,21 +315,32 @@ class CartaPresentacionPage extends Page implements HasForms
                         return;
                     }
 
-                    $html = $this->buildHtml($empresa, $carta);
+                    $html      = $this->buildHtml($empresa, $carta);
+                    $groupName = MailingGroup::find($data['mailing_group_id'])?->name ?? 'Grupo';
 
-                    // Despachar a la cola: envía uno por uno respetando 100/hora.
-                    // tipo=carta_presentacion → dedup de 7 días por contacto.
+                    $campaign = MailCampaign::create([
+                        'empresa_id'       => $empresa->id,
+                        'tipo'             => 'carta_presentacion',
+                        'mailing_group_id' => $data['mailing_group_id'],
+                        'name'             => 'Carta de Presentación — ' . $groupName . ' — ' . now()->format('d/m/Y H:i'),
+                        'status'           => 'sending',
+                        'total_recipients' => count($contacts),
+                        'sent_count'       => 0,
+                        'failed_count'     => 0,
+                    ]);
+
                     SendRawMassMailJob::dispatch(
                         $empresa->id,
                         $carta->asunto,
                         $html,
                         $contacts,
                         MailingSendLog::TIPO_CARTA,
+                        $campaign->id,
+                        $campaign->id,
                     );
 
-                    // Calcular cuántos ya fueron enviados esta semana para informar al usuario
                     $emails     = array_column($contacts, 'email');
-                    $yaEnviados = \App\Models\MailingSendLog::where('empresa_id', $empresa->id)
+                    $yaEnviados = MailingSendLog::where('empresa_id', $empresa->id)
                         ->where('tipo', MailingSendLog::TIPO_CARTA)
                         ->where('sent_at', '>=', now()->subDays(7))
                         ->whereIn('email', $emails)

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Models\Sale;
 
 class LogisticsBillingRequest extends Model
 {
@@ -82,6 +83,11 @@ class LogisticsBillingRequest extends Model
         return $this->belongsTo(StoreCustomerCompany::class, 'billing_company_id');
     }
 
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
+    }
+
     // ── Factory ───────────────────────────────────────────────────────────────
 
     /**
@@ -98,17 +104,75 @@ class LogisticsBillingRequest extends Model
             return $existing;
         }
 
-        // Calcular líneas e importes
-        $impOrigen = (float) ($package->impuestos_amazon ?? 0);
-        $impAduana = ($package->impuestos_paga_empresa ? (float) ($package->impuestos_aduana ?? 0) : 0);
-        $pesoKg    = (float) ($package->peso_kg ?? 0);
+        $calc = self::calcularImportes($package);
 
-        // ── Cargos del diseño de servicio (chargeConfigs) ─────────────────────
+        $year  = now()->year;
+        $last  = self::where('empresa_id', $package->empresa_id)
+                     ->whereYear('created_at', $year)
+                     ->max('id') ?? 0;
+        $seq    = str_pad($last + 1, 5, '0', STR_PAD_LEFT);
+        $numero = "NV-{$year}-{$seq}";
+
+        return self::create([
+            'empresa_id'        => $package->empresa_id,
+            'package_id'        => $package->id,
+            'store_customer_id' => $package->store_customer_id,
+            'numero_nota_venta' => $numero,
+            'token'             => Str::random(48),
+            'subtotal_0'        => $calc['subtotal_0'],
+            'subtotal_15'       => $calc['subtotal_15'],
+            'iva'               => $calc['iva'],
+            'total'             => $calc['total'],
+            'items'             => $calc['items'],
+            'estado'            => 'pendiente',
+        ]);
+    }
+
+    /**
+     * Actualiza la nota pendiente con los valores actuales del paquete, conservando
+     * el número de nota. Si no existe nota pendiente, crea una nueva.
+     * Nunca toca notas en estado aceptado / facturado / cobrado.
+     */
+    public static function regenerarParaPaquete(LogisticsPackage $package): self
+    {
+        $existing = self::where('package_id', $package->id)
+            ->where('estado', 'pendiente')
+            ->first();
+
+        if (! $existing) {
+            return self::crearParaPaquete($package);
+        }
+
+        $calc = self::calcularImportes($package);
+
+        $existing->update([
+            'subtotal_0'  => $calc['subtotal_0'],
+            'subtotal_15' => $calc['subtotal_15'],
+            'iva'         => $calc['iva'],
+            'total'       => $calc['total'],
+            'items'       => $calc['items'],
+        ]);
+
+        return $existing->fresh();
+    }
+
+    /**
+     * Calcula todas las líneas e importes de la nota de venta para un paquete,
+     * sin crear ni modificar ningún registro.
+     * Devuelve ['subtotal_0', 'subtotal_15', 'iva', 'total', 'items'].
+     */
+    public static function calcularImportes(LogisticsPackage $package): array
+    {
+        $impOrigen      = (float) ($package->impuestos_amazon ?? 0);
+        $impAduana      = ($package->impuestos_paga_empresa ? (float) ($package->impuestos_aduana ?? 0) : 0);
+        $pesoKg         = (float) ($package->peso_kg ?? 0);
+        $servicePackage = $package->servicePackage;
+
+        // ── Cargos del diseño de servicio (chargeConfigs) ────────────────────
         $chargeItems  = [];
         $cargosBase0  = 0.0;
         $cargosBase15 = 0.0;
 
-        $servicePackage = $package->servicePackage;
         if ($servicePackage) {
             foreach ($servicePackage->chargeConfigs()->where('activo', true)->get() as $cfg) {
                 $monto = $cfg->tipo === 'peso' && $pesoKg > 0
@@ -135,7 +199,7 @@ class LogisticsBillingRequest extends Model
             }
         }
 
-        // ── Cargos extras del embarque (distribuidos por paquete) ─────────────
+        // ── Cargos extras del embarque (distribuidos por paquete) ────────────
         $cargosEmbarque = [];
         $ceBase0        = 0.0;
         $ceBase15       = 0.0;
@@ -171,21 +235,36 @@ class LogisticsBillingRequest extends Model
             }
         }
 
-        // Impuestos (origen/aduana): paso al cliente sin IVA
-        // Cargos de servicio y embarque: gravan según su iva_pct configurado
+        // ── Cargos extra del paquete (nacionalización, transporte, otros) ─────
+        $cobrosExtra    = [];
+        $cobrosExtraB15 = 0.0;
+
+        foreach ([
+            ['cobro_nacionalizacion',    'Trámite de nacionalización'],
+            ['cobro_transporte_interno', 'Transporte interno'],
+            ['cobro_otro',               $package->cobro_otro_descripcion ?: 'Cargo adicional'],
+        ] as [$campo, $etiqueta]) {
+            $monto = (float) ($package->{$campo} ?? 0);
+            if ($monto <= 0) {
+                continue;
+            }
+            $cobrosExtra[]   = ['descripcion' => $etiqueta, 'monto' => $monto];
+            $cobrosExtraB15 += $monto;
+        }
+
+        // monto_cobro es siempre el precio puro del servicio — impuestos van aparte (0% IVA)
         $base0  = $impOrigen + $impAduana + $cargosBase0 + $ceBase0;
-        $base15 = max(0, (float) ($package->monto_cobro ?? 0) - $impAduana)
-                  + $cargosBase15 + $ceBase15;
+        $base15 = (float) ($package->monto_cobro ?? 0) + $cargosBase15 + $ceBase15 + $cobrosExtraB15;
 
         $subtotal0  = $base0;
         $subtotal15 = $base15;
         $iva        = round($subtotal15 * 0.15, 2);
         $total      = round($subtotal0 + $subtotal15 + $iva, 2);
 
+        // ── Construir líneas de detalle ───────────────────────────────────────
         $items  = [];
         $codigo = 1;
 
-        // Convierte kg a la unidad de cobro configurada en el servicio
         $convertirPeso = function (float $kg, string $unidad): float {
             return match ($unidad) {
                 'lb' => round($kg * 2.20462, 3),
@@ -196,8 +275,7 @@ class LogisticsBillingRequest extends Model
             };
         };
 
-        // Servicio de importación (base gravable 15%)
-        $servicioBase = max(0, (float) ($package->monto_cobro ?? 0) - ($impOrigen + $impAduana));
+        $servicioBase = max(0, (float) ($package->monto_cobro ?? 0));
         if ($servicioBase > 0) {
             $cantServicio   = 1;
             $precioServicio = round($servicioBase, 2);
@@ -245,7 +323,6 @@ class LogisticsBillingRequest extends Model
             ];
         }
 
-        // ── Cargos del diseño de servicio ────────────────────────────────────
         foreach ($chargeItems as $ci) {
             $esPeso  = $ci['tipo'] === 'peso';
             $items[] = [
@@ -259,7 +336,6 @@ class LogisticsBillingRequest extends Model
             ];
         }
 
-        // ── Cargos extras del embarque ────────────────────────────────────────
         foreach ($cargosEmbarque as $ce) {
             $items[] = [
                 'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
@@ -272,7 +348,18 @@ class LogisticsBillingRequest extends Model
             ];
         }
 
-        // Fallback si no hay ítems
+        foreach ($cobrosExtra as $ce) {
+            $items[] = [
+                'codigo'      => str_pad($codigo++, 3, '0', STR_PAD_LEFT),
+                'descripcion' => $ce['descripcion'],
+                'cantidad'    => 1,
+                'precio'      => $ce['monto'],
+                'iva_pct'     => 15,
+                'total'       => $ce['monto'],
+                'unidad'      => 'trámite',
+            ];
+        }
+
         if (empty($items)) {
             $items[] = [
                 'codigo'      => '001',
@@ -284,27 +371,13 @@ class LogisticsBillingRequest extends Model
             ];
         }
 
-        // Número secuencial NV-YYYY-#####
-        $year  = now()->year;
-        $last  = self::where('empresa_id', $package->empresa_id)
-                     ->whereYear('created_at', $year)
-                     ->max('id') ?? 0;
-        $seq   = str_pad($last + 1, 5, '0', STR_PAD_LEFT);
-        $numero = "NV-{$year}-{$seq}";
-
-        return self::create([
-            'empresa_id'       => $package->empresa_id,
-            'package_id'       => $package->id,
-            'store_customer_id' => $package->store_customer_id,
-            'numero_nota_venta' => $numero,
-            'token'            => Str::random(48),
-            'subtotal_0'       => $subtotal0,
-            'subtotal_15'      => $subtotal15,
-            'iva'              => $iva,
-            'total'            => $total,
-            'items'            => $items,
-            'estado'           => 'pendiente',
-        ]);
+        return [
+            'subtotal_0'  => $subtotal0,
+            'subtotal_15' => $subtotal15,
+            'iva'         => $iva,
+            'total'       => $total,
+            'items'       => $items,
+        ];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

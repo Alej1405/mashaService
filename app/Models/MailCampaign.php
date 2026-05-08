@@ -6,6 +6,8 @@ use App\Traits\HasEmpresa;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\MailingSendLog;
 
 class MailCampaign extends Model
 {
@@ -13,8 +15,10 @@ class MailCampaign extends Model
 
     protected $fillable = [
         'empresa_id',
+        'tipo',
         'mail_template_id',
         'mailing_group_id',
+        'referencia_id',
         'name',
         'status',
         'total_recipients',
@@ -39,6 +43,12 @@ class MailCampaign extends Model
     public function mailingGroup(): BelongsTo
     {
         return $this->belongsTo(MailingGroup::class);
+    }
+
+    public function sendLogs(): HasMany
+    {
+        return $this->hasMany(MailingSendLog::class, 'referencia_id')
+            ->where('tipo', MailingSendLog::TIPO_CARTA);
     }
 
     public function statusLabel(): string

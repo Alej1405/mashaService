@@ -32,7 +32,7 @@ class ProductionOrderResource extends Resource
     protected static ?string $tenantRelationshipName = 'productionOrders';
 
     protected static ?string $navigationIcon  = 'heroicon-o-cog';
-    protected static ?string $navigationGroup = 'Inventario';
+    protected static ?string $navigationGroup = 'Producción';
     protected static ?string $modelLabel      = 'Orden de Producción';
     protected static ?string $pluralModelLabel = 'Órdenes de Producción';
 

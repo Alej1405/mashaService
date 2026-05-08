@@ -65,6 +65,7 @@ class EnterprisePanelProvider extends PanelProvider
                 \Filament\Navigation\NavigationGroup::make('E-Commerce')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Inventario')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Diseño de Producto')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('Contabilidad')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Planificación')->collapsible(),
             ])
             ->resources([
@@ -106,7 +107,8 @@ class EnterprisePanelProvider extends PanelProvider
                     ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
             ])
             ->widgets([
-                \App\Filament\App\Widgets\CompromisosFinancierosWidget::class,
+                \App\Filament\App\Widgets\DashboardHeaderWidget::class,
+                \App\Filament\App\Widgets\KpiFinancieroWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

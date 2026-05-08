@@ -309,7 +309,8 @@ class PackageResource extends Resource
                     ->prefix('$')
                     ->step(0.01)
                     ->nullable()
-                    ->helperText('Impuestos cobrados en el país de origen.')
+                    ->live(onBlur: true)
+                    ->helperText('Impuestos cobrados en el país de origen — se factura sin IVA.')
                     ->columnSpan(1),
                 TextInput::make('impuestos_aduana')
                     ->label('Impuestos de aduana / liquidación ($)')
@@ -318,35 +319,13 @@ class PackageResource extends Resource
                     ->step(0.01)
                     ->nullable()
                     ->live(onBlur: true)
-                    ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                        if (! $get('impuestos_paga_empresa')) {
-                            return;
-                        }
-                        // Si el toggle está activo, recalcular monto incluyendo nuevos impuestos
-                        $monto     = (float) ($get('monto_cobro') ?? 0);
-                        $anterior  = (float) ($get('_impuestos_aduana_prev') ?? 0);
-                        $nuevo     = (float) ($state ?? 0);
-                        $set('monto_cobro', round(max(0, $monto - $anterior + $nuevo), 2));
-                    })
-                    ->helperText('Impuestos generados en aduana por la liquidación.')
+                    ->helperText('Impuestos generados en aduana — se factura sin IVA si el toggle está activo.')
                     ->columnSpan(1),
                 Toggle::make('impuestos_paga_empresa')
                     ->label('¿Los impuestos de aduana los paga la empresa?')
-                    ->helperText('Al activar, los impuestos de aduana / liquidación se suman al monto a cobrar.')
+                    ->helperText('Al activar, los impuestos de aduana se cobran al cliente (sin IVA) como línea separada en la nota de venta. No modifica el monto del servicio.')
                     ->default(false)
                     ->live()
-                    ->afterStateUpdated(function (Get $get, Set $set, bool $state) {
-                        $impuestos = (float) ($get('impuestos_aduana') ?? 0);
-                        if ($impuestos <= 0) {
-                            return;
-                        }
-                        $monto = (float) ($get('monto_cobro') ?? 0);
-                        if ($state) {
-                            $set('monto_cobro', round($monto + $impuestos, 2));
-                        } else {
-                            $set('monto_cobro', round(max(0, $monto - $impuestos), 2));
-                        }
-                    })
                     ->columnSpan(['default' => 1, 'sm' => 2]),
             ])->columns(['default' => 1, 'sm' => 2, 'md' => 3]),
 
@@ -490,6 +469,7 @@ class PackageResource extends Resource
                         ->numeric()
                         ->prefix('$')
                         ->step(0.01)
+                        ->live(onBlur: true)
                         ->helperText(function (Get $get) {
                             $pkg = ServicePackage::find($get('service_package_id'));
                             if (! $pkg) {
@@ -519,6 +499,7 @@ class PackageResource extends Resource
                         ->prefix('$')
                         ->step(0.01)
                         ->nullable()
+                        ->live(onBlur: true)
                         ->helperText('Costos de trámite de nacionalización — se factura con 15% IVA.')
                         ->columnSpan(1),
                     TextInput::make('cobro_transporte_interno')
@@ -527,6 +508,7 @@ class PackageResource extends Resource
                         ->prefix('$')
                         ->step(0.01)
                         ->nullable()
+                        ->live(onBlur: true)
                         ->helperText('Flete / transporte dentro del país — se factura con 15% IVA.')
                         ->columnSpan(1),
                     TextInput::make('cobro_otro')
@@ -535,15 +517,123 @@ class PackageResource extends Resource
                         ->prefix('$')
                         ->step(0.01)
                         ->nullable()
+                        ->live(onBlur: true)
                         ->helperText('Cargo adicional — se factura con 15% IVA.')
                         ->columnSpan(1),
                     TextInput::make('cobro_otro_descripcion')
                         ->label('Descripción del otro cargo')
                         ->placeholder('Ej. Almacenaje, seguro, manejo...')
                         ->nullable()
+                        ->live(onBlur: true)
                         ->visible(fn (Get $get) => (float)($get('cobro_otro') ?? 0) > 0)
                         ->columnSpan(1),
                 ])->columns(['default' => 1, 'sm' => 2, 'md' => 4]),
+
+            Section::make('Vista previa de facturación')
+                ->description('Calculado en base a los valores actuales del formulario. Solo se aplica al generar o recalcular la nota de venta.')
+                ->icon('heroicon-o-calculator')
+                ->collapsed()
+                ->visibleOn('edit')
+                ->schema([
+                    \Filament\Forms\Components\Placeholder::make('_preview_facturacion')
+                        ->label('')
+                        ->columnSpanFull()
+                        ->content(function (Get $get) {
+                            $montoCobro = (float) ($get('monto_cobro') ?? 0);
+                            $impOrigen  = (float) ($get('impuestos_amazon') ?? 0);
+                            $impAduana  = (float) ($get('impuestos_aduana') ?? 0);
+                            $pagaAduana = (bool)  ($get('impuestos_paga_empresa') ?? false);
+                            $nac        = (float) ($get('cobro_nacionalizacion') ?? 0);
+                            $transport  = (float) ($get('cobro_transporte_interno') ?? 0);
+                            $otro       = (float) ($get('cobro_otro') ?? 0);
+                            $otraDesc   = $get('cobro_otro_descripcion') ?: 'Cargo adicional';
+                            $pesoKg     = (float) ($get('peso_kg') ?? 0);
+
+                            // chargeConfigs activos del servicio seleccionado
+                            $cargosBase0  = 0.0;
+                            $cargosBase15 = 0.0;
+                            $chargeLines  = [];
+                            $pkgId = $get('service_package_id');
+                            if ($pkgId) {
+                                $sp = \App\Models\ServicePackage::find($pkgId);
+                                if ($sp) {
+                                    foreach ($sp->chargeConfigs()->where('activo', true)->get() as $cfg) {
+                                        $m = $cfg->tipo === 'peso' && $pesoKg > 0
+                                            ? round((float) $cfg->monto * $pesoKg, 2)
+                                            : (float) $cfg->monto;
+                                        if ($m <= 0) continue;
+                                        $chargeLines[] = ['desc' => $cfg->nombre, 'monto' => $m, 'iva' => (int) $cfg->iva_pct > 0];
+                                        if ((int) $cfg->iva_pct === 0) $cargosBase0  += $m;
+                                        else                            $cargosBase15 += $m;
+                                    }
+                                }
+                            }
+
+                            $lines = [];
+                            if ($montoCobro > 0) {
+                                $lines[] = ['desc' => 'Servicio de importación', 'monto' => $montoCobro, 'iva' => true];
+                            }
+                            if ($impOrigen > 0) {
+                                $lines[] = ['desc' => 'Impuestos de origen', 'monto' => $impOrigen, 'iva' => false];
+                            }
+                            if ($pagaAduana && $impAduana > 0) {
+                                $lines[] = ['desc' => 'Impuestos de aduana / liquidación', 'monto' => $impAduana, 'iva' => false];
+                            }
+                            foreach ($chargeLines as $cl) {
+                                $lines[] = $cl;
+                            }
+                            if ($nac > 0) {
+                                $lines[] = ['desc' => 'Trámite de nacionalización', 'monto' => $nac, 'iva' => true];
+                            }
+                            if ($transport > 0) {
+                                $lines[] = ['desc' => 'Transporte interno', 'monto' => $transport, 'iva' => true];
+                            }
+                            if ($otro > 0) {
+                                $lines[] = ['desc' => $otraDesc, 'monto' => $otro, 'iva' => true];
+                            }
+
+                            if (empty($lines)) {
+                                return new \Illuminate\Support\HtmlString(
+                                    '<p style="color:#9ca3af;font-size:13px;padding:8px 0;">Ingresa los valores del paquete para ver la vista previa.</p>'
+                                );
+                            }
+
+                            $base0  = $impOrigen + ($pagaAduana ? $impAduana : 0) + $cargosBase0;
+                            $base15 = $montoCobro + $cargosBase15 + $nac + $transport + $otro;
+                            $iva    = round($base15 * 0.15, 2);
+                            $total  = round($base0 + $base15 + $iva, 2);
+
+                            $rows = '';
+                            foreach ($lines as $l) {
+                                $ivaLabel = $l['iva'] ? '<span style="color:#059669;">15%</span>' : '<span style="color:#6b7280;">0%</span>';
+                                $rows .= '<tr style="border-bottom:1px solid #f3f4f6;">'
+                                    . '<td style="padding:5px 8px;">' . e($l['desc']) . '</td>'
+                                    . '<td style="text-align:right;padding:5px 8px;font-variant-numeric:tabular-nums;">$' . number_format($l['monto'], 2) . '</td>'
+                                    . '<td style="text-align:center;padding:5px 8px;">' . $ivaLabel . '</td>'
+                                    . '</tr>';
+                            }
+
+                            $totales = '';
+                            if ($base0 > 0) {
+                                $totales .= '<div style="display:flex;justify-content:space-between;color:#6b7280;"><span>Subtotal 0%</span><span>$' . number_format($base0, 2) . '</span></div>';
+                            }
+                            $totales .= '<div style="display:flex;justify-content:space-between;color:#6b7280;"><span>Subtotal 15%</span><span>$' . number_format($base15, 2) . '</span></div>';
+                            $totales .= '<div style="display:flex;justify-content:space-between;color:#6b7280;"><span>IVA 15%</span><span>$' . number_format($iva, 2) . '</span></div>';
+                            $totales .= '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;margin-top:6px;border-top:2px solid #e5e7eb;padding-top:6px;"><span>Total al cliente</span><span style="color:#059669;">$' . number_format($total, 2) . '</span></div>';
+
+                            return new \Illuminate\Support\HtmlString(
+                                '<div style="font-size:13px;line-height:1.7;">'
+                                . '<table style="width:100%;border-collapse:collapse;margin-bottom:12px;">'
+                                . '<thead><tr style="border-bottom:2px solid #e5e7eb;">'
+                                . '<th style="text-align:left;padding:4px 8px;color:#6b7280;font-weight:600;">Concepto</th>'
+                                . '<th style="text-align:right;padding:4px 8px;color:#6b7280;font-weight:600;">Monto</th>'
+                                . '<th style="text-align:center;padding:4px 8px;color:#6b7280;font-weight:600;">IVA</th>'
+                                . '</tr></thead><tbody>' . $rows . '</tbody></table>'
+                                . $totales
+                                . '</div>'
+                            );
+                        }),
+                ]),
 
             Section::make('Estado')->schema([
                 Select::make('estado')
@@ -695,6 +785,68 @@ class PackageResource extends Resource
                         ->mapWithKeys(fn ($v, $k) => [$k => $v['label']])),
             ])
             ->actions([
+                // ── Recalcular nota de venta pendiente ────────────────────────
+                Action::make('recalcular_nota')
+                    ->label('Recalcular nota')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(function (LogisticsPackage $record): bool {
+                        return LogisticsBillingRequest::where('package_id', $record->id)
+                            ->where('estado', 'pendiente')
+                            ->exists();
+                    })
+                    ->modalHeading('Recalcular nota de venta')
+                    ->modalWidth('lg')
+                    ->form(function (LogisticsPackage $record): array {
+                        $billing = LogisticsBillingRequest::where('package_id', $record->id)
+                            ->where('estado', 'pendiente')
+                            ->first();
+
+                        $calc = LogisticsBillingRequest::calcularImportes($record);
+
+                        $actHtml = $billing
+                            ? '<div style="background:#fef9c3;border:1px solid #fde047;border-radius:6px;padding:10px 14px;font-size:13px;line-height:1.8;">'
+                              . '<strong>Nota actual (' . e($billing->numero_nota_venta) . ') — se conservará el número:</strong><br>'
+                              . 'Subtotal 0%: $' . number_format($billing->subtotal_0, 2)
+                              . ' &nbsp;|&nbsp; Subtotal 15%: $' . number_format($billing->subtotal_15, 2)
+                              . '<br>IVA: $' . number_format($billing->iva, 2)
+                              . ' &nbsp;|&nbsp; <strong>Total: $' . number_format($billing->total, 2) . '</strong>'
+                              . '</div>'
+                            : '';
+
+                        $lineItems = '';
+                        foreach ($calc['items'] as $item) {
+                            $lineItems .= '<li>' . e($item['descripcion'])
+                                . ': <strong>$' . number_format($item['total'], 2) . '</strong>'
+                                . ' (' . $item['iva_pct'] . '% IVA)</li>';
+                        }
+
+                        $newHtml = '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;font-size:13px;line-height:1.8;">'
+                            . '<strong>Nuevos valores:</strong>'
+                            . '<ul style="margin:4px 0 8px 16px;padding:0;">' . $lineItems . '</ul>'
+                            . 'Subtotal 0%: $' . number_format($calc['subtotal_0'], 2)
+                            . ' &nbsp;|&nbsp; Subtotal 15%: $' . number_format($calc['subtotal_15'], 2)
+                            . '<br>IVA: $' . number_format($calc['iva'], 2)
+                            . ' &nbsp;|&nbsp; <strong style="color:#15803d;">Total: $' . number_format($calc['total'], 2) . '</strong>'
+                            . '</div>';
+
+                        return [
+                            \Filament\Forms\Components\Placeholder::make('_actual')
+                                ->label('Estado actual')
+                                ->content(new \Illuminate\Support\HtmlString($actHtml)),
+                            \Filament\Forms\Components\Placeholder::make('_nuevo')
+                                ->label('Quedará así')
+                                ->content(new \Illuminate\Support\HtmlString($newHtml)),
+                        ];
+                    })
+                    ->action(function (LogisticsPackage $record): void {
+                        $billing = LogisticsBillingRequest::regenerarParaPaquete($record);
+                        Notification::make()
+                            ->title('Nota ' . $billing->numero_nota_venta . ' actualizada correctamente')
+                            ->success()
+                            ->send();
+                    }),
+
                 // ── Aprobar valores de facturación ────────────────────────────
                 Action::make('aprobar_valores')
                     ->label('Aprobar valores')

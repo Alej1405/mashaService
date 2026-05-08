@@ -5,6 +5,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\CmsPostResource\Pages;
 use App\Jobs\SendRawMassMailJob;
 use App\Models\CmsPost;
+use App\Models\MailCampaign;
 use App\Models\MailingContact;
 use App\Models\MailingGroup;
 use App\Models\MailingSendLog;
@@ -196,8 +197,18 @@ class CmsPostResource extends Resource
 
                         $html = self::buildPostHtml($record, $empresa);
 
-                        // Despachar a la cola: envía uno por uno respetando 100/hora.
-                        // tipo=noticia + referencia_id=post.id → nunca re-enviar la misma noticia.
+                        $campaign = MailCampaign::create([
+                            'empresa_id'       => $empresa->id,
+                            'tipo'             => 'noticia',
+                            'referencia_id'    => $record->id,
+                            'mailing_group_id' => $data['destinatarios'] === 'grupo' ? $data['mailing_group_id'] : null,
+                            'name'             => $record->titulo . ' — ' . now()->format('d/m/Y H:i'),
+                            'status'           => 'sending',
+                            'total_recipients' => count($contacts),
+                            'sent_count'       => 0,
+                            'failed_count'     => 0,
+                        ]);
+
                         SendRawMassMailJob::dispatch(
                             $empresa->id,
                             $record->titulo,
@@ -205,11 +216,11 @@ class CmsPostResource extends Resource
                             $contacts,
                             MailingSendLog::TIPO_NOTICIA,
                             $record->id,
+                            $campaign->id,
                         );
 
-                        // Calcular omitidos para informar al usuario
                         $emails     = array_column($contacts, 'email');
-                        $yaEnviados = \App\Models\MailingSendLog::where('empresa_id', $empresa->id)
+                        $yaEnviados = MailingSendLog::where('empresa_id', $empresa->id)
                             ->where('tipo', MailingSendLog::TIPO_NOTICIA)
                             ->where('referencia_id', $record->id)
                             ->whereIn('email', $emails)

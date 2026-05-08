@@ -23,6 +23,7 @@ class Empresa extends Model implements HasName
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
         // Plan de suscripción
         'plan',
+        'servicio_mailing_activo',
         // Credenciales del servicio de correo (por empresa)
         'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
         // Cuota de envíos
@@ -35,7 +36,8 @@ class Empresa extends Model implements HasName
     ];
 
     protected $casts = [
-        'smtp_port' => 'integer',
+        'smtp_port'               => 'integer',
+        'servicio_mailing_activo' => 'boolean',
     ];
 
     protected static function booted(): void
@@ -339,5 +341,20 @@ class Empresa extends Model implements HasName
     public function logisticsShipmentBills(): HasMany
     {
         return $this->hasMany(\App\Models\LogisticsShipmentBill::class, 'empresa_id');
+    }
+
+    public function supportChats(): HasMany
+    {
+        return $this->hasMany(\App\Models\SupportChat::class, 'empresa_id');
+    }
+
+    public function serviceInvoices(): HasMany
+    {
+        return $this->hasMany(\App\Models\ServiceInvoice::class, 'empresa_id');
+    }
+
+    public function systemEvents(): HasMany
+    {
+        return $this->hasMany(\App\Models\SystemEvent::class, 'empresa_id');
     }
 }

@@ -21,7 +21,7 @@ class AccountPlanResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-list-bullet';
     protected static ?string $modelLabel = 'Plan de Cuentas';
     protected static ?string $pluralModelLabel = 'Planes de Cuentas';
-    protected static ?string $navigationGroup = 'Contabilidad General';
+    protected static ?string $navigationGroup = 'Contabilidad';
 
     public static function form(Form $form): Form
     {

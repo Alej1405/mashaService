@@ -70,7 +70,10 @@ class PurchaseObserver
                 'purchase_id' => $purchase->id,
                 'error'       => $e->getMessage(),
             ]);
-            throw $e;
+            $purchase->updateQuietly([
+                'error_contable'     => true,
+                'error_contable_msg' => $e->getMessage(),
+            ]);
         }
     }
 }

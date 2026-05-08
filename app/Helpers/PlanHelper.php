@@ -56,15 +56,12 @@ class PlanHelper
         return array_map(
             fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible(),
             [
-                'Contabilidad General',
                 'Ventas',
-                'Clientes',
-                'Compras',
+                'Producción',
                 'Inventario',
-                'Financiamiento',
+                'Contabilidad',
                 'Logística',
-                'Mailing',
-                'CMS',
+                'Informes',
                 'Configuración',
             ]
         );
@@ -80,16 +77,13 @@ class PlanHelper
         return array_map(
             fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible(),
             [
-                'Contabilidad General',
                 'Ventas',
-                'Clientes',
-                'Compras',
+                'Producción',
                 'Inventario',
-                'Financiamiento',
+                'Contabilidad',
                 'Logística',
                 'Diseño de Producto',
-                'Mailing',
-                'CMS',
+                'Informes',
                 'Configuración',
             ]
         );

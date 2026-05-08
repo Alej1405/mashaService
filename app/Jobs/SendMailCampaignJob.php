@@ -54,49 +54,50 @@ class SendMailCampaignJob implements ShouldQueue
             return;
         }
 
-        $service     = new MailingService($empresa);
-        $totalSent   = 0;
-        $totalFailed = 0;
+        $service = new MailingService($empresa);
 
-        // ── Ventana de rate limiting ──────────────────────────────────────────
-        // Registramos el inicio de la ventana de 1 hora y cuántos correos
-        // hemos enviado en ella. Cuando llegamos al límite, dormimos hasta
-        // que la ventana se reinicie antes de continuar.
+        // Distribución uniforme: 1 email cada N segundos para no generar ráfagas
+        // que activen el rate-limit de Mailgun. El techo horario sigue activo
+        // como red de seguridad ante desfases de reloj.
+        $sleepPerEmail  = (int) floor(3600 / self::RATE_LIMIT_PER_HOUR); // 37 s para 95/h
+        $totalSent      = 0;
+        $totalFailed    = 0;
         $windowStart    = microtime(true);
         $sentThisWindow = 0;
 
         $query->cursor()->each(function ($contact) use (
-            $service, $campaign, &$totalSent, &$totalFailed,
+            $service, $campaign, $sleepPerEmail,
+            &$totalSent, &$totalFailed,
             &$windowStart, &$sentThisWindow
         ) {
-            // ── Comprobar ventana antes de enviar ─────────────────────────
+            $email = strtolower(trim($contact->email));
+
+            // ── Deduplicación ─────────────────────────────────────────────
+            if (MailingSendLog::yaEnviado($this->empresaId, $email, MailingSendLog::TIPO_CAMPANA, $this->campaignId)) {
+                return;
+            }
+
+            // ── Techo de seguridad horario ────────────────────────────────
             if ($sentThisWindow >= self::RATE_LIMIT_PER_HOUR) {
                 $elapsed   = microtime(true) - $windowStart;
                 $remaining = 3600 - $elapsed;
 
                 if ($remaining > 0) {
-                    // Dormimos los segundos que faltan para completar la hora,
-                    // más 5 segundos de buffer para evitar llegar exactamente al límite.
                     sleep((int) ceil($remaining) + 5);
                 }
 
-                // Reiniciar ventana
                 $windowStart    = microtime(true);
                 $sentThisWindow = 0;
             }
 
-            $email = strtolower(trim($contact->email));
-
-            // ── Deduplicación: omitir si esta campaña ya se envió a este contacto ──
-            if (MailingSendLog::yaEnviado($this->empresaId, $email, MailingSendLog::TIPO_CAMPANA, $this->campaignId)) {
-                return; // cursor()->each() — return actúa como continue
-            }
-
-            // ── Enviar UN correo a UN destinatario ────────────────────────
+            // ── Enviar ────────────────────────────────────────────────────
             $result = $service->sendSingleEmail(
                 ['nombre' => $contact->nombre, 'email' => $email],
                 $campaign->mailTemplate,
             );
+
+            // Pausa uniforme después de cada llamada a la API
+            sleep($sleepPerEmail);
 
             if ($result['success']) {
                 MailingSendLog::registrar($this->empresaId, $email, MailingSendLog::TIPO_CAMPANA, $this->campaignId);
@@ -106,7 +107,6 @@ class SendMailCampaignJob implements ShouldQueue
                 $totalFailed++;
             }
 
-            // Persistir progreso en tiempo real para que el dashboard lo refleje
             $campaign->update([
                 'sent_count'   => $totalSent,
                 'failed_count' => $totalFailed,

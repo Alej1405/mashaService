@@ -22,7 +22,8 @@ class BalanceComprobacion extends Page implements HasTable, HasForms
     use InteractsWithTable;
     use InteractsWithForms;
 
-    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationGroup      = 'Informes';
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $navigationParentItem = 'Informes';
     protected static ?string $navigationIcon       = 'heroicon-o-document-text';
     protected static ?string $title                = 'Balance de Comprobación';

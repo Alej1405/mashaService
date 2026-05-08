@@ -27,7 +27,7 @@ class CostoFijoResource extends Resource
 
     protected static ?string $navigationIcon   = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel  = 'Costos Fijos';
-    protected static ?string $navigationGroup  = 'Planificación';
+    protected static ?string $navigationGroup  = 'Contabilidad';
     protected static ?string $modelLabel       = 'Costo Fijo';
     protected static ?string $pluralModelLabel = 'Costos Fijos';
     protected static ?int    $navigationSort   = 10;

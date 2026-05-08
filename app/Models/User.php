@@ -116,6 +116,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
         'name',
         'email',
         'password',
+        'last_login_at',
     ];
 
     /**
@@ -137,7 +138,21 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'last_login_at'     => 'datetime',
+            'password'          => 'hashed',
         ];
+    }
+
+    public function isOnline(): bool
+    {
+        return \DB::table('sessions')
+            ->where('user_id', $this->id)
+            ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
+            ->exists();
+    }
+
+    public function supportChats(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SupportChat::class);
     }
 }

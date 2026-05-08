@@ -21,29 +21,45 @@ class MailingDashboard extends Page
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+        return true;
     }
 
     public static function shouldRegisterNavigation(): bool
     {
-        return static::canAccess();
+        return true;
     }
 
     public function getViewData(): array
     {
-        $empresa     = Filament::getTenant();
+        $empresa        = Filament::getTenant();
+        $servicioActivo = (bool) $empresa->servicio_mailing_activo;
+
+        if (! $servicioActivo) {
+            return [
+                'empresa'        => $empresa,
+                'servicio_activo' => false,
+                'configurado'    => false,
+                'stats'          => [],
+                'events'         => [],
+                'quota'          => [],
+                'plan'           => PlanHelper::current(),
+                'planLabel'      => PlanHelper::label(PlanHelper::current()),
+            ];
+        }
+
         $plan        = PlanHelper::current();
         $service     = new MailingService($empresa);
         $configurado = $service->isConfigured();
 
         return [
-            'empresa'     => $empresa,
-            'configurado' => $configurado,
-            'stats'       => $service->getStats(30),
-            'events'      => $configurado ? $service->getEvents(15) : [],
-            'quota'       => $service->getQuotaInfo(),
-            'plan'        => $plan,
-            'planLabel'   => PlanHelper::label($plan),
+            'empresa'        => $empresa,
+            'servicio_activo' => true,
+            'configurado'    => $configurado,
+            'stats'          => $service->getStats(30),
+            'events'         => $configurado ? $service->getEvents(15) : [],
+            'quota'          => $service->getQuotaInfo(),
+            'plan'           => $plan,
+            'planLabel'      => PlanHelper::label($plan),
         ];
     }
 

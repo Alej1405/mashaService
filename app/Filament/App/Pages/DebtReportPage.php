@@ -22,7 +22,7 @@ class DebtReportPage extends Page implements HasTable
 
     protected static ?string $title = 'Informe Global de Deudas';
 
-    protected static ?string $navigationGroup = 'Financiamiento';
+    protected static ?string $navigationGroup = 'Contabilidad';
 
     protected static ?int $navigationSort = 2;
 

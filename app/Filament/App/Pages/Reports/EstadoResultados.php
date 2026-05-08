@@ -48,7 +48,8 @@ class EstadoResultados extends Page implements HasForms
     //     ];
     // }
 
-    protected static ?string $navigationGroup      = 'Contabilidad General';
+    protected static ?string $navigationGroup      = 'Informes';
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $navigationParentItem = 'Informes';
     protected static ?string $navigationIcon       = 'heroicon-o-document-text';
     protected static ?string $title                = 'Estado de Resultados';

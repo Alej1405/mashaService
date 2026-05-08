@@ -29,7 +29,7 @@ class DebtResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Deudas';
 
-    protected static ?string $navigationGroup = 'Financiamiento';
+    protected static ?string $navigationGroup = 'Contabilidad';
 
     protected static ?int $navigationSort = 1;
 

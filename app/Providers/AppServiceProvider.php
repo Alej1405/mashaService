@@ -2,23 +2,17 @@
 
 namespace App\Providers;
 
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        //
-    }
+    public function register(): void {}
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
+        Event::listen(Login::class, \App\Listeners\UpdateLastLogin::class);
         // Forzar HTTPS en producción (necesario detrás de Cloudflare)
         if (config('app.env') === 'production') {
             \Illuminate\Support\Facades\URL::forceScheme('https');
@@ -34,6 +28,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\DebtPayment::observe(\App\Observers\DebtPaymentObserver::class);
         \App\Models\StoreCustomer::observe(\App\Observers\StoreCustomerObserver::class);
         \App\Models\LogisticsShipment::observe(\App\Observers\LogisticsShipmentObserver::class);
+        \App\Models\LogisticsShipmentBill::observe(\App\Observers\LogisticsShipmentBillObserver::class);
 
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
             return $user->hasRole('super_admin') ? true : null;

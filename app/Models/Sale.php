@@ -24,6 +24,8 @@ class Sale extends Model
         'total',
         'estado',
         'journal_entry_id',
+        'error_contable',
+        'error_contable_msg',
         'notas',
         'confirmado_por',
         'confirmado_at',
