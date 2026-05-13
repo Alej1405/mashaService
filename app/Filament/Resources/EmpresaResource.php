@@ -22,6 +22,7 @@ class EmpresaResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
     protected static ?string $modelLabel = 'Empresa';
     protected static ?string $pluralModelLabel = 'Empresas';
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function canViewAny(): bool
     {
@@ -54,6 +55,12 @@ class EmpresaResource extends Resource
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
+                        Forms\Components\TextInput::make('website_url')
+                            ->label('Sitio web')
+                            ->url()
+                            ->placeholder('https://www.ejemplo.com')
+                            ->maxLength(255)
+                            ->columnSpanFull(),
                     ])->columns(2),
 
                 Forms\Components\Section::make('Identificación y Datos Legales')
@@ -203,7 +210,7 @@ class EmpresaResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\UsuariosAccesoRelationManager::class,
         ];
     }
 

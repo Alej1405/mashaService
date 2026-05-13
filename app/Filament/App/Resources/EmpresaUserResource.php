@@ -17,7 +17,9 @@ use Illuminate\Support\HtmlString;
 class EmpresaUserResource extends Resource
 {
     protected static ?string $model = User::class;
-    protected static ?string $tenantRelationshipName = 'users';
+
+    // Sin tenantRelationshipName: manejamos el scoping manualmente vía pivot
+    protected static ?string $tenantRelationshipName = null;
 
     protected static ?string $navigationIcon   = 'heroicon-o-users';
     protected static ?string $navigationLabel  = 'Usuarios';
@@ -26,13 +28,12 @@ class EmpresaUserResource extends Resource
     protected static ?string $modelLabel       = 'Usuario';
     protected static ?string $pluralModelLabel = 'Usuarios de la empresa';
 
-    /** Solo el administrador de la empresa (y super_admin) puede gestionar usuarios. */
     public static function canAccess(): bool
     {
         return auth()->user()?->hasRole(['admin_empresa', 'super_admin']) ?? false;
     }
 
-    /** Scoped a la empresa activa, ocultando super_admins. */
+    /** Solo los usuarios cuya empresa primaria es la empresa activa. */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
@@ -81,12 +82,7 @@ class EmpresaUserResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('role')
                             ->label('Rol del usuario')
-                            ->options([
-                                'admin_empresa' => 'Administrador',
-                                'contador'      => 'Contador',
-                                'inventario'    => 'Encargado de inventario',
-                                'marketing'     => 'Marketing',
-                            ])
+                            ->options(self::roleOptions())
                             ->required()
                             ->live()
                             ->helperText('El rol determina a qué módulos puede acceder este usuario.')
@@ -116,9 +112,14 @@ class EmpresaUserResource extends Resource
                     ->copyable()
                     ->color('gray'),
 
-                Tables\Columns\TextColumn::make('roles.name')
+                Tables\Columns\TextColumn::make('rol_en_empresa')
                     ->label('Rol')
                     ->badge()
+                    ->getStateUsing(fn (User $record): string =>
+                        $record->empresasAcceso
+                            ->firstWhere('id', Filament::getTenant()?->id)
+                            ?->pivot->rol ?? '—'
+                    )
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'admin_empresa' => 'Administrador',
                         'contador'      => 'Contador',
@@ -148,12 +149,7 @@ class EmpresaUserResource extends Resource
                     ->label('Eliminar')
                     ->visible(fn (User $record): bool => $record->id !== auth()->id()),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->label('Eliminar seleccionados'),
-                ]),
-            ]);
+            ->bulkActions([]);
     }
 
     public static function getPages(): array
@@ -165,9 +161,19 @@ class EmpresaUserResource extends Resource
         ];
     }
 
-    // ── Descripción de cada rol en lenguaje claro ──────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static function roleDescription(?string $role): HtmlString
+    public static function roleOptions(): array
+    {
+        return [
+            'admin_empresa' => 'Administrador',
+            'contador'      => 'Contador',
+            'inventario'    => 'Encargado de inventario',
+            'marketing'     => 'Marketing',
+        ];
+    }
+
+    public static function roleDescription(?string $role): HtmlString
     {
         if (! $role) {
             return new HtmlString('');
@@ -175,9 +181,7 @@ class EmpresaUserResource extends Resource
 
         $data = match ($role) {
             'admin_empresa' => [
-                'color'  => '#b45309',
-                'bg'     => '#fffbeb',
-                'border' => '#fde68a',
+                'color'  => '#b45309', 'bg' => '#fffbeb', 'border' => '#fde68a',
                 'icon'   => '🛡️',
                 'titulo' => 'Administrador de la empresa',
                 'desc'   => 'Tiene control total sobre la cuenta de la empresa.',
@@ -191,11 +195,8 @@ class EmpresaUserResource extends Resource
                 ],
                 'nopuede' => [],
             ],
-
             'contador' => [
-                'color'  => '#1d4ed8',
-                'bg'     => '#eff6ff',
-                'border' => '#bfdbfe',
+                'color'  => '#1d4ed8', 'bg' => '#eff6ff', 'border' => '#bfdbfe',
                 'icon'   => '📊',
                 'titulo' => 'Contador',
                 'desc'   => 'Perfil orientado al análisis financiero y contable. Solo puede consultar información, no modificarla.',
@@ -210,11 +211,8 @@ class EmpresaUserResource extends Resource
                     'Acceder al módulo de mailing',
                 ],
             ],
-
             'inventario' => [
-                'color'  => '#065f46',
-                'bg'     => '#f0fdf4',
-                'border' => '#bbf7d0',
+                'color'  => '#065f46', 'bg' => '#f0fdf4', 'border' => '#bbf7d0',
                 'icon'   => '📦',
                 'titulo' => 'Encargado de inventario',
                 'desc'   => 'Gestiona el stock y los productos de la empresa.',
@@ -231,14 +229,11 @@ class EmpresaUserResource extends Resource
                     'Acceder al módulo de mailing',
                 ],
             ],
-
             'marketing' => [
-                'color'  => '#6d28d9',
-                'bg'     => '#f5f3ff',
-                'border' => '#ddd6fe',
+                'color'  => '#6d28d9', 'bg' => '#f5f3ff', 'border' => '#ddd6fe',
                 'icon'   => '📧',
                 'titulo' => 'Marketing',
-                'desc'   => 'Acceso exclusivo al módulo de mailing. Ideal para el equipo que gestiona comunicaciones con clientes.',
+                'desc'   => 'Acceso exclusivo al módulo de mailing.',
                 'puede'  => [
                     'Crear y editar plantillas de correo',
                     'Importar y administrar la lista de contactos',
@@ -248,12 +243,10 @@ class EmpresaUserResource extends Resource
                 'nopuede' => [
                     'Ver ventas, compras, inventario ni finanzas',
                     'Acceder a reportes financieros',
-                    'Ver o modificar datos de proveedores',
                     'Registrar otros usuarios ni cambiar configuraciones',
                     'Acceder al panel ERP (solo el panel de mailing)',
                 ],
             ],
-
             default => null,
         };
 
@@ -261,16 +254,8 @@ class EmpresaUserResource extends Resource
             return new HtmlString('');
         }
 
-        $puedeItems  = implode('', array_map(
-            fn ($item) => "<li style='margin:4px 0;'>✅ {$item}</li>",
-            $data['puede']
-        ));
-
-        $nopuedeItems = implode('', array_map(
-            fn ($item) => "<li style='margin:4px 0;'>❌ {$item}</li>",
-            $data['nopuede']
-        ));
-
+        $puedeItems   = implode('', array_map(fn ($i) => "<li style='margin:4px 0;'>✅ {$i}</li>", $data['puede']));
+        $nopuedeItems = implode('', array_map(fn ($i) => "<li style='margin:4px 0;'>❌ {$i}</li>", $data['nopuede'] ?? []));
         $nopuedeSection = $nopuedeItems
             ? "<div style='margin-top:12px;'><p style='margin:0 0 6px;font-weight:600;font-size:0.8rem;color:{$data['color']};'>No puede:</p><ul style='margin:0;padding-left:4px;list-style:none;color:#374151;font-size:0.85rem;'>{$nopuedeItems}</ul></div>"
             : '';
@@ -285,9 +270,7 @@ class EmpresaUserResource extends Resource
                     </div>
                 </div>
                 <p style='margin:0 0 6px;font-weight:600;font-size:0.8rem;color:{$data['color']};'>Puede:</p>
-                <ul style='margin:0;padding-left:4px;list-style:none;color:#374151;font-size:0.85rem;'>
-                    {$puedeItems}
-                </ul>
+                <ul style='margin:0;padding-left:4px;list-style:none;color:#374151;font-size:0.85rem;'>{$puedeItems}</ul>
                 {$nopuedeSection}
             </div>
         ");

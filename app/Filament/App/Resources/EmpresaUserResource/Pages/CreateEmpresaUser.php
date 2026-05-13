@@ -29,13 +29,19 @@ class CreateEmpresaUser extends CreateRecord
         $plainPassword = $data['password'] ?? null;
         unset($data['role']);
 
-        $data['empresa_id'] = Filament::getTenant()->id;
+        $empresa            = Filament::getTenant();
+        $data['empresa_id'] = $empresa->id;
 
         $record = static::getModel()::create($data);
 
         if ($role) {
             $record->syncRoles([$role]);
         }
+
+        // Registrar acceso en la tabla pivot
+        $record->empresasAcceso()->syncWithoutDetaching([
+            $empresa->id => ['rol' => $role ?? 'admin_empresa'],
+        ]);
 
         if ($plainPassword) {
             $this->sendWelcomeEmail($record, $role, $plainPassword);

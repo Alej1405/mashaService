@@ -3,6 +3,7 @@
 namespace App\Filament\Basic\Pages;
 
 use App\Helpers\PlanHelper;
+use App\Models\SupportTicket;
 use App\Services\MailingService;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -35,6 +36,41 @@ class MailingDashboard extends Page
             'plan'        => $plan,
             'planLabel'   => PlanHelper::label($plan),
         ];
+    }
+
+    public function solicitarAmpliarPlan(): void
+    {
+        $empresa = Filament::getTenant();
+
+        $existente = SupportTicket::where('empresa_id', $empresa->id)
+            ->where('asunto', 'like', '%Mailing%')
+            ->whereIn('status', ['abierto', 'en_proceso'])
+            ->exists();
+
+        if ($existente) {
+            Notification::make()
+                ->title('Solicitud ya registrada')
+                ->body('Ya tienes un ticket de soporte activo para activar el servicio de Mailing. El equipo lo está gestionando.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        SupportTicket::create([
+            'empresa_id'  => $empresa->id,
+            'user_id'     => Auth::id(),
+            'asunto'      => 'Solicitud de activación del servicio de Mailing',
+            'descripcion' => "La empresa \"{$empresa->name}\" solicita activar el módulo de Mailing para gestionar campañas de correo masivo, contactos y plantillas. Por favor contactar para gestionar la ampliación del plan.",
+            'prioridad'   => 'media',
+            'status'      => 'abierto',
+        ]);
+
+        Notification::make()
+            ->title('Solicitud enviada a soporte')
+            ->body('El equipo de soporte se pondrá en contacto contigo para activar el servicio de Mailing.')
+            ->success()
+            ->send();
     }
 
     protected function getHeaderActions(): array

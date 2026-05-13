@@ -40,18 +40,17 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
             return Empresa::where('activo', true)->whereIn('plan', $eligible)->get();
         }
 
-        if ($this->empresa && in_array($this->empresa->plan ?? 'basic', $eligible)) {
-            return Collection::wrap($this->empresa);
-        }
-
-        return Collection::make();
+        return $this->empresasAcceso()
+            ->where('activo', true)
+            ->whereIn('plan', $eligible)
+            ->get();
     }
 
     public function canAccessTenant(Model $tenant): bool
     {
-        // El path 'app' corresponde al plan 'basic'
         $pathToLevel = ['app' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
-        $panelLevel  = $pathToLevel[request()->segment(1)] ?? 1;
+        $segment     = request()->segment(1) ?? '';
+        $panelLevel  = $pathToLevel[$segment] ?? 1;
         $tenantLevel = self::PLAN_LEVELS[$tenant->plan ?? 'basic'] ?? 1;
 
         if ($tenantLevel < $panelLevel) {
@@ -62,7 +61,9 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
             return true;
         }
 
-        return $this->empresa_id === $tenant->id;
+        return $this->empresasAcceso()
+            ->where('empresas.id', $tenant->id)
+            ->exists();
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -77,12 +78,17 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
             return true;
         }
 
-        $levels  = ['basic' => 1, 'pro' => 2, 'enterprise' => 3];
-        $panelMap = ['basic' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
-        $userLevel  = $levels[$this->empresa?->plan ?? 'basic'] ?? 1;
-        $panelLevel = $panelMap[$panelId] ?? 99;
+        $panelMap     = ['basic' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
+        $panelLevel   = $panelMap[$panelId] ?? 99;
+        $eligiblePlans = array_keys(array_filter(
+            self::PLAN_LEVELS,
+            fn ($l) => $l >= $panelLevel
+        ));
 
-        return $userLevel >= $panelLevel;
+        return $this->empresasAcceso()
+            ->where('activo', true)
+            ->whereIn('plan', $eligiblePlans)
+            ->exists();
     }
 
     public function getDefaultTenant(Panel $panel): ?Model
@@ -94,16 +100,27 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
                 ?? Empresa::where('activo', true)->whereIn('plan', $eligible)->first();
         }
 
+        // Preferir la empresa primaria si califica
         if ($this->empresa && in_array($this->empresa->plan ?? 'basic', $eligible)) {
             return $this->empresa;
         }
 
-        return null;
+        return $this->empresasAcceso()
+            ->where('activo', true)
+            ->whereIn('plan', $eligible)
+            ->first();
     }
 
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
+    }
+
+    public function empresasAcceso(): BelongsToMany
+    {
+        return $this->belongsToMany(Empresa::class, 'empresa_user_access', 'user_id', 'empresa_id')
+            ->withPivot('rol')
+            ->withTimestamps();
     }
 
     /**

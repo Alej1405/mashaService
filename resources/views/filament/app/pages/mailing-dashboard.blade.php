@@ -1,14 +1,50 @@
 <x-filament-panels::page>
 <div class="space-y-6">
 
-    {{-- ── Servicio suspendido ──────────────────────────────────────────── --}}
+    {{-- ── Servicio suspendido / Ampliar plan ─────────────────────────── --}}
     @if(! $empresa->servicio_mailing_activo)
-    <div class="rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 p-10 flex flex-col items-center justify-center text-center gap-4">
-        <x-heroicon-o-lock-closed class="w-12 h-12 text-gray-400 dark:text-gray-600"/>
-        <div>
-            <p class="text-lg font-semibold text-gray-700 dark:text-gray-300">Tu plan actual no tiene estas funciones habilitadas</p>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Contacta al administrador para activar el servicio de Mailing.</p>
+    <div class="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 p-10 flex flex-col items-center justify-center text-center gap-6">
+
+        <div class="rounded-full bg-indigo-100 dark:bg-indigo-900/50 p-4">
+            <x-heroicon-o-envelope class="w-12 h-12 text-indigo-500 dark:text-indigo-400"/>
         </div>
+
+        <div>
+            <p class="text-xl font-bold text-gray-900 dark:text-white">Módulo de Mailing</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 max-w-md mx-auto">
+                Envía campañas de correo masivo, gestiona contactos y visualiza estadísticas de entrega en tiempo real.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 text-left max-w-sm w-full">
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <x-heroicon-o-paper-airplane class="w-4 h-4 text-indigo-500 shrink-0"/> Campañas masivas
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <x-heroicon-o-users class="w-4 h-4 text-indigo-500 shrink-0"/> Gestión de contactos
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <x-heroicon-o-chart-bar class="w-4 h-4 text-indigo-500 shrink-0"/> Estadísticas en tiempo real
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <x-heroicon-o-document-text class="w-4 h-4 text-indigo-500 shrink-0"/> Plantillas de correo
+            </div>
+        </div>
+
+        <button
+            wire:click="solicitarAmpliarPlan"
+            wire:loading.attr="disabled"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white font-semibold rounded-lg transition-colors duration-150 cursor-pointer"
+        >
+            <x-heroicon-o-rocket-launch class="w-5 h-5"/>
+            <span wire:loading.remove wire:target="solicitarAmpliarPlan">Ampliar plan</span>
+            <span wire:loading wire:target="solicitarAmpliarPlan">Enviando solicitud...</span>
+        </button>
+
+        <p class="text-xs text-gray-400 dark:text-gray-500">
+            El equipo de soporte se pondrá en contacto para activar el servicio
+        </p>
+
     </div>
     @else
 

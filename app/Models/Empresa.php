@@ -6,11 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Filament\Models\Contracts\HasName;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Collection;
-use Filament\Models\Contracts\HasTenants;
-use Filament\Models\Contracts\HasDefaultTenant;
-use Filament\Panel;
-use Illuminate\Support\Facades\Auth;
 use Laravel\Sanctum\HasApiTokens;
 
 class Empresa extends Model implements HasName
@@ -19,7 +14,7 @@ class Empresa extends Model implements HasName
 
     protected $table = 'empresas';
     protected $fillable = [
-        'name', 'email', 'slug', 'activo',
+        'name', 'email', 'website_url', 'slug', 'activo',
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
         // Plan de suscripción
         'plan',
@@ -62,6 +57,13 @@ class Empresa extends Model implements HasName
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'empresa_id');
+    }
+
+    public function usuariosAcceso(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'empresa_user_access', 'empresa_id', 'user_id')
+            ->withPivot('rol')
+            ->withTimestamps();
     }
 
     public function accountPlans(): HasMany

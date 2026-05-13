@@ -13,8 +13,14 @@ trait HasEmpresa
         static::addGlobalScope(new EmpresaScope);
         
         static::creating(function ($model) {
-            if (auth()->check() && empty($model->empresa_id)) {
-                $model->empresa_id = auth()->user()->empresa_id;
+            if (empty($model->empresa_id)) {
+                $tenantId = function_exists('filament') && filament()->getTenant()
+                    ? filament()->getTenant()->id
+                    : (auth()->check() ? auth()->user()->empresa_id : null);
+
+                if ($tenantId) {
+                    $model->empresa_id = $tenantId;
+                }
             }
         });
     }

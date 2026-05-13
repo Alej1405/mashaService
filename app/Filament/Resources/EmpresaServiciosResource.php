@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\EmpresaResource\RelationManagers\UsuariosAccesoRelationManager;
 use App\Filament\Resources\EmpresaServiciosResource\Pages;
 use App\Models\Empresa;
 use App\Models\MailCampaign;
@@ -10,24 +11,24 @@ use App\Models\MailingGroup;
 use App\Models\MailTemplate;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class EmpresaServiciosResource extends Resource
 {
-    protected static ?string $model              = Empresa::class;
-    protected static ?string $navigationIcon     = 'heroicon-o-building-office-2';
-    protected static ?string $navigationLabel    = 'Empresas';
-    protected static ?string $navigationGroup    = 'Servicios';
-    protected static ?int    $navigationSort     = 2;
-    protected static ?string $slug               = 'servicios-empresas';
-    protected static ?string $modelLabel         = 'Empresa';
-    protected static ?string $pluralModelLabel   = 'Empresas';
+    protected static ?string $model             = Empresa::class;
+    protected static ?string $navigationIcon    = 'heroicon-o-building-office-2';
+    protected static ?string $navigationLabel   = 'Empresas';
+    protected static ?string $navigationGroup   = 'Servicios';
+    protected static ?int    $navigationSort    = 2;
+    protected static ?string $slug              = 'servicios-empresas';
+    protected static ?string $modelLabel        = 'Empresa';
+    protected static ?string $pluralModelLabel  = 'Empresas';
 
-    public static function canAccess(): bool
+    public static function canViewAny(): bool
     {
         return auth()->user()?->hasRole('super_admin') ?? false;
     }
@@ -35,6 +36,86 @@ class EmpresaServiciosResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+
+            Forms\Components\Section::make('Información Básica')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->label('Nombre de la empresa')
+                        ->required()
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn (Forms\Set $set, ?string $state) =>
+                            $set('slug', \Illuminate\Support\Str::slug($state))
+                        )
+                        ->maxLength(255),
+
+                    Forms\Components\TextInput::make('slug')
+                        ->label('URL amigable (slug)')
+                        ->required()
+                        ->unique(ignoreRecord: true)
+                        ->maxLength(255)
+                        ->dehydrated(),
+
+                    Forms\Components\TextInput::make('email')
+                        ->label('Correo electrónico')
+                        ->email()
+                        ->required()
+                        ->unique(ignoreRecord: true)
+                        ->maxLength(255),
+                ]),
+
+            Forms\Components\Section::make('Identificación y Datos Legales')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\Select::make('tipo_persona')
+                        ->label('Tipo de persona')
+                        ->options([
+                            'natural'  => 'Persona Natural',
+                            'juridica' => 'Persona Jurídica',
+                        ])
+                        ->required(),
+
+                    Forms\Components\Select::make('tipo_identificacion')
+                        ->label('Tipo de identificación')
+                        ->options([
+                            'ruc'       => 'RUC',
+                            'cedula'    => 'Cédula de Identidad',
+                            'pasaporte' => 'Pasaporte',
+                        ])
+                        ->required()
+                        ->live(),
+
+                    Forms\Components\TextInput::make('numero_identificacion')
+                        ->label('Número de identificación')
+                        ->required()
+                        ->numeric()
+                        ->minLength(fn (Get $get): int => match ($get('tipo_identificacion')) {
+                            'ruc'    => 13,
+                            'cedula' => 10,
+                            default  => 1,
+                        })
+                        ->maxLength(fn (Get $get): int => match ($get('tipo_identificacion')) {
+                            'ruc'    => 13,
+                            'cedula' => 10,
+                            default  => 20,
+                        })
+                        ->hint(fn (Get $get): string => match ($get('tipo_identificacion')) {
+                            'ruc'    => '13 dígitos',
+                            'cedula' => '10 dígitos',
+                            default  => '',
+                        }),
+
+                    Forms\Components\TextInput::make('direccion')
+                        ->label('Dirección')
+                        ->required()
+                        ->columnSpanFull(),
+
+                    Forms\Components\Textarea::make('actividad_economica')
+                        ->label('¿A qué se dedica la empresa?')
+                        ->rows(2)
+                        ->columnSpanFull(),
+                ]),
+
             Forms\Components\Section::make('Estado del Servicio')
                 ->columns(2)
                 ->schema([
@@ -46,14 +127,17 @@ class EmpresaServiciosResource extends Resource
                     Forms\Components\Select::make('plan')
                         ->label('Plan de suscripción')
                         ->options([
-                            'basic'      => 'Basic',
-                            'pro'        => 'Pro',
-                            'enterprise' => 'Enterprise',
+                            'basic'      => 'Basic — Solo Mailing',
+                            'pro'        => 'Pro — ERP Completo',
+                            'enterprise' => 'Enterprise — Todo incluido',
                         ])
-                        ->required(),
+                        ->default('pro')
+                        ->required()
+                        ->native(false),
                 ]),
 
             Forms\Components\Section::make('Módulos habilitados')
+                ->description('Active los módulos que correspondan al tipo de operación de la empresa.')
                 ->columns(3)
                 ->schema([
                     Forms\Components\Toggle::make('tipo_operacion_productos')->label('Productos'),
@@ -76,7 +160,7 @@ class EmpresaServiciosResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->query(Empresa::query()->withCount('users')->with(['users' => fn($q) => $q->select('id', 'empresa_id', 'last_login_at')]))
+            ->query(Empresa::query()->withCount('users')->with(['users' => fn ($q) => $q->select('id', 'empresa_id', 'last_login_at')]))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('name')
@@ -94,10 +178,16 @@ class EmpresaServiciosResource extends Resource
                     ]),
 
                 Tables\Columns\IconColumn::make('activo')
-                    ->label('Activo')
+                    ->label('Activa')
                     ->boolean()
                     ->trueColor('success')
                     ->falseColor('danger'),
+
+                Tables\Columns\TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable()
+                    ->color('gray')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('users_count')
                     ->label('Usuarios')
@@ -216,7 +306,7 @@ class EmpresaServiciosResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\EditAction::make()->label('Módulos'),
+                Tables\Actions\EditAction::make()->label('Editar'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkAction::make('activar')
@@ -235,11 +325,19 @@ class EmpresaServiciosResource extends Resource
             ]);
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            UsuariosAccesoRelationManager::class,
+        ];
+    }
+
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListEmpresaServicios::route('/'),
-            'edit'  => Pages\EditEmpresaServicios::route('/{record}/edit'),
+            'index'  => Pages\ListEmpresaServicios::route('/'),
+            'create' => Pages\CreateEmpresaServicios::route('/create'),
+            'edit'   => Pages\EditEmpresaServicios::route('/{record}/edit'),
         ];
     }
 }
