@@ -4,6 +4,8 @@ namespace App\Filament\App\Pages;
 
 use App\Filament\App\Widgets\DashboardHeaderWidget;
 use App\Filament\App\Widgets\KpiFinancieroWidget;
+use App\Filament\App\Widgets\PlanInfoWidget;
+use App\Filament\App\Widgets\QuickLinksWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 
 class Dashboard extends BaseDashboard
@@ -28,6 +30,8 @@ class Dashboard extends BaseDashboard
     {
         return [
             DashboardHeaderWidget::class,
+            PlanInfoWidget::class,
+            QuickLinksWidget::class,
             KpiFinancieroWidget::class,
         ];
     }

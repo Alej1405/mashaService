@@ -29,7 +29,7 @@
 
         {{-- Estado del servicio de correo --}}
         <div class="shrink-0">
-            @if($configurado)
+            @if($servicio_activo && $configurado)
             <div class="flex items-center gap-2 bg-emerald-500/15 border border-emerald-500/30 rounded-xl px-4 py-3">
                 <span class="relative flex h-2.5 w-2.5">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -40,7 +40,7 @@
                     <p class="text-xs text-emerald-500 font-mono">{{ $empresa->mailgun_domain }}</p>
                 </div>
             </div>
-            @else
+            @elseif($servicio_activo && ! $configurado)
             <div class="flex items-center gap-2 bg-amber-500/15 border border-amber-500/30 rounded-xl px-4 py-3">
                 <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-amber-400 shrink-0"/>
                 <div>
@@ -48,352 +48,145 @@
                     <p class="text-xs text-amber-500">Contacta al administrador</p>
                 </div>
             </div>
+            @else
+            <div class="flex items-center gap-2 bg-slate-500/15 border border-slate-500/30 rounded-xl px-4 py-3">
+                <x-heroicon-o-lock-closed class="w-5 h-5 text-slate-400 shrink-0"/>
+                <div>
+                    <p class="text-xs font-bold text-slate-300">Mailing suspendido</p>
+                    <p class="text-xs text-slate-500">Plan no incluye este servicio</p>
+                </div>
+            </div>
             @endif
         </div>
     </div>
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════
-        KPIs — 4 tarjetas
+     INFO DEL PLAN
 ══════════════════════════════════════════════════════════════ --}}
-<div class="flex flex-4 flex-row gap-4 justify-center w-full">
-
-    {{-- Entregados --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
-        <div class="flex items-center justify-between mr-2">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Entregados</span>
-            <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-                <x-heroicon-o-paper-airplane class="w-4 h-4 text-indigo-500"/>
+<div class="d-card">
+    <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+            <div class="p-1.5 rounded-lg" style="background:#eef2ff;">
+                <x-heroicon-o-credit-card class="w-4 h-4" style="color:#4f46e5;" />
             </div>
+            <span class="text-xs font-bold uppercase tracking-widest" style="color:#64748b;">Tu Plan</span>
         </div>
-        <div>
-            <p class="text-3xl font-black text-gray-900 dark:text-white">
-                {{ $configurado ? number_format($stats['delivered'] ?? 0) : '—' }}
-            </p>
-            <p class="text-xs text-gray-400 mt-0.5">últimos 30 días</p>
-        </div>
-        @if($configurado && ($stats7['delivered'] ?? 0) > 0)
-        <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
-            <p class="text-xs text-indigo-500 font-semibold">
-                +{{ number_format($stats7['delivered']) }} esta semana
-            </p>
-        </div>
-        @endif
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
+              style="background:{{ $badgeBg }};color:{{ $badgeColor }};border:1px solid {{ $badgeColor }}22;">
+            {{ $planLabel }}
+        </span>
     </div>
-
-    {{-- Tasa de entrega --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
-        <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Entrega</span>
-            <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
-                <x-heroicon-o-check-badge class="w-4 h-4 text-emerald-500"/>
-            </div>
-        </div>
-        <div>
-            <p class="text-3xl font-black text-gray-900 dark:text-white">
-                {{ $configurado ? ($stats['delivery_rate'] ?? 0) . '%' : '—' }}
-            </p>
-            <p class="text-xs text-gray-400 mt-0.5">tasa de entrega</p>
-        </div>
-        @if($configurado)
-        <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
-            @php $rate = $stats['delivery_rate'] ?? 0; @endphp
-            <p class="text-xs font-semibold {{ $rate >= 95 ? 'text-emerald-500' : ($rate >= 85 ? 'text-amber-500' : 'text-rose-500') }}">
-                {{ $rate >= 95 ? '✓ Excelente' : ($rate >= 85 ? '⚠ Aceptable' : '✗ Revisar rebotes') }}
-            </p>
-        </div>
-        @endif
-    </div>
-
-    {{-- Apertura --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
-        <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Aperturas</span>
-            <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center">
-                <x-heroicon-o-eye class="w-4 h-4 text-sky-500"/>
-            </div>
-        </div>
-        <div>
-            <p class="text-3xl font-black text-gray-900 dark:text-white">
-                {{ $configurado ? ($stats['open_rate'] ?? 0) . '%' : '—' }}
-            </p>
-            <p class="text-xs text-gray-400 mt-0.5">tasa de apertura</p>
-        </div>
-        @if($configurado)
-        <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
-            <p class="text-xs text-gray-400">
-                {{ number_format($stats['opened'] ?? 0) }} correos abiertos
-            </p>
-        </div>
-        @endif
-    </div>
-
-    {{-- Plantillas --}}
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex flex-col gap-3 w-full">
-        <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Plantillas</span>
-            <div class="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
-                <x-heroicon-o-document-text class="w-4 h-4 text-violet-500"/>
-            </div>
-        </div>
-        <div>
-            <p class="text-3xl font-black text-gray-900 dark:text-white">{{ $plantillas }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $plantillas === 1 ? 'plantilla creada' : 'plantillas creadas' }}</p>
-        </div>
-        <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
-            <a href="{{ \App\Filament\App\Resources\MailTemplateResource::getUrl('create', tenant: \Filament\Facades\Filament::getTenant()) }}"
-               class="text-xs font-semibold text-violet-500 hover:text-violet-600 transition-colors">
-                + Nueva plantilla →
-            </a>
-        </div>
-    </div>
-
-</div>
-
-{{-- ══════════════════════════════════════════════════════════════
-    CONTENIDO PRINCIPAL — Eventos + Acciones rápidas
-══════════════════════════════════════════════════════════════ --}}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    {{-- Eventos recientes (2/3) --}}
-    <div class="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-            <div>
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Actividad reciente</h3>
-                <p class="text-xs text-gray-400 mt-0.5">Últimos eventos del servicio de correo</p>
-            </div>
-            @if($configurado)
-            <a href="{{ \App\Filament\Basic\Pages\MailingDashboard::getUrl(tenant: \Filament\Facades\Filament::getTenant()) }}"
-                class="text-xs font-semibold text-indigo-500 hover:text-indigo-600 transition-colors">
-                Ver todo →
-            </a>
-            @endif
-        </div>
-
-        @if(! $configurado)
-        <div class="px-6 py-12 text-center">
-            <x-heroicon-o-envelope class="w-10 h-10 text-gray-200 dark:text-gray-700 mx-auto mb-3"/>
-            <p class="text-sm font-medium text-gray-400">El servicio de correo no está activo</p>
-            <p class="text-xs text-gray-400 mt-1">Contacta al administrador para configurarlo.</p>
-        </div>
-        @elseif(empty($events))
-        <div class="px-6 py-12 text-center">
-            <x-heroicon-o-inbox class="w-10 h-10 text-gray-200 dark:text-gray-700 mx-auto mb-3"/>
-            <p class="text-sm font-medium text-gray-400">Sin actividad reciente</p>
-            <p class="text-xs text-gray-400 mt-1">Los eventos aparecerán aquí cuando envíes correos.</p>
-        </div>
-        @else
-        <div class="divide-y divide-gray-50 dark:divide-gray-800">
-            @foreach($events as $event)
-            @php
-                $tipo      = $event['event'] ?? 'unknown';
-                $recipient = $event['recipient'] ?? ($event['envelope']['targets'] ?? '—');
-                $subject   = $event['message']['headers']['subject'] ?? '(sin asunto)';
-                $ts        = ! empty($event['timestamp'])
-                    ? \Carbon\Carbon::createFromTimestamp((int) $event['timestamp'])
-                    : null;
-            @endphp
-            <div class="px-6 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                {{-- Icono del evento --}}
-                <div class="shrink-0 w-7 h-7 rounded-full flex items-center justify-center
-                    @if($tipo === 'delivered') bg-emerald-100 dark:bg-emerald-900/30
-                    @elseif($tipo === 'opened') bg-sky-100 dark:bg-sky-900/30
-                    @elseif($tipo === 'clicked') bg-violet-100 dark:bg-violet-900/30
-                    @elseif(in_array($tipo, ['bounced','failed'])) bg-rose-100 dark:bg-rose-900/30
-                    @elseif($tipo === 'complained') bg-orange-100 dark:bg-orange-900/30
-                    @else bg-gray-100 dark:bg-gray-800 @endif">
-                    @if($tipo === 'delivered')
-                        <x-heroicon-s-check class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"/>
-                    @elseif($tipo === 'opened')
-                        <x-heroicon-s-eye class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400"/>
-                    @elseif($tipo === 'clicked')
-                        <x-heroicon-s-cursor-arrow-rays class="w-3.5 h-3.5 text-violet-600 dark:text-violet-400"/>
-                    @elseif(in_array($tipo, ['bounced','failed']))
-                        <x-heroicon-s-arrow-uturn-left class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400"/>
-                    @elseif($tipo === 'complained')
-                        <x-heroicon-s-hand-raised class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400"/>
-                    @else
-                        <x-heroicon-s-minus class="w-3.5 h-3.5 text-gray-400"/>
-                    @endif
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        @foreach($features as $feature)
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                <div class="flex-shrink-0 p-1 rounded-md" style="background:#ecfdf5;">
+                    <x-heroicon-o-check-circle class="w-3.5 h-3.5" style="color:#16a34a;" />
                 </div>
-
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm text-gray-800 dark:text-gray-200 truncate font-medium">{{ $recipient }}</p>
-                    <p class="text-xs text-gray-400 truncate">{{ $subject }}</p>
-                </div>
-
-                <div class="shrink-0 text-right">
-                    <span class="text-xs font-medium
-                        @if($tipo === 'delivered') text-emerald-600 dark:text-emerald-400
-                        @elseif($tipo === 'opened') text-sky-600 dark:text-sky-400
-                        @elseif($tipo === 'clicked') text-violet-600 dark:text-violet-400
-                        @elseif(in_array($tipo, ['bounced','failed'])) text-rose-600 dark:text-rose-400
-                        @elseif($tipo === 'complained') text-orange-600 dark:text-orange-400
-                        @else text-gray-400 @endif">
-                        {{ match($tipo) {
-                            'delivered'  => 'Entregado',
-                            'opened'     => 'Abierto',
-                            'clicked'    => 'Clic',
-                            'bounced', 'failed' => 'Rebote',
-                            'complained' => 'Spam',
-                            'unsubscribed' => 'Baja',
-                            default      => ucfirst($tipo),
-                        } }}
-                    </span>
-                    @if($ts)
-                    <p class="text-xs text-gray-300 dark:text-gray-600 mt-0.5">{{ $ts->format('d/m H:i') }}</p>
-                    @endif
-                </div>
+                <span class="text-[11px] font-medium leading-tight" style="color:#475569;">{{ $feature }}</span>
             </div>
-            @endforeach
-        </div>
-        @endif
-    </div>
-
-    {{-- Panel derecho (1/3) --}}
-    <div class="space-y-4">
-
-        {{-- Acciones rápidas --}}
-        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Acciones rápidas</h3>
-            </div>
-            <div class="p-3 space-y-1">
-
-                <a href="{{ \App\Filament\App\Resources\MailTemplateResource::getUrl('create', tenant: \Filament\Facades\Filament::getTenant()) }}"
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
-                    <div class="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
-                        <x-heroicon-o-plus class="w-4 h-4 text-violet-600 dark:text-violet-400"/>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Nueva plantilla</p>
-                        <p class="text-xs text-gray-400">Diseña un correo</p>
-                    </div>
-                    <x-heroicon-o-chevron-right class="w-4 h-4 text-gray-300 group-hover:text-gray-400 ml-auto shrink-0 transition-colors"/>
-                </a>
-
-                <a href="{{ \App\Filament\App\Resources\MailTemplateResource::getUrl('index', tenant: \Filament\Facades\Filament::getTenant()) }}"
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
-                    <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
-                        <x-heroicon-o-document-text class="w-4 h-4 text-indigo-600 dark:text-indigo-400"/>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Mis plantillas</p>
-                        <p class="text-xs text-gray-400">{{ $plantillas }} {{ $plantillas === 1 ? 'plantilla' : 'plantillas' }}</p>
-                    </div>
-                    <x-heroicon-o-chevron-right class="w-4 h-4 text-gray-300 group-hover:text-gray-400 ml-auto shrink-0 transition-colors"/>
-                </a>
-
-                <a href="{{ \App\Filament\Basic\Pages\MailingDashboard::getUrl(tenant: \Filament\Facades\Filament::getTenant()) }}"
-                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group">
-                    <div class="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
-                        <x-heroicon-o-chart-bar class="w-4 h-4 text-sky-600 dark:text-sky-400"/>
-                    </div>
-                    <div class="min-w-0">
-                        <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Estadísticas</p>
-                        <p class="text-xs text-gray-400">Reportes detallados</p>
-                    </div>
-                    <x-heroicon-o-chevron-right class="w-4 h-4 text-gray-300 group-hover:text-gray-400 ml-auto shrink-0 transition-colors"/>
-                </a>
-
-            </div>
-        </div>
-
-        {{-- Resumen 7 días --}}
-        @if($configurado && ($stats7['delivered'] ?? 0) + ($stats7['bounced'] ?? 0) > 0)
-        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5">
-            <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4">Últimos 7 días</h3>
-            <div class="space-y-3">
-                @php
-                    $items7 = [
-                        ['label' => 'Entregados',  'val' => $stats7['delivered'] ?? 0,   'color' => 'bg-emerald-500'],
-                        ['label' => 'Abiertos',    'val' => $stats7['opened'] ?? 0,      'color' => 'bg-sky-500'],
-                        ['label' => 'Clics',       'val' => $stats7['clicked'] ?? 0,     'color' => 'bg-violet-500'],
-                        ['label' => 'Rebotes',     'val' => $stats7['bounced'] ?? 0,     'color' => 'bg-rose-500'],
-                    ];
-                    $maxVal = max(collect($items7)->pluck('val')->max(), 1);
-                @endphp
-                @foreach($items7 as $item)
-                <div class="space-y-1">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $item['label'] }}</span>
-                        <span class="text-xs font-bold text-gray-700 dark:text-gray-300">{{ number_format($item['val']) }}</span>
-                    </div>
-                    <div class="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5">
-                        <div class="{{ $item['color'] }} h-1.5 rounded-full transition-all"
-                             style="width: {{ $maxVal > 0 ? round(($item['val'] / $maxVal) * 100) : 0 }}%"></div>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-        @endif
-
-        {{-- Guía de inicio rápido (si no está configurado) --}}
-        @if(! $configurado)
-        <div class="bg-white dark:bg-gray-900 rounded-2xl border border-amber-200 dark:border-amber-800/50 shadow-sm p-5">
-            <div class="flex items-center gap-2 mb-4">
-                <x-heroicon-o-rocket-launch class="w-4 h-4 text-amber-500"/>
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Cómo empezar</h3>
-            </div>
-            <ol class="space-y-3">
-                <li class="flex gap-3">
-                    <span class="shrink-0 w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center justify-center">1</span>
-                    <p class="text-xs text-gray-600 dark:text-gray-400">Contacta al <strong class="text-gray-800 dark:text-gray-200">administrador</strong> para activar el servicio de correo.</p>
-                </li>
-                <li class="flex gap-3">
-                    <span class="shrink-0 w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 text-xs font-bold flex items-center justify-center">2</span>
-                    <p class="text-xs text-gray-400">Diseña tus <strong>plantillas</strong> de correo con el editor visual.</p>
-                </li>
-                <li class="flex gap-3">
-                    <span class="shrink-0 w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 text-xs font-bold flex items-center justify-center">3</span>
-                    <p class="text-xs text-gray-400">Envía un <strong>correo de prueba</strong> para verificar el diseño.</p>
-                </li>
-            </ol>
-        </div>
-        @endif
-
+        @endforeach
     </div>
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════
-     STATS SECUNDARIAS (solo si está configurado)
+     MINIATURA WEB
 ══════════════════════════════════════════════════════════════ --}}
-@if($configurado)
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center shrink-0">
-            <x-heroicon-o-arrow-uturn-left class="w-5 h-5 text-rose-500"/>
+<div class="d-card">
+    <div class="flex items-center gap-2 mb-4">
+        <div class="p-1.5 rounded-lg" style="background:#f0fdf4;">
+            <x-heroicon-o-globe-alt class="w-4 h-4" style="color:#16a34a;" />
         </div>
-        <div>
-            <p class="text-xl font-black text-gray-900 dark:text-white">{{ number_format($stats['bounced'] ?? 0) }}</p>
-            <p class="text-xs text-gray-400">Rebotes (30d)</p>
+        <span class="text-xs font-bold uppercase tracking-widest" style="color:#64748b;">Accesos Rápidos</span>
+    </div>
+
+    @if($websiteUrl)
+        <a href="{{ $websiteUrl }}" target="_blank" rel="noopener noreferrer"
+           class="group block rounded-xl overflow-hidden transition-all duration-200"
+           style="border:1px solid #e2e8f0;max-width:280px;"
+           onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.10)';this.style.borderColor='#c7d2fe';"
+           onmouseout="this.style.boxShadow='none';this.style.borderColor='#e2e8f0';">
+            <div class="relative overflow-hidden" style="height:150px;background:#f1f5f9;">
+                <img
+                    src="{{ $thumbnailUrl }}"
+                    alt="Vista previa de {{ $empresa->name }}"
+                    class="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                    onerror="this.parentElement.innerHTML='<div style=\'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px;\'><svg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke-width=\'1.5\' stroke=\'currentColor\' style=\'width:28px;height:28px;color:#94a3b8;\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418\'/></svg><span style=\'font-size:11px;color:#94a3b8;\'>Vista previa no disponible</span></div>';"
+                >
+                <div class="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                     style="background:rgba(255,255,255,0.9);backdrop-filter:blur(4px);">
+                    <x-heroicon-o-arrow-top-right-on-square class="w-3.5 h-3.5" style="color:#4f46e5;" />
+                </div>
+            </div>
+            <div class="px-3 py-2.5" style="background:#ffffff;">
+                <p class="text-xs font-bold truncate" style="color:#1e293b;">{{ $empresa->name }}</p>
+                <p class="text-[10px] truncate mt-0.5" style="color:#94a3b8;">{{ $websiteUrl }}</p>
+            </div>
+        </a>
+    @else
+        <div class="flex flex-col items-center justify-center py-6 text-center rounded-xl"
+             style="background:#f8fafc;border:1px dashed #cbd5e1;">
+            <div class="p-3 rounded-full mb-3" style="background:#e0e7ff;">
+                <x-heroicon-o-globe-alt class="w-5 h-5" style="color:#4f46e5;" />
+            </div>
+            <p class="text-sm font-semibold mb-1" style="color:#1e293b;">Sin sitio web registrado</p>
+            <p class="text-xs max-w-xs" style="color:#64748b;">
+                El administrador puede agregar la URL del sitio web desde
+                <strong>Admin → Empresas → Editar</strong>.
+            </p>
+        </div>
+    @endif
+</div>
+
+{{-- ══════════════════════════════════════════════════════════════
+     AMPLIAR PLAN (solo si el servicio no está activo)
+══════════════════════════════════════════════════════════════ --}}
+@if(! $servicio_activo)
+<div class="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 p-10 flex flex-col items-center justify-center text-center gap-6">
+
+    <div class="rounded-full bg-indigo-100 dark:bg-indigo-900/50 p-4">
+        <x-heroicon-o-envelope class="w-12 h-12 text-indigo-500 dark:text-indigo-400"/>
+    </div>
+
+    <div>
+        <p class="text-xl font-bold text-gray-900 dark:text-white">Módulo de Mailing</p>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mt-2 max-w-md mx-auto">
+            Envía campañas de correo masivo, gestiona contactos y visualiza estadísticas de entrega en tiempo real.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 text-left max-w-sm w-full">
+        <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <x-heroicon-o-paper-airplane class="w-4 h-4 text-indigo-500 shrink-0"/> Campañas masivas
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <x-heroicon-o-users class="w-4 h-4 text-indigo-500 shrink-0"/> Gestión de contactos
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <x-heroicon-o-chart-bar class="w-4 h-4 text-indigo-500 shrink-0"/> Estadísticas en tiempo real
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <x-heroicon-o-document-text class="w-4 h-4 text-indigo-500 shrink-0"/> Plantillas de correo
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
-            <x-heroicon-o-hand-raised class="w-5 h-5 text-orange-500"/>
-        </div>
-        <div>
-            <p class="text-xl font-black text-gray-900 dark:text-white">{{ number_format($stats['complained'] ?? 0) }}</p>
-            <p class="text-xs text-gray-400">Reportes de spam (30d)</p>
-        </div>
-    </div>
+    <button
+        wire:click="solicitarAmpliarPlan"
+        wire:loading.attr="disabled"
+        class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-75 text-white font-semibold rounded-lg transition-colors duration-150 cursor-pointer"
+    >
+        <x-heroicon-o-rocket-launch class="w-5 h-5"/>
+        <span wire:loading.remove wire:target="solicitarAmpliarPlan">Ampliar plan</span>
+        <span wire:loading wire:target="solicitarAmpliarPlan">Enviando solicitud...</span>
+    </button>
 
-    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm flex items-center gap-4">
-        <div class="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center shrink-0">
-            <x-heroicon-o-cursor-arrow-rays class="w-5 h-5 text-gray-400"/>
-        </div>
-        <div>
-            <p class="text-xl font-black text-gray-900 dark:text-white">{{ ($stats['click_rate'] ?? 0) }}%</p>
-            <p class="text-xs text-gray-400">Tasa de clics (30d)</p>
-        </div>
-    </div>
+    <p class="text-xs text-gray-400 dark:text-gray-500">
+        El equipo de soporte se pondrá en contacto para activar el servicio
+    </p>
 
 </div>
 @endif
+
 
 </div>
 </x-filament-panels::page>
