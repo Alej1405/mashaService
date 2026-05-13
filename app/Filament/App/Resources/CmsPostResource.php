@@ -28,15 +28,14 @@ class CmsPostResource extends Resource
 
     protected static ?string $navigationIcon   = 'heroicon-o-newspaper';
     protected static ?string $navigationLabel  = 'Noticias';
-    protected static ?string $navigationGroup  = 'CMS';
-    protected static ?int    $navigationSort   = 9;
+    protected static ?string $navigationGroup  = 'Blog';
+    protected static ?int    $navigationSort   = 1;
     protected static ?string $modelLabel       = 'Noticia';
     protected static ?string $pluralModelLabel = 'Noticias';
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic'
-            && (bool) \Filament\Facades\Filament::getTenant()?->servicio_cms_activo;
+        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
     }
 
     public static function form(Form $form): Form

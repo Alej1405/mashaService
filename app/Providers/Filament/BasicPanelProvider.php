@@ -62,6 +62,11 @@ class BasicPanelProvider extends PanelProvider
                 fn (): string => view('filament.loading')->render(),
             )
             ->broadcasting()
+            ->navigationGroups([
+                \Filament\Navigation\NavigationGroup::make('Mailing')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('CMS')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('Blog')->collapsible(),
+            ])
             ->resources([
                 \App\Filament\App\Resources\MailTemplateResource::class,
                 \App\Filament\App\Resources\MailingGroupResource::class,
