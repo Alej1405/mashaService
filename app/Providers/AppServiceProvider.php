@@ -30,6 +30,20 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\LogisticsShipment::observe(\App\Observers\LogisticsShipmentObserver::class);
         \App\Models\LogisticsShipmentBill::observe(\App\Observers\LogisticsShipmentBillObserver::class);
 
+        // CMS — invalidación de caché automática al guardar/eliminar
+        $cmsObserver = \App\Observers\CmsObserver::class;
+        \App\Models\CmsHero::observe($cmsObserver);
+        \App\Models\CmsAbout::observe($cmsObserver);
+        \App\Models\CmsService::observe($cmsObserver);
+        \App\Models\CmsProduct::observe($cmsObserver);
+        \App\Models\CmsTeamMember::observe($cmsObserver);
+        \App\Models\CmsClientLogo::observe($cmsObserver);
+        \App\Models\CmsTestimonial::observe($cmsObserver);
+        \App\Models\CmsFaq::observe($cmsObserver);
+        \App\Models\CmsContact::observe($cmsObserver);
+        \App\Models\CmsTerminos::observe($cmsObserver);
+        \App\Models\CmsPost::observe($cmsObserver);
+
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
             return $user->hasRole('super_admin') ? true : null;
         });
