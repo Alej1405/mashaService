@@ -91,6 +91,8 @@ class ProPanelProvider extends PanelProvider
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,
                 \App\Filament\App\Widgets\KpiFinancieroWidget::class,
+                \App\Filament\App\Widgets\PlanInfoWidget::class,
+                \App\Filament\App\Widgets\QuickLinksWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
