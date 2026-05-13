@@ -153,6 +153,9 @@ class EmpresaServiciosResource extends Resource
                     Forms\Components\Toggle::make('servicio_mailing_activo')
                         ->label('Mailing')
                         ->helperText('Desactivar oculta todo el módulo Mailing del panel de la empresa.'),
+                    Forms\Components\Toggle::make('servicio_cms_activo')
+                        ->label('CMS')
+                        ->helperText('Desactivar oculta todos los módulos CMS del panel de la empresa.'),
                 ]),
         ]);
     }
@@ -224,6 +227,14 @@ class EmpresaServiciosResource extends Resource
                     ->trueIcon('heroicon-o-envelope')
                     ->falseIcon('heroicon-o-envelope'),
 
+                Tables\Columns\IconColumn::make('servicio_cms_activo')
+                    ->label('CMS')
+                    ->boolean()
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->trueIcon('heroicon-o-globe-alt')
+                    ->falseIcon('heroicon-o-globe-alt'),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Registrada')
                     ->date('d/m/Y')
@@ -281,6 +292,23 @@ class EmpresaServiciosResource extends Resource
                         $record->update(['servicio_mailing_activo' => ! $record->servicio_mailing_activo]);
                         Notification::make()
                             ->title($record->servicio_mailing_activo ? 'Mailing activado' : 'Mailing suspendido')
+                            ->success()
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('toggle_cms')
+                    ->label(fn (Empresa $r): string => $r->servicio_cms_activo ? 'Suspender CMS' : 'Activar CMS')
+                    ->icon('heroicon-o-globe-alt')
+                    ->color(fn (Empresa $r): string => $r->servicio_cms_activo ? 'warning' : 'success')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (Empresa $r): string => $r->servicio_cms_activo ? 'Suspender servicio CMS' : 'Activar servicio CMS')
+                    ->modalDescription(fn (Empresa $r): string => $r->servicio_cms_activo
+                        ? 'El módulo CMS dejará de ser visible para los usuarios de esta empresa.'
+                        : 'El módulo CMS volverá a estar disponible para los usuarios de esta empresa.')
+                    ->action(function (Empresa $record): void {
+                        $record->update(['servicio_cms_activo' => ! $record->servicio_cms_activo]);
+                        Notification::make()
+                            ->title($record->servicio_cms_activo ? 'CMS activado' : 'CMS suspendido')
                             ->success()
                             ->send();
                     }),

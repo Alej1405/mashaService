@@ -19,6 +19,7 @@ class Empresa extends Model implements HasName
         // Plan de suscripción
         'plan',
         'servicio_mailing_activo',
+        'servicio_cms_activo',
         // Credenciales del servicio de correo (por empresa)
         'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
         // Cuota de envíos
@@ -33,6 +34,7 @@ class Empresa extends Model implements HasName
     protected $casts = [
         'smtp_port'               => 'integer',
         'servicio_mailing_activo' => 'boolean',
+        'servicio_cms_activo'     => 'boolean',
     ];
 
     protected static function booted(): void
