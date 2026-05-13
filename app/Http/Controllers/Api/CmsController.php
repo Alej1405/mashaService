@@ -37,11 +37,21 @@ class CmsController extends Controller
         return $path ? Storage::disk('public')->url($path) : null;
     }
 
+    /**
+     * Cache::remember() no almacena null (lo trata como cache miss).
+     * Envuelve el resultado en ['v' => ...] para que null se cachee correctamente.
+     */
+    private function cached(string $key, int $ttl, callable $callback): mixed
+    {
+        $result = Cache::remember($key, $ttl, fn () => ['v' => $callback()]);
+        return $result['v'];
+    }
+
     // ── Endpoints ──────────────────────────────────────────────────────────
 
     public function hero(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:hero", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:hero", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             $hero    = CmsHero::withoutGlobalScopes()
                 ->select(['titulo', 'subtitulo', 'descripcion', 'imagen', 'cta_texto', 'cta_url'])
@@ -68,7 +78,7 @@ class CmsController extends Controller
 
     public function about(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:about", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:about", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             $about   = CmsAbout::withoutGlobalScopes()
                 ->select(['titulo', 'descripcion', 'imagen', 'por_que_nosotros', 'numeros', 'caracteristicas'])
@@ -95,7 +105,7 @@ class CmsController extends Controller
 
     public function services(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:services", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:services", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             return $this->buildServices($empresa);
         });
@@ -105,7 +115,7 @@ class CmsController extends Controller
 
     public function products(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:products", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:products", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             return $this->buildProducts($empresa);
         });
@@ -115,7 +125,7 @@ class CmsController extends Controller
 
     public function team(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:team", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:team", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
 
             return CmsTeamMember::withoutGlobalScopes()
@@ -138,7 +148,7 @@ class CmsController extends Controller
 
     public function clients(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:clients", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:clients", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
 
             return CmsClientLogo::withoutGlobalScopes()
@@ -160,7 +170,7 @@ class CmsController extends Controller
 
     public function testimonials(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:testimonials", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:testimonials", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
 
             return CmsTestimonial::withoutGlobalScopes()
@@ -185,7 +195,7 @@ class CmsController extends Controller
 
     public function faq(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:faq", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:faq", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
 
             return CmsFaq::withoutGlobalScopes()
@@ -206,7 +216,7 @@ class CmsController extends Controller
 
     public function contact(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:contact", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:contact", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             $contact = CmsContact::withoutGlobalScopes()
                 ->select(['direccion', 'telefono', 'email', 'whatsapp', 'mapa_embed',
@@ -240,7 +250,7 @@ class CmsController extends Controller
 
     public function posts(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:posts", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:posts", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
 
             return CmsPost::withoutGlobalScopes()
@@ -264,7 +274,7 @@ class CmsController extends Controller
 
     public function post(string $slug, string $postSlug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:post:{$postSlug}", self::TTL, function () use ($slug, $postSlug) {
+        $data = $this->cached("cms:{$slug}:post:{$postSlug}", self::TTL, function () use ($slug, $postSlug) {
             $empresa = $this->empresa($slug);
             $post    = CmsPost::withoutGlobalScopes()
                 ->select(['id', 'titulo', 'slug', 'contenido', 'imagen', 'publicado_en'])
@@ -288,7 +298,7 @@ class CmsController extends Controller
 
     public function terminos(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:terminos", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:terminos", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             return $this->terminosData($empresa->id);
         });
@@ -299,7 +309,7 @@ class CmsController extends Controller
     /** Devuelve todas las secciones activas en una sola llamada. */
     public function all(string $slug): JsonResponse
     {
-        $data = Cache::remember("cms:{$slug}:all", self::TTL, function () use ($slug) {
+        $data = $this->cached("cms:{$slug}:all", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             $id      = $empresa->id;
 
