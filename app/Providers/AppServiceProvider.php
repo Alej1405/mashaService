@@ -30,11 +30,6 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\LogisticsShipment::observe(\App\Observers\LogisticsShipmentObserver::class);
         \App\Models\LogisticsShipmentBill::observe(\App\Observers\LogisticsShipmentBillObserver::class);
 
-        // Widgets Filament registrados globalmente para que Livewire los encuentre
-        // en POST /livewire/update (que no pasa por el boot del panel específico)
-        \Livewire\Livewire::component('app.filament.app.widgets.plan-info-widget',  \App\Filament\App\Widgets\PlanInfoWidget::class);
-        \Livewire\Livewire::component('app.filament.app.widgets.quick-links-widget', \App\Filament\App\Widgets\QuickLinksWidget::class);
-
         // CMS — invalidación de caché automática al guardar/eliminar
         $cmsObserver = \App\Observers\CmsObserver::class;
         \App\Models\CmsHero::observe($cmsObserver);
