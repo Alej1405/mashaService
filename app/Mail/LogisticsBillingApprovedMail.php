@@ -4,7 +4,7 @@ namespace App\Mail;
 
 use App\Models\Empresa;
 use App\Models\LogisticsBillingRequest;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -19,7 +19,7 @@ class LogisticsBillingApprovedMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public readonly LogisticsBillingRequest $billing,
-        public readonly StoreCustomer           $customer,
+        public readonly Customer           $customer,
         public readonly Empresa                 $empresa,
         public readonly string                  $observacion = '',
     ) {}

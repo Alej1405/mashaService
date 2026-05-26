@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Empresa;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -32,7 +32,7 @@ class CreatePortalSuperAdmin extends Command
         $password = $this->option('password');
         $nombre   = $this->option('nombre');
 
-        $customer = StoreCustomer::withoutGlobalScopes()
+        $customer = Customer::withoutGlobalScopes()
             ->updateOrCreate(
                 ['empresa_id' => $empresa->id, 'email' => $email],
                 [

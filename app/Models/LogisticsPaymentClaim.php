@@ -14,7 +14,7 @@ class LogisticsPaymentClaim extends Model
 
     protected $fillable = [
         'empresa_id',
-        'store_customer_id',
+        'customer_id',
         'package_ids',
         'monto_declarado',
         'comprobante_path',
@@ -41,7 +41,7 @@ class LogisticsPaymentClaim extends Model
 
     public function storeCustomer(): BelongsTo
     {
-        return $this->belongsTo(StoreCustomer::class);
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function verificador(): BelongsTo

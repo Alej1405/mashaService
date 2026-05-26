@@ -7,7 +7,7 @@ use App\Models\Empresa;
 use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsShipment;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -59,7 +59,7 @@ class ShipmentKanban extends Page
         $this->sincronizarEmbarques($fresh);
 
         // Al entrar en aduana: crear nota de venta y notificar con el link de aceptación
-        if ($nuevoEstado === 'en_aduana' && $fresh->store_customer_id && $fresh->monto_cobro > 0) {
+        if ($nuevoEstado === 'en_aduana' && $fresh->customer_id && $fresh->monto_cobro > 0) {
             $billingRequest = LogisticsBillingRequest::crearParaPaquete($fresh);
             $this->notificarCliente($fresh, true, $billingRequest);
         } else {
@@ -204,11 +204,11 @@ class ShipmentKanban extends Page
 
     private function notificarCliente(LogisticsPackage $package, bool $solicitarPago = false, ?LogisticsBillingRequest $billingRequest = null): void
     {
-        if (! $package->store_customer_id) {
+        if (! $package->customer_id) {
             return;
         }
 
-        $customer = StoreCustomer::find($package->store_customer_id);
+        $customer = Customer::find($package->customer_id);
         $empresa  = Empresa::find($package->empresa_id);
 
         if (! $customer || ! $empresa || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {

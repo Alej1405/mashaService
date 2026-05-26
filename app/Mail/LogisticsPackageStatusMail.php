@@ -7,7 +7,7 @@ use App\Models\Empresa;
 use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsShipment;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -22,7 +22,7 @@ class LogisticsPackageStatusMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public readonly LogisticsPackage       $package,
-        public readonly StoreCustomer          $customer,
+        public readonly Customer          $customer,
         public readonly Empresa                $empresa,
         public readonly bool                   $solicitarPago   = false,
         public readonly ?LogisticsBillingRequest $billingRequest = null,
@@ -335,7 +335,7 @@ HTML;
     private function buildNotaVentaHtml(
         \App\Models\LogisticsBillingRequest $billing,
         Empresa $empresa,
-        StoreCustomer $customer
+        Customer $customer
     ): string {
         $numero   = e($billing->numero_nota_venta);
         $fecha    = now()->format('d/m/Y');

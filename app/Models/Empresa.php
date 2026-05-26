@@ -292,7 +292,7 @@ class Empresa extends Model implements HasName
 
     public function storeCustomers(): HasMany
     {
-        return $this->hasMany(\App\Models\StoreCustomer::class, 'empresa_id');
+        return $this->hasMany(\App\Models\Customer::class, 'empresa_id');
     }
 
     public function storeCoupons(): HasMany

@@ -3,7 +3,7 @@
 namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\StoreCustomerResource\Pages;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Hash;
 
 class StoreCustomerResource extends Resource
 {
-    protected static ?string $model = StoreCustomer::class;
+    protected static ?string $model = Customer::class;
 
     protected static ?string $tenantRelationshipName = 'storeCustomers';
 
@@ -48,9 +48,9 @@ class StoreCustomerResource extends Resource
     {
         return $form->schema([
             Section::make('Tipo de cliente')->schema([
-                Radio::make('tipo')
+                Radio::make('tipo_persona')
                     ->label('')
-                    ->options(\App\Models\StoreCustomer::TIPOS)
+                    ->options(\App\Models\Customer::TIPOS)
                     ->default('persona')
                     ->inline()
                     ->live()
@@ -60,24 +60,24 @@ class StoreCustomerResource extends Resource
             Section::make('Datos del cliente')->schema([
                 TextInput::make('razon_social')
                     ->label('Razón social')
-                    ->required(fn (Get $get) => $get('tipo') === 'empresa')
-                    ->visible(fn (Get $get) => $get('tipo') === 'empresa')
+                    ->required(fn (Get $get) => $get('tipo_persona') === 'juridica')
+                    ->visible(fn (Get $get) => $get('tipo_persona') === 'juridica')
                     ->placeholder('Nombre de la empresa')
                     ->columnSpanFull(),
 
                 TextInput::make('nombre')
-                    ->label(fn (Get $get) => $get('tipo') === 'empresa' ? 'Nombre del contacto' : 'Nombre')
+                    ->label(fn (Get $get) => $get('tipo_persona') === 'juridica' ? 'Nombre del contacto' : 'Nombre')
                     ->required()
                     ->columnSpan(1),
 
                 TextInput::make('apellido')
                     ->label('Apellido')
                     ->nullable()
-                    ->visible(fn (Get $get) => $get('tipo') !== 'empresa')
+                    ->visible(fn (Get $get) => $get('tipo_persona') !== 'juridica')
                     ->columnSpan(1),
 
-                TextInput::make('cedula_ruc')
-                    ->label(fn (Get $get) => $get('tipo') === 'empresa' ? 'RUC' : 'Cédula / Pasaporte')
+                TextInput::make('numero_identificacion')
+                    ->label(fn (Get $get) => $get('tipo_persona') === 'juridica' ? 'RUC' : 'Cédula / Pasaporte')
                     ->helperText('Se usa como contraseña inicial de acceso al portal.')
                     ->nullable()
                     ->columnSpan(1),
@@ -135,9 +135,9 @@ class StoreCustomerResource extends Resource
                 TextColumn::make('nombre_completo')
                     ->label('Cliente')
                     ->getStateUsing(fn ($record) => $record->nombre_completo)
-                    ->description(fn ($record) => $record->tipo === 'empresa'
-                        ? 'Empresa · ' . ($record->cedula_ruc ?? 'Sin RUC')
-                        : 'Persona · ' . ($record->cedula_ruc ?? 'Sin cédula'))
+                    ->description(fn ($record) => $record->tipo_persona === 'juridica'
+                        ? 'Empresa · ' . ($record->numero_identificacion ?? 'Sin RUC')
+                        : 'Persona · ' . ($record->numero_identificacion ?? 'Sin cédula'))
                     ->searchable(['nombre', 'apellido', 'razon_social'])
                     ->sortable('nombre'),
                 TextColumn::make('email')

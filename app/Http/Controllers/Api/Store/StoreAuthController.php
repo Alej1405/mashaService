@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Store;
 
 use App\Http\Controllers\Controller;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +18,7 @@ class StoreAuthController extends Controller
         ]);
 
         $empresa  = app('store.empresa');
-        $customer = StoreCustomer::withoutGlobalScopes()
+        $customer = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('email', $request->email)
             ->where('activo', true)
@@ -48,7 +48,7 @@ class StoreAuthController extends Controller
 
         $empresa = app('store.empresa');
 
-        $exists = StoreCustomer::withoutGlobalScopes()
+        $exists = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('email', $request->email)
             ->exists();
@@ -57,7 +57,7 @@ class StoreAuthController extends Controller
             return response()->json(['message' => 'El correo ya está registrado'], 422);
         }
 
-        $customer = StoreCustomer::create([
+        $customer = Customer::create([
             'empresa_id' => $empresa->id,
             'nombre'     => $request->nombre,
             'apellido'   => $request->apellido,
@@ -97,7 +97,7 @@ class StoreAuthController extends Controller
         return response()->json(['message' => 'Contraseña actualizada']);
     }
 
-    private function customerData(StoreCustomer $customer): array
+    private function customerData(Customer $customer): array
     {
         return [
             'id'       => $customer->id,

@@ -11,7 +11,6 @@ use App\Models\LogisticsBodega;
 use App\Models\LogisticsPackage;
 use App\Models\ServiceDesign;
 use App\Models\ServicePackage;
-use App\Models\StoreCustomer;
 use App\Models\StoreCustomerCompany;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
@@ -40,7 +39,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Resend\Laravel\Facades\Resend;
 
 class PackageResource extends Resource
@@ -74,111 +72,54 @@ class PackageResource extends Resource
             ])->columns(['default' => 1, 'sm' => 2]),
 
             Section::make('Cliente')->schema([
-                Select::make('store_customer_id')
+                Select::make('customer_id')
                     ->label('Cliente')
                     ->options(function () {
                         $empresaId = Filament::getTenant()->id;
 
-                        // 1. StoreCustomers con cuenta de portal
-                        $portal = StoreCustomer::withoutGlobalScopes()
+                        return Customer::withoutGlobalScopes()
                             ->where('empresa_id', $empresaId)
                             ->where('activo', true)
                             ->where('is_super_admin', false)
                             ->orderBy('nombre')
                             ->get()
                             ->mapWithKeys(fn ($c) => [
-                                'sc_' . $c->id => '★ ' . $c->nombre_completo . ' — ' . $c->email,
+                                $c->id => ($c->password ? '★ ' : '') . $c->nombre_completo . ' — ' . ($c->email ?? ''),
                             ]);
-
-                        // 2. Clientes ERP sin cuenta portal aún (para poder seleccionarlos)
-                        $linkedScIds = StoreCustomer::withoutGlobalScopes()
-                            ->where('empresa_id', $empresaId)
-                            ->whereNotNull('customer_id')
-                            ->pluck('customer_id');
-
-                        $erp = Customer::where('empresa_id', $empresaId)
-                            ->where('activo', true)
-                            ->whereNotIn('id', $linkedScIds)
-                            ->orderBy('nombre')
-                            ->get()
-                            ->mapWithKeys(fn ($c) => [
-                                'erp_' . $c->id => $c->nombre . ' — ' . ($c->numero_identificacion ?? 'ERP'),
-                            ]);
-
-                        return ['── Con portal ──' => $portal->toArray()]
-                            + (($erp->isNotEmpty()) ? ['── Solo ERP ──' => $erp->toArray()] : []);
                     })
                     ->searchable()
                     ->nullable()
                     ->placeholder('Seleccionar cliente...')
-                    ->dehydrateStateUsing(function ($state) use (&$erpCustomerId) {
-                        // Si viene del ERP (erp_XX), crear StoreCustomer y devolver su id
-                        if ($state && str_starts_with((string)$state, 'erp_')) {
-                            $customerId = (int) str_replace('erp_', '', $state);
-                            $customer   = Customer::find($customerId);
-                            if ($customer) {
-                                $sc = StoreCustomer::withoutGlobalScopes()
-                                    ->where('empresa_id', $customer->empresa_id)
-                                    ->where('customer_id', $customerId)
-                                    ->first();
-
-                                if (! $sc) {
-                                    $sc = StoreCustomer::create([
-                                        'empresa_id'   => $customer->empresa_id,
-                                        'customer_id'  => $customerId,
-                                        'tipo'         => $customer->tipo_persona === 'juridica' ? 'empresa' : 'persona',
-                                        'razon_social' => $customer->tipo_persona === 'juridica' ? $customer->nombre : null,
-                                        'nombre'       => $customer->nombre,
-                                        'email'        => $customer->email ?? ('sin-correo-' . $customer->id . '@erp.local'),
-                                        'cedula_ruc'   => $customer->numero_identificacion,
-                                        'password'     => \Illuminate\Support\Facades\Hash::make(
-                                            $customer->numero_identificacion ?? \Illuminate\Support\Str::random(12)
-                                        ),
-                                        'activo'       => true,
-                                    ]);
-                                }
-                                return $sc->id;
-                            }
-                        }
-                        // Si viene de portal (sc_XX o sin prefijo), devolver solo el número
-                        return $state ? (int) str_replace('sc_', '', (string)$state) : null;
-                    })
-                    ->afterStateHydrated(function (Select $component, $state) {
-                        // Al cargar el form en edición, asegurar que el valor tiene prefijo sc_
-                        if ($state && ! str_starts_with((string)$state, 'sc_') && ! str_starts_with((string)$state, 'erp_')) {
-                            $component->state('sc_' . $state);
-                        }
-                    })
-                    ->helperText('★ = tiene acceso al portal del cliente. Los clientes ERP sin portal crearán cuenta automáticamente.')
+                    ->helperText('★ = tiene acceso al portal del cliente.')
                     ->createOptionForm([
-                        Radio::make('tipo')
+                        Radio::make('tipo_persona')
                             ->label('Tipo de cliente')
-                            ->options(StoreCustomer::TIPOS)
-                            ->default('persona')
+                            ->options(Customer::TIPOS)
+                            ->default('natural')
                             ->inline()
                             ->live()
                             ->columnSpanFull(),
 
                         TextInput::make('razon_social')
                             ->label('Razón social')
-                            ->required(fn (Get $get) => $get('tipo') === 'empresa')
-                            ->visible(fn (Get $get) => $get('tipo') === 'empresa')
+                            ->required(fn (Get $get) => $get('tipo_persona') === 'juridica')
+                            ->visible(fn (Get $get) => $get('tipo_persona') === 'juridica')
                             ->placeholder('Nombre de la empresa')
                             ->columnSpanFull(),
 
                         TextInput::make('nombre')
-                            ->label(fn (Get $get) => $get('tipo') === 'empresa' ? 'Nombre del contacto' : 'Nombre')
+                            ->label(fn (Get $get) => $get('tipo_persona') === 'juridica' ? 'Nombre del contacto' : 'Nombre')
                             ->required()
                             ->columnSpan(1),
 
                         TextInput::make('apellido')
                             ->label('Apellido')
                             ->nullable()
-                            ->visible(fn (Get $get) => $get('tipo') !== 'empresa')
+                            ->visible(fn (Get $get) => $get('tipo_persona') !== 'juridica')
                             ->columnSpan(1),
 
-                        TextInput::make('cedula_ruc')
-                            ->label(fn (Get $get) => $get('tipo') === 'empresa' ? 'RUC' : 'Cédula / Pasaporte')
+                        TextInput::make('numero_identificacion')
+                            ->label(fn (Get $get) => $get('tipo_persona') === 'juridica' ? 'RUC' : 'Cédula / Pasaporte')
                             ->helperText('Se usará como contraseña inicial de acceso al portal.')
                             ->nullable()
                             ->columnSpan(1),
@@ -186,7 +127,7 @@ class PackageResource extends Resource
                         TextInput::make('email')
                             ->label('Correo electrónico')
                             ->email()
-                            ->required()
+                            ->nullable()
                             ->columnSpan(1),
 
                         TextInput::make('telefono')
@@ -195,18 +136,18 @@ class PackageResource extends Resource
                             ->columnSpan(1),
                     ])
                     ->createOptionUsing(function (array $data) {
-                        $cedula = $data['cedula_ruc'] ?? null;
-                        $customer = StoreCustomer::create([
-                            'empresa_id'   => Filament::getTenant()->id,
-                            'tipo'         => $data['tipo'] ?? 'persona',
-                            'razon_social' => $data['razon_social'] ?? null,
-                            'nombre'       => $data['nombre'],
-                            'apellido'     => $data['apellido'] ?? null,
-                            'email'        => $data['email'],
-                            'telefono'     => $data['telefono'] ?? null,
-                            'cedula_ruc'   => $cedula,
-                            'password'     => Hash::make($cedula ?: Str::random(16)),
-                            'activo'       => true,
+                        $cedula = $data['numero_identificacion'] ?? null;
+                        $customer = Customer::create([
+                            'empresa_id'            => Filament::getTenant()->id,
+                            'tipo_persona'          => $data['tipo_persona'] ?? 'natural',
+                            'razon_social'          => $data['razon_social'] ?? null,
+                            'nombre'                => $data['nombre'],
+                            'apellido'              => $data['apellido'] ?? null,
+                            'email'                 => $data['email'] ?? null,
+                            'telefono'              => $data['telefono'] ?? null,
+                            'numero_identificacion' => $cedula,
+                            'password'              => $cedula ? Hash::make($cedula) : null,
+                            'activo'                => true,
                         ]);
                         return $customer->id;
                     })
@@ -763,18 +704,16 @@ class PackageResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                SelectFilter::make('store_customer_id')
+                SelectFilter::make('customer_id')
                     ->label('Cliente')
                     ->options(function () {
-                        return StoreCustomer::withoutGlobalScopes()
+                        return Customer::withoutGlobalScopes()
                             ->where('empresa_id', Filament::getTenant()->id)
                             ->where('activo', true)
                             ->where('is_super_admin', false)
                             ->orderBy('nombre')
                             ->get()
-                            ->mapWithKeys(fn ($c) => [
-                                $c->id => trim($c->nombre . ' ' . ($c->apellido ?? '')),
-                            ]);
+                            ->mapWithKeys(fn ($c) => [$c->id => $c->nombre_completo]);
                     })
                     ->searchable(),
                 SelectFilter::make('bodega_id')
@@ -888,9 +827,9 @@ class PackageResource extends Resource
                         $companiesOpts = [];
                         if ($billing) {
                             $companiesOpts['customer'] = 'A nombre del cliente ('
-                                . trim(($billing->storeCustomer->nombre ?? '') . ' ' . ($billing->storeCustomer->apellido ?? ''))
+                                . ($billing->storeCustomer?->nombre_completo ?? 'Cliente')
                                 . ')';
-                            $companies = StoreCustomerCompany::where('store_customer_id', $billing->store_customer_id)
+                            $companies = StoreCustomerCompany::where('customer_id', $billing->customer_id)
                                 ->where('empresa_id', Filament::getTenant()->id)
                                 ->get();
                             foreach ($companies as $c) {

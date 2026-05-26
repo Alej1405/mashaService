@@ -9,7 +9,7 @@ use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsPaymentClaim;
 use App\Models\ServiceContract;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use App\Models\StoreCustomerCompany;
 use App\Models\StoreOrder;
 use Illuminate\Http\Request;
@@ -22,10 +22,10 @@ class PortalController extends Controller
         return Empresa::where('slug', $slug)->where('activo', true)->firstOrFail();
     }
 
-    private function customer(Request $request): StoreCustomer
+    private function customer(Request $request): Customer
     {
-        return StoreCustomer::withoutGlobalScopes()
-            ->findOrFail($request->session()->get('store_customer_id'));
+        return Customer::withoutGlobalScopes()
+            ->findOrFail($request->session()->get('customer_id'));
     }
 
     public function dashboard(Request $request, string $slug)
@@ -34,23 +34,23 @@ class PortalController extends Controller
         $customer = $this->customer($request);
 
         $recentOrders = StoreOrder::withoutGlobalScopes()
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->latest()
             ->limit(5)
             ->get();
 
         $activeContracts = ServiceContract::withoutGlobalScopes()
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->where('estado', 'activo')
             ->latest()
             ->limit(5)
             ->get();
 
-        $totalOrders    = StoreOrder::withoutGlobalScopes()->where('store_customer_id', $customer->id)->count();
-        $totalContracts = ServiceContract::withoutGlobalScopes()->where('store_customer_id', $customer->id)->where('estado', 'activo')->count();
+        $totalOrders    = StoreOrder::withoutGlobalScopes()->where('customer_id', $customer->id)->count();
+        $totalContracts = ServiceContract::withoutGlobalScopes()->where('customer_id', $customer->id)->where('estado', 'activo')->count();
 
         $pendingPackages = LogisticsPackage::withoutGlobalScopes()
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->where(function ($q) {
                 // Finalizado en aduana (en espera de pago)
@@ -64,12 +64,12 @@ class PortalController extends Controller
         $totalPendingPago = $pendingPackages->sum('monto_cobro');
 
         $totalPackages = LogisticsPackage::withoutGlobalScopes()
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->count();
 
         $recentPackages = LogisticsPackage::withoutGlobalScopes()
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->latest()
             ->limit(5)
@@ -97,7 +97,7 @@ class PortalController extends Controller
         $customer = $this->customer($request);
 
         $orders = StoreOrder::withoutGlobalScopes()
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->latest()
             ->paginate(10);
 
@@ -111,7 +111,7 @@ class PortalController extends Controller
 
         $order = StoreOrder::withoutGlobalScopes()
             ->with(['orderItems.product', 'coupon'])
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->findOrFail($id);
 
         return view('portal.order-show', compact('empresa', 'customer', 'order'));
@@ -124,7 +124,7 @@ class PortalController extends Controller
 
         $contracts = ServiceContract::withoutGlobalScopes()
             ->with('serviceDesign')
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->orderByRaw("FIELD(estado, 'activo', 'pausado', 'finalizado')")
             ->latest()
             ->paginate(10);
@@ -145,7 +145,7 @@ class PortalController extends Controller
                 'servicePackage',
                 'billingRequests' => fn ($q) => $q->latest()->limit(1),
             ])
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->latest()
             ->paginate(15);
@@ -153,7 +153,7 @@ class PortalController extends Controller
         // Cargar payment claims del cliente para estos paquetes
         $packageIds   = $packages->pluck('id')->toArray();
         $paymentClaims = LogisticsPaymentClaim::withoutGlobalScopes()
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->get()
             ->filter(fn ($claim) => count(array_intersect($claim->package_ids ?? [], $packageIds)) > 0);
@@ -226,7 +226,7 @@ class PortalController extends Controller
         // Verificar que los paquetes pertenecen al cliente
         $packageIds = LogisticsPackage::withoutGlobalScopes()
             ->whereIn('id', $request->package_ids)
-            ->where('store_customer_id', $customer->id)
+            ->where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->pluck('id');
 
@@ -244,7 +244,7 @@ class PortalController extends Controller
 
         LogisticsPaymentClaim::create([
             'empresa_id'       => $empresa->id,
-            'store_customer_id' => $customer->id,
+            'customer_id' => $customer->id,
             'package_ids'      => $packageIds->toArray(),
             'monto_declarado'  => $monto,
             'comprobante_path' => $comprobantePath,
@@ -262,7 +262,7 @@ class PortalController extends Controller
         $empresa  = $this->empresa($slug);
         $customer = $this->customer($request);
 
-        $companies = StoreCustomerCompany::where('store_customer_id', $customer->id)
+        $companies = StoreCustomerCompany::where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->latest()
             ->get();
@@ -291,7 +291,7 @@ class PortalController extends Controller
             'cargo'     => 'nullable|string|max:150',
         ]);
 
-        $data['store_customer_id'] = $customer->id;
+        $data['customer_id'] = $customer->id;
         $data['empresa_id']        = $empresa->id;
 
         StoreCustomerCompany::create($data);
@@ -306,7 +306,7 @@ class PortalController extends Controller
         $empresa  = $this->empresa($slug);
         $customer = $this->customer($request);
 
-        $companyRecord = StoreCustomerCompany::where('store_customer_id', $customer->id)
+        $companyRecord = StoreCustomerCompany::where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->findOrFail($company);
 
@@ -318,7 +318,7 @@ class PortalController extends Controller
         $empresa  = $this->empresa($slug);
         $customer = $this->customer($request);
 
-        $companyRecord = StoreCustomerCompany::where('store_customer_id', $customer->id)
+        $companyRecord = StoreCustomerCompany::where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->findOrFail($company);
 
@@ -342,7 +342,7 @@ class PortalController extends Controller
         $empresa  = $this->empresa($slug);
         $customer = $this->customer($request);
 
-        StoreCustomerCompany::where('store_customer_id', $customer->id)
+        StoreCustomerCompany::where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->findOrFail($company)
             ->delete();
@@ -374,7 +374,7 @@ class PortalController extends Controller
         $customer = $billing->storeCustomer;
 
         // Listar empresas del cliente
-        $companies = StoreCustomerCompany::where('store_customer_id', $customer->id)
+        $companies = StoreCustomerCompany::where('customer_id', $customer->id)
             ->where('empresa_id', $empresa->id)
             ->get();
 
@@ -404,7 +404,7 @@ class PortalController extends Controller
 
         if ($billingType === 'company') {
             $company = StoreCustomerCompany::where('id', $request->billing_company_id)
-                ->where('store_customer_id', $billing->store_customer_id)
+                ->where('customer_id', $billing->customer_id)
                 ->where('empresa_id', $empresa->id)
                 ->firstOrFail();
         }
@@ -425,7 +425,7 @@ class PortalController extends Controller
             abort(403);
         }
 
-        $customers = StoreCustomer::withoutGlobalScopes()
+        $customers = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('is_super_admin', false)
             ->latest()

@@ -5,7 +5,7 @@ namespace App\Filament\Logistics\Resources\PackageResource\Pages;
 use App\Filament\Logistics\Resources\PackageResource;
 use App\Mail\LogisticsPackageStatusMail;
 use App\Models\Empresa;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
 use Resend\Laravel\Facades\Resend;
@@ -28,11 +28,11 @@ class CreatePackage extends CreateRecord
 
     private function notificarCliente(\App\Models\LogisticsPackage $package): void
     {
-        if (! $package->store_customer_id) {
+        if (! $package->customer_id) {
             return;
         }
 
-        $customer = StoreCustomer::find($package->store_customer_id);
+        $customer = Customer::find($package->customer_id);
         $empresa  = Empresa::find($package->empresa_id);
 
         if (! $customer || ! $empresa || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {

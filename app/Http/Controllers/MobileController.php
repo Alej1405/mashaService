@@ -29,11 +29,10 @@ use App\Models\PurchaseItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StoreCategory;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use App\Models\StoreOrder;
 use App\Models\StoreProduct;
 use App\Models\Supplier;
-use App\Models\Customer;
 use App\Models\UbicacionAlmacen;
 use App\Models\ZonaAlmacen;
 use Illuminate\Http\Request;
@@ -1635,7 +1634,7 @@ class MobileController extends Controller
     {
         if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
         $empresa = $this->empresa();
-        $clientes = StoreCustomer::where('empresa_id', $empresa->id)->orderByDesc('created_at')->paginate(25);
+        $clientes = Customer::where('empresa_id', $empresa->id)->orderByDesc('created_at')->paginate(25);
         return view('mobile.tienda-clientes', compact('empresa', 'clientes'));
     }
 
@@ -1707,7 +1706,7 @@ class MobileController extends Controller
         if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
         $empresa   = $this->empresa();
         $bodegas   = LogisticsBodega::withoutGlobalScopes()->where('empresa_id', $empresa->id)->orderBy('nombre')->get();
-        $clientes  = StoreCustomer::withoutGlobalScopes()
+        $clientes  = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('activo', true)
             ->where('is_super_admin', false)
@@ -1728,7 +1727,7 @@ class MobileController extends Controller
             'numero_tracking'   => ['nullable', 'string', 'max:100'],
             'referencia'        => ['nullable', 'string', 'max:100'],
             'bodega_id'         => ['required', 'integer'],
-            'store_customer_id' => ['nullable'],
+            'customer_id' => ['nullable'],
             'peso_kg'           => ['nullable', 'numeric', 'min:0'],
             'valor_declarado'   => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -1741,12 +1740,12 @@ class MobileController extends Controller
             return response()->json(['error' => 'Bodega no válida.'], 422);
         }
 
-        // Resolver store_customer_id
+        // Resolver customer_id
         $storeCustomerId = null;
-        $rawCustomer = $request->store_customer_id;
+        $rawCustomer = $request->customer_id;
         if ($rawCustomer) {
             $scId = (int) str_replace('sc_', '', (string) $rawCustomer);
-            if (StoreCustomer::withoutGlobalScopes()->where('empresa_id', $empresa->id)->where('id', $scId)->exists()) {
+            if (Customer::withoutGlobalScopes()->where('empresa_id', $empresa->id)->where('id', $scId)->exists()) {
                 $storeCustomerId = $scId;
             }
         }
@@ -1755,7 +1754,7 @@ class MobileController extends Controller
             $package = LogisticsPackage::create([
                 'empresa_id'       => $empresa->id,
                 'bodega_id'        => $request->bodega_id,
-                'store_customer_id'=> $storeCustomerId,
+                'customer_id'=> $storeCustomerId,
                 'descripcion'      => $request->descripcion,
                 'numero_tracking'  => $request->numero_tracking ?: null,
                 'referencia'       => $request->referencia ?: null,
@@ -1816,9 +1815,9 @@ class MobileController extends Controller
         ]);
 
         // Notificar al cliente si tiene correo y el estado cambió
-        if ($estadoAnterior !== $request->estado && $package->store_customer_id) {
+        if ($estadoAnterior !== $request->estado && $package->customer_id) {
             try {
-                $customer = StoreCustomer::withoutGlobalScopes()->find($package->store_customer_id);
+                $customer = Customer::withoutGlobalScopes()->find($package->customer_id);
                 $emp      = \App\Models\Empresa::find($package->empresa_id);
                 if ($customer && $emp && filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
                     $solicitarPago = $request->estado === 'finalizado_aduana';
@@ -1954,7 +1953,7 @@ class MobileController extends Controller
         $empresa = $this->empresa();
 
         // Email único dentro de la empresa
-        $existe = StoreCustomer::withoutGlobalScopes()
+        $existe = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('email', $data['email'])
             ->exists();
@@ -1967,7 +1966,7 @@ class MobileController extends Controller
             ? $data['cedula_ruc']
             : \Illuminate\Support\Str::random(10);
 
-        $cliente = StoreCustomer::create([
+        $cliente = Customer::create([
             'empresa_id'   => $empresa->id,
             'tipo'         => $data['tipo'],
             'nombre'       => $data['nombre'],

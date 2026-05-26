@@ -6,19 +6,14 @@ use App\Models\CmsAbout;
 use App\Models\CmsHero;
 use App\Models\Customer;
 use App\Models\Empresa;
-use App\Models\StoreCustomer;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Storage;
 
 class WelcomeCustomerMail extends Mailable
 {
-    /**
-     * @param StoreCustomer|Customer $customer  StoreCustomer (portal) o Customer (ERP)
-     * @param Empresa                $empresa
-     */
     public function __construct(
-        public readonly StoreCustomer|Customer $customer,
-        public readonly Empresa                $empresa,
+        public readonly Customer $customer,
+        public readonly Empresa  $empresa,
     ) {}
 
     public function envelope(): \Illuminate\Mail\Mailables\Envelope
@@ -41,12 +36,11 @@ class WelcomeCustomerMail extends Mailable
         $customer = $this->customer;
 
         // ── Datos del cliente ──────────────────────────────────────────
-        $esStoreCustomer = $customer instanceof StoreCustomer;
-        $nombre          = $esStoreCustomer ? $customer->nombre_completo : $customer->nombre;
-        $email           = $customer->email ?? '';
-        $nombreCliente   = e($nombre);
-        $emailCliente    = e($email);
-        $empresaNombre   = e($empresa->name);
+        $nombre        = $customer->nombre_completo ?: $customer->nombre;
+        $email         = $customer->email ?? '';
+        $nombreCliente = e($nombre);
+        $emailCliente  = e($email);
+        $empresaNombre = e($empresa->name);
 
         // ── Logo ───────────────────────────────────────────────────────
         $logoHtml = '';
@@ -58,11 +52,11 @@ class WelcomeCustomerMail extends Mailable
         // ── Párrafo de relación comercial ──────────────────────────────
         $parrafo = $this->obtenerParrafoCms($empresa->id);
 
-        // ── Credenciales (solo si es cliente del portal) ───────────────
+        // ── Credenciales (solo si tiene acceso al portal) ─────────────
         $credencialesBloque = '';
-        if ($esStoreCustomer) {
-            $passwordHint = $customer->cedula_ruc
-                ? 'Tu contraseña inicial es tu número de cédula / RUC: <strong>' . e($customer->cedula_ruc) . '</strong>.'
+        if ($customer->password) {
+            $passwordHint = $customer->numero_identificacion
+                ? 'Tu contraseña inicial es tu número de cédula / RUC: <strong>' . e($customer->numero_identificacion) . '</strong>.'
                 : 'Usa la contraseña que configuraste al registrarte.';
 
             $credencialesBloque = <<<HTML
@@ -92,10 +86,13 @@ HTML;
         $portalUrl  = url('/tienda/' . $empresa->slug);
         $websiteUrl = $empresa->website_url ?? null;
 
-        $botonesLinks = '<a href="' . $portalUrl . '" target="_blank"'
-            . ' style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;'
-            . 'padding:13px 32px;border-radius:8px;font-size:14px;font-weight:700;margin:6px;">'
-            . 'Ingresar al portal de clientes &rarr;</a>';
+        $botonesLinks = '';
+        if ($customer->password) {
+            $botonesLinks .= '<a href="' . $portalUrl . '" target="_blank"'
+                . ' style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;'
+                . 'padding:13px 32px;border-radius:8px;font-size:14px;font-weight:700;margin:6px;">'
+                . 'Ingresar al portal de clientes &rarr;</a>';
+        }
 
         if ($websiteUrl) {
             $websiteLabel = preg_replace('#^https?://#', '', rtrim($websiteUrl, '/'));

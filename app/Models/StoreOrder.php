@@ -13,7 +13,7 @@ class StoreOrder extends Model
 
     protected $fillable = [
         'empresa_id',
-        'store_customer_id',
+        'customer_id',
         'numero',
         'estado',
         'subtotal',
@@ -53,7 +53,7 @@ class StoreOrder extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(StoreCustomer::class, 'store_customer_id');
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function orderItems(): HasMany

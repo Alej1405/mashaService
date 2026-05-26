@@ -15,7 +15,7 @@ class LogisticsBillingRequest extends Model
     protected $fillable = [
         'empresa_id',
         'package_id',
-        'store_customer_id',
+        'customer_id',
         'numero_nota_venta',
         'numero_factura',
         'token',
@@ -75,7 +75,7 @@ class LogisticsBillingRequest extends Model
 
     public function storeCustomer(): BelongsTo
     {
-        return $this->belongsTo(StoreCustomer::class);
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function billingCompany(): BelongsTo
@@ -116,7 +116,7 @@ class LogisticsBillingRequest extends Model
         return self::create([
             'empresa_id'        => $package->empresa_id,
             'package_id'        => $package->id,
-            'store_customer_id' => $package->store_customer_id,
+            'customer_id' => $package->customer_id,
             'numero_nota_venta' => $numero,
             'token'             => Str::random(48),
             'subtotal_0'        => $calc['subtotal_0'],
@@ -417,16 +417,17 @@ class LogisticsBillingRequest extends Model
         return $numero;
     }
 
-    public function aceptar(string $channel, string $billingType, ?StoreCustomerCompany $company = null, ?StoreCustomer $customer = null): void
+    public function aceptar(string $channel, string $billingType, ?StoreCustomerCompany $company = null, ?Customer $customer = null): void
     {
+        $resolvedCustomer = $customer ?? $this->customer;
         if ($billingType === 'company' && $company) {
             $nombre    = $company->nombre;
             $ruc       = $company->ruc;
             $direccion = $company->direccion;
             $companyId = $company->id;
         } else {
-            $nombre    = $customer ? $customer->nombre_completo : $this->storeCustomer->nombre_completo;
-            $ruc       = $customer ? ($customer->cedula_ruc ?? null) : ($this->storeCustomer->cedula_ruc ?? null);
+            $nombre    = $resolvedCustomer?->nombre_completo;
+            $ruc       = $resolvedCustomer?->numero_identificacion;
             $direccion = null;
             $companyId = null;
         }

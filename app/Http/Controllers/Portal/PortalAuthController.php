@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Empresa;
-use App\Models\StoreCustomer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -19,13 +19,11 @@ class PortalAuthController extends Controller
     {
         $empresa = $this->empresa($slug);
 
-        if (request()->session()->has('store_customer_id')) {
+        if (request()->session()->has('portal_customer_id')) {
             return redirect()->route('portal.dashboard', $slug);
         }
 
-        $loginAction = request()->routeIs('mobile.portal.login')
-            ? route('mobile.portal.login.post', $slug)
-            : route('portal.login.post', $slug);
+        $loginAction = route('portal.login.post', $slug);
 
         return view('portal.login', compact('empresa', 'loginAction'));
     }
@@ -39,9 +37,10 @@ class PortalAuthController extends Controller
             'password' => 'required',
         ]);
 
-        $customer = StoreCustomer::withoutGlobalScopes()
+        $customer = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('email', $request->email)
+            ->whereNotNull('password')
             ->where('activo', true)
             ->first();
 
@@ -49,15 +48,15 @@ class PortalAuthController extends Controller
             return back()->withErrors(['email' => 'Correo o contraseña incorrectos.'])->withInput();
         }
 
-        $request->session()->put('store_customer_id', $customer->id);
-        $request->session()->put('store_empresa_id', $empresa->id);
+        $request->session()->put('portal_customer_id', $customer->id);
+        $request->session()->put('portal_empresa_id', $empresa->id);
 
         return redirect()->route('portal.dashboard', $slug);
     }
 
     public function logout(Request $request, string $slug)
     {
-        $request->session()->forget(['store_customer_id', 'store_empresa_id']);
+        $request->session()->forget(['portal_customer_id', 'portal_empresa_id']);
         return redirect()->route('portal.login', $slug);
     }
 }

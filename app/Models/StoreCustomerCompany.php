@@ -10,7 +10,7 @@ class StoreCustomerCompany extends Model
     protected $table = 'store_customer_companies';
 
     protected $fillable = [
-        'store_customer_id',
+        'customer_id',
         'empresa_id',
         'ruc',
         'nombre',
@@ -21,7 +21,7 @@ class StoreCustomerCompany extends Model
 
     public function storeCustomer(): BelongsTo
     {
-        return $this->belongsTo(StoreCustomer::class);
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function empresa(): BelongsTo

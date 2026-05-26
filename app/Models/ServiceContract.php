@@ -12,7 +12,7 @@ class ServiceContract extends Model
 
     protected $fillable = [
         'empresa_id',
-        'store_customer_id',
+        'customer_id',
         'service_design_id',
         'nombre_servicio',
         'descripcion',
@@ -37,7 +37,7 @@ class ServiceContract extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(StoreCustomer::class, 'store_customer_id');
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function serviceDesign(): BelongsTo

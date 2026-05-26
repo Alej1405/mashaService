@@ -3,7 +3,7 @@
 namespace App\Filament\Logistics\Resources;
 
 use App\Filament\Logistics\Resources\StoreCustomerCompanyResource\Pages;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use App\Models\StoreCustomerCompany;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Section;
@@ -32,10 +32,10 @@ class StoreCustomerCompanyResource extends Resource
     {
         return $form->schema([
             Section::make('Cliente')->schema([
-                Select::make('store_customer_id')
+                Select::make('customer_id')
                     ->label('Cliente')
                     ->options(function () {
-                        return StoreCustomer::withoutGlobalScopes()
+                        return Customer::withoutGlobalScopes()
                             ->where('empresa_id', Filament::getTenant()->id)
                             ->get()
                             ->mapWithKeys(fn ($c) => [
@@ -128,10 +128,10 @@ class StoreCustomerCompanyResource extends Resource
             ])
             ->defaultSort('nombre')
             ->filters([
-                SelectFilter::make('store_customer_id')
+                SelectFilter::make('customer_id')
                     ->label('Cliente')
                     ->options(function () {
-                        return StoreCustomer::withoutGlobalScopes()
+                        return Customer::withoutGlobalScopes()
                             ->where('empresa_id', Filament::getTenant()->id)
                             ->get()
                             ->mapWithKeys(fn ($c) => [

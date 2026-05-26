@@ -9,7 +9,7 @@ use App\Models\LogisticsDocument;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsShipment;
 use App\Models\LogisticsShipmentHistory;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Filament\Actions\DeleteAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\EditRecord;
@@ -175,12 +175,11 @@ class EditShipment extends EditRecord
         // Sin scopes: paquetes de distintos clientes siempre se cargan completos
         $packages = LogisticsPackage::withoutGlobalScopes()
             ->whereIn('id', $packageIds)
-            ->whereNotNull('store_customer_id')
+            ->whereNotNull('customer_id')
             ->get();
 
         foreach ($packages as $package) {
-            // Cliente sin scope para evitar filtrado por empresa/tenant
-            $customer = StoreCustomer::withoutGlobalScopes()->find($package->store_customer_id);
+            $customer = Customer::withoutGlobalScopes()->find($package->customer_id);
 
             if (! $customer || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
                 continue;

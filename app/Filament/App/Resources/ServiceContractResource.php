@@ -5,7 +5,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\ServiceContractResource\Pages;
 use App\Models\ServiceContract;
 use App\Models\ServiceDesign;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -47,13 +47,13 @@ class ServiceContractResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Select::make('store_customer_id')
+            Select::make('customer_id')
                 ->label('Cliente')
                 ->required()
                 ->searchable()
                 ->options(function () {
                     $empresa = Filament::getTenant();
-                    return StoreCustomer::withoutGlobalScopes()
+                    return Customer::withoutGlobalScopes()
                         ->where('empresa_id', $empresa->id)
                         ->where('activo', true)
                         ->get()

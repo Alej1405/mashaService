@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StoreAddress extends Model
 {
     protected $fillable = [
-        'store_customer_id',
+        'customer_id',
         'nombre_destinatario',
         'linea1',
         'linea2',
@@ -26,6 +26,6 @@ class StoreAddress extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(StoreCustomer::class, 'store_customer_id');
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 }

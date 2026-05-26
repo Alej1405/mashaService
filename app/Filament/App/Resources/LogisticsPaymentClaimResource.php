@@ -142,7 +142,7 @@ class LogisticsPaymentClaimResource extends Resource
     {
         return LogisticsPaymentClaim::withoutGlobalScopes()
             ->where('empresa_id', $billing->empresa_id)
-            ->where('store_customer_id', $billing->store_customer_id)
+            ->where('customer_id', $billing->customer_id)
             ->whereJsonContains('package_ids', $billing->package_id)
             ->latest()
             ->first();

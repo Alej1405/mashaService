@@ -7,7 +7,6 @@ use App\Models\Empresa;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StoreCoupon;
-use App\Models\StoreCustomer;
 use App\Models\StoreOrder;
 use App\Models\StoreProduct;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +19,7 @@ class StoreOrderService
      */
     public function createOrder(
         Empresa $empresa,
-        StoreCustomer $customer,
+        Customer $customer,
         array $items,
         array $shippingAddress,
         ?string $couponCode = null,
@@ -82,7 +81,7 @@ class StoreOrderService
 
             $order = StoreOrder::create([
                 'empresa_id'        => $empresa->id,
-                'store_customer_id' => $customer->id,
+                'customer_id' => $customer->id,
                 'estado'            => 'pendiente',
                 'subtotal'          => $subtotal,
                 'descuento'         => $descuento,

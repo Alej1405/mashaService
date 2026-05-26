@@ -219,8 +219,8 @@ class LogisticsBillingRequestResource extends Resource
                             Select::make('billing_type')
                                 ->label('¿A nombre de quién se factura?')
                                 ->options(function ($record) {
-                                    $opts = ['customer' => 'A nombre del cliente (' . trim(($record->storeCustomer->nombre ?? '') . ' ' . ($record->storeCustomer->apellido ?? '')) . ')'];
-                                    $companies = StoreCustomerCompany::where('store_customer_id', $record->store_customer_id)
+                                    $opts = ['customer' => 'A nombre del cliente (' . ($record->storeCustomer?->nombre_completo ?? 'Cliente') . ')'];
+                                    $companies = StoreCustomerCompany::where('customer_id', $record->customer_id)
                                         ->where('empresa_id', Filament::getTenant()->id)
                                         ->get();
                                     foreach ($companies as $c) {

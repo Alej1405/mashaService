@@ -5,7 +5,7 @@ namespace App\Filament\Logistics\Resources\PackageResource\Pages;
 use App\Filament\Logistics\Resources\PackageResource;
 use App\Mail\LogisticsPackageStatusMail;
 use App\Models\Empresa;
-use App\Models\StoreCustomer;
+use App\Models\Customer;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Resend\Laravel\Facades\Resend;
@@ -36,7 +36,7 @@ class EditPackage extends EditRecord
         $estadoCambio     = $package->estado !== $this->estadoAnterior;
         $secundarioCambio = $package->estado_secundario !== $this->estadoSecundarioAnterior;
 
-        if (! ($estadoCambio || $secundarioCambio) || ! $package->store_customer_id) {
+        if (! ($estadoCambio || $secundarioCambio) || ! $package->customer_id) {
             return;
         }
 
@@ -46,7 +46,7 @@ class EditPackage extends EditRecord
 
     private function notificarCliente(\App\Models\LogisticsPackage $package, bool $solicitarPago = false): void
     {
-        $customer = StoreCustomer::find($package->store_customer_id);
+        $customer = Customer::find($package->customer_id);
         $empresa  = Empresa::find($package->empresa_id);
 
         if (! $customer || ! $empresa || ! filter_var($customer->email, FILTER_VALIDATE_EMAIL)) {
