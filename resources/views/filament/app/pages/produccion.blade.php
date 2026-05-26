@@ -109,7 +109,14 @@
                             <div class="mt-1.5 space-y-0.5">
                                 @foreach($orders->sortBy('fecha')->take(4) as $ord)
                                 <div class="flex items-center justify-between text-xs">
-                                    <span class="text-gray-500 font-mono text-[11px]">{{ $ord->referencia }}</span>
+                                    <div class="flex flex-col">
+                                        <span class="text-gray-500 font-mono text-[11px]">{{ $ord->referencia }}</span>
+                                        @if($ord->fecha)
+                                            <span class="text-gray-400 text-[10px]">
+                                                {{ $ord->fecha->format('d/m') }}{{ $ord->fecha_fin ? ' – '.$ord->fecha_fin->format('d/m') : '' }}
+                                            </span>
+                                        @endif
+                                    </div>
                                     <div class="flex items-center gap-1">
                                         <span class="text-gray-400">{{ number_format((float)$ord->cantidad_producida, 0) }} u.</span>
                                         @if($ord->estado === 'completado')

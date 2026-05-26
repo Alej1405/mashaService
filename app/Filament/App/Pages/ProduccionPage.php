@@ -12,6 +12,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -75,11 +76,13 @@ class ProduccionPage extends Page
                 [$analisisHtml] = $this->calcularAnalisisStock($presentation, $totalUnidades);
 
                 $form->fill([
-                    '_analisis_html'   => $analisisHtml,
-                    '_plan_id'         => $plan->id,
-                    '_presentation_id' => $presentation?->id,
-                    '_total_unidades'  => $totalUnidades,
-                    'etapas'           => [],
+                    '_analisis_html'      => $analisisHtml,
+                    '_plan_id'            => $plan->id,
+                    '_presentation_id'    => $presentation?->id,
+                    '_total_unidades'     => $totalUnidades,
+                    '_fecha_inicio_plan'  => $plan->fecha_inicio?->toDateString(),
+                    '_fecha_fin_plan'     => $plan->fecha_fin?->toDateString(),
+                    'etapas'              => [],
                 ]);
             })
             ->form([
@@ -126,7 +129,7 @@ class ProduccionPage extends Page
                             ->label('Descripción')
                             ->placeholder('Ej: Producir 140 botellas con stock actual')
                             ->required()
-                            ->columnSpan(3),
+                            ->columnSpan(4),
 
                         TextInput::make('cantidad')
                             ->label('Unidades')
@@ -134,7 +137,25 @@ class ProduccionPage extends Page
                             ->minValue(1)
                             ->required()
                             ->live(onBlur: true)
-                            ->columnSpan(1),
+                            ->columnSpan(2),
+
+                        DatePicker::make('fecha_inicio')
+                            ->label('Fecha inicio')
+                            ->required()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->minDate(fn (\Filament\Forms\Get $get) => $get('../../_fecha_inicio_plan'))
+                            ->maxDate(fn (\Filament\Forms\Get $get) => $get('../../_fecha_fin_plan'))
+                            ->columnSpan(2),
+
+                        DatePicker::make('fecha_fin')
+                            ->label('Fecha fin')
+                            ->required()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->minDate(fn (\Filament\Forms\Get $get) => $get('fecha_inicio') ?? $get('../../_fecha_inicio_plan'))
+                            ->maxDate(fn (\Filament\Forms\Get $get) => $get('../../_fecha_fin_plan'))
+                            ->columnSpan(2),
 
                         // ── Detalle de stock reactivo para esta etapa ────────
                         Placeholder::make('_stock_etapa')
@@ -213,12 +234,14 @@ class ProduccionPage extends Page
                             ->placeholder('Opcional')
                             ->columnSpanFull(),
                     ])
-                    ->columns(4)
+                    ->columns(8)
                     ->columnSpanFull(),
 
                 Hidden::make('_plan_id'),
                 Hidden::make('_presentation_id'),
                 Hidden::make('_total_unidades'),
+                Hidden::make('_fecha_inicio_plan'),
+                Hidden::make('_fecha_fin_plan'),
             ])
             ->action(function (array $data): void {
                 $plan = ProductionPlan::with('simulation')->find($data['_plan_id']);
@@ -233,21 +256,18 @@ class ProduccionPage extends Page
                 $presentation = ProductPresentation::with(['formulaLines.inventoryItem'])->find($presId);
                 if (!$presentation || empty($etapas)) return;
 
-                $lote       = max((float) $presentation->cantidad_minima_produccion, 0.0001);
-                $fechaInicio = $plan->fecha_inicio ?? now();
-                $numEtapas  = count($etapas);
-                $rangoDias  = max(1, $fechaInicio->diffInDays($plan->fecha_fin ?? $fechaInicio->copy()->addDays(7)));
-                $diasPorEtapa = (int) max(1, floor($rangoDias / $numEtapas));
+                $lote = max((float) $presentation->cantidad_minima_produccion, 0.0001);
 
                 $ordersCreados = [];
                 $purchaseRefs  = [];
 
                 foreach ($etapas as $i => $etapa) {
-                    $cantEtapa   = max(1, (float) ($etapa['cantidad'] ?? 1));
-                    $descripcion = $etapa['descripcion'] ?? "Etapa " . ($i + 1);
-                    $crearCompra = (bool) ($etapa['crear_compra'] ?? false);
-                    $notasEtapa  = $etapa['notas'] ?? null;
-                    $fechaEtapa  = $fechaInicio->copy()->addDays($i * $diasPorEtapa);
+                    $cantEtapa    = max(1, (float) ($etapa['cantidad'] ?? 1));
+                    $descripcion  = $etapa['descripcion'] ?? "Etapa " . ($i + 1);
+                    $crearCompra  = (bool) ($etapa['crear_compra'] ?? false);
+                    $notasEtapa   = $etapa['notas'] ?? null;
+                    $fechaInicio  = $etapa['fecha_inicio'] ? \Carbon\Carbon::parse($etapa['fecha_inicio']) : ($plan->fecha_inicio ?? now());
+                    $fechaFin     = $etapa['fecha_fin']    ? \Carbon\Carbon::parse($etapa['fecha_fin'])    : $fechaInicio;
 
                     // Calcular faltantes para esta etapa (siempre, no solo cuando se solicita compra)
                     $faltantes = [];
@@ -271,7 +291,7 @@ class ProduccionPage extends Page
                     if ($crearCompra && $hasFaltantes) {
                         $purchase = Purchase::create([
                             'empresa_id' => $empresaId,
-                            'date'       => $fechaEtapa->toDateString(),
+                            'date'       => $fechaInicio->toDateString(),
                             'status'     => 'borrador',
                             'tipo_pago'  => 'contado',
                             'forma_pago' => 'efectivo',
@@ -301,7 +321,8 @@ class ProduccionPage extends Page
                     $order = ProductionOrder::create([
                         'empresa_id'              => $empresaId,
                         'production_plan_id'      => $plan->id,
-                        'fecha'                   => $fechaEtapa->toDateString(),
+                        'fecha'                   => $fechaInicio->toDateString(),
+                        'fecha_fin'               => $fechaFin->toDateString(),
                         'product_presentation_id' => $presId,
                         'cantidad_producida'       => $cantEtapa,
                         'costo_total'             => 0,

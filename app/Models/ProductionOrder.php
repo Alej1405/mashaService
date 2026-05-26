@@ -17,9 +17,10 @@ class ProductionOrder extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'fecha' => 'date',
+        'fecha'              => 'date',
+        'fecha_fin'          => 'date',
         'cantidad_producida' => 'decimal:4',
-        'costo_total' => 'decimal:4',
+        'costo_total'        => 'decimal:4',
     ];
 
     protected static function boot()
