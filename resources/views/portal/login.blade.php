@@ -45,6 +45,9 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
                 <input type="password" name="password" required
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <p class="mt-1.5 text-xs text-gray-400">
+                    Tu contraseña inicial es tu número de cédula o RUC.
+                </p>
             </div>
             <button type="submit"
                     class="w-full rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 text-sm transition">
@@ -54,7 +57,7 @@
     </div>
 
     <p class="text-center text-xs text-gray-400 mt-6">
-        ¿Problemas para ingresar? Contacta a {{ $empresa->name }}.
+        ¿Problemas para ingresar? Contacta a <strong>{{ $empresa->name }}</strong>.
     </p>
 </div>
 
