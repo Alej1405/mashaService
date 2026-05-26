@@ -92,13 +92,11 @@ HTML;
         $portalUrl  = url('/tienda/' . $empresa->slug);
         $websiteUrl = $empresa->website_url ?? null;
 
-        $botonesLinks = '';
-        if ($esStoreCustomer) {
-            $botonesLinks .= '<a href="' . $portalUrl . '" target="_blank"'
-                . ' style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;'
-                . 'padding:13px 32px;border-radius:8px;font-size:14px;font-weight:700;margin:6px;">'
-                . 'Ingresar al portal &rarr;</a>';
-        }
+        $botonesLinks = '<a href="' . $portalUrl . '" target="_blank"'
+            . ' style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;'
+            . 'padding:13px 32px;border-radius:8px;font-size:14px;font-weight:700;margin:6px;">'
+            . 'Ingresar al portal de clientes &rarr;</a>';
+
         if ($websiteUrl) {
             $websiteLabel = preg_replace('#^https?://#', '', rtrim($websiteUrl, '/'));
             $botonesLinks .= '<a href="' . e($websiteUrl) . '" target="_blank"'
