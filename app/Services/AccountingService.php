@@ -169,7 +169,13 @@ class AccountingService
 
                 // 3. Registrar Movimiento de Inventario (solo si hay item de inventario vinculado)
                 if ($item->inventoryItem) {
-                    $factor   = (float) ($item->inventoryItem->conversion_factor ?? 1);
+                    // Si el ítem tiene presentación, la cantidad comprada es en unidades de presentación.
+                    // factor = capacidad_presentación × factor_conversion (p.ej. botellón 20L × 1000 ml/L = 20000 ml)
+                    $pres   = $item->inventoryItem->loadMissing('presentation')->presentation;
+                    $factor = $pres
+                        ? (float) $pres->capacidad * max((float) $pres->factor_conversion, 1.0)
+                        : max((float) ($item->inventoryItem->conversion_factor ?? 1), 1.0);
+
                     $stockQty = round($item->quantity * $factor, 6);
 
                     InventoryMovement::create([

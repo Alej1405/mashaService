@@ -182,12 +182,21 @@ class PurchaseResource extends Resource
                                         })
                                         ->reactive()
                                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                            $item = InventoryItem::find($state);
+                                            $item = InventoryItem::with('presentation')->find($state);
                                             if (!$item) return;
 
-                                            $set('_conversion_factor', (float) ($item->conversion_factor ?? 1));
-                                            $set('_purchase_unit_label', $item->purchaseUnit?->abreviatura ?? $item->measurementUnit?->abreviatura ?? '');
-                                            $set('_stock_unit_label',    $item->measurementUnit?->abreviatura ?? '');
+                                            $pres = $item->presentation;
+                                            if ($pres) {
+                                                // Cantidad siempre en unidades de presentación (botellones, tanques, etc.)
+                                                $factor = (float) $pres->capacidad * max((float) $pres->factor_conversion, 1.0);
+                                                $set('_conversion_factor',  $factor);
+                                                $set('_purchase_unit_label', $pres->nombre);
+                                            } else {
+                                                $set('_conversion_factor',  max((float) ($item->conversion_factor ?? 1), 1.0));
+                                                $set('_purchase_unit_label', $item->purchaseUnit?->abreviatura ?? $item->measurementUnit?->abreviatura ?? '');
+                                            }
+                                            $set('_stock_unit_label', $item->measurementUnit?->abreviatura ?? '');
+
                                             if ($item->purchase_price > 0) {
                                                 $qty    = max((float) $get('quantity'), 1);
                                                 $aplica = (bool) $get('aplica_iva');
@@ -205,6 +214,7 @@ class PurchaseResource extends Resource
                                         ->required()
                                         ->live(onBlur: true)
                                         ->columnSpan(2)
+                                        ->suffix(fn (callable $get) => $get('_purchase_unit_label') ?: null)
                                         ->afterStateUpdated(function ($state, callable $get, callable $set, Forms\Contracts\HasForms $livewire) {
                                             self::recalcularLinea($get, $set);
                                             self::updateTotals($livewire, $set);
@@ -545,7 +555,11 @@ class PurchaseResource extends Resource
                         ->action(function (Purchase $record) {
                             DB::transaction(function () use ($record) {
                                 foreach ($record->items as $item) {
-                                    $factor   = (float) ($item->inventoryItem->conversion_factor ?? 1);
+                                    $pres   = $item->inventoryItem?->loadMissing('presentation')->presentation;
+                                    $factor = $pres
+                                        ? (float) $pres->capacidad * max((float) $pres->factor_conversion, 1.0)
+                                        : max((float) ($item->inventoryItem?->conversion_factor ?? 1), 1.0);
+
                                     $stockQty = round($item->quantity * $factor, 6);
 
                                     InventoryMovement::create([
