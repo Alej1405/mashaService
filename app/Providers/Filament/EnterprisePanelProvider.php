@@ -65,6 +65,7 @@ class EnterprisePanelProvider extends PanelProvider
                 \Filament\Navigation\NavigationGroup::make('E-Commerce')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Inventario')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Diseño de Producto')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('Planificación y Producción')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Contabilidad')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Planificación')->collapsible(),
             ])
@@ -84,6 +85,8 @@ class EnterprisePanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,
                 \App\Filament\App\Pages\EcommerceApiDocsPage::class,
+                \App\Filament\App\Pages\PlanificacionPage::class,
+                \App\Filament\App\Pages\ProduccionPage::class,
             ])
             ->navigationItems([
                 NavigationItem::make('Portal de Clientes')

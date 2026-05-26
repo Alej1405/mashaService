@@ -29,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\StoreCustomer::observe(\App\Observers\StoreCustomerObserver::class);
         \App\Models\LogisticsShipment::observe(\App\Observers\LogisticsShipmentObserver::class);
         \App\Models\LogisticsShipmentBill::observe(\App\Observers\LogisticsShipmentBillObserver::class);
+        \App\Models\ProductDesign::observe(\App\Observers\ProductDesignObserver::class);
+        \App\Models\ServiceDesign::observe(\App\Observers\ServiceDesignObserver::class);
 
         // CMS — invalidación de caché automática al guardar/eliminar
         $cmsObserver = \App\Observers\CmsObserver::class;

@@ -22,7 +22,8 @@ class EmpresaResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
     protected static ?string $modelLabel = 'Empresa';
     protected static ?string $pluralModelLabel = 'Empresas';
-    protected static bool $shouldRegisterNavigation = false;
+    protected static ?string $navigationGroup = 'Administración';
+    protected static ?int $navigationSort = 1;
 
     public static function canViewAny(): bool
     {

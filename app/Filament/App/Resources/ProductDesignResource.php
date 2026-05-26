@@ -689,7 +689,6 @@ class ProductDesignResource extends Resource
                                         ->label('Margen de Utilidad (%)')
                                         ->numeric()
                                         ->suffix('%')
-                                        ->dehydrated(false)
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                             $costo = self::planCostoUnitario($get);
@@ -711,7 +710,6 @@ class ProductDesignResource extends Resource
                                             : 'PVP de Venta (sin IVA)')
                                         ->numeric()
                                         ->prefix('$')
-                                        ->dehydrated(false)
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                             $costo = self::planCostoUnitario($get);
@@ -731,7 +729,6 @@ class ProductDesignResource extends Resource
 
                                     Toggle::make('_plan_pvp_incluye_iva')
                                         ->label('¿El PVP ya incluye IVA (15%)?')
-                                        ->dehydrated(false)
                                         ->live()
                                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                             $pvp = (float) ($get('_plan_pvp_venta') ?? 0);
@@ -753,7 +750,6 @@ class ProductDesignResource extends Resource
                                     TextInput::make('_plan_dias_venta')
                                         ->label('Días estimados para vender')
                                         ->numeric()
-                                        ->dehydrated(false)
                                         ->live(onBlur: true)
                                         ->suffix('días')
                                         ->placeholder('Ej: 30')
@@ -764,7 +760,6 @@ class ProductDesignResource extends Resource
                                         ->label('Meta de Rentabilidad (%)')
                                         ->numeric()
                                         ->suffix('%')
-                                        ->dehydrated(false)
                                         ->live(onBlur: true)
                                         ->default(5)
                                         ->placeholder('5')
@@ -773,7 +768,6 @@ class ProductDesignResource extends Resource
 
                                     Toggle::make('_plan_aplica_ice')
                                         ->label('¿El producto paga ICE?')
-                                        ->dehydrated(false)
                                         ->live()
                                         ->helperText('Impuesto a los Consumos Especiales — SRI Ecuador')
                                         ->columnSpan(2),
@@ -789,7 +783,6 @@ class ProductDesignResource extends Resource
                                             'licor_alto'        => 'Bebida alcohólica / Licor  > 50° GL',
                                             'otro'              => 'Otro producto con ICE (tasa manual)',
                                         ])
-                                        ->dehydrated(false)
                                         ->live()
                                         ->afterStateUpdated(function ($state, callable $set) {
                                             $tasas = [
@@ -810,7 +803,6 @@ class ProductDesignResource extends Resource
                                         ->label('Tasa ICE (%)')
                                         ->numeric()
                                         ->suffix('%')
-                                        ->dehydrated(false)
                                         ->live(onBlur: true)
                                         ->helperText('% sobre el precio ex-fábrica (PVP sin IVA). Verifique en la LRTI.')
                                         ->visible(fn (callable $get) => (bool) $get('_plan_aplica_ice'))
@@ -1168,9 +1160,9 @@ class ProductDesignResource extends Resource
                                             $faltaDisplay    = $fmt($faltaStock) . ' ' . $unidadStock;
                                         }
 
-                                        // Costo solo sobre lo que falta comprar
-                                        [$costoPorUnidadStock] = self::costoLinea($item, 1, $unitId);
-                                        $costoFalta = round($costoPorUnidadStock * $faltaStock, 4);
+                                        // Costo solo sobre lo que falta comprar (en unidades de stock)
+                                        [$costoFalta] = self::costoLinea($item, $faltaStock, $stockUnitId);
+                                        $costoFalta = round($costoFalta, 4);
 
                                         if ($faltaStock <= 0) {
                                             // Tiene stock suficiente
@@ -1429,9 +1421,10 @@ class ProductDesignResource extends Resource
                                         $stockActual  = (float) ($item?->stock_actual ?? 0);
                                         $faltaStock   = max($cantNecStockT - $stockActual, 0);
                                         $enStock      = min($cantNecStockT, $stockActual);
-                                        [$costoPorU]  = self::costoLinea($item, 1, $fUnitId);
-                                        $totalMatComprar += $costoPorU * $faltaStock;
-                                        $totalMatStock   += $costoPorU * $enStock;
+                                        [$costoComprar] = self::costoLinea($item, $faltaStock, $stockUnitIdT);
+                                        [$costoEnStock] = self::costoLinea($item, $enStock, $stockUnitIdT);
+                                        $totalMatComprar += $costoComprar;
+                                        $totalMatStock   += $costoEnStock;
                                     }
 
                                     // ── Costos indirectos ────────────────────────────
@@ -2224,10 +2217,12 @@ class ProductDesignResource extends Resource
                                             if ($fUnitId == $stockUnitIdT || !$fUnitId) $cantNecStock = $cantNecFormula;
                                             elseif ($puIdT && $fUnitId == $puIdT && $puIdT != $stockUnitIdT) $cantNecStock = round($cantNecFormula * $factorConvT, 6);
                                             else $cantNecStock = round($cantNecFormula / $factorConvT, 6);
-                                            [$costoPorU] = \App\Filament\App\Resources\ProductDesignResource::costoLinea($item, 1, $fUnitId);
-                                            $enStock = min($cantNecStock, max(0, (float) ($item?->stock_actual ?? 0)));
-                                            $totalMatStock   += $costoPorU * $enStock;
-                                            $totalMatComprar += $costoPorU * max(0, $cantNecStock - $enStock);
+                                            $enStock  = min($cantNecStock, max(0, (float) ($item?->stock_actual ?? 0)));
+                                            $faltaS   = max(0, $cantNecStock - $enStock);
+                                            [$cStock]   = \App\Filament\App\Resources\ProductDesignResource::costoLinea($item, $enStock, $stockUnitIdT);
+                                            [$cComprar] = \App\Filament\App\Resources\ProductDesignResource::costoLinea($item, $faltaS, $stockUnitIdT);
+                                            $totalMatStock   += $cStock;
+                                            $totalMatComprar += $cComprar;
                                         }
                                         $totalMat = $totalMatStock + $totalMatComprar;
 
@@ -2546,11 +2541,13 @@ class ProductDesignResource extends Resource
                                             if ($fUnitId == $stockUnitIdT || !$fUnitId) $cantNecStock = $cantNecFormula;
                                             elseif ($puIdT && $fUnitId == $puIdT && $puIdT != $stockUnitIdT) $cantNecStock = round($cantNecFormula * $factorConvT, 6);
                                             else $cantNecStock = round($cantNecFormula / $factorConvT, 6);
-                                            [$costoPorU] = \App\Filament\App\Resources\ProductDesignResource::costoLinea($item, 1, $fUnitId);
-                                            $costoTotal = $costoPorU * $cantNecStock;
-                                            $enStock    = min($cantNecStock, max(0, (float) ($item?->stock_actual ?? 0)));
-                                            $totalMatStock   += $costoPorU * $enStock;
-                                            $totalMatComprar += $costoPorU * max(0, $cantNecStock - $enStock);
+                                            $enStock  = min($cantNecStock, max(0, (float) ($item?->stock_actual ?? 0)));
+                                            $faltaS   = max(0, $cantNecStock - $enStock);
+                                            [$cStock]   = \App\Filament\App\Resources\ProductDesignResource::costoLinea($item, $enStock, $stockUnitIdT);
+                                            [$cComprar] = \App\Filament\App\Resources\ProductDesignResource::costoLinea($item, $faltaS, $stockUnitIdT);
+                                            $costoTotal      = $cStock + $cComprar;
+                                            $totalMatStock   += $cStock;
+                                            $totalMatComprar += $cComprar;
                                         }
 
                                         $fracMes  = $capacidad > 0 ? $cantidad / $capacidad : 0;
@@ -3147,6 +3144,171 @@ class ProductDesignResource extends Resource
                                                 : "La simulación \"{$data['nombre_sim']}\" fue actualizada con los datos actuales.")
                                             ->success()->send();
                                     }),
+
+                                // ── Costo por Unidad ─────────────────────────────────
+                                \Filament\Forms\Components\Actions\Action::make('costo_unitario_detalle')
+                                    ->label('🧾 Costo por Unidad')
+                                    ->color('gray')
+                                    ->icon('heroicon-o-calculator')
+                                    ->modalHeading('Desglose de Costo por Unidad')
+                                    ->modalWidth('4xl')
+                                    ->modalSubmitAction(false)
+                                    ->modalCancelActionLabel('Cerrar')
+                                    ->mountUsing(function (\Filament\Forms\Form $form, callable $get) {
+                                        $presentations = $get('presentations') ?? [];
+
+                                        if (empty($presentations)) {
+                                            $form->fill(['_costo_u_html' => '<div style="padding:2rem;text-align:center;color:#6b7280;">No hay presentaciones definidas para este diseño.</div>']);
+                                            return;
+                                        }
+
+                                        // Estado de simulación activa
+                                        $simPresKey  = $get('_plan_presentation_id');
+                                        $simCantidad = (float) ($get('_plan_cantidad') ?? 0);
+                                        $capacidad   = (float) ($get('capacidad_instalada_mensual') ?? 0);
+                                        $personas    = (float) ($get('_plan_num_personas') ?: ($get('num_personas') ?? 0));
+                                        $costoMo     = (float) ($get('_plan_costo_mo_persona') ?: ($get('costo_mano_obra_persona') ?? 0));
+                                        $simPresNombre = ($presentations[$simPresKey]['nombre'] ?? null);
+                                        $tieneSimulacion = $simPresKey && $simCantidad > 0;
+
+                                        $html = '';
+
+                                        foreach ($presentations as $pres) {
+                                            $presNombre = $pres['nombre'] ?? 'Fórmula';
+                                            $lote       = max((float) ($pres['cantidad_minima_produccion'] ?? 1), 0.0001);
+                                            $lines      = $pres['formulaLines'] ?? [];
+
+                                            $html .= '<div style="margin-bottom:1.75rem;">';
+                                            $html .= '<div style="border:1px solid #e2e8f0;border-radius:0.75rem;overflow:hidden;">';
+
+                                            // Cabecera de presentación
+                                            $html .= '<div style="background:#1e3a8a;color:white;padding:0.65rem 1rem;display:flex;justify-content:space-between;align-items:center;">';
+                                            $html .= '<span style="font-weight:700;font-size:0.95rem;">' . e($presNombre) . '</span>';
+                                            $html .= '<span style="font-size:0.75rem;opacity:0.8;background:rgba(255,255,255,0.15);padding:0.2rem 0.6rem;border-radius:999px;">Lote base: ' . number_format($lote, 0) . ' u.</span>';
+                                            $html .= '</div>';
+
+                                            if (empty($lines)) {
+                                                $html .= '<p style="padding:1rem;color:#9ca3af;font-size:0.85rem;font-style:italic;">Sin ingredientes en la fórmula.</p>';
+                                                $html .= '</div></div>';
+                                                continue;
+                                            }
+
+                                            // Tabla de ingredientes
+                                            $html .= '<table style="width:100%;border-collapse:collapse;">';
+                                            $html .= '<thead><tr style="background:#eff6ff;">';
+                                            $html .= '<th style="text-align:left;padding:0.45rem 1rem;font-size:0.76rem;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;">Ingrediente / Insumo</th>';
+                                            $html .= '<th style="text-align:right;padding:0.45rem 0.75rem;font-size:0.76rem;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;">Cant. por unidad</th>';
+                                            $html .= '<th style="text-align:right;padding:0.45rem 1rem;font-size:0.76rem;color:#1e40af;font-weight:600;border-bottom:1px solid #dbeafe;">Costo por unidad</th>';
+                                            $html .= '</tr></thead><tbody>';
+
+                                            $totalMat = 0;
+                                            $odd = false;
+
+                                            foreach ($lines as $line) {
+                                                $itemId      = $line['inventory_item_id'] ?? null;
+                                                $item        = $itemId ? \App\Models\InventoryItem::find($itemId) : null;
+                                                $nombreItem  = $item?->nombre ?? '—';
+
+                                                $cantBase     = (float) ($line['cantidad'] ?? 0);
+                                                $fUnitId      = $line['measurement_unit_id'] ?? null;
+                                                $factorConvT  = max((float) ($item?->conversion_factor ?? 1), 0.000001);
+                                                $puIdT        = $item?->purchase_unit_id ?? null;
+                                                $stockUnitIdT = $item?->measurement_unit_id;
+
+                                                // Cantidad por 1 unidad de presentación
+                                                $cantPorU = $cantBase / $lote;
+
+                                                // Convertir a unidades de stock para costoLinea
+                                                if ($fUnitId == $stockUnitIdT || !$fUnitId) {
+                                                    $cantStock = $cantPorU;
+                                                } elseif ($puIdT && $fUnitId == $puIdT && $puIdT != $stockUnitIdT) {
+                                                    $cantStock = $cantPorU * $factorConvT;
+                                                } else {
+                                                    $cantStock = $cantPorU / $factorConvT;
+                                                }
+
+                                                [$costoU] = \App\Filament\App\Resources\ProductDesignResource::costoLinea($item, $cantStock, $stockUnitIdT);
+                                                $totalMat += $costoU;
+
+                                                $unitLabel = '';
+                                                if ($fUnitId) {
+                                                    $unitLabel = \App\Models\MeasurementUnit::find($fUnitId)?->abreviatura ?? '';
+                                                } elseif ($item?->measurementUnit) {
+                                                    $unitLabel = $item->measurementUnit->abreviatura;
+                                                }
+
+                                                $cantDisplay = $cantPorU < 0.01
+                                                    ? number_format($cantPorU, 6)
+                                                    : number_format($cantPorU, 4);
+                                                $bg  = $odd ? '#f9fafb' : '#ffffff';
+                                                $odd = !$odd;
+
+                                                $html .= "<tr style=\"background:{$bg};border-bottom:1px solid #f1f5f9;\">";
+                                                $html .= '<td style="padding:0.45rem 1rem;font-size:0.83rem;color:#374151;">' . e($nombreItem) . '</td>';
+                                                $html .= '<td style="padding:0.45rem 0.75rem;font-size:0.82rem;color:#6b7280;text-align:right;">' . $cantDisplay . ' ' . e($unitLabel) . '</td>';
+                                                $html .= '<td style="padding:0.45rem 1rem;font-size:0.83rem;color:#111827;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;">$' . number_format($costoU, 4) . '</td>';
+                                                $html .= '</tr>';
+                                            }
+
+                                            $html .= '</tbody><tfoot>';
+
+                                            // Sub-total materiales
+                                            $html .= '<tr style="background:#f0f9ff;border-top:2px solid #bfdbfe;">';
+                                            $html .= '<td colspan="2" style="padding:0.55rem 1rem;font-size:0.82rem;font-weight:600;color:#1e40af;">Subtotal materiales</td>';
+                                            $html .= '<td style="padding:0.55rem 1rem;font-size:0.9rem;font-weight:700;color:#1e40af;text-align:right;">$' . number_format($totalMat, 4) . '</td>';
+                                            $html .= '</tr>';
+
+                                            // Si hay simulación activa para esta presentación → mostrar indirectos y total
+                                            if ($tieneSimulacion && $presNombre === $simPresNombre && $simCantidad > 0) {
+                                                $fracMes  = $capacidad > 0 ? $simCantidad / $capacidad : 0;
+                                                $totalInd = $personas * $costoMo * $fracMes;
+                                                foreach ($get('indirectCosts') ?? [] as $ind) {
+                                                    $m = (float) ($ind['monto_mensual'] ?? 0);
+                                                    $totalInd += match ($ind['frecuencia'] ?? 'mensual') {
+                                                        'semanal' => $m * 4.33 * $fracMes,
+                                                        'unico'   => $m,
+                                                        default   => $m * $fracMes,
+                                                    };
+                                                }
+                                                $indPorU   = $simCantidad > 0 ? $totalInd / $simCantidad : 0;
+                                                $totalFinal = $totalMat + $indPorU;
+
+                                                $html .= '<tr style="background:#f0fdf4;border-top:1px solid #bbf7d0;">';
+                                                $html .= '<td colspan="2" style="padding:0.5rem 1rem;font-size:0.82rem;color:#15803d;">Costos indirectos prorrateados <span style="font-size:0.72rem;opacity:0.8;">(simulación: ' . number_format($simCantidad, 0) . ' u.)</span></td>';
+                                                $html .= '<td style="padding:0.5rem 1rem;font-size:0.83rem;color:#15803d;text-align:right;font-weight:600;">$' . number_format($indPorU, 4) . '</td>';
+                                                $html .= '</tr>';
+
+                                                $html .= '<tr style="background:#1e3a8a;">';
+                                                $html .= '<td colspan="2" style="padding:0.65rem 1rem;font-size:0.88rem;font-weight:700;color:white;">COSTO TOTAL POR UNIDAD</td>';
+                                                $html .= '<td style="padding:0.65rem 1rem;font-size:1rem;font-weight:800;color:white;text-align:right;">$' . number_format($totalFinal, 4) . '</td>';
+                                                $html .= '</tr>';
+                                            } else {
+                                                // Sin simulación: mostrar solo materiales como total
+                                                $html .= '<tr style="background:#1e3a8a;">';
+                                                $html .= '<td colspan="2" style="padding:0.65rem 1rem;font-size:0.88rem;font-weight:700;color:white;">COSTO MATERIALES POR UNIDAD</td>';
+                                                $html .= '<td style="padding:0.65rem 1rem;font-size:1rem;font-weight:800;color:white;text-align:right;">$' . number_format($totalMat, 4) . '</td>';
+                                                $html .= '</tr>';
+                                            }
+
+                                            $html .= '</tfoot></table>';
+                                            $html .= '</div></div>';
+                                        }
+
+                                        if ($tieneSimulacion) {
+                                            $html .= '<p style="font-size:0.72rem;color:#9ca3af;margin-top:0.5rem;">* Los costos indirectos se calculan con la simulación activa (' . number_format($simCantidad, 0) . ' u. de <em>' . e($simPresNombre ?? '—') . '</em>). Para otras presentaciones solo se muestra el costo de materiales.</p>';
+                                        } else {
+                                            $html .= '<p style="font-size:0.72rem;color:#9ca3af;margin-top:0.5rem;">* Para ver el costo total incluyendo mano de obra e indirectos, configura una simulación en la pestaña <strong>Simulación y Análisis</strong>.</p>';
+                                        }
+
+                                        $form->fill(['_costo_u_html' => $html]);
+                                    })
+                                    ->form([
+                                        \Filament\Forms\Components\Placeholder::make('_costo_u_html')
+                                            ->label('')
+                                            ->content(fn (\Filament\Forms\Get $get) => new \Illuminate\Support\HtmlString($get('_costo_u_html') ?? '')),
+                                    ])
+                                    ->action(fn () => null),
+
                             ])->columnSpanFull(),
                         ]),
                     Tab::make('Punto de Equilibrio')
@@ -3203,8 +3365,8 @@ class ProductDesignResource extends Resource
                                         if ($fUnitId == $stockUnitId || !$fUnitId) $cantNecS = $cantNecF;
                                         elseif ($puId && $fUnitId == $puId && $puId != $stockUnitId) $cantNecS = round($cantNecF * $factorConv, 6);
                                         else $cantNecS = round($cantNecF / $factorConv, 6);
-                                        [$cPorU] = self::costoLinea($item, 1, $fUnitId);
-                                        $totalMat += $cPorU * $cantNecS;
+                                        [$cLinea] = self::costoLinea($item, $cantNecS, $stockUnitId);
+                                        $totalMat += $cLinea;
                                     }
 
                                     // ── MO + Indirectos ──
@@ -3627,8 +3789,8 @@ class ProductDesignResource extends Resource
                                                 if ($fUnitId == $sUnitId || ! $fUnitId) $cantNecS = $cantNec;
                                                 elseif ($puId && $fUnitId == $puId && $puId != $sUnitId) $cantNecS = round($cantNec * $factorConv, 6);
                                                 else $cantNecS = round($cantNec / $factorConv, 6);
-                                                [$cPorU] = self::costoLinea($item, 1, $fUnitId);
-                                                $totalMat += $cPorU * $cantNecS;
+                                                [$cLinea] = self::costoLinea($item, $cantNecS, $sUnitId);
+                                                $totalMat += $cLinea;
                                             }
 
                                             // MO + Indirectos
@@ -3951,15 +4113,25 @@ class ProductDesignResource extends Resource
 
         $precioCompra = (float) $item->purchase_price;
         $factor       = max((float) ($item->conversion_factor ?? 1), 0.000001);
-        $puLabel      = $item->purchaseUnit?->abreviatura ?? $item->measurementUnit?->abreviatura ?? '';
         $suLabel      = $item->measurementUnit?->abreviatura ?? '';
+        $puLabel      = $item->purchaseUnit?->abreviatura ?? $suLabel;
 
-        // Si la unidad de la fórmula es la unidad de COMPRA → precio directo (no dividir)
-        if ($item->purchase_unit_id && $unitId == $item->purchase_unit_id) {
+        // Si el ítem tiene presentación (ej. bidón de 20L), el precio es por presentación
+        // y el factor efectivo = conversion_factor × capacidad_presentación
+        // Ej: 1000 ml/litro × 20 litros/bidón = 20,000 ml/bidón → $4 / 20,000 = $0.0002/ml
+        if ($item->presentation_id) {
+            $pres            = $item->presentation;
+            $capacidadPres   = max((float) ($pres?->capacidad ?? 1), 0.000001);
+            $factorEfectivo  = $factor * $capacidadPres;
+            $costo           = ($precioCompra / $factorEfectivo) * $qty;
+            $presLabel       = $pres?->nombre ?? 'presentación';
+            $detalle         = "\${$precioCompra}/{$presLabel} ÷ {$factorEfectivo} × {$qty} {$suLabel}";
+        } elseif ($item->purchase_unit_id && $unitId == $item->purchase_unit_id) {
+            // Sin presentación, fórmula en unidad de compra → precio directo
             $costo   = $precioCompra * $qty;
             $detalle = "\${$precioCompra} × {$qty} {$puLabel}";
         } else {
-            // Unidad de stock u otra → aplicar conversión: precio_compra ÷ factor × qty
+            // Sin presentación, fórmula en unidad de stock → dividir por factor
             $costo   = ($precioCompra / $factor) * $qty;
             $detalle = "\${$precioCompra} ÷ {$factor} × {$qty} {$suLabel}";
         }
@@ -4019,8 +4191,8 @@ class ProductDesignResource extends Resource
             } else {
                 $cantNecStock = round($cantNecFormula / $factorConvT, 6);
             }
-            [$costoPorU] = self::costoLinea($item, 1, $fUnitId);
-            $totalMat += $costoPorU * $cantNecStock;
+            [$cLinea] = self::costoLinea($item, $cantNecStock, $stockUnitIdT);
+            $totalMat += $cLinea;
         }
 
         // Indirectos prorrateados

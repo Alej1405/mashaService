@@ -31,6 +31,14 @@ class ProductDesign extends Model
         'dias_laborales_mes',
         'num_personas',
         'costo_mano_obra_persona',
+        'pvp_venta',
+        'pvp_incluye_iva',
+        'margen_venta',
+        'dias_venta',
+        'meta_ganancia',
+        'aplica_ice',
+        'ice_categoria',
+        'ice_porcentaje',
     ];
 
     protected $casts = [
@@ -42,6 +50,13 @@ class ProductDesign extends Model
         'precio_distribuidor'             => 'decimal:4',
         'margen_distribuidor'             => 'decimal:2',
         'cantidad_minima_distribuidor'    => 'integer',
+        'pvp_venta'                       => 'decimal:4',
+        'pvp_incluye_iva'                 => 'boolean',
+        'margen_venta'                    => 'decimal:2',
+        'dias_venta'                      => 'integer',
+        'meta_ganancia'                   => 'decimal:2',
+        'aplica_ice'                      => 'boolean',
+        'ice_porcentaje'                  => 'decimal:2',
     ];
 
     public function storeCategory(): BelongsTo

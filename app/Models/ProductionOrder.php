@@ -69,6 +69,11 @@ class ProductionOrder extends Model
         });
     }
 
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(ProductionPlan::class, 'production_plan_id');
+    }
+
     public function finishedProduct(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
