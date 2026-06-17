@@ -5,11 +5,11 @@
 
     <div>
         <h1 class="text-xl font-bold text-gray-800">Bienvenido, {{ $customer->nombre }}</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Aquí puedes seguir el estado de tus cargas y servicios.</p>
+        <p class="text-sm text-gray-500 mt-0.5">Aquí puedes seguir el estado de tus cargas y pedidos.</p>
     </div>
 
     {{-- Tarjetas resumen --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 {{ $tieneServicios ? 'sm:grid-cols-4' : 'sm:grid-cols-3' }} gap-4">
         <div class="bg-white rounded-xl border border-gray-200 p-5">
             <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Mis cargas</p>
             <p class="text-3xl font-bold text-gray-800 mt-1">{{ $totalPackages }}</p>
@@ -29,6 +29,7 @@
                 <a href="{{ route('portal.orders', $empresa->slug) }}" class="text-xs text-indigo-600 hover:underline mt-2 inline-block">Ver todas →</a>
             @endif
         </div>
+        @if($tieneServicios)
         <div class="bg-white rounded-xl border border-gray-200 p-5">
             <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Servicios activos</p>
             <p class="text-3xl font-bold text-gray-800 mt-1">{{ $totalContracts }}</p>
@@ -36,6 +37,7 @@
                 <a href="{{ route('portal.services', $empresa->slug) }}" class="text-xs text-indigo-600 hover:underline mt-2 inline-block">Ver todos →</a>
             @endif
         </div>
+        @endif
     </div>
 
     {{-- Cargas pendientes de pago --}}
@@ -295,7 +297,7 @@
     @endif
 
     {{-- Servicios activos --}}
-    @if($activeContracts->isNotEmpty())
+    @if($tieneServicios && $activeContracts->isNotEmpty())
     <div class="bg-white rounded-xl border border-gray-200">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-gray-800">Servicios contratados</h2>
@@ -313,6 +315,60 @@
                 </div>
                 @if($contract->precio)
                 <p class="text-sm font-semibold text-gray-800">${{ number_format($contract->precio, 2) }}</p>
+                @endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    {{-- Catálogo de productos --}}
+    @if($catalogoProductos->isNotEmpty())
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-sm font-semibold text-gray-800">Nuestros productos</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Contáctanos para realizar tu pedido.</p>
+        </div>
+        <div class="divide-y divide-gray-100">
+            @foreach($catalogoProductos as $design)
+            <div class="px-5 py-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-gray-800">{{ $design->nombre }}</p>
+                        @if($design->propuesta_valor)
+                            <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ $design->propuesta_valor }}</p>
+                        @endif
+                    </div>
+                    {{-- Precio único (sin múltiples presentaciones) --}}
+                    @if(!$design->tiene_multiples_presentaciones && $design->pvp_venta)
+                        <div class="shrink-0 text-right">
+                            <p class="text-base font-bold text-indigo-700">${{ number_format($design->pvp_venta, 2) }}</p>
+                            @if($design->pvp_incluye_iva)
+                                <p class="text-[10px] text-gray-400">IVA incluido</p>
+                            @else
+                                <p class="text-[10px] text-gray-400">+ IVA</p>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Presentaciones --}}
+                @if($design->tiene_multiples_presentaciones && $design->presentations->isNotEmpty())
+                    <div class="mt-3 space-y-1.5">
+                        @foreach($design->presentations->where('activa', true) as $pres)
+                        <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                            <p class="text-xs text-gray-700 font-medium">{{ $pres->nombre }}</p>
+                            @if($pres->pvp_estimado)
+                                <p class="text-xs font-bold text-indigo-700">${{ number_format($pres->pvp_estimado, 2) }}</p>
+                            @endif
+                        </div>
+                        @endforeach
+                        @if($design->pvp_incluye_iva)
+                            <p class="text-[10px] text-gray-400 pl-1">Precios con IVA incluido</p>
+                        @else
+                            <p class="text-[10px] text-gray-400 pl-1">Precios no incluyen IVA</p>
+                        @endif
+                    </div>
                 @endif
             </div>
             @endforeach

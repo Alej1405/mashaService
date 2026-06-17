@@ -8,7 +8,9 @@ use App\Models\Empresa;
 use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsPaymentClaim;
+use App\Models\ProductDesign;
 use App\Models\ServiceContract;
+use App\Models\ServiceDesign;
 use App\Models\Customer;
 use App\Models\StoreCustomerCompany;
 use App\Models\StoreOrder;
@@ -25,7 +27,7 @@ class PortalController extends Controller
     private function customer(Request $request): Customer
     {
         return Customer::withoutGlobalScopes()
-            ->findOrFail($request->session()->get('customer_id'));
+            ->findOrFail($request->session()->get('portal_customer_id'));
     }
 
     public function dashboard(Request $request, string $slug)
@@ -81,6 +83,18 @@ class PortalController extends Controller
             ->with('bank')
             ->get();
 
+        $catalogoProductos = ProductDesign::withoutGlobalScopes()
+            ->with('presentations')
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get();
+
+        $tieneServicios = ServiceDesign::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->exists();
+
         return view('portal.dashboard', compact(
             'empresa', 'customer',
             'recentOrders', 'activeContracts',
@@ -88,6 +102,7 @@ class PortalController extends Controller
             'pendingPackages', 'totalPendingPago',
             'totalPackages', 'recentPackages',
             'cuentasBancarias',
+            'catalogoProductos', 'tieneServicios',
         ));
     }
 

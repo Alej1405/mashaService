@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\InventoryMovement;
+use App\Models\ProductionOrder;
 
 class InventoryMovementObserver
 {
@@ -18,6 +19,11 @@ class InventoryMovementObserver
 
         if ($inventoryMovement->reference_type === 'adjustment' || $inventoryMovement->reference_type === 'ajuste') {
             \App\Services\AccountingService::generarAsientoAjuste($inventoryMovement);
+        }
+
+        // Liberar etapas bloqueadas por falta de stock si el movimiento es una entrada
+        if ($inventoryMovement->type === 'entrada') {
+            ProductionOrder::liberarAbastecimiento($inventoryMovement->empresa_id);
         }
     }
 

@@ -253,7 +253,7 @@ class ProduccionPage extends Page
                 $presId   = (int) $data['_presentation_id'];
                 $etapas   = $data['etapas'] ?? [];
 
-                $presentation = ProductPresentation::with(['formulaLines.inventoryItem'])->find($presId);
+                $presentation = ProductPresentation::with(['formulaLines.inventoryItem.presentation'])->find($presId);
                 if (!$presentation || empty($etapas)) return;
 
                 $lote = max((float) $presentation->cantidad_minima_produccion, 0.0001);
@@ -277,25 +277,43 @@ class ProduccionPage extends Page
                         $cantNec = $this->cantNecesariaStock($line, $cantEtapa, $lote, $item);
                         $gap     = max(0, $cantNec - (float) $item->stock_actual);
                         if ($gap > 0) {
+                            // Convertir gap (unidades base) a unidades de presentación de compra
+                            $purchPres = $item->presentation; // InventoryItem.presentation_id → ItemPresentation
+
+                            if ($purchPres && $purchPres->activo) {
+                                $factor    = (float) $purchPres->capacidad * max((float) $purchPres->factor_conversion, 1.0);
+                                $qtyCompra = $factor > 0 ? $gap / $factor : $gap;
+                                $precio    = (float) $item->purchase_price;
+                            } else {
+                                $cf        = max((float) $item->conversion_factor, 1.0);
+                                $qtyCompra = $gap / $cf;
+                                $precio    = (float) $item->purchase_price;
+                            }
+
                             $faltantes[] = [
                                 'item_id'        => $item->id,
-                                'qty'            => $gap,
-                                'purchase_price' => (float) $item->purchase_price,
+                                'qty'            => $qtyCompra,
+                                'purchase_price' => $precio,
+                                'unidad'         => $purchPres?->nombre ?? $item->purchaseUnit?->nombre ?? '',
                             ];
                         }
                     }
 
                     $hasFaltantes = !empty($faltantes);
 
-                    // Crear orden de compra solo si el toggle está activo y hay faltantes
+                    // Crear orden de compra en borrador si el toggle está activo y hay faltantes
+                    // La contabilidad solo se activa al confirmar desde el módulo de Compras
                     if ($crearCompra && $hasFaltantes) {
+                        $notaItems = collect($faltantes)
+                            ->map(fn ($f) => number_format($f['qty'], 2) . ' ' . $f['unidad'])
+                            ->implode(', ');
                         $purchase = Purchase::create([
                             'empresa_id' => $empresaId,
                             'date'       => $fechaInicio->toDateString(),
                             'status'     => 'borrador',
                             'tipo_pago'  => 'contado',
                             'forma_pago' => 'efectivo',
-                            'notas'      => "Compra automática — {$descripcion} · {$sim->nombre}",
+                            'notas'      => "Orden de compra automática — {$descripcion} · {$sim->nombre} | Insumos: {$notaItems}",
                         ]);
                         foreach ($faltantes as $f) {
                             PurchaseItem::create([
@@ -353,8 +371,8 @@ class ProduccionPage extends Page
 
                 $this->enviarNotificacion($plan, $sim->nombre, $ordersCreados, $purchaseRefs, $empresa);
 
-                $msg = count($ordersCreados) . ' orden(es) creada(s): ' . implode(', ', $ordersCreados) . '.';
-                if (!empty($purchaseRefs)) $msg .= ' Compras: ' . implode(', ', $purchaseRefs) . '.';
+                $msg = count($ordersCreados) . ' orden(es) de producción creada(s): ' . implode(', ', $ordersCreados) . '.';
+                if (!empty($purchaseRefs)) $msg .= ' Órdenes de compra en borrador: ' . implode(', ', $purchaseRefs) . '. Confírmalas en el módulo de Compras para registrar el movimiento contable.';
 
                 Notification::make()
                     ->title('Producción configurada')

@@ -110,4 +110,28 @@ class ProductionOrder extends Model
     {
         return $query->where('estado', 'completado');
     }
+
+    /**
+     * Revisa todas las órdenes en 'abastecimiento' de una empresa y las libera
+     * a 'borrador' si todos sus materiales ya tienen stock suficiente.
+     */
+    public static function liberarAbastecimiento(int $empresaId): void
+    {
+        $ordenes = static::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)
+            ->where('estado', 'abastecimiento')
+            ->with('materials.inventoryItem')
+            ->get();
+
+        foreach ($ordenes as $orden) {
+            $todosDisponibles = $orden->materials->every(
+                fn ($m) => $m->inventoryItem
+                    && (float) $m->inventoryItem->stock_actual >= (float) $m->cantidad_consumida
+            );
+
+            if ($todosDisponibles) {
+                $orden->updateQuietly(['estado' => 'borrador']);
+            }
+        }
+    }
 }

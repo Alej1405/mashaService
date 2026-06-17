@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\ProductionOrder;
 use App\Models\Purchase;
 use App\Models\InventoryMovement;
 use App\Services\AccountingService;
@@ -29,6 +30,9 @@ class PurchaseObserver
                 'confirmado_por'   => auth()->id(),
                 'confirmado_at'    => now(),
             ]);
+
+            // Liberar etapas de producción bloqueadas si el stock ya es suficiente
+            ProductionOrder::liberarAbastecimiento($purchase->empresa_id);
 
             // --- Lógica de Tesorería ---
             if ($purchase->forma_pago === 'efectivo' && $purchase->cash_register_id) {
