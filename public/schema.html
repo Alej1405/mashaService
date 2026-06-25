@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mashaec ERP — Diseño Lógico de Base de Datos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:      oklch(0.13 0.012 250);
+    --surface: oklch(0.17 0.012 250);
+    --border:  oklch(0.24 0.012 250);
+    --ink:     oklch(0.92 0.008 250);
+    --muted:   oklch(0.58 0.010 250);
+    --radius:  8px;
+    --z-sticky: 10;
+    --z-tooltip: 50;
+
+    /* Escala tipográfica — ratio 1.35× entre niveles */
+    --t-xl:   1.35rem;   /* títulos de módulo            */
+    --t-base: 0.82rem;   /* nav, search, subtítulos      */
+    --t-sm:   0.72rem;   /* nombres de tabla (mono)      */
+    --t-xs:   0.61rem;   /* columnas, badges, contadores */
+
+    /* Módulos */
+    --c-infra:   oklch(0.60 0.08 250);
+    --c-empresa: oklch(0.65 0.14 200);
+    --c-perms:   oklch(0.62 0.13 300);
+    --c-account: oklch(0.72 0.14 80);
+    --c-treasury:oklch(0.68 0.14 160);
+    --c-journal: oklch(0.65 0.14 145);
+    --c-supplier:oklch(0.70 0.14 50);
+    --c-warehouse:oklch(0.65 0.13 185);
+    --c-inventory:oklch(0.65 0.13 195);
+    --c-purchases:oklch(0.65 0.14 25);
+    --c-sales:   oklch(0.65 0.14 290);
+    --c-debts:   oklch(0.62 0.14 10);
+    --c-design:  oklch(0.62 0.14 310);
+    --c-mfg:     oklch(0.68 0.13 220);
+    --c-service: oklch(0.63 0.14 260);
+    --c-store:   oklch(0.65 0.14 330);
+    --c-logistics:oklch(0.70 0.13 120);
+    --c-mailing: oklch(0.72 0.14 70);
+    --c-cms:     oklch(0.67 0.12 240);
+    --c-saas:    oklch(0.60 0.10 270);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 56px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ─────────────────────────────────────────────── */
+  header {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+  }
+
+  .header-logo {
+    font-weight: 700;
+    font-size: var(--t-base);
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .header-logo span {
+    color: oklch(0.72 0.18 200);
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 20px;
+    margin-left: auto;
+  }
+  .header-stat {
+    font-size: var(--t-xs);
+    color: var(--muted);
+  }
+  .header-stat strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  #search {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 12px;
+    color: var(--ink);
+    font-size: var(--t-base);
+    width: 220px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  #search:focus { outline: none; border-color: oklch(0.72 0.18 200); }
+  #search::placeholder { color: var(--muted); }
+
+  /* ── SIDEBAR ─────────────────────────────────────────────── */
+  nav {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 0;
+    position: sticky;
+    top: 56px;
+    height: calc(100vh - 56px);
+  }
+
+  .nav-section-label {
+    padding: 4px 16px 2px;
+    font-size: var(--t-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    font-size: var(--t-base);
+    color: var(--muted);
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: 0;
+    transition: color 0.1s, background 0.1s;
+  }
+  .nav-item:hover { color: var(--ink); background: oklch(0.20 0.012 250); }
+  .nav-item.active { color: var(--ink); background: oklch(0.21 0.015 250); }
+  .nav-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .nav-count {
+    margin-left: auto;
+    font-size: var(--t-xs);
+    color: oklch(0.45 0.01 250);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── MAIN ─────────────────────────────────────────────────── */
+  main {
+    overflow-y: auto;
+    padding: 32px 32px 64px;
+  }
+
+  /* ── MÓDULO ───────────────────────────────────────────────── */
+  .module {
+    margin-bottom: 48px;
+  }
+
+  .module-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .module-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .module-title {
+    font-size: var(--t-xl);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+
+  .module-subtitle {
+    font-size: var(--t-xs);
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  .tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  /* ── TABLE CARD ───────────────────────────────────────────── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+    will-change: transform;
+  }
+  .table-card:hover {
+    border-color: oklch(0.35 0.015 250);
+    transform: translateY(-1px);
+  }
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-accent {
+    width: 3px;
+    height: 16px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .table-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--t-sm);
+    font-weight: 500;
+    color: var(--ink);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .table-col-count {
+    font-size: var(--t-xs);
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .table-body {
+    padding: 6px 0;
+  }
+
+  .col-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px;
+    font-size: var(--t-xs);
+    min-height: 22px;
+  }
+  .col-row:hover { background: oklch(0.20 0.012 250); }
+
+  .col-badge {
+    font-size: var(--t-xs);
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+    width: 20px;
+    text-align: center;
+  }
+  .badge-pk {
+    background: oklch(0.72 0.18 80 / 0.2);
+    color: oklch(0.85 0.18 80);
+  }
+  .badge-fk {
+    background: oklch(0.55 0.18 240 / 0.25);
+    color: oklch(0.75 0.16 240);
+  }
+  .badge-empty { visibility: hidden; }
+
+  .col-name {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--ink);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .col-name.is-pk { color: oklch(0.85 0.18 80); }
+  .col-name.is-fk { color: oklch(0.75 0.16 240); }
+  .col-name.is-nullable { color: var(--muted); }
+
+  .col-type {
+    color: oklch(0.50 0.01 250);
+    font-size: 0.62rem;
+    font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fk-target {
+    position: relative;
+  }
+  .fk-target:hover .fk-tooltip {
+    display: block;
+  }
+  .fk-tooltip {
+    display: none;
+    position: fixed;
+    background: oklch(0.22 0.015 250);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 0.65rem;
+    color: var(--ink);
+    z-index: var(--z-tooltip);
+    white-space: nowrap;
+    pointer-events: none;
+    font-family: 'JetBrains Mono', monospace;
+    transform: translateY(-120%);
+    left: 50%;
+    transform: translate(-50%, -110%);
+  }
+
+  /* ── LEGEND ─────────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  /* ── HIDDEN ───────────────────────────────────────────────── */
+  .module.hidden, .table-card.hidden { display: none; }
+
+  /* ── SCROLLBAR ────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .table-card { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">Mashaec <span>ERP</span> — Diseño Lógico</div>
+  <input type="text" id="search" placeholder="Buscar tabla o columna…" autocomplete="off">
+  <div class="header-stats">
+    <div class="header-stat"><strong>20</strong> módulos</div>
+    <div class="header-stat"><strong>98</strong> tablas</div>
+    <div class="header-stat"><strong>PostgreSQL 17</strong></div>
+  </div>
+</header>
+
+<nav id="nav"></nav>
+<main id="main"></main>
+
+<script>
+const MODULES = [
+  {
+    id: 'infra', label: 'Infraestructura', color: 'var(--c-infra)',
+    desc: 'Usuarios, sesiones, caché, colas, tokens',
+    tables: {
+      users: [
+        {n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'email',t:'varchar'},{n:'password',t:'varchar'},{n:'last_login_at',t:'timestamp'},{n:'remember_token',t:'varchar',null:true},{n:'email_verified_at',t:'timestamp',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}
+      ],
+      sessions: [
+        {n:'id',t:'varchar',pk:true},{n:'user_id',t:'bigint',fk:'users',null:true},{n:'ip_address',t:'varchar',null:true},{n:'user_agent',t:'text',null:true},{n:'payload',t:'text'},{n:'last_activity',t:'integer'}
+      ],
+      cache: [{n:'key',t:'varchar',pk:true},{n:'value',t:'text'},{n:'expiration',t:'integer'}],
+      cache_locks: [{n:'key',t:'varchar',pk:true},{n:'owner',t:'varchar'},{n:'expiration',t:'integer'}],
+      jobs: [{n:'id',t:'bigint',pk:true},{n:'queue',t:'varchar'},{n:'payload',t:'text'},{n:'attempts',t:'smallint'},{n:'reserved_at',t:'integer',null:true},{n:'available_at',t:'integer'},{n:'created_at',t:'integer'}],
+      job_batches: [{n:'id',t:'varchar',pk:true},{n:'name',t:'varchar'},{n:'total_jobs',t:'integer'},{n:'pending_jobs',t:'integer'},{n:'failed_jobs',t:'integer'},{n:'failed_job_ids',t:'text'},{n:'options',t:'text',null:true},{n:'cancelled_at',t:'integer',null:true},{n:'created_at',t:'integer'},{n:'finished_at',t:'integer',null:true}],
+      failed_jobs: [{n:'id',t:'bigint',pk:true},{n:'uuid',t:'varchar'},{n:'connection',t:'text'},{n:'queue',t:'text'},{n:'payload',t:'text'},{n:'exception',t:'text'},{n:'failed_at',t:'timestamp'}],
+      personal_access_tokens: [{n:'id',t:'bigint',pk:true},{n:'tokenable_type',t:'varchar'},{n:'tokenable_id',t:'bigint'},{n:'name',t:'varchar'},{n:'token',t:'varchar'},{n:'abilities',t:'text',null:true},{n:'last_used_at',t:'timestamp',null:true},{n:'expires_at',t:'timestamp',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'empresa', label: 'Empresas', color: 'var(--c-empresa)',
+    desc: 'Multitenant — registro y configuración de empresas',
+    tables: {
+      empresas: [
+        {n:'id',t:'bigint',pk:true},{n:'name',t:'varchar'},{n:'ruc',t:'varchar'},{n:'email',t:'varchar',null:true},{n:'phone',t:'varchar',null:true},{n:'address',t:'text',null:true},{n:'logo',t:'varchar',null:true},{n:'plan',t:'varchar'},{n:'active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}
+      ]
+    }
+  },
+  {
+    id: 'perms', label: 'Permisos', color: 'var(--c-perms)',
+    desc: 'Control de acceso basado en roles (Spatie)',
+    tables: {
+      permissions: [{n:'id',t:'bigint',pk:true},{n:'name',t:'varchar'},{n:'guard_name',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      roles: [{n:'id',t:'bigint',pk:true},{n:'name',t:'varchar'},{n:'guard_name',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      model_has_permissions: [{n:'permission_id',t:'bigint',pk:true,fk:'permissions'},{n:'model_type',t:'varchar',pk:true},{n:'model_id',t:'bigint',pk:true}],
+      model_has_roles: [{n:'role_id',t:'bigint',pk:true,fk:'roles'},{n:'model_type',t:'varchar',pk:true},{n:'model_id',t:'bigint',pk:true}],
+      role_has_permissions: [{n:'permission_id',t:'bigint',pk:true,fk:'permissions'},{n:'role_id',t:'bigint',pk:true,fk:'roles'}]
+    }
+  },
+  {
+    id: 'account', label: 'Contabilidad', color: 'var(--c-account)',
+    desc: 'Plan de cuentas y mapeo contable',
+    tables: {
+      account_plans: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas',null:true},{n:'code',t:'varchar'},{n:'name',t:'varchar'},{n:'type',t:'varchar'},{n:'nature',t:'varchar'},{n:'parent_code',t:'varchar',null:true},{n:'level',t:'integer'},{n:'accepts_movements',t:'boolean'},{n:'modulo',t:'varchar',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      accounting_maps: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas',null:true},{n:'tipo_item',t:'varchar'},{n:'tipo_movimiento',t:'varchar'},{n:'account_plan_id',t:'bigint',fk:'account_plans'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'treasury', label: 'Tesorería', color: 'var(--c-treasury)',
+    desc: 'Bancos, cuentas bancarias, cajas, tarjetas',
+    tables: {
+      banks: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'code',t:'varchar',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      bank_accounts: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'bank_id',t:'bigint',fk:'banks'},{n:'account_number',t:'varchar'},{n:'account_type',t:'varchar'},{n:'currency',t:'varchar'},{n:'balance',t:'numeric'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cash_registers: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'balance',t:'numeric'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      credit_cards: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'bank_id',t:'bigint',fk:'banks'},{n:'card_name',t:'varchar'},{n:'last_four',t:'varchar',null:true},{n:'credit_limit',t:'numeric'},{n:'cut_day',t:'integer'},{n:'pay_day',t:'integer'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'journal', label: 'Diario Contable', color: 'var(--c-journal)',
+    desc: 'Asientos, sesiones de caja, movimientos',
+    tables: {
+      journal_entries: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'date',t:'date'},{n:'description',t:'text'},{n:'reference',t:'varchar',null:true},{n:'total',t:'numeric'},{n:'created_by',t:'bigint',fk:'users'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      journal_entry_lines: [{n:'id',t:'bigint',pk:true},{n:'journal_entry_id',t:'bigint',fk:'journal_entries'},{n:'account_plan_id',t:'bigint',fk:'account_plans'},{n:'debit',t:'numeric'},{n:'credit',t:'numeric'},{n:'description',t:'text',null:true}],
+      cash_sessions: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'cash_register_id',t:'bigint',fk:'cash_registers'},{n:'user_id',t:'bigint',fk:'users'},{n:'opened_at',t:'timestamp'},{n:'closed_at',t:'timestamp',null:true},{n:'opening_amount',t:'numeric'},{n:'closing_amount',t:'numeric',null:true},{n:'status',t:'varchar'}],
+      cash_movements: [{n:'id',t:'bigint',pk:true},{n:'cash_session_id',t:'bigint',fk:'cash_sessions'},{n:'type',t:'varchar'},{n:'amount',t:'numeric'},{n:'description',t:'text',null:true},{n:'created_at',t:'timestamp'}],
+      credit_card_movements: [{n:'id',t:'bigint',pk:true},{n:'credit_card_id',t:'bigint',fk:'credit_cards'},{n:'date',t:'date'},{n:'description',t:'text'},{n:'amount',t:'numeric'},{n:'type',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'supplier', label: 'Proveedores', color: 'var(--c-supplier)',
+    desc: 'Registro de proveedores',
+    tables: {
+      suppliers: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'ruc',t:'varchar',null:true},{n:'email',t:'varchar',null:true},{n:'phone',t:'varchar',null:true},{n:'address',t:'text',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'warehouse', label: 'Bodegas', color: 'var(--c-warehouse)',
+    desc: 'Almacenes, zonas y ubicaciones',
+    tables: {
+      measurement_units: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'abbreviation',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      almacenes: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'address',t:'text',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      zonas_almacen: [{n:'id',t:'bigint',pk:true},{n:'almacen_id',t:'bigint',fk:'almacenes'},{n:'name',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      ubicaciones_almacen: [{n:'id',t:'bigint',pk:true},{n:'zona_id',t:'bigint',fk:'zonas_almacen'},{n:'code',t:'varchar'},{n:'description',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'inventory', label: 'Inventario', color: 'var(--c-inventory)',
+    desc: 'Ítems, presentaciones, archivos, movimientos',
+    tables: {
+      inventory_items: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'sku',t:'varchar',null:true},{n:'description',t:'text',null:true},{n:'unit_id',t:'bigint',fk:'measurement_units'},{n:'default_presentation_id',t:'bigint',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      item_presentations: [{n:'id',t:'bigint',pk:true},{n:'inventory_item_id',t:'bigint',fk:'inventory_items'},{n:'name',t:'varchar'},{n:'conversion_factor',t:'numeric'},{n:'price',t:'numeric',null:true},{n:'barcode',t:'varchar',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      inventory_item_files: [{n:'id',t:'bigint',pk:true},{n:'inventory_item_id',t:'bigint',fk:'inventory_items'},{n:'path',t:'varchar'},{n:'type',t:'varchar'},{n:'created_at',t:'timestamp'}],
+      inventory_movements: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'inventory_item_id',t:'bigint',fk:'inventory_items'},{n:'almacen_id',t:'bigint',fk:'almacenes'},{n:'ubicacion_id',t:'bigint',fk:'ubicaciones_almacen',null:true},{n:'type',t:'varchar'},{n:'quantity',t:'numeric'},{n:'unit_cost',t:'numeric',null:true},{n:'reference',t:'varchar',null:true},{n:'created_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'purchases', label: 'Compras', color: 'var(--c-purchases)',
+    desc: 'Órdenes de compra y sus ítems',
+    tables: {
+      purchases: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'supplier_id',t:'bigint',fk:'suppliers'},{n:'date',t:'date'},{n:'invoice_number',t:'varchar',null:true},{n:'subtotal',t:'numeric'},{n:'tax',t:'numeric'},{n:'total',t:'numeric'},{n:'status',t:'varchar'},{n:'notes',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      purchase_items: [{n:'id',t:'bigint',pk:true},{n:'purchase_id',t:'bigint',fk:'purchases'},{n:'inventory_item_id',t:'bigint',fk:'inventory_items'},{n:'presentation_id',t:'bigint',fk:'item_presentations',null:true},{n:'quantity',t:'numeric'},{n:'unit_price',t:'numeric'},{n:'subtotal',t:'numeric'}]
+    }
+  },
+  {
+    id: 'sales', label: 'Ventas', color: 'var(--c-sales)',
+    desc: 'Clientes, ventas y ítems de venta',
+    tables: {
+      customers: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'identification',t:'varchar',null:true},{n:'email',t:'varchar',null:true},{n:'phone',t:'varchar',null:true},{n:'address',t:'text',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      sales: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'customer_id',t:'bigint',fk:'customers',null:true},{n:'cash_session_id',t:'bigint',fk:'cash_sessions',null:true},{n:'date',t:'date'},{n:'invoice_number',t:'varchar',null:true},{n:'subtotal',t:'numeric'},{n:'tax',t:'numeric'},{n:'discount',t:'numeric'},{n:'total',t:'numeric'},{n:'status',t:'varchar'},{n:'payment_method',t:'varchar'},{n:'notes',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      sale_items: [{n:'id',t:'bigint',pk:true},{n:'sale_id',t:'bigint',fk:'sales'},{n:'inventory_item_id',t:'bigint',fk:'inventory_items',null:true},{n:'presentation_id',t:'bigint',fk:'item_presentations',null:true},{n:'description',t:'varchar'},{n:'quantity',t:'numeric'},{n:'unit_price',t:'numeric'},{n:'discount',t:'numeric'},{n:'subtotal',t:'numeric'}]
+    }
+  },
+  {
+    id: 'debts', label: 'Deudas', color: 'var(--c-debts)',
+    desc: 'Créditos, amortizaciones y pagos',
+    tables: {
+      debts: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'type',t:'varchar'},{n:'supplier_id',t:'bigint',fk:'suppliers',null:true},{n:'customer_id',t:'bigint',fk:'customers',null:true},{n:'reference_id',t:'bigint',null:true},{n:'reference_type',t:'varchar',null:true},{n:'amount',t:'numeric'},{n:'balance',t:'numeric'},{n:'due_date',t:'date',null:true},{n:'status',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      debt_amortization_lines: [{n:'id',t:'bigint',pk:true},{n:'debt_id',t:'bigint',fk:'debts'},{n:'installment',t:'integer'},{n:'due_date',t:'date'},{n:'amount',t:'numeric'},{n:'paid',t:'numeric'},{n:'balance',t:'numeric'},{n:'status',t:'varchar'}],
+      debt_payments: [{n:'id',t:'bigint',pk:true},{n:'debt_id',t:'bigint',fk:'debts'},{n:'amount',t:'numeric'},{n:'payment_date',t:'date'},{n:'payment_method',t:'varchar'},{n:'reference',t:'varchar',null:true},{n:'notes',t:'text',null:true},{n:'created_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'design', label: 'Diseño de Productos', color: 'var(--c-design)',
+    desc: 'Fichas técnicas, fórmulas, costos, simulaciones',
+    tables: {
+      store_categories: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'slug',t:'varchar'},{n:'parent_id',t:'bigint',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      item_requests: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'type',t:'varchar'},{n:'status',t:'varchar'},{n:'requested_by',t:'bigint',fk:'users'},{n:'notes',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      costos_fijos: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'amount',t:'numeric'},{n:'frequency',t:'varchar'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      product_designs: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'category_id',t:'bigint',fk:'store_categories',null:true},{n:'version',t:'integer'},{n:'status',t:'varchar'},{n:'unit_id',t:'bigint',fk:'measurement_units'},{n:'yield_quantity',t:'numeric'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      product_presentations: [{n:'id',t:'bigint',pk:true},{n:'product_design_id',t:'bigint',fk:'product_designs'},{n:'name',t:'varchar'},{n:'units_per_pack',t:'numeric'},{n:'price',t:'numeric'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      product_formula_lines: [{n:'id',t:'bigint',pk:true},{n:'product_design_id',t:'bigint',fk:'product_designs'},{n:'inventory_item_id',t:'bigint',fk:'inventory_items'},{n:'quantity',t:'numeric'},{n:'unit_id',t:'bigint',fk:'measurement_units'},{n:'waste_percent',t:'numeric'}],
+      product_production_steps: [{n:'id',t:'bigint',pk:true},{n:'product_design_id',t:'bigint',fk:'product_designs'},{n:'order',t:'integer'},{n:'name',t:'varchar'},{n:'description',t:'text',null:true},{n:'duration_minutes',t:'integer',null:true},{n:'cost',t:'numeric'}],
+      product_indirect_costs: [{n:'id',t:'bigint',pk:true},{n:'product_design_id',t:'bigint',fk:'product_designs'},{n:'costo_fijo_id',t:'bigint',fk:'costos_fijos',null:true},{n:'description',t:'varchar'},{n:'amount',t:'numeric'},{n:'allocation_method',t:'varchar'}],
+      product_simulations: [{n:'id',t:'bigint',pk:true},{n:'product_design_id',t:'bigint',fk:'product_designs'},{n:'quantity',t:'numeric'},{n:'cost_materials',t:'numeric'},{n:'cost_labor',t:'numeric'},{n:'cost_indirect',t:'numeric'},{n:'total_cost',t:'numeric'},{n:'unit_cost',t:'numeric'},{n:'margin_percent',t:'numeric'},{n:'suggested_price',t:'numeric'},{n:'created_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'mfg', label: 'Manufactura', color: 'var(--c-mfg)',
+    desc: 'Planes y órdenes de producción',
+    tables: {
+      production_plans: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'start_date',t:'date'},{n:'end_date',t:'date'},{n:'status',t:'varchar'},{n:'notes',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      production_orders: [{n:'id',t:'bigint',pk:true},{n:'production_plan_id',t:'bigint',fk:'production_plans',null:true},{n:'product_design_id',t:'bigint',fk:'product_designs'},{n:'quantity',t:'numeric'},{n:'status',t:'varchar'},{n:'scheduled_date',t:'date',null:true},{n:'completed_at',t:'timestamp',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      production_materials: [{n:'id',t:'bigint',pk:true},{n:'production_order_id',t:'bigint',fk:'production_orders'},{n:'inventory_item_id',t:'bigint',fk:'inventory_items'},{n:'required_quantity',t:'numeric'},{n:'consumed_quantity',t:'numeric'},{n:'unit_id',t:'bigint',fk:'measurement_units'}]
+    }
+  },
+  {
+    id: 'service', label: 'Diseño de Servicios', color: 'var(--c-service)',
+    desc: 'Fichas de servicios, paquetes, simulaciones',
+    tables: {
+      service_designs: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'description',t:'text',null:true},{n:'version',t:'integer'},{n:'status',t:'varchar'},{n:'duration_minutes',t:'integer',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      service_packages: [{n:'id',t:'bigint',pk:true},{n:'service_design_id',t:'bigint',fk:'service_designs'},{n:'name',t:'varchar'},{n:'price',t:'numeric'},{n:'duration_months',t:'integer',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      service_delivery_steps: [{n:'id',t:'bigint',pk:true},{n:'service_design_id',t:'bigint',fk:'service_designs'},{n:'order',t:'integer'},{n:'name',t:'varchar'},{n:'description',t:'text',null:true},{n:'duration_minutes',t:'integer',null:true},{n:'cost',t:'numeric'}],
+      service_indirect_costs: [{n:'id',t:'bigint',pk:true},{n:'service_design_id',t:'bigint',fk:'service_designs'},{n:'description',t:'varchar'},{n:'amount',t:'numeric'},{n:'allocation_method',t:'varchar'}],
+      service_simulations: [{n:'id',t:'bigint',pk:true},{n:'service_design_id',t:'bigint',fk:'service_designs'},{n:'cost_labor',t:'numeric'},{n:'cost_indirect',t:'numeric'},{n:'total_cost',t:'numeric'},{n:'margin_percent',t:'numeric'},{n:'suggested_price',t:'numeric'},{n:'created_at',t:'timestamp'}],
+      service_charge_configs: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'type',t:'varchar'},{n:'amount',t:'numeric'},{n:'frequency',t:'varchar'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      service_package_charge_config: [{n:'id',t:'bigint',pk:true},{n:'service_package_id',t:'bigint',fk:'service_packages'},{n:'charge_config_id',t:'bigint',fk:'service_charge_configs'},{n:'created_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'store', label: 'Tienda', color: 'var(--c-store)',
+    desc: 'Productos, pedidos, cupones, contratos',
+    tables: {
+      store_products: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'product_design_id',t:'bigint',fk:'product_designs',null:true},{n:'presentation_id',t:'bigint',fk:'product_presentations',null:true},{n:'name',t:'varchar'},{n:'slug',t:'varchar'},{n:'category_id',t:'bigint',fk:'store_categories',null:true},{n:'price',t:'numeric'},{n:'stock',t:'numeric'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      store_coupons: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'code',t:'varchar'},{n:'discount_type',t:'varchar'},{n:'discount_value',t:'numeric'},{n:'min_order',t:'numeric',null:true},{n:'max_uses',t:'integer',null:true},{n:'used_count',t:'integer'},{n:'expires_at',t:'timestamp',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      store_orders: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'customer_id',t:'bigint',fk:'customers',null:true},{n:'coupon_id',t:'bigint',fk:'store_coupons',null:true},{n:'address_id',t:'bigint',null:true},{n:'subtotal',t:'numeric'},{n:'discount',t:'numeric'},{n:'shipping',t:'numeric'},{n:'total',t:'numeric'},{n:'status',t:'varchar'},{n:'payment_method',t:'varchar',null:true},{n:'notes',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      store_order_items: [{n:'id',t:'bigint',pk:true},{n:'store_order_id',t:'bigint',fk:'store_orders'},{n:'store_product_id',t:'bigint',fk:'store_products'},{n:'quantity',t:'numeric'},{n:'unit_price',t:'numeric'},{n:'subtotal',t:'numeric'}],
+      store_addresses: [{n:'id',t:'bigint',pk:true},{n:'customer_id',t:'bigint',fk:'customers'},{n:'alias',t:'varchar',null:true},{n:'address',t:'text'},{n:'city',t:'varchar'},{n:'province',t:'varchar'},{n:'zip',t:'varchar',null:true},{n:'is_default',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      store_customer_companies: [{n:'id',t:'bigint',pk:true},{n:'customer_id',t:'bigint',fk:'customers'},{n:'name',t:'varchar'},{n:'ruc',t:'varchar',null:true},{n:'address',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      service_contracts: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'customer_id',t:'bigint',fk:'customers'},{n:'service_package_id',t:'bigint',fk:'service_packages'},{n:'start_date',t:'date'},{n:'end_date',t:'date',null:true},{n:'price',t:'numeric'},{n:'status',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'logistics', label: 'Logística', color: 'var(--c-logistics)',
+    desc: 'Envíos, paquetes, documentos aduaneros',
+    tables: {
+      logistics_bodegas: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'address',t:'text',null:true},{n:'country',t:'varchar'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      logistics_consignatarios: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'identification',t:'varchar',null:true},{n:'email',t:'varchar',null:true},{n:'phone',t:'varchar',null:true},{n:'address',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      logistics_packages: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'tracking_number',t:'varchar',null:true},{n:'weight',t:'numeric',null:true},{n:'volume',t:'numeric',null:true},{n:'status',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      logistics_package_items: [{n:'id',t:'bigint',pk:true},{n:'logistics_package_id',t:'bigint',fk:'logistics_packages'},{n:'description',t:'varchar'},{n:'quantity',t:'numeric'},{n:'unit_value',t:'numeric'}],
+      logistics_shipments: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'bodega_origen_id',t:'bigint',fk:'logistics_bodegas',null:true},{n:'consignatario_id',t:'bigint',fk:'logistics_consignatarios',null:true},{n:'departure_date',t:'date',null:true},{n:'arrival_date',t:'date',null:true},{n:'status',t:'varchar'},{n:'notes',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      logistics_shipment_packages: [{n:'id',t:'bigint',pk:true},{n:'logistics_shipment_id',t:'bigint',fk:'logistics_shipments'},{n:'logistics_package_id',t:'bigint',fk:'logistics_packages'}],
+      logistics_shipment_history: [{n:'id',t:'bigint',pk:true},{n:'logistics_shipment_id',t:'bigint',fk:'logistics_shipments'},{n:'status',t:'varchar'},{n:'notes',t:'text',null:true},{n:'created_by',t:'bigint',fk:'users'},{n:'created_at',t:'timestamp'}],
+      logistics_shipment_charges: [{n:'id',t:'bigint',pk:true},{n:'logistics_shipment_id',t:'bigint',fk:'logistics_shipments'},{n:'description',t:'varchar'},{n:'amount',t:'numeric'},{n:'currency',t:'varchar'},{n:'created_at',t:'timestamp'}],
+      logistics_shipment_bills: [{n:'id',t:'bigint',pk:true},{n:'logistics_shipment_id',t:'bigint',fk:'logistics_shipments'},{n:'bill_number',t:'varchar',null:true},{n:'amount',t:'numeric'},{n:'status',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      logistics_documents: [{n:'id',t:'bigint',pk:true},{n:'logistics_shipment_id',t:'bigint',fk:'logistics_shipments'},{n:'type',t:'varchar'},{n:'path',t:'varchar'},{n:'created_at',t:'timestamp'}],
+      logistics_payment_claims: [{n:'id',t:'bigint',pk:true},{n:'logistics_shipment_id',t:'bigint',fk:'logistics_shipments'},{n:'amount',t:'numeric'},{n:'reason',t:'text',null:true},{n:'status',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      logistics_billing_requests: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'logistics_shipment_id',t:'bigint',fk:'logistics_shipments',null:true},{n:'amount',t:'numeric'},{n:'status',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'mailing', label: 'Mailing', color: 'var(--c-mailing)',
+    desc: 'Plantillas, campañas, contactos, estadísticas',
+    tables: {
+      mail_templates: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'subject',t:'varchar'},{n:'body',t:'text'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      mailing_groups: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'description',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      mailing_contacts: [{n:'id',t:'bigint',pk:true},{n:'mailing_group_id',t:'bigint',fk:'mailing_groups'},{n:'email',t:'varchar'},{n:'name',t:'varchar',null:true},{n:'is_subscribed',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      mail_campaigns: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'mail_template_id',t:'bigint',fk:'mail_templates'},{n:'mailing_group_id',t:'bigint',fk:'mailing_groups',null:true},{n:'name',t:'varchar'},{n:'status',t:'varchar'},{n:'scheduled_at',t:'timestamp',null:true},{n:'sent_at',t:'timestamp',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      mailing_send_log: [{n:'id',t:'bigint',pk:true},{n:'mail_campaign_id',t:'bigint',fk:'mail_campaigns'},{n:'email',t:'varchar'},{n:'status',t:'varchar'},{n:'sent_at',t:'timestamp',null:true},{n:'error',t:'text',null:true}],
+      empresa_mailing_stats: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'month',t:'date'},{n:'sent_count',t:'integer'},{n:'open_count',t:'integer'},{n:'click_count',t:'integer'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'cms', label: 'CMS', color: 'var(--c-cms)',
+    desc: 'Sitio web, blog, portafolio, carta de presentación',
+    tables: {
+      cms_heroes: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'headline',t:'varchar'},{n:'subheadline',t:'text',null:true},{n:'cta_text',t:'varchar',null:true},{n:'cta_url',t:'varchar',null:true},{n:'image',t:'varchar',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_abouts: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'title',t:'varchar'},{n:'content',t:'text'},{n:'image',t:'varchar',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_contacts: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'email',t:'varchar',null:true},{n:'phone',t:'varchar',null:true},{n:'address',t:'text',null:true},{n:'map_embed',t:'text',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_services: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'title',t:'varchar'},{n:'description',t:'text'},{n:'icon',t:'varchar',null:true},{n:'order',t:'integer'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_team_members: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'position',t:'varchar'},{n:'bio',t:'text',null:true},{n:'photo',t:'varchar',null:true},{n:'order',t:'integer'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_client_logos: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'name',t:'varchar'},{n:'logo',t:'varchar'},{n:'url',t:'varchar',null:true},{n:'order',t:'integer'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_testimonials: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'author',t:'varchar'},{n:'position',t:'varchar',null:true},{n:'content',t:'text'},{n:'rating',t:'integer',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_faqs: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'question',t:'varchar'},{n:'answer',t:'text'},{n:'order',t:'integer'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_posts: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'title',t:'varchar'},{n:'slug',t:'varchar'},{n:'excerpt',t:'text',null:true},{n:'content',t:'text'},{n:'cover',t:'varchar',null:true},{n:'author_id',t:'bigint',fk:'users'},{n:'published_at',t:'timestamp',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_terminos: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'title',t:'varchar'},{n:'content',t:'text'},{n:'type',t:'varchar'},{n:'version',t:'varchar',null:true},{n:'published_at',t:'timestamp',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      cms_products: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'store_product_id',t:'bigint',fk:'store_products',null:true},{n:'title',t:'varchar'},{n:'description',t:'text'},{n:'images',t:'json',null:true},{n:'is_featured',t:'boolean'},{n:'order',t:'integer'},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      carta_presentaciones: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'recipient_name',t:'varchar'},{n:'recipient_company',t:'varchar',null:true},{n:'content',t:'text'},{n:'signature',t:'varchar',null:true},{n:'sent_at',t:'timestamp',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}]
+    }
+  },
+  {
+    id: 'saas', label: 'Soporte & SaaS', color: 'var(--c-saas)',
+    desc: 'Tickets, chat, planes, facturación, eventos',
+    tables: {
+      support_tickets: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'user_id',t:'bigint',fk:'users'},{n:'subject',t:'varchar'},{n:'status',t:'varchar'},{n:'priority',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      support_chats: [{n:'id',t:'bigint',pk:true},{n:'support_ticket_id',t:'bigint',fk:'support_tickets',null:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'user_id',t:'bigint',fk:'users'},{n:'status',t:'varchar'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      support_messages: [{n:'id',t:'bigint',pk:true},{n:'support_chat_id',t:'bigint',fk:'support_chats'},{n:'sender_id',t:'bigint',fk:'users'},{n:'body',t:'text'},{n:'created_at',t:'timestamp'}],
+      service_plans: [{n:'id',t:'bigint',pk:true},{n:'name',t:'varchar'},{n:'slug',t:'varchar'},{n:'price_monthly',t:'numeric'},{n:'price_annual',t:'numeric'},{n:'features',t:'json',null:true},{n:'is_active',t:'boolean'},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      service_invoices: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'service_plan_id',t:'bigint',fk:'service_plans'},{n:'amount',t:'numeric'},{n:'period_start',t:'date'},{n:'period_end',t:'date'},{n:'status',t:'varchar'},{n:'paid_at',t:'timestamp',null:true},{n:'created_at',t:'timestamp'},{n:'updated_at',t:'timestamp'}],
+      system_events: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas',null:true},{n:'user_id',t:'bigint',fk:'users',null:true},{n:'type',t:'varchar'},{n:'payload',t:'json',null:true},{n:'created_at',t:'timestamp'}],
+      empresa_user_access: [{n:'id',t:'bigint',pk:true},{n:'empresa_id',t:'bigint',fk:'empresas'},{n:'user_id',t:'bigint',fk:'users'},{n:'role',t:'varchar'},{n:'granted_at',t:'timestamp'},{n:'revoked_at',t:'timestamp',null:true}]
+    }
+  }
+];
+
+function shortType(t) {
+  const map = {
+    'bigint':'int8','integer':'int4','smallint':'int2','numeric':'decimal',
+    'character varying':'varchar','text':'text','boolean':'bool',
+    'timestamp without time zone':'timestamp','timestamp with time zone':'timestamptz',
+    'date':'date','json':'json','jsonb':'jsonb','uuid':'uuid'
+  };
+  return map[t] || t;
+}
+
+function buildNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = '<div class="nav-section-label">Módulos</div>' +
+    MODULES.map(m => {
+      const count = Object.keys(m.tables).length;
+      return `<a class="nav-item" href="#mod-${m.id}" data-id="${m.id}">
+        <span class="nav-dot" style="background:${m.color}"></span>
+        ${m.label}
+        <span class="nav-count">${count}</span>
+      </a>`;
+    }).join('');
+}
+
+function buildMain() {
+  const main = document.getElementById('main');
+  let totalTables = 0;
+
+  main.innerHTML = `
+    <div class="legend">
+      <div class="legend-item"><span class="col-badge badge-pk">PK</span> Llave primaria</div>
+      <div class="legend-item"><span class="col-badge badge-fk">FK</span> Llave foránea</div>
+      <div class="legend-item" style="color:oklch(0.85 0.18 80);font-family:'JetBrains Mono',monospace;font-size:0.68rem;">campo</div>
+      <div class="legend-item" style="color:oklch(0.50 0.01 250);font-family:'JetBrains Mono',monospace;font-size:0.68rem;">nullable</div>
+      <div class="legend-item"><span style="font-size:0.68rem;color:var(--muted)">tipo</span> tipo de dato</div>
+    </div>` +
+    MODULES.map(m => {
+      const tableNames = Object.keys(m.tables);
+      totalTables += tableNames.length;
+      const cards = tableNames.map(tname => {
+        const cols = m.tables[tname];
+        const rows = cols.map(col => {
+          const isPk = !!col.pk;
+          const isFk = !!col.fk;
+          const isNull = !!col.null;
+          let badgeHtml = '';
+          if (isPk) badgeHtml = `<span class="col-badge badge-pk">PK</span>`;
+          else if (isFk) badgeHtml = `<span class="col-badge badge-fk">FK</span>`;
+          else badgeHtml = `<span class="col-badge badge-empty">--</span>`;
+
+          const nameClass = isPk ? 'col-name is-pk' : isFk ? 'col-name is-fk' : isNull ? 'col-name is-nullable' : 'col-name';
+          const fkTitle = isFk ? ` title="→ ${col.fk}"` : '';
+
+          return `<div class="col-row"${fkTitle}>${badgeHtml}<span class="${nameClass}">${col.n}</span><span class="col-type">${shortType(col.t)}</span></div>`;
+        }).join('');
+
+        return `<div class="table-card" data-table="${tname}">
+          <div class="table-header">
+            <span class="table-accent" style="background:${m.color}"></span>
+            <span class="table-name">${tname}</span>
+            <span class="table-col-count">${cols.length} cols</span>
+          </div>
+          <div class="table-body">${rows}</div>
+        </div>`;
+      }).join('');
+
+      return `<section class="module" id="mod-${m.id}" data-module="${m.id}">
+        <div class="module-header">
+          <span class="module-dot" style="background:${m.color}"></span>
+          <h2 class="module-title">${m.label}</h2>
+          <span class="module-subtitle">${m.desc} · ${tableNames.length} tabla${tableNames.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="tables-grid">${cards}</div>
+      </section>`;
+    }).join('');
+}
+
+function initSearch() {
+  const input = document.getElementById('search');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    document.querySelectorAll('.module').forEach(mod => {
+      let anyVisible = false;
+      mod.querySelectorAll('.table-card').forEach(card => {
+        if (!q) { card.classList.remove('hidden'); anyVisible = true; return; }
+        const tableName = card.dataset.table;
+        const colNames = Array.from(card.querySelectorAll('.col-name')).map(el => el.textContent.toLowerCase());
+        const match = tableName.includes(q) || colNames.some(c => c.includes(q));
+        card.classList.toggle('hidden', !match);
+        if (match) anyVisible = true;
+      });
+      mod.classList.toggle('hidden', !anyVisible && !!q);
+    });
+  });
+}
+
+function initNavActive() {
+  const items = document.querySelectorAll('.nav-item');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id.replace('mod-', '');
+        items.forEach(i => i.classList.toggle('active', i.dataset.id === id));
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+
+  document.querySelectorAll('.module').forEach(el => observer.observe(el));
+}
+
+buildNav();
+buildMain();
+initSearch();
+initNavActive();
+</script>
+</body>
+</html>

@@ -16,25 +16,29 @@ class Empresa extends Model implements HasName
     protected $fillable = [
         'name', 'email', 'website_url', 'slug', 'activo',
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
-        // Plan de suscripción
         'plan',
         'servicio_mailing_activo',
         'servicio_cms_activo',
-        // Credenciales del servicio de correo (por empresa)
+        'tipo_operacion_productos', 'tipo_operacion_servicios', 'tipo_operacion_manufactura',
+        'tiene_logistica', 'tiene_comercio_exterior',
         'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
-        // Cuota de envíos
         'mailing_monthly_limit', 'mailing_billing_day',
-        // Logo de la empresa
         'logo_path',
-        // Credenciales SMTP personalizadas (por empresa)
         'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password',
         'smtp_encryption', 'smtp_from_email', 'smtp_from_name',
+        'features',
     ];
 
     protected $casts = [
-        'smtp_port'               => 'integer',
-        'servicio_mailing_activo' => 'boolean',
-        'servicio_cms_activo'     => 'boolean',
+        'smtp_port'                  => 'integer',
+        'servicio_mailing_activo'    => 'boolean',
+        'servicio_cms_activo'        => 'boolean',
+        'tipo_operacion_productos'   => 'boolean',
+        'tipo_operacion_servicios'   => 'boolean',
+        'tipo_operacion_manufactura' => 'boolean',
+        'tiene_logistica'            => 'boolean',
+        'tiene_comercio_exterior'    => 'boolean',
+        'features'                   => 'array',
     ];
 
     protected static function booted(): void
@@ -46,6 +50,11 @@ class Empresa extends Model implements HasName
         });
     }
 
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
     public static function getTenantRouteKeyName(): string
     {
         return 'slug';
@@ -54,6 +63,45 @@ class Empresa extends Model implements HasName
     public function getFilamentName(): string
     {
         return $this->name;
+    }
+
+    /**
+     * Lee un feature usando dot-notation: 'marketing.cms.hero'
+     * Funciona con el array JSONB casted + data_get de Laravel.
+     */
+    public function hasFeature(string $key): bool
+    {
+        return data_get($this->features ?? [], $key, false) === true;
+    }
+
+    /**
+     * Retorna 'complete' | 'partial' | 'off' para un módulo.
+     * Opera en memoria (el array ya está cargado por el cast), sin queries.
+     */
+    public function moduleStatus(string $module): string
+    {
+        $featureKeys = array_keys(config("erp_features.{$module}.features", []));
+        if (empty($featureKeys)) {
+            return data_get($this->features ?? [], "{$module}.activo", false) ? 'complete' : 'off';
+        }
+
+        $active = collect($featureKeys)
+            ->filter(fn ($k) => $this->hasFeature("{$module}.{$k}"))
+            ->count();
+
+        if ($active === 0) return 'off';
+        if ($active === count($featureKeys)) return 'complete';
+        return 'partial';
+    }
+
+    /**
+     * Cuenta cuántos módulos están activos (activo = true).
+     */
+    public function activeModulesCount(): int
+    {
+        return collect(array_keys(config('erp_features', [])))
+            ->filter(fn ($m) => $this->hasFeature("{$m}.activo"))
+            ->count();
     }
 
     public function users(): HasMany
@@ -178,6 +226,21 @@ class Empresa extends Model implements HasName
     public function mailTemplates(): HasMany
     {
         return $this->hasMany(\App\Models\MailTemplate::class, 'empresa_id');
+    }
+
+    public function cmsHeroes(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsHero::class, 'empresa_id');
+    }
+
+    public function cmsAbouts(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsAbout::class, 'empresa_id');
+    }
+
+    public function cmsContacts(): HasMany
+    {
+        return $this->hasMany(\App\Models\CmsContact::class, 'empresa_id');
     }
 
     public function cmsTeamMembers(): HasMany

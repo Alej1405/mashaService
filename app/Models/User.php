@@ -32,9 +32,25 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
         return array_keys(array_filter(self::PLAN_LEVELS, fn($l) => $l >= $min));
     }
 
+    /** Paneles que usan roles de acceso en lugar de niveles de plan. */
+    private const ROLE_BASED_PANELS = [
+        'cms'        => ['admin_empresa', 'marketing', 'cms_editor'],
+        'ecommerce'  => ['admin_empresa', 'ecommerce_manager'],
+    ];
+
     public function getTenants(Panel $panel): Collection
     {
-        $eligible = $this->eligiblePlans($panel->getId());
+        $panelId = $panel->getId();
+
+        // Paneles basados en roles: retornar todas las empresas activas a las que el usuario tenga acceso
+        if (isset(self::ROLE_BASED_PANELS[$panelId])) {
+            if ($this->hasRole('super_admin')) {
+                return Empresa::where('activo', true)->get();
+            }
+            return $this->empresasAcceso()->where('activo', true)->get();
+        }
+
+        $eligible = $this->eligiblePlans($panelId);
 
         if ($this->hasRole('super_admin')) {
             return Empresa::where('activo', true)->whereIn('plan', $eligible)->get();
@@ -48,8 +64,16 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
 
     public function canAccessTenant(Model $tenant): bool
     {
+        $segment = request()->segment(1) ?? '';
+
+        // Paneles basados en roles (cms, store)
+        if (isset(self::ROLE_BASED_PANELS[$segment]) || $segment === 'store') {
+            if (! $tenant->activo) return false;
+            if ($this->hasRole('super_admin')) return true;
+            return $this->empresasAcceso()->where('empresas.id', $tenant->id)->exists();
+        }
+
         $pathToLevel = ['app' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
-        $segment     = request()->segment(1) ?? '';
         $panelLevel  = $pathToLevel[$segment] ?? 1;
         $tenantLevel = self::PLAN_LEVELS[$tenant->plan ?? 'basic'] ?? 1;
 
@@ -78,8 +102,18 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
             return true;
         }
 
-        $panelMap     = ['basic' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
-        $panelLevel   = $panelMap[$panelId] ?? 99;
+        // Paneles cms y ecommerce: basado en roles del pivot
+        if (isset(self::ROLE_BASED_PANELS[$panelId])) {
+            $allowedRoles = self::ROLE_BASED_PANELS[$panelId];
+            return $this->empresasAcceso()
+                ->where('activo', true)
+                ->wherePivotIn('rol', $allowedRoles)
+                ->exists()
+                || $this->empresa()->where('activo', true)->exists();
+        }
+
+        $panelMap      = ['basic' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
+        $panelLevel    = $panelMap[$panelId] ?? 99;
         $eligiblePlans = array_keys(array_filter(
             self::PLAN_LEVELS,
             fn ($l) => $l >= $panelLevel
@@ -93,7 +127,18 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
 
     public function getDefaultTenant(Panel $panel): ?Model
     {
-        $eligible = $this->eligiblePlans($panel->getId());
+        $panelId = $panel->getId();
+
+        // Paneles basados en roles
+        if (isset(self::ROLE_BASED_PANELS[$panelId])) {
+            if ($this->hasRole('super_admin')) {
+                return $this->empresa ?? Empresa::where('activo', true)->first();
+            }
+            return $this->empresa?->activo ? $this->empresa
+                : $this->empresasAcceso()->where('activo', true)->first();
+        }
+
+        $eligible = $this->eligiblePlans($panelId);
 
         if ($this->hasRole('super_admin')) {
             return $this->empresa

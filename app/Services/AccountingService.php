@@ -23,10 +23,10 @@ class AccountingService
 
         return match ($formaPago) {
             'efectivo'      => $model->cashRegister?->accountPlan 
-                               ?? AccountPlan::where('empresa_id', $empresaId)->where('code', '1.1.01.01')->first(),
+                                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', '1.1.01.01')->first(),
             'transferencia',
             'cheque'        => $model->bankAccount?->accountPlan 
-                               ?? AccountPlan::where('empresa_id', $empresaId)->where('code', '1.1.01.03')->first(),
+                                ?? AccountPlan::where('empresa_id', $empresaId)->where('code', '1.1.01.03')->first(),
             'tarjeta'       => $model instanceof \App\Models\Purchase 
                                 ? ($model->creditCard?->accountPlan ?? $model->bankAccount?->accountPlan)
                                 : ($model->bankAccount?->accountPlan ?? $model->cashRegister?->accountPlan), 
@@ -34,7 +34,7 @@ class AccountingService
                                 $empresaId, 
                                 'global', 
                                 $model instanceof \App\Models\Sale ? 'venta_credito' : 'compra_credito_local'
-                               ),
+                                ),
             default         => null,
         };
     }

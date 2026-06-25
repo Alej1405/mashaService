@@ -13,14 +13,22 @@ class RolesAndPermissionsSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Create core roles
-        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
-        $admin      = Role::firstOrCreate(['name' => 'admin_empresa']);
-        $contador   = Role::firstOrCreate(['name' => 'contador']);
-        $inventario = Role::firstOrCreate(['name' => 'inventario']);
-        $marketing  = Role::firstOrCreate(['name' => 'marketing']);
+        $superAdmin        = Role::firstOrCreate(['name' => 'super_admin']);
+        $admin             = Role::firstOrCreate(['name' => 'admin_empresa']);
+        $contador          = Role::firstOrCreate(['name' => 'contador']);
+        $inventario        = Role::firstOrCreate(['name' => 'inventario']);
+        $marketing         = Role::firstOrCreate(['name' => 'marketing']);
+        $cmsEditor         = Role::firstOrCreate(['name' => 'cms_editor']);
+        $ecommerceManager  = Role::firstOrCreate(['name' => 'ecommerce_manager']);
 
         // Define permissions
         $permissions = [
+            'cms.ver',
+            'cms.editar',
+            'ecommerce.ver',
+            'ecommerce.ordenes.gestionar',
+            'ecommerce.productos.gestionar',
+            'ecommerce.clientes.ver',
             'reportes.ver',
             'reportes.exportar',
             'proveedores.ver',
@@ -59,12 +67,28 @@ class RolesAndPermissionsSeeder extends Seeder
             'inventario.editar',
         ]);
 
-        // Marketing: solo acceso al módulo mailing (panel básico)
+        // Marketing: mailing + CMS
         $marketing->syncPermissions([
             'mailing.ver',
             'mailing.contactos.gestionar',
             'mailing.plantillas.gestionar',
             'mailing.campanas.gestionar',
+            'cms.ver',
+            'cms.editar',
+        ]);
+
+        // CMS Editor: solo panel CMS
+        $cmsEditor->syncPermissions([
+            'cms.ver',
+            'cms.editar',
+        ]);
+
+        // Ecommerce Manager: solo panel tienda
+        $ecommerceManager->syncPermissions([
+            'ecommerce.ver',
+            'ecommerce.ordenes.gestionar',
+            'ecommerce.productos.gestionar',
+            'ecommerce.clientes.ver',
         ]);
 
         // Assign super_admin role to the initial admin user

@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Filament\Cms\Resources\CmsFaqResource\Pages;
+
+use App\Filament\Cms\Resources\CmsFaqResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
+
+class EditCmsFaq extends EditRecord
+{
+    protected static string $resource = CmsFaqResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [Actions\DeleteAction::make()];
+    }
+}

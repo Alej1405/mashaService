@@ -90,6 +90,14 @@ class LogisticsPanelProvider extends PanelProvider
                     ->label('Panel Enterprise')
                     ->icon('heroicon-o-star')
                     ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? '')),
+                MenuItem::make()
+                    ->label('Panel CMS')
+                    ->icon('heroicon-o-globe-alt')
+                    ->url(fn (): string => '/cms/' . (Filament::getTenant()?->slug ?? '')),
+                MenuItem::make()
+                    ->label('Panel Tienda')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->url(fn (): string => '/store/' . (Filament::getTenant()?->slug ?? '')),
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -108,6 +108,14 @@ class EnterprisePanelProvider extends PanelProvider
                     ->label('Panel Logística')
                     ->icon('heroicon-o-truck')
                     ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
+                MenuItem::make()
+                    ->label('Panel CMS')
+                    ->icon('heroicon-o-globe-alt')
+                    ->url(fn (): string => '/cms/' . (Filament::getTenant()?->slug ?? '')),
+                MenuItem::make()
+                    ->label('Panel Tienda')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->url(fn (): string => '/store/' . (Filament::getTenant()?->slug ?? '')),
             ])
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,

@@ -90,6 +90,25 @@ class PlanHelper
     }
 
     /**
+     * Verifica si el tenant tiene una feature específica activa en su JSONB.
+     * Usa dot-notation: 'marketing.cms.hero', 'logistica.activo', etc.
+     * Requiere plan mínimo + feature habilitada.
+     */
+    public static function canFeature(string $dotPath, string $minimumPlan = 'pro'): bool
+    {
+        if (! self::can($minimumPlan)) {
+            return false;
+        }
+
+        try {
+            $tenant = Filament::getTenant();
+            return $tenant?->hasFeature($dotPath) ?? false;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
      * Etiqueta legible del plan.
      */
     public static function label(string $plan): string
