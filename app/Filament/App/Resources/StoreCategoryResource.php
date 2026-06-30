@@ -35,8 +35,7 @@ class StoreCategoryResource extends Resource
 
     public static function canAccess(): bool
     {
-        return Filament::getCurrentPanel()?->getId() === 'enterprise'
-            && \App\Helpers\PlanHelper::can('enterprise');
+        return \App\Helpers\PlanHelper::hasModule('tienda');
     }
 
     public static function shouldRegisterNavigation(): bool

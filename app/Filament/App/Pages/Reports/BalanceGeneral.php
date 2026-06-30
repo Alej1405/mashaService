@@ -33,6 +33,11 @@ class BalanceGeneral extends Page implements HasForms
     public Collection $pasivos;
     public Collection $patrimonio;
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
+    }
+
     public function mount(): void
     {
         $this->fecha_corte = now()->toDateString();

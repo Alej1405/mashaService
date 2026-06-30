@@ -22,12 +22,12 @@ class MailingDashboard extends Page
 
     public static function canAccess(): bool
     {
-        return true;
+        return \App\Helpers\PlanHelper::hasModule('marketing');
     }
 
     public static function shouldRegisterNavigation(): bool
     {
-        return true;
+        return static::canAccess();
     }
 
     public function getViewData(): array

@@ -22,27 +22,35 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasRoles;
 
-    /** Niveles de plan reutilizados en los métodos de tenant. */
-    private const PLAN_LEVELS = ['basic' => 1, 'pro' => 2, 'enterprise' => 3];
-
-    /** Planes elegibles para un panel (plan del tenant >= nivel del panel). */
-    private function eligiblePlans(string $panelId): array
-    {
-        $min = self::PLAN_LEVELS[$panelId] ?? 1;
-        return array_keys(array_filter(self::PLAN_LEVELS, fn($l) => $l >= $min));
-    }
-
-    /** Paneles que usan roles de acceso en lugar de niveles de plan. */
+    /** Paneles que usan roles de acceso en lugar del plan. Se mantienen igual. */
     private const ROLE_BASED_PANELS = [
         'cms'        => ['admin_empresa', 'marketing', 'cms_editor'],
         'ecommerce'  => ['admin_empresa', 'ecommerce_manager'],
     ];
 
+    /** Mapa de paneles basados en rol (lectura pública para el hub de inicio). */
+    public static function roleBasedPanels(): array
+    {
+        return self::ROLE_BASED_PANELS;
+    }
+
+    /**
+     * Claves de los planes que abren un panel dado (su id Filament = panels.key).
+     * Fuente de verdad del acceso: relación plan_panel (configurable desde el admin).
+     *
+     * @return array<int,string>
+     */
+    private function plansThatOpenPanel(string $panelId): array
+    {
+        return \App\Models\Panel::where('key', $panelId)->first()
+            ?->servicePlans()->pluck('key')->all() ?? [];
+    }
+
     public function getTenants(Panel $panel): Collection
     {
         $panelId = $panel->getId();
 
-        // Paneles basados en roles: retornar todas las empresas activas a las que el usuario tenga acceso
+        // Paneles basados en roles: todas las empresas activas accesibles.
         if (isset(self::ROLE_BASED_PANELS[$panelId])) {
             if ($this->hasRole('super_admin')) {
                 return Empresa::where('activo', true)->get();
@@ -50,16 +58,14 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
             return $this->empresasAcceso()->where('activo', true)->get();
         }
 
-        $eligible = $this->eligiblePlans($panelId);
+        // Paneles por plan: empresas cuyo plan abre este panel.
+        $planKeys = $this->plansThatOpenPanel($panelId);
 
         if ($this->hasRole('super_admin')) {
-            return Empresa::where('activo', true)->whereIn('plan', $eligible)->get();
+            return Empresa::where('activo', true)->whereIn('plan', $planKeys)->get();
         }
 
-        return $this->empresasAcceso()
-            ->where('activo', true)
-            ->whereIn('plan', $eligible)
-            ->get();
+        return $this->empresasAcceso()->where('activo', true)->whereIn('plan', $planKeys)->get();
     }
 
     public function canAccessTenant(Model $tenant): bool
@@ -73,11 +79,15 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
             return $this->empresasAcceso()->where('empresas.id', $tenant->id)->exists();
         }
 
-        $pathToLevel = ['app' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
-        $panelLevel  = $pathToLevel[$segment] ?? 1;
-        $tenantLevel = self::PLAN_LEVELS[$tenant->plan ?? 'basic'] ?? 1;
+        if (! $tenant->activo) {
+            return false;
+        }
 
-        if ($tenantLevel < $panelLevel) {
+        // El plan del tenant debe abrir el panel cuyo path coincide con el segmento.
+        $planKeys = \App\Models\Panel::where('path', $segment)->where('activo', true)->first()
+            ?->servicePlans()->pluck('key')->all() ?? [];
+
+        if (! in_array($tenant->plan, $planKeys, true)) {
             return false;
         }
 
@@ -112,17 +122,14 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
                 || $this->empresa()->where('activo', true)->exists();
         }
 
-        $panelMap      = ['basic' => 1, 'pro' => 2, 'enterprise' => 3, 'logistics' => 3];
-        $panelLevel    = $panelMap[$panelId] ?? 99;
-        $eligiblePlans = array_keys(array_filter(
-            self::PLAN_LEVELS,
-            fn ($l) => $l >= $panelLevel
-        ));
+        // Paneles por plan: ¿alguna empresa accesible tiene un plan que abre este panel?
+        $planKeys = $this->plansThatOpenPanel($panelId);
+        if (empty($planKeys)) {
+            return false;
+        }
 
-        return $this->empresasAcceso()
-            ->where('activo', true)
-            ->whereIn('plan', $eligiblePlans)
-            ->exists();
+        return $this->empresasAcceso()->where('activo', true)->whereIn('plan', $planKeys)->exists()
+            || $this->empresa()->where('activo', true)->whereIn('plan', $planKeys)->exists();
     }
 
     public function getDefaultTenant(Panel $panel): ?Model
@@ -138,22 +145,18 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
                 : $this->empresasAcceso()->where('activo', true)->first();
         }
 
-        $eligible = $this->eligiblePlans($panelId);
+        // Paneles por plan: preferir la empresa primaria si su plan abre el panel.
+        $planKeys = $this->plansThatOpenPanel($panelId);
 
-        if ($this->hasRole('super_admin')) {
-            return $this->empresa
-                ?? Empresa::where('activo', true)->whereIn('plan', $eligible)->first();
-        }
-
-        // Preferir la empresa primaria si califica
-        if ($this->empresa && in_array($this->empresa->plan ?? 'basic', $eligible)) {
+        if ($this->empresa && $this->empresa->activo && in_array($this->empresa->plan, $planKeys, true)) {
             return $this->empresa;
         }
 
-        return $this->empresasAcceso()
-            ->where('activo', true)
-            ->whereIn('plan', $eligible)
-            ->first();
+        if ($this->hasRole('super_admin')) {
+            return Empresa::where('activo', true)->whereIn('plan', $planKeys)->first();
+        }
+
+        return $this->empresasAcceso()->where('activo', true)->whereIn('plan', $planKeys)->first();
     }
 
     public function empresa(): BelongsTo

@@ -57,6 +57,11 @@ class ImportarInventarioPage extends Page implements HasForms
         '21' => ['forma' => 'credito',       'tipo' => 'credito', 'label' => 'Endoso de títulos / Crédito'],
     ];
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('inventario');
+    }
+
     public function mount(): void
     {
         $this->form->fill();

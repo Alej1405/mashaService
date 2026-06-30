@@ -23,6 +23,11 @@ class BankAccountResource extends Resource
     protected static ?string $modelLabel = 'Cuenta Bancaria';
     protected static ?string $pluralModelLabel = 'Cuentas Bancarias';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('tesoreria');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

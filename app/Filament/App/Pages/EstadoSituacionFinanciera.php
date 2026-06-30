@@ -19,7 +19,7 @@ class EstadoSituacionFinanciera extends Page
 
     public static function canAccess(): bool
     {
-        return true;
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
     }
 
     public function getViewData(): array

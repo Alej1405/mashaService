@@ -577,3 +577,106 @@ Ajuste: cantidad_presentacion × factor_empaque → total_unidades_base → Inve
 - Sin tocar Observers, Providers ni modelos existentes (salvo agregar relaciones a InventoryItem)
 - `AccountingService::generarAsientoCompra` y `generarAsientoAjuste` no modificados
 - `PurchaseItem.$fillable` no violado (presentación es virtual en el formulario)
+
+---
+
+## 2026-06-29 — Paneles dinámicos: modelo PLAN → PANELES (N:M) → MÓDULOS (Fases 2-4)
+
+### Qué cambió y por qué
+Se separó definitivamente: PLAN (creable) → abre 1+ PANELES (pivote `plan_panel`) → cada panel tiene MÓDULOS (`panel_modules`). El acceso a un panel deja de decidirse por niveles cableados y consulta `plan_panel`. La visibilidad de un módulo responde al panel donde navegas.
+
+### Fase 2 — visibilidad por módulo
+- `PlanHelper::hasModule()` reescrito: lee el panel ACTUAL (`Filament::getCurrentPanel()`), cache estática por request.
+- Unificados ~20 `canAccess()` rezagados (CMS/Mailing → `hasModule('marketing')`; Store → `hasModule('tienda')`). Corrección: `ApiDocsPage` movido de `_core` a `marketing` en `ModuleRegistry`.
+
+### Fase 3 — acceso por plan
+- Migración `2026_06_29_000004_create_plan_panel_table` (pivote service_plan_id↔panel_id).
+- `PanelSeeder` reescrito: estandariza los 6 paneles reales + `panel_modules` + siembra `plan_panel` replicando el baseline. Panel 'prueba' → activo=false (era plan, no panel).
+- Modelos: `ServicePlan::panels()`, `Panel::servicePlans()`, `Empresa::servicePlan()` (belongsTo por `plan`==`key`).
+- `User` reescrito (canAccessPanel/getTenants/canAccessTenant/getDefaultTenant) → consultan `plan_panel`; `PLAN_LEVELS` eliminado; rama role-based cms/ecommerce intacta. OJO: usar `\App\Models\Panel` (choca con `use Filament\Panel`).
+- Verificado: baseline de acceso IDÉNTICO para los 6 usuarios reales (única diferencia: super_admin en logistics ve solo enterprise, más correcto).
+
+### Fase 4 — UI admin
+- `ServicePlanResource`: tab "Módulos" reemplazado por "Paneles" (CheckboxList con `relationship('panels')` → gestiona `plan_panel`). Tabla muestra paneles asignados.
+- `PanelResource` (nuevo): CRUD de paneles + CheckboxList de módulos (`panel_modules`) sincronizado vía trait `SyncsModuleKeys` (captura en mutateFormDataBefore* + afterSave/afterCreate). `key`/`path` bloqueados en los 6 paneles base.
+
+### Restricciones respetadas ✅
+- Observers / AccountingService / flujo contable NO tocados.
+- `modules_template` de los planes y JSONB `features` quedan inertes (no borrados; retiro = Fase 5 pendiente).
+- Verificado: lint OK, 6 paneles enrutan, admin/panels registrado, lógica de sync probada y restaurada, sistema bootea.
+
+## 2026-06-30 — Capa de ROLES + Hub de inicio (Pasos 1-3 + limpieza)
+
+Objetivo: el menú/visibilidad debe responder a Plan ∩ Panel ∩ **Rol** (faltaba la 3ª capa → "se mostraba todo"). Roles creables/editables por super_admin; empresa solo los asigna.
+
+### Paso 1 — Estructura rol→módulos (editable)
+- Migración `2026_06_30_000001_create_role_module_table` (role_id FK→roles.id cascade, module_key, unique). Relación por ID, no por nombre.
+- Modelos NUEVOS: `App\Models\RoleModule` (pivote), `App\Models\Role` (extiende Spatie Role + modules()/moduleKeys()/showsModule()).
+- `RoleModuleSeeder` (baseline derivado de EmpresaUserResource::roleDescription): super_admin/admin_empresa=todos; contador=finanzas,tesoreria; inventario=inventario; marketing/cms_editor=marketing; ecommerce_manager=tienda. Registrado en DatabaseSeeder.
+- `RoleResource` NUEVO en /admin (grupo Plataforma, sort 3, super_admin): CRUD de roles + CheckboxList de módulos (config erp_features). ROLES_BASE (7) con name bloqueado; roles nuevos renombrables. Sync vía trait `RoleResource\Pages\SyncsModuleKeys` (mismo patrón que PanelResource). Páginas List/Create/Edit.
+
+### Paso 2 — Cruce de rol en la visibilidad
+- `PlanHelper::hasModule()` ahora exige: módulo ∈ panel_modules(panel actual) **Y** ∈ role_modules(rol del user en el tenant). Nuevo `currentRoleModules()` con cache por request: lee rol del pivote empresa_user_access (preciso por empresa), respaldo Spatie global; null = sin restricción (super_admin o rol no determinable → fallback seguro, no rompe accesos).
+- Verificado: admin_empresa ve los 9 (cero regresión, todos los usuarios reales son admin_empresa hoy); contador→finanzas,tesoreria; marketing→marketing. Recorte en todos los paneles de una vez (igual que Fase 2).
+
+### Paso 3 — Hub de inicio
+- `Basic/Pages/Dashboard.php` reescrito como HUB (antes era dashboard de Mailing con gradientes oscuros = bans impeccable). getViewData → saludo dinámico + tarjetas de paneles accesibles (plan_panel por id ∩ rol; role-based cms/ecommerce por rol). Filtra paneles sin módulos para el rol. solicitarAmpliarPlan() conservado.
+- Vista `filament/basic/pages/dashboard.blade.php` rediseñada (pipeline UI: impeccable+emil+design-taste): light mode, tokens del proyecto, contraste WCAG (slate-500 mínimo), motion 150ms ease-out con @media hover + prefers-reduced-motion, sin gradient text / side-stripe / glassmorphism / hero-metric. Grid auto-fill, color de acento por panel (color-mix).
+- Verificado por rol manipulando pivote: marketing→4 paneles solo [Marketing]; contador→2 paneles [Finanzas,Tesorería]; inventario→[Inventario]. Estado restaurado.
+
+### Limpieza (parte del Paso 4)
+- `SupplierResource` ahora tiene canAccess()→hasModule('compras') (era el único sin canAccess).
+- Panel fantasma 'prueba' desactivado (activo=0, re-corriendo PanelSeeder idempotente; path 'app' duplicado ya no interfiere).
+
+### Pendiente (requiere confirmación — regla: no tocar providers sin reportar)
+- Convertir providers basic/enterprise/logistics de `->resources([lista fija])` a `discoverResources` (como pro/cms/store) para que el admin controle el menú bidireccionalmente. Cambia comportamiento de enterprise (mostraría todos sus módulos, recortados por rol). NO ejecutado aún.
+
+### Restricciones respetadas ✅
+- Observers / AccountingService / flujo contable NO tocados. Lint OK, admin/roles enruta, vistas compilan, sistema bootea.
+
+## 2026-06-30 (cont.) — Paso 4: menú dirigido por panel_modules en los 3 paneles fijos
+
+- **enterprise**: `->resources([fija])`/`->pages([fija])` → `discoverResources` + `discoverPages` (App/Resources, App/Pages) + `navigationGroups(enterpriseNavigationGroups())`. Ahora refleja sus 9 módulos ∩ rol (antes mostraba solo subconjunto Store/Inventory/Design). Verificado: admin_empresa=43 resources; contador=10 (finanzas/tesorería); marketing=12 (cms/mailing).
+- **basic**: `->resources([fija])` → `discoverResources(App/Resources)`. Pages se mantienen explícitas (el hub `Basic\Pages\Dashboard` colisionaría con `App\Pages\Dashboard` si se usara discoverPages). Verificado: muestra 13 (marketing + core), coherente con antes = cero regresión.
+- **logistics**: namespace propio (App\Filament\Logistics) sin hasModule. Se agregó `canAccess()→hasModule('logistica')` a los 4 resources (Consignatario, Package, Shipment, StoreCustomerCompany) y 3 pages (BodegaEEUU, BodegaEspana, ShipmentKanban). Dashboard de logistics se dejó como landing sin canAccess. Verificado: admin_empresa=4 resources; contador/marketing=0 (vacío, no tienen logistica).
+- Multi-empresa verificado: mismo usuario con varias empresas (pivote empresa_user_access rol por empresa) ve distinto según la empresa activa (tenant); plan y rol se recalculan al cambiar de tenant.
+- Lint OK, route:list OK (sin conflictos de Dashboard), sistema bootea. Observers/AccountingService NO tocados.
+
+## 2026-06-30 (cont.) — Limpieza userMenuItems: accesos a paneles dinámicos
+
+Bug UI: los `userMenuItems` de los providers estaban hardcodeados con lógica vieja (`PlanHelper::can('pro')`) y varios sin `->visible()` → mostraban links a paneles sin acceso, rompiendo el flujo e incoherentes con el hub.
+
+- NUEVO `app/Support/PanelAccess.php`: fuente única de paneles accesibles (plan_panel ∩ role_module + role-based), con cache por request. `accessiblePanels()` (metadata para el hub), `accessibleKeys()`, `menuItems($currentPanelKey)` (genera MenuItem[] dinámicos, excluye panel actual, visible por accesibilidad).
+- Hub `Basic/Pages/Dashboard.php` refactorizado: usa `PanelAccess::accessiblePanels()` (se eliminó la lógica duplicada panelesAccesibles + COLOR_HEX).
+- Los 6 providers (basic, pro, enterprise, logistics, cms, ecommerce): `->userMenuItems([...hardcode...])` → `->userMenuItems(\App\Support\PanelAccess::menuItems('KEY'))`.
+- El selector de empresa (tenant switcher de Filament) NO se tocó: es componente aparte; se mantiene para usuarios con >1 empresa.
+- Verificado: admin_empresa ve los 6; contador→[pro,enterprise]; marketing→[basic,pro,enterprise,cms]. Menú coherente con el hub. Lint OK, route:list OK.
+
+## 2026-06-30 (cont.) — Hub rediseñado: sin sidebar, widgets de estado, interactivo
+
+- BasicPanelProvider: brandLogo/favicon → null-safe (`Filament::getTenant()?->logo_path`), antes `($t=getTenant()) && $t->logo_path` frágil. Añadido `->topNavigation()` (elimina el sidebar lateral del hub; las funciones quedan en barra superior). Quitado `<script>localStorage.setItem("theme","dark")</script>` (contradecía darkMode(false) / regla light mode).
+- Hub `Basic/Pages/Dashboard.php`: getViewData ahora arma 'stats' (plan, panelesCount, equipo=usuarios únicos directos+acceso, rol legible, miembroDesde) + logo/inicial. Usa PanelAccess::accessiblePanels().
+- Vista `basic/pages/dashboard.blade.php` rediseñada (3 skills UI): cabecera con avatar/logo empresa; 4 widgets de estado con contadores animados (Alpine, respeta prefers-reduced-motion) y acento por widget; tarjetas de paneles con hover/entrada escalonada. Light mode, contraste WCAG, sin bans (sin gradient text/glassmorphism/side-stripe). Verificado: stats correctos (plan=Plan Enterprise, paneles=6, equipo=1, rol=Administrador). Lint OK, route:list OK.
+
+## 2026-06-30 (cont.) — Widgets de módulo en el hub (estructura + Tienda y CMS)
+
+Convención NUEVA: cada módulo puede tener un widget en el hub que resume su actividad. Se agregan de forma incremental (uno por feature).
+
+- Estructura: `app/Hub/Widgets/HubWidget.php` (interface: module(), meta(), metrics(Empresa)); widgets en `app/Hub/Widgets/`; registro en `app/Hub/HubWidgetRegistry.php` (mapa module_key→clase).
+- Widgets creados: `TiendaWidget` (módulo tienda → /store: Productos, Pedidos, Ventas[sum total]) y `MarketingWidget` (módulo marketing → /cms: Publicaciones[cms_posts], Servicios[cms_services], Campañas[mail_campaigns]).
+- `PanelAccess`: + `accessibleModuleKeys()` y campo `moduloKeys` por panel.
+- Hub `Basic/Pages/Dashboard.php`: getViewData arma 'widgets' (un widget por módulo accesible que tenga clase registrada). Vista: nueva sección "Resumen de tu actividad" con tarjetas-widget (KPIs con contadores Alpine, money formateado, hover, entrada escalonada); se mantienen header y tarjetas de paneles. Plan ahora es badge en cabecera.
+- Datos: SOLO agregados (count/sum con where empresa_id), nunca colecciones → no carga el flujo de datos.
+- Verificado: admin_empresa=CMS+Tienda; marketing=solo CMS; contador=0 (finanzas sin widget aún). KPIs reales. Lint OK, bootea.
+- Para agregar un widget nuevo: crear clase en app/Hub/Widgets + registrarla en HubWidgetRegistry.
+
+## 2026-06-30 (cont.) — Documentación de APIs ordenada por panel
+
+Verificación previa (front real LinkCargo, esquemas Zod vs CmsController): estructura COINCIDE en los 6 endpoints que el front consume; smoke test 6/6 HTTP 200. APIs NO modificadas (intocables).
+
+Reordenamiento de la documentación a su panel:
+- `ApiDocsPage` (doc CMS) movida `App\Filament\App\Pages` → `App\Filament\Cms\Pages` (la descubre el panel cms). Vista nueva `filament/cms/pages/api-docs.blade.php`. Ahora vive SOLO en `cms/{tenant}/api-docs-page`; quitada de basic (lista pages) y ya no se descubre en pro/enterprise.
+- `EcommerceApiDocsPage` (doc Tienda) movida → `App\Filament\Ecommerce\Pages` (panel store). Vista nueva `filament/ecommerce/pages/ecommerce-api-docs.blade.php`. Vive en `store/{tenant}/ecommerce-api-docs-page`; quitada de pro/enterprise.
+- Ambas docs rediseñadas (skills): dirigidas por estructura de datos (endpoints como array, vista itera), accordion, badges de método (GET/POST/PUT/DELETE), marca 🔒 cliente, base URL + copiar, bloques de código con copiar, gestión de token. Light mode, contraste WCAG, sin bans, motion sutil + prefers-reduced-motion.
+- ModuleRegistry: quitadas entradas huérfanas ApiDocsPage/EcommerceApiDocsPage (ya no están en panel App).
+- Viejas clases en App/Pages eliminadas. Lógica de token (Sanctum) preservada. Lint OK, bootea, APIs intactas.

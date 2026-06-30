@@ -2,96 +2,108 @@
 
 namespace App\Filament\Basic\Pages;
 
-use App\Helpers\PlanHelper;
-use App\Models\MailTemplate;
+use App\Models\Role;
 use App\Models\SupportTicket;
-use App\Services\MailingService;
+use App\Support\PanelAccess;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
+/**
+ * Hub de inicio. Punto de aterrizaje del usuario tras el login.
+ *
+ * Muestra información puntual de la empresa (tenant) y los accesos a los paneles
+ * que le corresponden, según la intersección Plan (plan_panel) ∩ Rol (role_module).
+ * El tenant (empresa activa) es la piedra angular: todo se resuelve sobre él.
+ */
 class Dashboard extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-home';
     protected static ?string $navigationLabel = 'Inicio';
-    protected static ?string $title           = 'Dashboard';
+    protected static ?string $title           = 'Inicio';
     protected static ?int    $navigationSort  = -2;
     protected static string  $view            = 'filament.basic.pages.dashboard';
+
+    /** Etiquetas legibles de roles para el resumen del usuario. */
+    private const ROL_LABEL = [
+        'super_admin'       => 'Super administrador',
+        'admin_empresa'     => 'Administrador',
+        'contador'          => 'Contador',
+        'inventario'        => 'Inventario',
+        'marketing'         => 'Marketing',
+        'cms_editor'        => 'Editor de contenido',
+        'ecommerce_manager' => 'Gestor de tienda',
+    ];
 
     public function getViewData(): array
     {
         $empresa = Filament::getTenant();
         $user    = auth()->user();
-        $hora    = now()->hour;
 
         Carbon::setLocale('es');
-
+        $hora   = now()->hour;
         $saludo = match (true) {
             $hora >= 6 && $hora < 12  => 'Buenos días',
             $hora >= 12 && $hora < 19 => 'Buenas tardes',
             default                    => 'Buenas noches',
         };
 
-        $servicioActivo = (bool) $empresa->servicio_mailing_activo;
+        // Excluye el panel actual (el hub vive en él): no se ofrece "entrar" a uno mismo.
+        $panelActual = Filament::getCurrentPanel()?->getId();
+        $paneles = collect(PanelAccess::accessiblePanels())
+            ->reject(fn (array $p): bool => $p['key'] === $panelActual)
+            ->values()
+            ->all();
 
-        $plan       = PlanHelper::current();
-        $features   = \App\Models\ServicePlan::where('key', $plan)->value('caracteristicas') ?? [];
-        $badgeColor = match ($plan) {
-            'basic'      => '#64748b',
-            'pro'        => '#2563eb',
-            'enterprise' => '#d97706',
-            default      => '#64748b',
-        };
-        $badgeBg = match ($plan) {
-            'basic'      => '#f1f5f9',
-            'pro'        => '#eff6ff',
-            'enterprise' => '#fffbeb',
-            default      => '#f1f5f9',
-        };
-
-        $websiteUrl   = $empresa->website_url ?? null;
-        $thumbnailUrl = $websiteUrl
-            ? 'https://api.microlink.io/?url=' . urlencode($websiteUrl) . '&screenshot=true&meta=false&embed=screenshot.url'
-            : null;
-
-        $base = [
-            'saludo'      => $saludo . ', ' . explode(' ', $user->name)[0],
-            'fecha'       => ucfirst(now()->translatedFormat('l, d \d\e F \d\e Y')),
-            'empresa'     => $empresa,
-            'user'        => $user,
-            'plan'        => $plan,
-            'planLabel'   => PlanHelper::label($plan),
-            'features'    => $features,
-            'badgeColor'  => $badgeColor,
-            'badgeBg'     => $badgeBg,
-            'websiteUrl'  => $websiteUrl,
-            'thumbnailUrl' => $thumbnailUrl,
-        ];
-
-        if (! $servicioActivo) {
-            return array_merge($base, [
-                'servicio_activo' => false,
-                'configurado'     => false,
-                'stats'           => [],
-                'stats7'          => [],
-                'events'          => [],
-                'plantillas'      => 0,
-            ]);
+        // Un widget de resumen por cada módulo que el usuario ve y que tenga widget.
+        $widgets = [];
+        foreach (PanelAccess::accessibleModuleKeys() as $moduleKey) {
+            $cls = \App\Hub\HubWidgetRegistry::for($moduleKey);
+            if (! $cls) {
+                continue;
+            }
+            $meta = $cls::meta();
+            $widgets[] = [
+                'titulo'  => $meta['titulo'],
+                'icono'   => $meta['icono'],
+                'color'   => $meta['color'],
+                'url'     => '/' . $meta['path'] . '/' . ($empresa->slug ?? ''),
+                'metrics' => $cls::metrics($empresa),
+            ];
         }
 
-        $service     = new MailingService($empresa);
-        $configurado = $service->isConfigured();
+        // Rol del usuario en esta empresa (pivote preciso, respaldo Spatie global).
+        $rolName = $user->empresasAcceso()
+            ->where('empresas.id', $empresa->id)
+            ->first()?->pivot->rol
+            ?: $user->getRoleNames()->first();
 
-        return array_merge($base, [
-            'servicio_activo' => true,
-            'configurado'     => $configurado,
-            'stats'           => $configurado ? $service->getStats(30) : [],
-            'stats7'          => $configurado ? $service->getStats(7)  : [],
-            'events'          => $configurado ? $service->getEvents(8) : [],
-            'plantillas'      => MailTemplate::count(),
-        ]);
+        // Equipo: usuarios únicos de la empresa (directos + por acceso).
+        $equipo = $empresa->users()->pluck('users.id')
+            ->merge($empresa->usuariosAcceso()->pluck('users.id'))
+            ->unique()
+            ->count();
+
+        return [
+            'saludo'       => $saludo . ', ' . explode(' ', $user->name)[0],
+            'fecha'        => ucfirst(now()->translatedFormat('l, d \d\e F \d\e Y')),
+            'empresa'      => $empresa,
+            'user'         => $user,
+            'logo'         => $empresa->logo_path ? Storage::disk('public')->url($empresa->logo_path) : null,
+            'inicial'      => mb_strtoupper(mb_substr($empresa->name ?? '?', 0, 1)),
+            'paneles'      => $paneles,
+            'widgets'      => $widgets,
+            'stats'        => [
+                'plan'         => $empresa->servicePlan?->nombre ?? ucfirst($empresa->plan ?? 'basic'),
+                'panelesCount' => count($paneles),
+                'equipo'       => $equipo,
+                'rol'          => self::ROL_LABEL[$rolName] ?? ucfirst((string) $rolName),
+                'miembroDesde' => $empresa->created_at?->translatedFormat('M Y') ?? '—',
+            ],
+        ];
     }
 
     public function solicitarAmpliarPlan(): void
@@ -106,7 +118,7 @@ class Dashboard extends Page
         if ($existente) {
             Notification::make()
                 ->title('Solicitud ya registrada')
-                ->body('Ya tienes un ticket de soporte activo para activar el servicio de Mailing. El equipo lo está gestionando.')
+                ->body('Ya tienes un ticket de soporte activo. El equipo lo está gestionando.')
                 ->warning()
                 ->send();
 
@@ -116,15 +128,15 @@ class Dashboard extends Page
         SupportTicket::create([
             'empresa_id'  => $empresa->id,
             'user_id'     => Auth::id(),
-            'asunto'      => 'Solicitud de activación del servicio de Mailing',
-            'descripcion' => "La empresa \"{$empresa->name}\" solicita activar el módulo de Mailing para gestionar campañas de correo masivo, contactos y plantillas. Por favor contactar para gestionar la ampliación del plan.",
+            'asunto'      => 'Solicitud de ampliación de plan',
+            'descripcion' => "La empresa \"{$empresa->name}\" solicita ampliar su plan. Por favor contactar para gestionar.",
             'prioridad'   => 'media',
             'status'      => 'abierto',
         ]);
 
         Notification::make()
             ->title('Solicitud enviada a soporte')
-            ->body('El equipo de soporte se pondrá en contacto contigo para activar el servicio de Mailing.')
+            ->body('El equipo de soporte se pondrá en contacto contigo.')
             ->success()
             ->send();
     }

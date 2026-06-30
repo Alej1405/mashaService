@@ -30,7 +30,7 @@ class DebtReportPage extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::can('pro');
+        return \App\Helpers\PlanHelper::hasModule('tesoreria');
     }
 
     public function getViewData(): array

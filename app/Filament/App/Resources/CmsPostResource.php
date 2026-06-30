@@ -35,7 +35,7 @@ class CmsPostResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic';
+        return \App\Helpers\PlanHelper::hasModule('marketing');
     }
 
     public static function form(Form $form): Form

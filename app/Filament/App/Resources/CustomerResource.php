@@ -20,6 +20,11 @@ class CustomerResource extends Resource
     protected static ?string $modelLabel = 'Cliente';
     protected static ?string $pluralModelLabel = 'Clientes';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('ventas');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

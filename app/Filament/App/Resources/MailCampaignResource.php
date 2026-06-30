@@ -33,7 +33,7 @@ class MailCampaignResource extends Resource
 
     public static function canAccess(): bool
     {
-        return (bool) \Filament\Facades\Filament::getTenant()?->servicio_mailing_activo;
+        return \App\Helpers\PlanHelper::hasModule('marketing');
     }
 
     public static function form(Form $form): Form

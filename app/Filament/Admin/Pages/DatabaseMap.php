@@ -12,8 +12,9 @@ use Filament\Pages\Page;
 class DatabaseMap extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-circle-stack';
-    protected static ?string $navigationGroup = 'Documentación';
+    protected static ?string $navigationGroup = 'Sistema';
     protected static ?string $navigationLabel = 'Mapa de la BDD';
+    protected static ?int    $navigationSort  = 2;
     protected static ?string $title           = 'Mapa de la base de datos';
 
     protected static string $view = 'filament.admin.pages.database-map';

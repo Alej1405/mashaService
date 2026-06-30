@@ -33,8 +33,7 @@ class ServiceChargeConfigResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'enterprise'
-            && \App\Helpers\PlanHelper::can('enterprise');
+        return \App\Helpers\PlanHelper::hasModule('produccion');
     }
 
     public static function shouldRegisterNavigation(): bool

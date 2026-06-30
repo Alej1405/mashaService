@@ -17,8 +17,8 @@ class ServiceInvoiceResource extends Resource
     protected static ?string $model            = ServiceInvoice::class;
     protected static ?string $navigationIcon   = 'heroicon-o-document-text';
     protected static ?string $navigationLabel  = 'Facturación';
-    protected static ?string $navigationGroup  = 'Operaciones';
-    protected static ?int    $navigationSort   = 3;
+    protected static ?string $navigationGroup  = 'Clientes';
+    protected static ?int    $navigationSort   = 2;
     protected static ?string $modelLabel       = 'Factura';
     protected static ?string $pluralModelLabel = 'Facturas';
 

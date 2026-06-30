@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Filament\Models\Contracts\HasName;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
@@ -17,6 +18,7 @@ class Empresa extends Model implements HasName
         'name', 'email', 'website_url', 'slug', 'activo',
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
         'plan',
+        'panel_id',
         'servicio_mailing_activo',
         'servicio_cms_activo',
         'tipo_operacion_productos', 'tipo_operacion_servicios', 'tipo_operacion_manufactura',
@@ -107,6 +109,36 @@ class Empresa extends Model implements HasName
     public function users(): HasMany
     {
         return $this->hasMany(User::class, 'empresa_id');
+    }
+
+    /**
+     * Panel al que pertenece la empresa (controla la visibilidad de módulos).
+     * Fase 0: relación disponible pero aún ningún flujo la lee.
+     */
+    public function panel(): BelongsTo
+    {
+        return $this->belongsTo(Panel::class);
+    }
+
+    /** Claves de los módulos visibles según el panel de la empresa. */
+    public function panelModuleKeys(): array
+    {
+        return $this->panel?->moduleKeys() ?? [];
+    }
+
+    /**
+     * Plan de servicio de la empresa. Se une por la columna `plan` (string)
+     * contra `service_plans.key` — no hay FK numérica.
+     */
+    public function servicePlan(): BelongsTo
+    {
+        return $this->belongsTo(ServicePlan::class, 'plan', 'key');
+    }
+
+    /** Claves de los paneles que el plan de la empresa tiene permitidos. */
+    public function planPanelKeys(): array
+    {
+        return $this->servicePlan?->panelKeys() ?? [];
     }
 
     public function usuariosAcceso(): BelongsToMany

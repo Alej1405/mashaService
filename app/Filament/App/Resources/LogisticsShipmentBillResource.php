@@ -41,7 +41,7 @@ class LogisticsShipmentBillResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::can('pro');
+        return \App\Helpers\PlanHelper::hasModule('logistica');
     }
 
     public static function form(Form $form): Form

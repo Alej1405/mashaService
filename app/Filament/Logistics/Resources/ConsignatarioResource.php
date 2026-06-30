@@ -17,6 +17,11 @@ use Filament\Tables\Table;
 
 class ConsignatarioResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('logistica');
+    }
+
     protected static ?string $model                  = LogisticsConsignatario::class;
     protected static ?string $tenantRelationshipName = 'logisticsConsignatarios';
     protected static ?string $navigationIcon         = 'heroicon-o-identification';

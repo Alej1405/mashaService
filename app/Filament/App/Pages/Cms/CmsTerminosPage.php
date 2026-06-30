@@ -31,8 +31,7 @@ class CmsTerminosPage extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'basic'
-            && (bool) \Filament\Facades\Filament::getTenant()?->servicio_cms_activo;
+        return \App\Helpers\PlanHelper::hasModule('marketing');
     }
 
     public static function shouldRegisterNavigation(): bool

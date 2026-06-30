@@ -31,6 +31,11 @@ class InventoryItemResource extends Resource
     protected static ?string $pluralModelLabel = 'Inventario / Ítems';
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('inventario');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

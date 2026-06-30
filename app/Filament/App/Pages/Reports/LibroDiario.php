@@ -68,6 +68,11 @@ class LibroDiario extends Page implements HasTable, HasForms
         return $export->download('LibroDiario_' . ($this->fecha_desde ?? 'todo') . '.xlsx');
     }
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
+    }
+
     public function mount(): void
     {
         $this->fecha_desde = now()->startOfYear()->toDateString();

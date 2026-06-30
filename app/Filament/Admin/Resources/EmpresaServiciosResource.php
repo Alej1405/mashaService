@@ -5,11 +5,14 @@ namespace App\Filament\Admin\Resources;
 use App\Filament\Admin\Resources\EmpresaServiciosResource\RelationManagers\UsuariosAccesoRelationManager;
 use App\Filament\Admin\Resources\EmpresaServiciosResource\Pages;
 use App\Models\Empresa;
-use App\Services\EmpresaStatsService;
 use App\Models\MailCampaign;
 use App\Models\MailingContact;
 use App\Models\MailingGroup;
 use App\Models\MailTemplate;
+use App\Models\ServicePlan;
+use App\Services\EmpresaFeaturesService;
+use App\Services\EmpresaStatsService;
+use App\Shared\Actions\AplicarPlanAEmpresa;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -17,17 +20,18 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class EmpresaServiciosResource extends Resource
 {
-    protected static ?string $model             = Empresa::class;
-    protected static ?string $navigationIcon    = 'heroicon-o-building-office-2';
-    protected static ?string $navigationLabel   = 'Empresas';
-    protected static ?string $navigationGroup   = 'Operaciones';
-    protected static ?int    $navigationSort    = 1;
-    protected static ?string $slug              = 'servicios-empresas';
-    protected static ?string $modelLabel        = 'Empresa';
-    protected static ?string $pluralModelLabel  = 'Empresas';
+    protected static ?string $model            = Empresa::class;
+    protected static ?string $navigationIcon   = 'heroicon-o-building-office-2';
+    protected static ?string $navigationLabel  = 'Empresas';
+    protected static ?string $navigationGroup  = 'Clientes';
+    protected static ?int    $navigationSort   = 1;
+    protected static ?string $slug             = 'empresas';
+    protected static ?string $modelLabel       = 'Empresa';
+    protected static ?string $pluralModelLabel = 'Empresas';
 
     public static function canViewAny(): bool
     {
@@ -36,139 +40,289 @@ class EmpresaServiciosResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $catalogo  = config('erp_features', []);
+
+        // Un solo query para todos los planes — reutilizado en closures (sin N+1)
+        $planesMap = ServicePlan::orderBy('sort_order')
+            ->get(['key', 'modules_template'])
+            ->keyBy('key')
+            ->map(fn ($p) => $p->modules_template ?? [])
+            ->toArray();
+
         return $form->schema([
+            Forms\Components\Tabs::make('empresa_tabs')
+                ->tabs([
 
-            Forms\Components\Section::make('Información Básica')
-                ->columns(2)
-                ->schema([
-                    Forms\Components\TextInput::make('name')
-                        ->label('Nombre de la empresa')
-                        ->required()
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(fn (Forms\Set $set, ?string $state) =>
-                            $set('slug', \Illuminate\Support\Str::slug($state))
-                        )
-                        ->maxLength(255),
+                    // ── Tab 1: Empresa ─────────────────────────────────────────
+                    Forms\Components\Tabs\Tab::make('Empresa')
+                        ->icon('heroicon-o-building-office-2')
+                        ->schema([
+                            Forms\Components\Toggle::make('activo')
+                                ->label('Empresa activa')
+                                ->helperText('Desactivar bloquea el acceso de todos los usuarios de esta empresa.')
+                                ->onColor('success')
+                                ->columnSpanFull(),
 
-                    Forms\Components\TextInput::make('slug')
-                        ->label('URL amigable (slug)')
-                        ->required()
-                        ->unique(ignoreRecord: true)
-                        ->maxLength(255)
-                        ->dehydrated(),
+                            Forms\Components\Section::make('Información básica')
+                                ->columns(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('Nombre de la empresa')
+                                        ->required()
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(fn (Forms\Set $set, ?string $state) =>
+                                            $set('slug', \Illuminate\Support\Str::slug($state))
+                                        )
+                                        ->maxLength(255),
 
-                    Forms\Components\TextInput::make('email')
-                        ->label('Correo electrónico')
-                        ->email()
-                        ->required()
-                        ->unique(ignoreRecord: true)
-                        ->maxLength(255),
-                ]),
+                                    Forms\Components\TextInput::make('slug')
+                                        ->label('URL amigable (slug)')
+                                        ->required()
+                                        ->unique(ignoreRecord: true)
+                                        ->maxLength(255)
+                                        ->dehydrated(),
 
-            Forms\Components\Section::make('Identificación y Datos Legales')
-                ->columns(2)
-                ->schema([
-                    Forms\Components\Select::make('tipo_persona')
-                        ->label('Tipo de persona')
-                        ->options([
-                            'natural'  => 'Persona Natural',
-                            'juridica' => 'Persona Jurídica',
-                        ])
-                        ->required(),
+                                    Forms\Components\TextInput::make('email')
+                                        ->label('Correo electrónico')
+                                        ->email()
+                                        ->required()
+                                        ->unique(ignoreRecord: true)
+                                        ->maxLength(255),
 
-                    Forms\Components\Select::make('tipo_identificacion')
-                        ->label('Tipo de identificación')
-                        ->options([
-                            'ruc'       => 'RUC',
-                            'cedula'    => 'Cédula de Identidad',
-                            'pasaporte' => 'Pasaporte',
-                        ])
-                        ->required()
-                        ->live(),
+                                    Forms\Components\TextInput::make('website_url')
+                                        ->label('Sitio web')
+                                        ->url()
+                                        ->placeholder('https://www.ejemplo.com')
+                                        ->maxLength(255),
+                                ]),
 
-                    Forms\Components\TextInput::make('numero_identificacion')
-                        ->label('Número de identificación')
-                        ->required()
-                        ->numeric()
-                        ->minLength(fn (Get $get): int => match ($get('tipo_identificacion')) {
-                            'ruc'    => 13,
-                            'cedula' => 10,
-                            default  => 1,
-                        })
-                        ->maxLength(fn (Get $get): int => match ($get('tipo_identificacion')) {
-                            'ruc'    => 13,
-                            'cedula' => 10,
-                            default  => 20,
-                        })
-                        ->hint(fn (Get $get): string => match ($get('tipo_identificacion')) {
-                            'ruc'    => '13 dígitos',
-                            'cedula' => '10 dígitos',
-                            default  => '',
-                        }),
+                            Forms\Components\Section::make('Identificación y datos legales')
+                                ->columns(2)
+                                ->schema([
+                                    Forms\Components\Select::make('tipo_persona')
+                                        ->label('Tipo de persona')
+                                        ->options([
+                                            'natural'  => 'Persona Natural',
+                                            'juridica' => 'Persona Jurídica',
+                                        ])
+                                        ->required()
+                                        ->native(false),
 
-                    Forms\Components\TextInput::make('direccion')
-                        ->label('Dirección')
-                        ->required()
-                        ->columnSpanFull(),
+                                    Forms\Components\Select::make('tipo_identificacion')
+                                        ->label('Tipo de identificación')
+                                        ->options([
+                                            'ruc'       => 'RUC',
+                                            'cedula'    => 'Cédula de Identidad',
+                                            'pasaporte' => 'Pasaporte',
+                                        ])
+                                        ->required()
+                                        ->native(false)
+                                        ->live(),
 
-                    Forms\Components\Textarea::make('actividad_economica')
-                        ->label('¿A qué se dedica la empresa?')
-                        ->rows(2)
-                        ->columnSpanFull(),
-                ]),
+                                    Forms\Components\TextInput::make('numero_identificacion')
+                                        ->label('Número de identificación')
+                                        ->required()
+                                        ->numeric()
+                                        ->minLength(fn (Get $get): int => match ($get('tipo_identificacion')) {
+                                            'ruc'    => 13,
+                                            'cedula' => 10,
+                                            default  => 1,
+                                        })
+                                        ->maxLength(fn (Get $get): int => match ($get('tipo_identificacion')) {
+                                            'ruc'    => 13,
+                                            'cedula' => 10,
+                                            default  => 20,
+                                        })
+                                        ->hint(fn (Get $get): string => match ($get('tipo_identificacion')) {
+                                            'ruc'    => '13 dígitos',
+                                            'cedula' => '10 dígitos',
+                                            default  => '',
+                                        }),
 
-            Forms\Components\Section::make('Estado del Servicio')
-                ->columns(2)
-                ->schema([
-                    Forms\Components\Toggle::make('activo')
-                        ->label('Empresa activa')
-                        ->helperText('Desactivar bloquea el acceso al panel de la empresa.')
-                        ->columnSpanFull(),
+                                    Forms\Components\TextInput::make('direccion')
+                                        ->label('Dirección')
+                                        ->required()
+                                        ->columnSpanFull(),
 
-                    Forms\Components\Select::make('plan')
-                        ->label('Plan de suscripción')
-                        ->options([
-                            'basic'      => 'Basic — Solo Mailing',
-                            'pro'        => 'Pro — ERP Completo',
-                            'enterprise' => 'Enterprise — Todo incluido',
-                        ])
-                        ->default('pro')
-                        ->required()
-                        ->native(false),
-                ]),
+                                    Forms\Components\Textarea::make('actividad_economica')
+                                        ->label('¿A qué se dedica la empresa?')
+                                        ->rows(2)
+                                        ->columnSpanFull(),
+                                ]),
+                        ]),
 
-            Forms\Components\Section::make('Módulos habilitados')
-                ->description('Active los módulos que correspondan al tipo de operación de la empresa.')
-                ->columns(3)
-                ->schema([
-                    Forms\Components\Toggle::make('tipo_operacion_productos')->label('Productos'),
-                    Forms\Components\Toggle::make('tipo_operacion_servicios')->label('Servicios'),
-                    Forms\Components\Toggle::make('tipo_operacion_manufactura')->label('Manufactura'),
-                    Forms\Components\Toggle::make('tiene_logistica')->label('Logística'),
-                    Forms\Components\Toggle::make('tiene_comercio_exterior')->label('Comercio Exterior'),
-                ]),
+                    // ── Tab 2: Plan y Módulos ───────────────────────────────────
+                    Forms\Components\Tabs\Tab::make('Plan y Módulos')
+                        ->icon('heroicon-o-squares-2x2')
+                        ->schema([
 
-            Forms\Components\Section::make('Servicios adicionales')
-                ->columns(3)
-                ->schema([
-                    Forms\Components\Toggle::make('servicio_mailing_activo')
-                        ->label('Mailing')
-                        ->helperText('Desactivar oculta todo el módulo Mailing del panel de la empresa.'),
-                    Forms\Components\Toggle::make('servicio_cms_activo')
-                        ->label('CMS')
-                        ->helperText('Desactivar oculta todos los módulos CMS del panel de la empresa.'),
-                ]),
+                            // Plan activo + preview de módulos del plan
+                            Forms\Components\Section::make('Suscripción')
+                                ->columns(2)
+                                ->schema([
+                                    Forms\Components\Select::make('plan')
+                                        ->label('Plan activo')
+                                        ->options(
+                                            ServicePlan::orderBy('sort_order')
+                                                ->pluck('nombre', 'key')
+                                                ->toArray()
+                                        )
+                                        ->default('pro')
+                                        ->required()
+                                        ->live()
+                                        ->helperText('Cambiar el plan aquí solo actualiza la etiqueta. Usa "Aplicar template" para sincronizar los módulos.'),
+
+                                    // Módulos que incluye el plan seleccionado
+                                    Forms\Components\Placeholder::make('modulos_del_plan')
+                                        ->label('Módulos incluidos en este plan')
+                                        ->content(function (Get $get) use ($planesMap, $catalogo): HtmlString {
+                                            $planKey  = $get('plan') ?? '';
+                                            $template = $planesMap[$planKey] ?? [];
+
+                                            if (empty($template)) {
+                                                return new HtmlString(
+                                                    '<span style="font-size:13px;color:#94a3b8;">Selecciona un plan para ver sus módulos.</span>'
+                                                );
+                                            }
+
+                                            $activos = array_keys(array_filter($template, fn ($v) => $v === true));
+
+                                            if (empty($activos)) {
+                                                return new HtmlString(
+                                                    '<span style="font-size:13px;color:#94a3b8;">Este plan no incluye módulos de ERP.</span>'
+                                                );
+                                            }
+
+                                            $badges = collect($activos)
+                                                ->map(fn ($k) => sprintf(
+                                                    '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;margin:2px 2px 2px 0;">%s</span>',
+                                                    e($catalogo[$k]['label'] ?? $k)
+                                                ))
+                                                ->join('');
+
+                                            return new HtmlString(
+                                                '<div style="display:flex;flex-wrap:wrap;gap:2px;padding-top:2px;">' . $badges . '</div>'
+                                            );
+                                        }),
+                                ]),
+
+                            // Grid de módulos: 9 filas con toggle individual
+                            Forms\Components\Section::make('Módulos de la empresa')
+                                ->description('Activa o desactiva módulos de forma individual. Un módulo puede estar activo aunque el plan base no lo incluya.')
+                                ->schema(
+                                    collect($catalogo)
+                                        ->map(fn (array $cfg, string $key) =>
+                                            Forms\Components\Grid::make(12)
+                                                ->schema([
+                                                    Forms\Components\Placeholder::make("mod_card_{$key}")
+                                                        ->label('')
+                                                        ->columnSpan(11)
+                                                        ->content(function (Get $get) use ($key, $cfg, $planesMap): \Illuminate\Contracts\View\View {
+                                                            $planKey = $get('plan') ?? '';
+                                                            $enPlan  = (bool) ($planesMap[$planKey][$key] ?? false);
+                                                            $activo  = (bool) ($get("features.{$key}.activo") ?? false);
+
+                                                            return view('filament.admin.empresa-module-card', [
+                                                                'icon'        => $cfg['icon'],
+                                                                'label'       => $cfg['label'],
+                                                                'color'       => $cfg['color'],
+                                                                'descripcion' => $cfg['descripcion'],
+                                                                'badgeType'   => match (true) {
+                                                                    $activo && $enPlan  => 'plan',
+                                                                    $activo && !$enPlan => 'adicional',
+                                                                    default             => 'inactivo',
+                                                                },
+                                                            ]);
+                                                        }),
+
+                                                    Forms\Components\Toggle::make("features.{$key}.activo")
+                                                        ->label('')
+                                                        ->columnSpan(1)
+                                                        ->onColor('success')
+                                                        ->offColor('gray')
+                                                        ->inline(false)
+                                                        ->live()
+                                                        ->afterStateUpdated(function (bool $state, $livewire) use ($key): void {
+                                                            $record = method_exists($livewire, 'getRecord') ? $livewire->getRecord() : null;
+                                                            if ($record?->exists) {
+                                                                app(EmpresaFeaturesService::class)->setModule($record, $key, $state);
+                                                            }
+                                                        }),
+                                                ])
+                                                ->extraAttributes(['class' => 'py-2 border-b border-slate-100'])
+                                        )
+                                        ->values()
+                                        ->toArray()
+                                )
+                                ->columns(1),
+                        ]),
+
+                    // ── Tab 3: Configuración técnica ────────────────────────────
+                    Forms\Components\Tabs\Tab::make('Configuración')
+                        ->icon('heroicon-o-cog-6-tooth')
+                        ->schema([
+                            Forms\Components\Section::make('Servicio de correo')
+                                ->description('Credenciales Mailgun para el envío de campañas y notificaciones de esta empresa.')
+                                ->icon('heroicon-o-envelope')
+                                ->columns(2)
+                                ->schema([
+                                    Forms\Components\Toggle::make('servicio_mailing_activo')
+                                        ->label('Mailing activo')
+                                        ->helperText('Desactivar oculta todo el módulo Mailing para los usuarios.')
+                                        ->columnSpanFull(),
+
+                                    Forms\Components\TextInput::make('mailgun_api_key')
+                                        ->label('API Key de Mailgun')
+                                        ->password()
+                                        ->revealable()
+                                        ->placeholder('key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+                                        ->helperText('Panel Mailgun → Account → API Keys.')
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('mailgun_domain')
+                                        ->label('Dominio verificado')
+                                        ->placeholder('mg.tudominio.com')
+                                        ->helperText('El dominio verificado en tu cuenta Mailgun.')
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('mailgun_from_email')
+                                        ->label('Email de origen')
+                                        ->email()
+                                        ->placeholder('no-reply@tudominio.com')
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('mailgun_from_name')
+                                        ->label('Nombre de origen')
+                                        ->placeholder('Mi Empresa')
+                                        ->maxLength(255),
+
+                                    Forms\Components\TextInput::make('mailing_monthly_limit')
+                                        ->label('Límite mensual de envíos')
+                                        ->numeric()
+                                        ->default(3000)
+                                        ->minValue(0)
+                                        ->helperText('Máximo de correos permitidos por período.'),
+
+                                    Forms\Components\TextInput::make('mailing_billing_day')
+                                        ->label('Día de renovación (1–28)')
+                                        ->numeric()
+                                        ->default(1)
+                                        ->minValue(1)
+                                        ->maxValue(28)
+                                        ->helperText('Día del mes en que se restablece la cuota.'),
+                                ]),
+                        ]),
+                ])
+                ->columnSpanFull()
+                ->persistTabInQueryString(),
         ]);
     }
 
     public static function table(Table $table): Table
     {
-        $threshold = now()->subMinutes(5)->timestamp;
-
         return $table
-            // Query optimizada: un solo JOIN resuelve sesiones activas y último login (antes N+1)
             ->query(
-                app(\App\Services\EmpresaStatsService::class)
+                app(EmpresaStatsService::class)
                     ->empresasConActividad()
                     ->withCount('users')
             )
@@ -205,13 +359,12 @@ class EmpresaServiciosResource extends Resource
                     ->badge()
                     ->color('gray'),
 
-                // Columna de módulos activos — íconos ●◑○ por módulo (9 puntos)
                 Tables\Columns\TextColumn::make('modulos_activos')
                     ->label('Módulos')
                     ->html()
                     ->state(function (Empresa $record): string {
                         $modulos = config('erp_features', []);
-                        $dots = [];
+                        $dots    = [];
                         foreach ($modulos as $key => $cfg) {
                             $status = $record->moduleStatus($key);
                             [$dot, $color, $title] = match ($status) {
@@ -224,7 +377,6 @@ class EmpresaServiciosResource extends Resource
                         return '<span style="display:flex;gap:2px;align-items:center;">' . implode('', $dots) . '</span>';
                     }),
 
-                // Sesiones activas — viene del JOIN optimizado, sin query extra
                 Tables\Columns\TextColumn::make('online_count')
                     ->label('Online')
                     ->state(fn (Empresa $record): string =>
@@ -237,7 +389,6 @@ class EmpresaServiciosResource extends Resource
                         ($record->online_count ?? 0) > 0 ? 'success' : 'gray'
                     ),
 
-                // Último login — viene del JOIN, sin query extra
                 Tables\Columns\TextColumn::make('ultimo_login_at')
                     ->label('Último login')
                     ->state(fn (Empresa $record): string =>
@@ -255,14 +406,6 @@ class EmpresaServiciosResource extends Resource
                     ->trueIcon('heroicon-o-envelope')
                     ->falseIcon('heroicon-o-envelope'),
 
-                Tables\Columns\IconColumn::make('servicio_cms_activo')
-                    ->label('CMS')
-                    ->boolean()
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->trueIcon('heroicon-o-globe-alt')
-                    ->falseIcon('heroicon-o-globe-alt'),
-
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Registrada')
                     ->date('d/m/Y')
@@ -277,24 +420,6 @@ class EmpresaServiciosResource extends Resource
                     ->label('Estado')
                     ->trueLabel('Solo activas')
                     ->falseLabel('Solo inactivas'),
-
-                Tables\Filters\Filter::make('con_mailing')
-                    ->label('Con Mailing activo')
-                    ->query(fn ($query) => $query->whereRaw(
-                        "features @> '{\"marketing\":{\"mailing\":{\"activo\":true}}}'::jsonb"
-                    )),
-
-                Tables\Filters\Filter::make('con_cms')
-                    ->label('Con CMS activo')
-                    ->query(fn ($query) => $query->whereRaw(
-                        "features @> '{\"marketing\":{\"cms\":{\"activo\":true}}}'::jsonb"
-                    )),
-
-                Tables\Filters\Filter::make('con_logistica')
-                    ->label('Con Logística activa')
-                    ->query(fn ($query) => $query->whereRaw(
-                        "features @> '{\"logistica\":{\"activo\":true}}'::jsonb"
-                    )),
             ])
             ->actions([
                 Tables\Actions\Action::make('toggle_activo')
@@ -310,62 +435,13 @@ class EmpresaServiciosResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('cambiar_plan')
-                    ->label('Cambiar plan')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('warning')
-                    ->form([
-                        Forms\Components\Select::make('plan')
-                            ->label('Nuevo plan')
-                            ->options(['basic' => 'Basic', 'pro' => 'Pro', 'enterprise' => 'Enterprise'])
-                            ->required(),
-                    ])
-                    ->action(function (Empresa $record, array $data): void {
-                        $record->update(['plan' => $data['plan']]);
-                        Notification::make()->title('Plan actualizado')->success()->send();
-                    }),
-
-                Tables\Actions\Action::make('toggle_mailing')
-                    ->label(fn (Empresa $r): string => $r->servicio_mailing_activo ? 'Suspender Mailing' : 'Activar Mailing')
-                    ->icon('heroicon-o-envelope')
-                    ->color(fn (Empresa $r): string => $r->servicio_mailing_activo ? 'warning' : 'success')
-                    ->requiresConfirmation()
-                    ->modalHeading(fn (Empresa $r): string => $r->servicio_mailing_activo ? 'Suspender servicio Mailing' : 'Activar servicio Mailing')
-                    ->modalDescription(fn (Empresa $r): string => $r->servicio_mailing_activo
-                        ? 'El módulo Mailing dejará de ser visible para los usuarios de esta empresa.'
-                        : 'El módulo Mailing volverá a estar disponible para los usuarios de esta empresa.')
-                    ->action(function (Empresa $record): void {
-                        $record->update(['servicio_mailing_activo' => ! $record->servicio_mailing_activo]);
-                        Notification::make()
-                            ->title($record->servicio_mailing_activo ? 'Mailing activado' : 'Mailing suspendido')
-                            ->success()
-                            ->send();
-                    }),
-
-                Tables\Actions\Action::make('toggle_cms')
-                    ->label(fn (Empresa $r): string => $r->servicio_cms_activo ? 'Suspender CMS' : 'Activar CMS')
-                    ->icon('heroicon-o-globe-alt')
-                    ->color(fn (Empresa $r): string => $r->servicio_cms_activo ? 'warning' : 'success')
-                    ->requiresConfirmation()
-                    ->modalHeading(fn (Empresa $r): string => $r->servicio_cms_activo ? 'Suspender servicio CMS' : 'Activar servicio CMS')
-                    ->modalDescription(fn (Empresa $r): string => $r->servicio_cms_activo
-                        ? 'El módulo CMS dejará de ser visible para los usuarios de esta empresa.'
-                        : 'El módulo CMS volverá a estar disponible para los usuarios de esta empresa.')
-                    ->action(function (Empresa $record): void {
-                        $record->update(['servicio_cms_activo' => ! $record->servicio_cms_activo]);
-                        Notification::make()
-                            ->title($record->servicio_cms_activo ? 'CMS activado' : 'CMS suspendido')
-                            ->success()
-                            ->send();
-                    }),
-
                 Tables\Actions\Action::make('limpiar_mailing')
-                    ->label('Limpiar')
+                    ->label('Limpiar mailing')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Limpiar datos de Mailing')
-                    ->modalDescription('Se eliminarán todos los contactos, grupos, plantillas y campañas de esta empresa. Esta acción no se puede deshacer.')
+                    ->modalDescription('Se eliminarán todos los contactos, grupos, plantillas y campañas. No se puede deshacer.')
                     ->modalSubmitActionLabel('Sí, limpiar todo')
                     ->action(function (Empresa $record): void {
                         MailCampaign::where('empresa_id', $record->id)->delete();
@@ -375,18 +451,10 @@ class EmpresaServiciosResource extends Resource
 
                         Notification::make()
                             ->title('Datos de Mailing eliminados')
-                            ->body("Se limpiaron todos los datos de mailing de {$record->name}.")
+                            ->body("Se limpiaron los datos de mailing de {$record->name}.")
                             ->success()
                             ->send();
                     }),
-
-                Tables\Actions\Action::make('gestionar_modulos')
-                    ->label('Módulos')
-                    ->icon('heroicon-o-squares-2x2')
-                    ->color('primary')
-                    ->url(fn (Empresa $record): string =>
-                        static::getUrl('features', ['record' => $record])
-                    ),
 
                 Tables\Actions\EditAction::make()->label('Editar'),
             ])

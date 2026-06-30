@@ -38,6 +38,11 @@ class SaleResource extends Resource
     protected static ?string $modelLabel = 'Venta';
     protected static ?string $pluralModelLabel = 'Ventas';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('ventas');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

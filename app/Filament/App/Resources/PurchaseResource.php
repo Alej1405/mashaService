@@ -41,6 +41,11 @@ class PurchaseResource extends Resource
     protected static ?string $modelLabel = 'Compra';
     protected static ?string $pluralModelLabel = 'Compras';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('compras');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

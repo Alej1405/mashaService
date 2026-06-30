@@ -23,6 +23,11 @@ class JournalEntryResource extends Resource
     protected static ?string $modelLabel = 'Asiento Contable';
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

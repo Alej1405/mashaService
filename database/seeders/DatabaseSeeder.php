@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             AccountPlanSeeder::class,
             AccountingMapSeeder::class,
             EcommerceTraceabilitySeeder::class,
+            PanelSeeder::class,
+            RoleModuleSeeder::class,
         ]);
     }
 }

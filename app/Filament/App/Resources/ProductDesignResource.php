@@ -41,8 +41,7 @@ class ProductDesignResource extends Resource
 
     public static function canAccess(): bool
     {
-        return Filament::getCurrentPanel()?->getId() === 'enterprise'
-            && \App\Helpers\PlanHelper::can('enterprise');
+        return \App\Helpers\PlanHelper::hasModule('produccion');
     }
 
     public static function shouldRegisterNavigation(): bool

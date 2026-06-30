@@ -36,6 +36,11 @@ class ProductionOrderResource extends Resource
     protected static ?string $modelLabel      = 'Orden de Producción';
     protected static ?string $pluralModelLabel = 'Órdenes de Producción';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('produccion');
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([

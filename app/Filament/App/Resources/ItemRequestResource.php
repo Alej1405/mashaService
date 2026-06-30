@@ -34,7 +34,7 @@ class ItemRequestResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::can('pro');
+        return \App\Helpers\PlanHelper::hasModule('compras');
     }
 
     public static function shouldRegisterNavigation(): bool

@@ -61,32 +61,17 @@ class EnterprisePanelProvider extends PanelProvider
                 'panels::body.start',
                 fn (): string => view('filament.loading')->render(),
             )
-            ->navigationGroups([
-                \Filament\Navigation\NavigationGroup::make('E-Commerce')->collapsible(),
-                \Filament\Navigation\NavigationGroup::make('Inventario')->collapsible(),
-                \Filament\Navigation\NavigationGroup::make('Diseño de Producto')->collapsible(),
-                \Filament\Navigation\NavigationGroup::make('Planificación y Producción')->collapsible(),
-                \Filament\Navigation\NavigationGroup::make('Contabilidad')->collapsible(),
-                \Filament\Navigation\NavigationGroup::make('Planificación')->collapsible(),
-            ])
-            ->resources([
-                \App\Filament\App\Resources\CostoFijoResource::class,
-                \App\Filament\App\Resources\StoreProductResource::class,
-                \App\Filament\App\Resources\StoreCategoryResource::class,
-                \App\Filament\App\Resources\StoreOrderResource::class,
-                \App\Filament\App\Resources\StoreCustomerResource::class,
-                \App\Filament\App\Resources\ServiceContractResource::class,
-                \App\Filament\App\Resources\StoreCouponResource::class,
-                \App\Filament\App\Resources\InventoryItemResource::class,
-                \App\Filament\App\Resources\ProductDesignResource::class,
-                \App\Filament\App\Resources\ServiceDesignResource::class,
-                \App\Filament\App\Resources\ServiceChargeConfigResource::class,
-            ])
+            ->navigationGroups(\App\Helpers\PlanHelper::enterpriseNavigationGroups())
+            ->discoverResources(
+                in: app_path('Filament/App/Resources'),
+                for: 'App\\Filament\\App\\Resources'
+            )
+            ->discoverPages(
+                in: app_path('Filament/App/Pages'),
+                for: 'App\\Filament\\App\\Pages'
+            )
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,
-                \App\Filament\App\Pages\EcommerceApiDocsPage::class,
-                \App\Filament\App\Pages\PlanificacionPage::class,
-                \App\Filament\App\Pages\ProduccionPage::class,
             ])
             ->navigationItems([
                 NavigationItem::make('Portal de Clientes')
@@ -95,28 +80,7 @@ class EnterprisePanelProvider extends PanelProvider
                     ->url(fn (): string => route('portal.login', ['slug' => Filament::getTenant()?->slug ?? '']))
                     ->openUrlInNewTab(),
             ])
-            ->userMenuItems([
-                MenuItem::make()
-                    ->label('Panel Mailing')
-                    ->icon('heroicon-o-envelope')
-                    ->url(fn (): string => '/app/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Pro (ERP)')
-                    ->icon('heroicon-o-building-office-2')
-                    ->url(fn (): string => '/pro/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Logística')
-                    ->icon('heroicon-o-truck')
-                    ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel CMS')
-                    ->icon('heroicon-o-globe-alt')
-                    ->url(fn (): string => '/cms/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Tienda')
-                    ->icon('heroicon-o-shopping-bag')
-                    ->url(fn (): string => '/store/' . (Filament::getTenant()?->slug ?? '')),
-            ])
+            ->userMenuItems(\App\Support\PanelAccess::menuItems('enterprise'))
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,
                 \App\Filament\App\Widgets\KpiFinancieroWidget::class,

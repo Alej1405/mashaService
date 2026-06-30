@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\ServicePlanResource\Pages;
 
 use App\Filament\Admin\Resources\ServicePlanResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 class ListServicePlans extends ListRecords
@@ -11,6 +12,8 @@ class ListServicePlans extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Actions\CreateAction::make()->label('Nuevo plan'),
+        ];
     }
 }

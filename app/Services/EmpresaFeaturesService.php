@@ -46,7 +46,7 @@ class EmpresaFeaturesService
 
         DB::statement(
             "UPDATE empresas SET features = jsonb_set(features, ?, ?::jsonb, true) WHERE id = ?",
-            ["{$module}", json_encode($patch), $empresa->id]
+            ['{' . $module . '}', json_encode($patch), $empresa->id]
         );
 
         foreach (array_keys($features) as $featureKey) {

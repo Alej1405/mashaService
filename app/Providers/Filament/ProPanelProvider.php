@@ -73,29 +73,7 @@ class ProPanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\App\Pages\Dashboard::class,
             ])
-            ->userMenuItems([
-                MenuItem::make()
-                    ->label('Panel Mailing')
-                    ->icon('heroicon-o-envelope')
-                    ->url(fn (): string => '/app/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Enterprise')
-                    ->icon('heroicon-o-star')
-                    ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? ''))
-                    ->visible(fn (): bool => \App\Helpers\PlanHelper::can('enterprise')),
-                MenuItem::make()
-                    ->label('Panel Logística')
-                    ->icon('heroicon-o-truck')
-                    ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel CMS')
-                    ->icon('heroicon-o-globe-alt')
-                    ->url(fn (): string => '/cms/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Tienda')
-                    ->icon('heroicon-o-shopping-bag')
-                    ->url(fn (): string => '/store/' . (Filament::getTenant()?->slug ?? '')),
-            ])
+            ->userMenuItems(\App\Support\PanelAccess::menuItems('pro'))
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,
                 \App\Filament\App\Widgets\KpiFinancieroWidget::class,

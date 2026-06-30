@@ -20,6 +20,11 @@ class CashRegisterResource extends Resource
 
     protected static ?string $tenantRelationshipName = 'cashRegisters';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('tesoreria');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

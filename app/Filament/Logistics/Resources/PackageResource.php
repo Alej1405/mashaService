@@ -43,6 +43,11 @@ use Resend\Laravel\Facades\Resend;
 
 class PackageResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('logistica');
+    }
+
     protected static ?string $model                  = LogisticsPackage::class;
     protected static ?string $tenantRelationshipName = 'logisticsPackages';
     protected static ?string $navigationIcon         = 'heroicon-o-cube';

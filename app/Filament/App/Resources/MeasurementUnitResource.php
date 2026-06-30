@@ -24,6 +24,11 @@ class MeasurementUnitResource extends Resource
     protected static ?string $pluralModelLabel = 'Unidades de Medida';
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('inventario');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

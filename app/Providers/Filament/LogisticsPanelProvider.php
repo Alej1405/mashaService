@@ -81,24 +81,7 @@ class LogisticsPanelProvider extends PanelProvider
                 \App\Filament\Logistics\Pages\BodegaEspanaPage::class,
                 \App\Filament\Logistics\Pages\ShipmentKanban::class,
             ])
-            ->userMenuItems([
-                MenuItem::make()
-                    ->label('Panel ERP')
-                    ->icon('heroicon-o-building-office-2')
-                    ->url(fn (): string => '/pro/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Enterprise')
-                    ->icon('heroicon-o-star')
-                    ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel CMS')
-                    ->icon('heroicon-o-globe-alt')
-                    ->url(fn (): string => '/cms/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Tienda')
-                    ->icon('heroicon-o-shopping-bag')
-                    ->url(fn (): string => '/store/' . (Filament::getTenant()?->slug ?? '')),
-            ])
+            ->userMenuItems(\App\Support\PanelAccess::menuItems('logistics'))
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

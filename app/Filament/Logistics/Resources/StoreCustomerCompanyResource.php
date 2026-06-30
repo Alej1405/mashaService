@@ -19,6 +19,11 @@ use Filament\Tables\Table;
 
 class StoreCustomerCompanyResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('logistica');
+    }
+
     protected static ?string $model                  = StoreCustomerCompany::class;
     protected static ?string $tenantRelationshipName = 'storeCustomerCompanies';
     protected static ?string $navigationIcon         = 'heroicon-o-building-office-2';

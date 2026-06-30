@@ -38,6 +38,11 @@ use Filament\Tables\Table;
 
 class ShipmentResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('logistica');
+    }
+
     protected static ?string $model                  = LogisticsShipment::class;
     protected static ?string $tenantRelationshipName = 'logisticsShipments';
     protected static ?string $navigationIcon         = 'heroicon-o-truck';

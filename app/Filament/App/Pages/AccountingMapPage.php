@@ -25,7 +25,8 @@ class AccountingMapPage extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()->hasAnyRole(['super_admin', 'admin_empresa']);
+        return auth()->user()->hasAnyRole(['super_admin', 'admin_empresa'])
+            && \App\Helpers\PlanHelper::hasModule('finanzas');
     }
 
     public function table(Table $table): Table

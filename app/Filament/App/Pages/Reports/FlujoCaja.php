@@ -62,6 +62,11 @@ class FlujoCaja extends Page implements HasForms
         return $export->download('FlujoCaja_' . $this->fecha_desde . '_' . $this->fecha_hasta . '.xlsx');
     }
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
+    }
+
     public function mount()
     {
         $this->fecha_desde = now()->startOfYear()->toDateString();

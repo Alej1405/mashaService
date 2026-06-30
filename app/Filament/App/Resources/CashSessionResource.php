@@ -22,6 +22,11 @@ class CashSessionResource extends Resource
 
     protected static ?string $tenantRelationshipName = 'cashSessions';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('tesoreria');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

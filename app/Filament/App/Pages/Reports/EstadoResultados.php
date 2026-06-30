@@ -63,6 +63,11 @@ class EstadoResultados extends Page implements HasForms
     public Collection $costos;
     public Collection $gastos;
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
+    }
+
     public function mount()
     {
         $this->fecha_desde = now()->startOfYear()->toDateString();

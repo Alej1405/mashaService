@@ -19,6 +19,11 @@ class BodegaEEUUPage extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('logistica');
+    }
+
     protected static ?string $navigationIcon  = 'heroicon-o-flag';
     protected static ?string $navigationLabel = 'EEUU';
     protected static ?string $navigationGroup = 'Bodegas';

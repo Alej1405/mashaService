@@ -32,6 +32,11 @@ class BalanceComprobacion extends Page implements HasTable, HasForms
     public ?string $fecha_desde = null;
     public ?string $fecha_hasta = null;
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
+    }
+
     public function mount(): void
     {
         $this->fecha_desde = now()->startOfYear()->toDateString();

@@ -78,16 +78,7 @@ class EcommercePanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\Ecommerce\Pages\EcommerceDashboard::class,
             ])
-            ->userMenuItems([
-                MenuItem::make()
-                    ->label('Panel ERP')
-                    ->icon('heroicon-o-building-office')
-                    ->url(fn (): string => '/app/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel CMS')
-                    ->icon('heroicon-o-globe-alt')
-                    ->url(fn (): string => '/cms/' . (Filament::getTenant()?->slug ?? '')),
-            ])
+            ->userMenuItems(\App\Support\PanelAccess::menuItems('ecommerce'))
             ->widgets([])
             ->middleware([
                 EncryptCookies::class,

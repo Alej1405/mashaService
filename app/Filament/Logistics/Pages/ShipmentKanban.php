@@ -15,6 +15,11 @@ use Resend\Laravel\Facades\Resend;
 
 class ShipmentKanban extends Page
 {
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('logistica');
+    }
+
     protected static ?string $navigationIcon  = 'heroicon-o-view-columns';
     protected static ?string $navigationLabel = 'Kanban';
     protected static ?string $navigationGroup = 'Importaciones';

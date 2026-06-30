@@ -34,10 +34,7 @@ class CostoFijoResource extends Resource
 
     public static function canAccess(): bool
     {
-        $panel = Filament::getCurrentPanel()?->getId();
-
-        return in_array($panel, ['pro', 'enterprise'])
-            && \App\Helpers\PlanHelper::can('pro');
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
     }
 
     public static function shouldRegisterNavigation(): bool

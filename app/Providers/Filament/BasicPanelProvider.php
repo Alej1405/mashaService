@@ -17,7 +17,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Illuminate\Support\HtmlString;
-use Filament\Navigation\MenuItem;
+//use Filament\Navigation\MenuItem;
 use Filament\Facades\Filament;
 
 class BasicPanelProvider extends PanelProvider
@@ -40,21 +40,22 @@ class BasicPanelProvider extends PanelProvider
             ])
             ->font('Inter')
             ->brandName(fn (): string => Filament::getTenant()?->name ?? 'Mashaec ERP')
-            ->brandLogo(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
-                ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
+            ->brandLogo(fn (): ?string => ($logo = Filament::getTenant()?->logo_path)
+                ? asset('storage/' . ltrim($logo, '/'))
                 : null)
-            ->favicon(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
-                ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
+            ->favicon(fn (): ?string => ($logo = Filament::getTenant()?->logo_path)
+                ? asset('storage/' . ltrim($logo, '/'))
                 : null)
             ->brandLogoHeight('2rem')
             ->darkMode(false)
+            ->topNavigation(false)
+            ->Navigation(false)
             ->font('Sansation')
             ->renderHook(
                 'panels::head.done',
                 fn (): HtmlString => new HtmlString('
                     <link rel="stylesheet" href="' . asset('css/aura-glass.css') . '">
                     <link rel="stylesheet" href="' . asset('css/filament/app/theme.css') . '">
-                    <script>localStorage.setItem("theme","dark");</script>
                 '),
             )
             ->renderHook(
@@ -67,22 +68,10 @@ class BasicPanelProvider extends PanelProvider
                 \Filament\Navigation\NavigationGroup::make('CMS')->collapsible(),
                 \Filament\Navigation\NavigationGroup::make('Blog')->collapsible(),
             ])
-            ->resources([
-                \App\Filament\App\Resources\MailTemplateResource::class,
-                \App\Filament\App\Resources\MailingGroupResource::class,
-                \App\Filament\App\Resources\MailingContactResource::class,
-                \App\Filament\App\Resources\MailCampaignResource::class,
-                \App\Filament\App\Resources\EmpresaUserResource::class,
-                // CMS
-                \App\Filament\App\Resources\CmsServiceResource::class,
-                \App\Filament\App\Resources\CmsTeamMemberResource::class,
-                \App\Filament\App\Resources\CmsClientLogoResource::class,
-                \App\Filament\App\Resources\CmsTestimonialResource::class,
-                \App\Filament\App\Resources\CmsFaqResource::class,
-                \App\Filament\App\Resources\CmsPostResource::class,
-                \App\Filament\App\Resources\SupportTicketResource::class,
-                \App\Filament\App\Resources\CmsProductResource::class,
-            ])
+            ->discoverResources(
+                in: app_path('Filament/App/Resources'),
+                for: 'App\\Filament\\App\\Resources'
+            )
             ->pages([
                 \App\Filament\Basic\Pages\Dashboard::class,
                 \App\Filament\Basic\Pages\MailingDashboard::class,
@@ -90,37 +79,12 @@ class BasicPanelProvider extends PanelProvider
                 \App\Filament\App\Pages\Cms\CmsHeroPage::class,
                 \App\Filament\App\Pages\Cms\CmsAboutPage::class,
                 \App\Filament\App\Pages\Cms\CmsContactPage::class,
-                // API
-                \App\Filament\App\Pages\ApiDocsPage::class,
                 // Carta de Presentación
                 \App\Filament\App\Pages\CartaPresentacionPage::class,
                 // Soporte
                 \App\Filament\App\Pages\MiChatSoportePage::class,
             ])
-            ->userMenuItems([
-                MenuItem::make()
-                    ->label('Panel Pro (ERP)')
-                    ->icon('heroicon-o-building-office-2')
-                    ->url(fn (): string => '/pro/' . (Filament::getTenant()?->slug ?? ''))
-                    ->visible(fn (): bool => \App\Helpers\PlanHelper::can('pro')),
-                MenuItem::make()
-                    ->label('Panel Enterprise')
-                    ->icon('heroicon-o-star')
-                    ->url(fn (): string => '/enterprise/' . (Filament::getTenant()?->slug ?? ''))
-                    ->visible(fn (): bool => \App\Helpers\PlanHelper::can('enterprise')),
-                MenuItem::make()
-                    ->label('Panel Logística')
-                    ->icon('heroicon-o-truck')
-                    ->url(fn (): string => '/logistics/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel CMS')
-                    ->icon('heroicon-o-globe-alt')
-                    ->url(fn (): string => '/cms/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Tienda')
-                    ->icon('heroicon-o-shopping-bag')
-                    ->url(fn (): string => '/store/' . (Filament::getTenant()?->slug ?? '')),
-            ])
+            ->userMenuItems(\App\Support\PanelAccess::menuItems('basic'))
             ->widgets([
                 \App\Filament\App\Widgets\DashboardHeaderWidget::class,
             ])

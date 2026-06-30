@@ -26,7 +26,7 @@ class AlmacenResource extends Resource
 
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::can('pro');
+        return \App\Helpers\PlanHelper::hasModule('inventario');
     }
 
     public static function shouldRegisterNavigation(): bool

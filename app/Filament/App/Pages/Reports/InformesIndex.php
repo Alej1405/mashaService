@@ -21,7 +21,7 @@ class InformesIndex extends Page
 
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::can('pro');
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
     }
 
     protected function getViewData(): array

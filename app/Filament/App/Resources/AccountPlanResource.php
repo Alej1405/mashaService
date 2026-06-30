@@ -23,6 +23,11 @@ class AccountPlanResource extends Resource
     protected static ?string $pluralModelLabel = 'Planes de Cuentas';
     protected static ?string $navigationGroup = 'Contabilidad';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('finanzas');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

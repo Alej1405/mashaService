@@ -28,7 +28,7 @@ class SoporteChatPage extends Page
     public function getChats()
     {
         return SupportChat::with(['empresa', 'user', 'messages' => fn($q) => $q->latest()->limit(1)])
-            ->orderByRaw("FIELD(status, 'abierto', 'en_proceso', 'cerrado')")
+            ->orderByRaw("CASE status WHEN 'abierto' THEN 0 WHEN 'en_proceso' THEN 1 WHEN 'cerrado' THEN 2 ELSE 3 END")
             ->orderBy('updated_at', 'desc')
             ->get();
     }

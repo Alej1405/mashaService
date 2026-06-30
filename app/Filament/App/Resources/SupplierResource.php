@@ -25,6 +25,11 @@ class SupplierResource extends Resource
     protected static ?string $pluralModelLabel = 'Proveedores';
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
+    public static function canAccess(): bool
+    {
+        return \App\Helpers\PlanHelper::hasModule('compras');
+    }
+
     public static function form(Form $form): Form
     {
         return $form

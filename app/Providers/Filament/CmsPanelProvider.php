@@ -77,16 +77,7 @@ class CmsPanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\Cms\Pages\CmsDashboard::class,
             ])
-            ->userMenuItems([
-                MenuItem::make()
-                    ->label('Panel ERP')
-                    ->icon('heroicon-o-building-office')
-                    ->url(fn (): string => '/app/' . (Filament::getTenant()?->slug ?? '')),
-                MenuItem::make()
-                    ->label('Panel Tienda')
-                    ->icon('heroicon-o-shopping-bag')
-                    ->url(fn (): string => '/store/' . (Filament::getTenant()?->slug ?? '')),
-            ])
+            ->userMenuItems(\App\Support\PanelAccess::menuItems('cms'))
             ->widgets([])
             ->middleware([
                 EncryptCookies::class,
