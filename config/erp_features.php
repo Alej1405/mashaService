@@ -249,4 +249,16 @@ return [
         ],
     ],
 
+    'clientes' => [
+        'label'       => 'Clientes',
+        'icon'        => 'heroicon-o-user-group',
+        'color'       => 'sky',
+        'descripcion' => 'Administración transversal de clientes de la empresa (datos, direcciones, contactos)',
+        'features' => [
+            'directorio'  => 'Directorio de Clientes',
+            'direcciones' => 'Direcciones',
+            'contactos'   => 'Contactos / Empresas',
+        ],
+    ],
+
 ];

@@ -70,22 +70,23 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
 
     public function canAccessTenant(Model $tenant): bool
     {
-        $segment = request()->segment(1) ?? '';
-
-        // Paneles basados en roles (cms, store)
-        if (isset(self::ROLE_BASED_PANELS[$segment]) || $segment === 'store') {
-            if (! $tenant->activo) return false;
-            if ($this->hasRole('super_admin')) return true;
-            return $this->empresasAcceso()->where('empresas.id', $tenant->id)->exists();
-        }
-
         if (! $tenant->activo) {
             return false;
         }
 
-        // El plan del tenant debe abrir el panel cuyo path coincide con el segmento.
-        $planKeys = \App\Models\Panel::where('path', $segment)->where('activo', true)->first()
-            ?->servicePlans()->pluck('key')->all() ?? [];
+        // Resolver el panel desde Filament (NO desde el segmento de la URL): en la ruta
+        // global /livewire/update el primer segmento es "livewire", no el path del panel,
+        // y usar request()->segment(1) hacía fallar canAccessTenant → 404 en cada update.
+        $panelId = \Filament\Facades\Filament::getCurrentPanel()?->getId() ?? '';
+
+        // Paneles basados en roles (cms, ecommerce)
+        if (isset(self::ROLE_BASED_PANELS[$panelId])) {
+            if ($this->hasRole('super_admin')) return true;
+            return $this->empresasAcceso()->where('empresas.id', $tenant->id)->exists();
+        }
+
+        // Paneles por plan: el plan del tenant debe abrir este panel.
+        $planKeys = $this->plansThatOpenPanel($panelId);
 
         if (! in_array($tenant->plan, $planKeys, true)) {
             return false;

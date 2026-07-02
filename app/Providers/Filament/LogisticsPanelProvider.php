@@ -41,11 +41,11 @@ class LogisticsPanelProvider extends PanelProvider
             ])
             ->font('Inter')
             ->brandName(fn (): string => (Filament::getTenant()?->name ?? 'Mashaec') . ' · Logística')
-            ->brandLogo(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
-                ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
+            ->brandLogo(fn (): ?string => ($logo = Filament::getTenant()?->logo_path) && \Illuminate\Support\Facades\Storage::disk('public')->exists($logo)
+                ? asset('storage/' . ltrim($logo, '/'))
                 : null)
-            ->favicon(fn (): ?string => ($t = Filament::getTenant()) && $t->logo_path
-                ? \Illuminate\Support\Facades\Storage::disk('public')->url($t->logo_path)
+            ->favicon(fn (): ?string => ($logo = Filament::getTenant()?->logo_path) && \Illuminate\Support\Facades\Storage::disk('public')->exists($logo)
+                ? asset('storage/' . ltrim($logo, '/'))
                 : null)
             ->brandLogoHeight('2rem')
             ->darkMode(false)
@@ -55,7 +55,6 @@ class LogisticsPanelProvider extends PanelProvider
                 fn (): HtmlString => new HtmlString('
                     <link rel="stylesheet" href="' . asset('css/aura-glass.css') . '">
                     <link rel="stylesheet" href="' . asset('css/filament/app/theme.css') . '">
-                    <script>localStorage.setItem("theme","dark");</script>
                     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>
                 '),
             )

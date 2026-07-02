@@ -92,7 +92,7 @@ class Dashboard extends Page
             'fecha'        => ucfirst(now()->translatedFormat('l, d \d\e F \d\e Y')),
             'empresa'      => $empresa,
             'user'         => $user,
-            'logo'         => $empresa->logo_path ? Storage::disk('public')->url($empresa->logo_path) : null,
+            'logo'         => ($lp = $empresa->logo_path) && Storage::disk('public')->exists($lp) ? asset('storage/' . ltrim($lp, '/')) : null,
             'inicial'      => mb_strtoupper(mb_substr($empresa->name ?? '?', 0, 1)),
             'paneles'      => $paneles,
             'widgets'      => $widgets,

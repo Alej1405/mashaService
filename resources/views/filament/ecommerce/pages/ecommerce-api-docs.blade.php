@@ -47,10 +47,10 @@
     </style>
 
     <div class="ad"
-         x-data="{
-            copied: '',
-            copy(text, id) { navigator.clipboard.writeText(text).then(() => { this.copied = id; setTimeout(() => { if (this.copied === id) this.copied = '' }, 1500); }); }
-         }">
+            x-data="{
+                copied: '',
+                copy(text, id) { navigator.clipboard.writeText(text).then(() => { this.copied = id; setTimeout(() => { if (this.copied === id) this.copied = '' }, 1500); }); }
+            }">
 
         <p class="ad-lead">
             API REST para construir tu tienda online (catálogo, carrito, clientes, pedidos y pagos)

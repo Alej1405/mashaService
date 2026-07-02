@@ -15,14 +15,14 @@ class CustomerResource extends Resource
     protected static ?string $model = Customer::class;
     protected static ?string $tenantRelationshipName = 'customers';
 
-    protected static ?string $navigationIcon = 'heroicon-o-users';
-    protected static ?string $navigationGroup = 'Ventas';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static ?string $navigationGroup = 'Clientes';
     protected static ?string $modelLabel = 'Cliente';
     protected static ?string $pluralModelLabel = 'Clientes';
 
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::hasModule('ventas');
+        return \App\Helpers\PlanHelper::hasModule('clientes');
     }
 
     public static function form(Form $form): Form

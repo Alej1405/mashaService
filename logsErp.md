@@ -680,3 +680,58 @@ Reordenamiento de la documentación a su panel:
 - Ambas docs rediseñadas (skills): dirigidas por estructura de datos (endpoints como array, vista itera), accordion, badges de método (GET/POST/PUT/DELETE), marca 🔒 cliente, base URL + copiar, bloques de código con copiar, gestión de token. Light mode, contraste WCAG, sin bans, motion sutil + prefers-reduced-motion.
 - ModuleRegistry: quitadas entradas huérfanas ApiDocsPage/EcommerceApiDocsPage (ya no están en panel App).
 - Viejas clases en App/Pages eliminadas. Lógica de token (Sanctum) preservada. Lint OK, bootea, APIs intactas.
+
+## 2026-06-30 (cont.) — Fix 404 crear producto + inicio Fase 1 Tienda
+
+- BUG 404 en /store/{slug}/store-products/create (y cualquier página del panel): causado por el classmap de Composer apuntando a App/Pages/ApiDocsPage.php y EcommerceApiDocsPage.php (movidas/eliminadas antes). Fix: `composer dump-autoload` + `optimize:clear`. 0 referencias fantasma. Lección: tras mover/borrar clases, correr dump-autoload.
+- Decisión confirmada: CLIENTES = módulo transversal (no panel físico). Principio transversal del plan: dejar ganchos contables listos (sale_id, cuenta_contable_id, desglose de impuestos, vínculo a inventario) SIN conectar contabilidad ni tocar AccountingService/Observers; se conecta tras 1-2 módulos.
+- Fase 1 (Catálogo/Landing) iniciada: migración `2026_06_30_000002_add_landing_fields_to_store_categories` (+ meta_titulo, meta_descripcion, banner, contenido, destacada). Solo presentación de tienda, sin contabilidad. Pendiente: endpoint landing de categoría + StoreCategoryResource (admin) con esos campos; luego landing de producto, promociones, clientes transversal.
+
+## 2026-06-30 (cont.) — Módulo Tienda completado + módulo Clientes transversal
+
+CATÁLOGO / LANDING:
+- `store_categories` enriquecida (migración 000002): meta_titulo, meta_descripcion, banner, contenido, destacada. Fillable+casts en StoreCategory.
+- `StoreCategoryResource` (Ecommerce): form reorganizado en secciones "Datos" + "Landing de la categoría" (banner, contenido RichEditor, SEO). Tabla con columna destacada.
+- Endpoint NUEVO aditivo `GET api/ecommerce/{slug}/categories/{slug}/landing` (StoreCategoryController@landing): category con URLs (banner/imagen) + contenido + SEO, breadcrumb, subcategorias, products paginados con URLs. NO altera index()/show() (en uso). Smoke test HTTP 200.
+- Producto: ya tenía tab "Landing / Vitrina" en su Resource + endpoints show/related/featured + SEO en el modelo.
+
+PROMOCIONES: StoreCouponResource ya existe con alta + tracking de usos (usos_actuales/maximo_usos). OK.
+
+CLIENTES (transversal, decisión del usuario):
+- Nuevo módulo 'clientes' en config/erp_features (directorio, direcciones, contactos).
+- `CustomerResource` (App): canAccess → hasModule('clientes'), navigationGroup 'Clientes' (antes 'ventas'). Tabla customers ya unificada (store+contabilidad).
+- Sembrado: panel_modules pro/enterprise + role_module admin_empresa/super_admin (+ ecommerce_manager). Verificado.
+
+GANCHOS CONTABLES (listos, INERTES — no conectados): store_orders.sale_id, store_orders desglose (subtotal/descuento/total; pendiente IVA), customers.cuenta_contable_id, StoreProduct→inventoryItem, metodo_pago/estado_pago. AccountingService/Observers NO tocados.
+
+FIX previo: 404 crear producto = classmap Composer con clases ApiDocsPage borradas → composer dump-autoload.
+
+PENDIENTE opcional: desglose IVA en pedidos (para asiento futuro), "estado de cuenta" del cliente como vista/relación de pedidos, endpoints admin de clientes para frontend externo.
+
+## 2026-07-01 — Diagnóstico 404 /livewire/update al crear producto/categoría (EN CURSO)
+
+Síntoma: overlay 404 al crear producto y categoría (panel store) y CMS; el POST a `/livewire/update` devuelve 404 (text/html). Producto/categoría tienen RichEditor; cupón no (cupón no da 404).
+
+HIPÓTESIS PROBADAS:
+- **Frontend/Vite**: Vite NO corre pero `npm run build` compila sin errores (58 módulos). Filament NO usa `@vite` (vite.config solo compila resources/css|js/app.*). Assets de Filament (rich-editor.js, file-upload.js, select.js) responden HTTP 200 y existen. theme.css y aura-glass.css existen. → Frontend descartado como causa del JS/update.
+- **Theme (HALLAZGO)**: existe `resources/css/filament/app/theme.css` + `tailwind.config.js` y `admin/` igual = theme al estilo **Filament v3.0-3.1 antiguo (Tailwind v3)**, mientras el proyecto ya migró a **Tailwind v4** (`@tailwindcss/vite`). El `public/css/filament/app/theme.css` es un compilado estático viejo (jun 16) que el build actual NO regenera (no está en vite.config ni usa `->viteTheme()`). Es un RESIDUO del sistema antiguo. Afecta CSS, no explica el 404 JS por sí solo — pendiente evaluar recompilación.
+- **Residuos de clases**: LIMPIO. Sin referencias a EmpresaResource/EmpresaMailingResource/ApiDocsPage/EcommerceApiDocsPage eliminadas. `Filament::getPanels()` registra los 7 paneles OK.
+- **Middleware web**: RedirectMobileToPortal (residuo móvil) excluye /livewire/update y solo GET → no interfiere.
+
+SERVIDOR DESCARTADO (10 pruebas OK, CLI opcache off): mount, update cycle (set+refresh), resolución por alias, submit real (create), hidratación desde snapshot real, update de campo desde snapshot. Todo OK en CMS y Store. El 404 NO se reproduce a nivel servidor.
+
+PENDIENTE: el 404 solo ocurre en el request HTTP real del navegador. Falta leer el RESPONSE del 404 (APP_DEBUG=true → muestra la excepción exacta) o reproducir el request HTTP completo autenticado.
+
+## 2026-07-01 — RESUELTO: 404 en /livewire/update (crear producto/categoría/CMS)
+
+CAUSA RAÍZ (residuo de Fase 3): `User::canAccessTenant()` resolvía el panel con `request()->segment(1)`. En la ruta del panel (`/store/{slug}/...`) el segmento es "store" → OK; pero `/livewire/update` es una ruta GLOBAL cuyo primer segmento es "livewire" → no coincide con ningún panel → `$planKeys=[]` → `canAccessTenant` devolvía FALSE → Filament respondía 404 en CADA petición Livewire de un componente tenant-scoped (todos los paneles: store, cms, pro, enterprise, logistics). Por eso el form CARGABA (GET con segmento correcto = 200) pero al interactuar (POST /livewire/update) daba 404. Se notaba más en producto/categoría porque sus componentes (RichEditor/FileUpload) disparan un update al cargar.
+
+FIX: `canAccessTenant()` ahora resuelve el panel con `Filament::getCurrentPanel()?->getId()` (Filament lo restaura correctamente tanto en la ruta del panel como en /livewire/update) y usa `plansThatOpenPanel($panelId)` (por panels.key). Ya NO depende de la URL.
+
+REPRODUCCIÓN/VERIFICACIÓN (flujo HTTP completo por el kernel con sesión autenticada + snapshot real):
+- Antes: GET create=200, POST /livewire/update=404.
+- Después: producto, categoría, CMS post, CMS faq → GET=200 y UPDATE=200.
+
+Diagnóstico previo (para referencia): frontend/Vite compila OK y Filament no lo usa; assets 200; versiones consistentes (Filament 3.3.49 + Livewire 3.7.11); sin residuos de clases; middleware web no interfiere. El bug NO era frontend ni versión: era la lógica de canAccessTenant basada en el segmento de URL.
+
+PENDIENTE (residuo aparte, no bloqueante): theme resources/css/filament/*/theme.css + tailwind.config.js = estilo Filament v3 antiguo (Tailwind v3) vs proyecto en Tailwind v4; el theme.css compilado es viejo y no se regenera. Evaluar recompilación/migración del theme.

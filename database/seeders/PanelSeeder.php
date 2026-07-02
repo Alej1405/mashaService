@@ -33,8 +33,8 @@ class PanelSeeder extends Seeder
     /** Los 6 paneles operativos reales (key == id del Filament PanelProvider). */
     private const PANELS = [
         'basic'      => ['name' => 'Basic',      'path' => 'app',        'color' => 'slate',  'icon' => 'heroicon-o-squares-2x2',       'sort' => 1, 'modules' => ['marketing']],
-        'pro'        => ['name' => 'ERP',        'path' => 'pro',        'color' => 'indigo', 'icon' => 'heroicon-o-building-office-2',  'sort' => 2, 'modules' => ['finanzas', 'tesoreria', 'compras', 'inventario', 'ventas', 'produccion', 'marketing', 'logistica']],
-        'enterprise' => ['name' => 'Enterprise', 'path' => 'enterprise', 'color' => 'amber',  'icon' => 'heroicon-o-star',              'sort' => 3, 'modules' => ['finanzas', 'tesoreria', 'compras', 'inventario', 'ventas', 'produccion', 'marketing', 'tienda', 'logistica']],
+        'pro'        => ['name' => 'ERP',        'path' => 'pro',        'color' => 'indigo', 'icon' => 'heroicon-o-building-office-2',  'sort' => 2, 'modules' => ['finanzas', 'tesoreria', 'compras', 'inventario', 'ventas', 'produccion', 'marketing', 'logistica', 'clientes']],
+        'enterprise' => ['name' => 'Enterprise', 'path' => 'enterprise', 'color' => 'amber',  'icon' => 'heroicon-o-star',              'sort' => 3, 'modules' => ['finanzas', 'tesoreria', 'compras', 'inventario', 'ventas', 'produccion', 'marketing', 'tienda', 'logistica', 'clientes']],
         'logistics'  => ['name' => 'Logística',  'path' => 'logistics',  'color' => 'cyan',   'icon' => 'heroicon-o-truck',             'sort' => 4, 'modules' => ['logistica']],
         'cms'        => ['name' => 'CMS',        'path' => 'cms',        'color' => 'violet', 'icon' => 'heroicon-o-globe-alt',         'sort' => 5, 'modules' => ['marketing']],
         'ecommerce'  => ['name' => 'Tienda',     'path' => 'store',      'color' => 'cyan',   'icon' => 'heroicon-o-shopping-bag',      'sort' => 6, 'modules' => ['tienda']],

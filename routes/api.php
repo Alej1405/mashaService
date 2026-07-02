@@ -49,8 +49,9 @@ Route::prefix('ecommerce/{empresa_slug}')
         Route::get('products/{slug}',       [StoreProductController::class, 'show']);
         Route::get('products/{id}/related', [StoreProductController::class, 'related']);
 
-        Route::get('categories',            [StoreCategoryController::class, 'index']);
-        Route::get('categories/{slug}',     [StoreCategoryController::class, 'show']);
+        Route::get('categories',                [StoreCategoryController::class, 'index']);
+        Route::get('categories/{slug}',         [StoreCategoryController::class, 'show']);
+        Route::get('categories/{slug}/landing', [StoreCategoryController::class, 'landing']);
 
         // ── Auth ────────────────────────────────────────────────────────
         Route::prefix('auth')->group(function () {

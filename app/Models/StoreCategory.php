@@ -21,10 +21,17 @@ class StoreCategory extends Model
         'imagen',
         'publicado',
         'orden',
+        // Landing / SEO
+        'meta_titulo',
+        'meta_descripcion',
+        'banner',
+        'contenido',
+        'destacada',
     ];
 
     protected $casts = [
         'publicado' => 'boolean',
+        'destacada' => 'boolean',
         'orden'     => 'integer',
     ];
 
