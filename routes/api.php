@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Store\StorePaymentController;
 use App\Http\Controllers\Api\Store\StoreProductController;
 use App\Http\Controllers\Api\N8n\AuthController as N8nAuthController;
 use App\Http\Controllers\Api\N8n\CmsController as N8nCmsController;
+use App\Http\Controllers\Api\N8n\N8nRecursoController;
 use App\Http\Controllers\Api\N8n\StoreController as N8nStoreController;
 use App\Http\Middleware\EnsureStoreCustomer;
 use App\Http\Middleware\N8nAuthenticate;
@@ -148,29 +149,31 @@ Route::prefix('n8n/v1')
             Route::post('auth/select-empresa', [N8nAuthController::class, 'selectEmpresa']);
             Route::post('auth/logout',         [N8nAuthController::class, 'logout']);
 
-            // Módulo CMS (requiere módulo 'marketing' en la empresa activa).
+            // Módulo CMS (requiere 'marketing'). CRUD completo + imágenes,
+            // dirigido por RecursoRegistry (recursos: hero, about, contacto,
+            // terminos, posts, services, faq, testimonios, equipo, logos).
             Route::prefix('cms')->middleware(N8nRequireModule::class . ':marketing')->group(function () {
-                Route::get('resumen',          [N8nCmsController::class, 'resumen']);
-                Route::get('posts',            [N8nCmsController::class, 'postsIndex']);
-                Route::post('posts',           [N8nCmsController::class, 'postsStore']);
-                Route::delete('posts/{id}',    [N8nCmsController::class, 'postsDestroy']);
-                Route::get('services',         [N8nCmsController::class, 'servicesIndex']);
-                Route::post('services',        [N8nCmsController::class, 'servicesStore']);
-                Route::delete('services/{id}', [N8nCmsController::class, 'servicesDestroy']);
-                Route::get('faq',              [N8nCmsController::class, 'faqIndex']);
-                Route::post('faq',             [N8nCmsController::class, 'faqStore']);
-                Route::delete('faq/{id}',      [N8nCmsController::class, 'faqDestroy']);
+                Route::get('resumen', [N8nCmsController::class, 'resumen']);
+                Route::get('{recurso}',                [N8nRecursoController::class, 'index'])->defaults('modulo', 'cms');
+                Route::post('{recurso}',               [N8nRecursoController::class, 'store'])->defaults('modulo', 'cms');
+                Route::get('{recurso}/{id}',           [N8nRecursoController::class, 'show'])->defaults('modulo', 'cms')->whereNumber('id');
+                Route::put('{recurso}/{id}',           [N8nRecursoController::class, 'update'])->defaults('modulo', 'cms')->whereNumber('id');
+                Route::delete('{recurso}/{id}',        [N8nRecursoController::class, 'destroy'])->defaults('modulo', 'cms')->whereNumber('id');
+                Route::post('{recurso}/{id}/imagen',   [N8nRecursoController::class, 'imagen'])->defaults('modulo', 'cms')->whereNumber('id');
             });
 
-            // Módulo Tienda (requiere módulo 'tienda' en la empresa activa).
+            // Módulo Tienda (requiere 'tienda'). CRUD completo + imágenes/galería
+            // (recursos: products, categories, coupons).
             Route::prefix('store')->middleware(N8nRequireModule::class . ':tienda')->group(function () {
-                Route::get('resumen',           [N8nStoreController::class, 'resumen']);
-                Route::get('coupons',           [N8nStoreController::class, 'couponsIndex']);
-                Route::post('coupons',          [N8nStoreController::class, 'couponsStore']);
-                Route::delete('coupons/{id}',   [N8nStoreController::class, 'couponsDestroy']);
-                Route::get('products',          [N8nStoreController::class, 'productsIndex']);
-                Route::put('products/{id}',     [N8nStoreController::class, 'productsUpdate']);
-                Route::delete('products/{id}',  [N8nStoreController::class, 'productsDestroy']);
+                Route::get('resumen', [N8nStoreController::class, 'resumen']);
+                Route::get('{recurso}',                       [N8nRecursoController::class, 'index'])->defaults('modulo', 'store');
+                Route::post('{recurso}',                      [N8nRecursoController::class, 'store'])->defaults('modulo', 'store');
+                Route::get('{recurso}/{id}',                  [N8nRecursoController::class, 'show'])->defaults('modulo', 'store')->whereNumber('id');
+                Route::put('{recurso}/{id}',                  [N8nRecursoController::class, 'update'])->defaults('modulo', 'store')->whereNumber('id');
+                Route::delete('{recurso}/{id}',               [N8nRecursoController::class, 'destroy'])->defaults('modulo', 'store')->whereNumber('id');
+                Route::post('{recurso}/{id}/imagen',          [N8nRecursoController::class, 'imagen'])->defaults('modulo', 'store')->whereNumber('id');
+                Route::post('{recurso}/{id}/galeria',         [N8nRecursoController::class, 'galeriaAdd'])->defaults('modulo', 'store')->whereNumber('id');
+                Route::delete('{recurso}/{id}/galeria/{indice}', [N8nRecursoController::class, 'galeriaRemove'])->defaults('modulo', 'store')->whereNumber(['id', 'indice']);
             });
         });
     });
