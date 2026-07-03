@@ -20,9 +20,9 @@ class UserResource extends Resource
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
     protected static ?string $navigationIcon  = 'heroicon-o-users';
-    protected static ?string $navigationLabel = 'Usuarios';
-    protected static ?string $navigationGroup = 'Sistema';
-    protected static ?int    $navigationSort  = 1;
+    protected static ?string $navigationLabel = 'Usuarios de empresas';
+    protected static ?string $navigationGroup = 'Clientes';
+    protected static ?int    $navigationSort  = 3;
     protected static ?string $modelLabel      = 'Usuario';
     protected static ?string $pluralModelLabel = 'Usuarios';
 
@@ -116,7 +116,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\EmpresasRelationManager::class,
         ];
     }
 

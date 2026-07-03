@@ -771,3 +771,10 @@ PENDIENTE: flujo n8n de Autenticación (bot Telegram — hay 2, decidir cuál), 
 - Backend CMS+Tienda probados EXHAUSTIVAMENTE en producción (sesión de prueba en telegram_sessions; ojo expires_at en UTC): crear/listar/borrar, aislamiento por empresa, validaciones 422, gates de permiso/secreto, super_admin, kill-switch. Todo verde.
 - REGLA n8n aprendida: activar sub-flujos ANTES del padre (si no: 400 "not published"); activación por API registra el Telegram webhook; el CLI/DB apuntaban a base equivocada (el servicio usa HOME=/root → /root/.n8n).
 - PENDIENTE: prueba en vivo del usuario por Telegram + commit/push del backend n8n desde su máquina.
+
+## 2026-07-03 — Admin: sidebar (Usuarios → Clientes) + agregar empresas a un usuario
+
+Cambio de FORMA + funcionalidad pequeña en el panel /admin (pedido del usuario). NO se tocaron modelos/providers/migraciones.
+- `UserResource`: navigationGroup 'Sistema' → 'Clientes' (junto a Empresas y Facturación), label 'Usuarios' → 'Usuarios de empresas', sort 3. El grupo 'Sistema' del AdminPanelProvider queda sin recursos → no se renderiza (no se tocó el provider).
+- Nuevo `UserResource/RelationManagers/EmpresasRelationManager` (relación `empresasAcceso` = pivote empresa_user_access con rol). Permite AGREGAR/quitar empresas a un usuario y asignar el rol por empresa (para clientes con más de una empresa). AttachAction (solo empresas activas) + EditAction (cambiar rol) + DetachAction. NO maneja contraseñas: el login es un solo password; aquí solo se da acceso + rol. Registrado en UserResource::getRelations().
+- Verificado local: lint OK; nav group=Clientes, label correcto; relación empresasAcceso resuelve; 7 roles como opciones. NO commiteado ni desplegado (el usuario commitea/verifica). Falta verificación visual del modal Attach/Edit en la UI.
