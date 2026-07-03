@@ -11,6 +11,11 @@ class CreateStoreCustomer extends CreateRecord
 {
     protected static string $resource = StoreCustomerResource::class;
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl("index");
+    }
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['empresa_id'] = Filament::getTenant()->id;

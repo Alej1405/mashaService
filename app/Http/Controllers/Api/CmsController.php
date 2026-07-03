@@ -9,7 +9,6 @@ use App\Models\CmsContact;
 use App\Models\CmsFaq;
 use App\Models\CmsHero;
 use App\Models\CmsPost;
-use App\Models\CmsProduct;
 use App\Models\CmsService;
 use App\Models\CmsTeamMember;
 use App\Models\CmsTerminos;
@@ -446,25 +445,9 @@ class CmsController extends Controller
 
     private function buildProducts(Empresa $empresa): array
     {
-        $cms = CmsProduct::withoutGlobalScopes()
-            ->select(['id', 'nombre', 'descripcion', 'precio', 'unidad_precio', 'categoria', 'caracteristicas', 'icono', 'imagen'])
-            ->where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->orderBy('sort_order')
-            ->get()
-            ->map(fn ($p) => [
-                'id'              => $p->id,
-                'source'          => 'cms',
-                'nombre'          => $p->nombre,
-                'descripcion'     => $p->descripcion,
-                'precio'          => $p->precio ? (float) $p->precio : null,
-                'unidad_precio'   => $p->unidad_precio,
-                'categoria'       => $p->categoria,
-                'caracteristicas' => $p->caracteristicas ?? [],
-                'icono'           => $p->icono,
-                'imagen'          => $this->imageUrl($p->imagen),
-            ]);
-
+        // Los productos vendibles viven SOLO en la Tienda (StoreProduct). CMS ya no
+        // gestiona productos; este endpoint conserva únicamente el catálogo de
+        // diseños de producto (ProductDesign) para empresas enterprise.
         $designs = collect();
         if ($empresa->plan === 'enterprise') {
             $designs = ProductDesign::withoutGlobalScopes()
@@ -493,7 +476,7 @@ class CmsController extends Controller
                 ]);
         }
 
-        return $cms->concat($designs)->values()->all();
+        return $designs->values()->all();
     }
 
     private function terminosData(int $empresaId): ?array

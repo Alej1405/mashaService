@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCmsTerminos extends CreateRecord
 {
     protected static string $resource = CmsTerminosResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl("index");
+    }
 }

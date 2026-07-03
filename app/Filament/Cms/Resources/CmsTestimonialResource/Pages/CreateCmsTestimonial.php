@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCmsTestimonial extends CreateRecord
 {
     protected static string $resource = CmsTestimonialResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl("index");
+    }
 }

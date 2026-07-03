@@ -215,8 +215,13 @@ class StoreProductResource extends Resource
                                 ->label('Galería')
                                 ->image()
                                 ->multiple()
+                                ->maxFiles(5)
+                                ->reorderable()
+                                ->appendFiles()
+                                ->maxSize(3072)
                                 ->disk('public')
                                 ->directory('store/products/gallery')
+                                ->helperText('Hasta 5 imágenes.')
                                 ->columnSpanFull(),
                         ])->columns(3),
                 ])

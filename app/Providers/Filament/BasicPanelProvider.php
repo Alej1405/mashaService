@@ -64,9 +64,9 @@ class BasicPanelProvider extends PanelProvider
             )
             ->broadcasting()
             ->navigationGroups([
-                \Filament\Navigation\NavigationGroup::make('Mailing')->collapsible(),
-                \Filament\Navigation\NavigationGroup::make('CMS')->collapsible(),
-                \Filament\Navigation\NavigationGroup::make('Blog')->collapsible(),
+                \Filament\Navigation\NavigationGroup::make('Mailing')->collapsible()->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('CMS')->collapsible()->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Blog')->collapsible()->collapsed(),
             ])
             ->discoverResources(
                 in: app_path('Filament/App/Resources'),

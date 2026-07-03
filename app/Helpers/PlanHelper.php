@@ -54,7 +54,7 @@ class PlanHelper
     public static function navigationGroups(): array
     {
         return array_map(
-            fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible(),
+            fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible()->collapsed(),
             [
                 'Ventas',
                 'Producción',
@@ -75,7 +75,7 @@ class PlanHelper
     public static function enterpriseNavigationGroups(): array
     {
         return array_map(
-            fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible(),
+            fn (string $name) => \Filament\Navigation\NavigationGroup::make($name)->collapsible()->collapsed(),
             [
                 'Ventas',
                 'Producción',

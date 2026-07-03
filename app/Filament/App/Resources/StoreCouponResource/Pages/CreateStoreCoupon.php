@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateStoreCoupon extends CreateRecord
 {
     protected static string $resource = StoreCouponResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl("index");
+    }
 }

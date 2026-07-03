@@ -33,10 +33,10 @@ class AdminPanelProvider extends PanelProvider
             ->font('Sansation')
             ->darkMode(false)
             ->navigationGroups([
-                NavigationGroup::make('Clientes'),
-                NavigationGroup::make('Plataforma'),
-                NavigationGroup::make('Monitoreo'),
-                NavigationGroup::make('Sistema'),
+                NavigationGroup::make('Clientes')->collapsed(),
+                NavigationGroup::make('Plataforma')->collapsed(),
+                NavigationGroup::make('Monitoreo')->collapsed(),
+                NavigationGroup::make('Sistema')->collapsed(),
             ])
             ->renderHook('panels::head.end', fn (): HtmlString => new HtmlString('<style>
                 /* ── Utilidades de grid no incluidas en el build de Tailwind ── */

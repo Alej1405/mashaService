@@ -16,7 +16,6 @@ class CmsObserver
         \App\Models\CmsHero::class         => ['hero', 'all'],
         \App\Models\CmsAbout::class        => ['about', 'all'],
         \App\Models\CmsService::class      => ['services', 'all'],
-        \App\Models\CmsProduct::class      => ['products', 'all'],
         \App\Models\CmsTeamMember::class   => ['team', 'all'],
         \App\Models\CmsClientLogo::class   => ['clients', 'all'],
         \App\Models\CmsTestimonial::class  => ['testimonials', 'all'],

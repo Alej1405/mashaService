@@ -8,7 +8,6 @@ use App\Models\CmsContact;
 use App\Models\CmsFaq;
 use App\Models\CmsHero;
 use App\Models\CmsPost;
-use App\Models\CmsProduct;
 use App\Models\CmsService;
 use App\Models\CmsTeamMember;
 use App\Models\CmsTerminos;
@@ -48,7 +47,6 @@ class CmsDashboard extends Page
             'teamCount'         => CmsTeamMember::where('empresa_id', $eid)->count(),
             'testimonialsCount' => CmsTestimonial::where('empresa_id', $eid)->count(),
             'logosCount'        => CmsClientLogo::where('empresa_id', $eid)->count(),
-            'productsCount'     => CmsProduct::where('empresa_id', $eid)->count(),
             'faqsCount'         => CmsFaq::where('empresa_id', $eid)->count(),
             'postsCount'        => CmsPost::where('empresa_id', $eid)->count(),
             'lastPost'          => $lastPost,

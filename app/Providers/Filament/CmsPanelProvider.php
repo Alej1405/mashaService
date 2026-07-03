@@ -60,10 +60,10 @@ class CmsPanelProvider extends PanelProvider
                 fn (): string => view('filament.loading')->render(),
             )
             ->navigationGroups([
-                \Filament\Navigation\NavigationGroup::make('Contenido Web'),
-                \Filament\Navigation\NavigationGroup::make('Blog'),
-                \Filament\Navigation\NavigationGroup::make('Contacto'),
-                \Filament\Navigation\NavigationGroup::make('Legal'),
+                \Filament\Navigation\NavigationGroup::make('Contenido Web')->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Blog')->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Contacto')->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Legal')->collapsed(),
             ])
             ->discoverResources(
                 in: app_path('Filament/Cms/Resources'),

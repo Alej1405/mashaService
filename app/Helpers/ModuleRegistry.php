@@ -69,7 +69,7 @@ class ModuleRegistry
             'marketing' => [
                 'r' => [
                     'CmsClientLogoResource', 'CmsFaqResource', 'CmsPostResource',
-                    'CmsProductResource', 'CmsServiceResource', 'CmsTeamMemberResource',
+                    'CmsServiceResource', 'CmsTeamMemberResource',
                     'CmsTestimonialResource', 'MailCampaignResource', 'MailTemplateResource',
                     'MailingContactResource', 'MailingGroupResource',
                 ],

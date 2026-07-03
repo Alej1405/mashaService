@@ -32,6 +32,66 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
+        // Sidebar en modo ACORDEÓN: al abrir un grupo, colapsa los demás (solo uno
+        // abierto a la vez) para no contaminar la visión. Complementa el
+        // ->collapsed() por defecto de cada grupo. Filament no lo trae nativo:
+        // se parchea el store Alpine del sidebar (regla del proyecto).
+        \Filament\Support\Facades\FilamentView::registerRenderHook(
+            \Filament\View\PanelsRenderHook::BODY_END,
+            fn (): string => <<<'HTML'
+<script>
+(function () {
+    function labels() {
+        var out = [];
+        document.querySelectorAll('.fi-sidebar-group').forEach(function (el) {
+            try { var d = Alpine.$data(el); if (d && d.label && out.indexOf(d.label) === -1) out.push(d.label); } catch (e) {}
+        });
+        return out;
+    }
+    // Acordeón: al abrir un grupo, colapsa los demás (una sola vez por store).
+    var iv = setInterval(function () {
+        if (typeof Alpine === 'undefined' || ! Alpine.store) return;
+        var store = Alpine.store('sidebar');
+        if (! store || typeof store.toggleCollapsedGroup !== 'function') return;
+        if (! Array.isArray(store.collapsedGroups)) store.collapsedGroups = [];
+        if (! store.__accordion) {
+            store.__accordion = true;
+            var orig = store.toggleCollapsedGroup.bind(store);
+            store.toggleCollapsedGroup = function (group) {
+                var willExpand = this.groupIsCollapsed(group);
+                orig(group);
+                if (willExpand) {
+                    labels().forEach(function (l) {
+                        if (l !== group && ! store.groupIsCollapsed(l)) orig(l);
+                    });
+                }
+            };
+        }
+        clearInterval(iv);
+    }, 80);
+    setTimeout(function () { clearInterval(iv); }, 10000);
+
+    // Colapsado por defecto: en cada carga completa (no en navegación SPA) colapsa
+    // TODOS los grupos, sin depender del localStorage.
+    if (! window.__mashaSidebarCollapsed) {
+        var iv2 = setInterval(function () {
+            if (typeof Alpine === 'undefined' || ! Alpine.store) return;
+            var store = Alpine.store('sidebar');
+            if (! store) return;
+            var ls = labels();
+            if (! ls.length) return;
+            if (! Array.isArray(store.collapsedGroups)) store.collapsedGroups = [];
+            store.collapsedGroups = ls.slice();
+            window.__mashaSidebarCollapsed = true;
+            clearInterval(iv2);
+        }, 80);
+        setTimeout(function () { clearInterval(iv2); }, 10000);
+    }
+})();
+</script>
+HTML
+        );
+
         \App\Models\Empresa::observe(\App\Observers\EmpresaObserver::class);
         \App\Models\Purchase::observe(\App\Observers\PurchaseObserver::class);
         \App\Models\InventoryMovement::observe(\App\Observers\InventoryMovementObserver::class);
@@ -51,7 +111,6 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\CmsHero::observe($cmsObserver);
         \App\Models\CmsAbout::observe($cmsObserver);
         \App\Models\CmsService::observe($cmsObserver);
-        \App\Models\CmsProduct::observe($cmsObserver);
         \App\Models\CmsTeamMember::observe($cmsObserver);
         \App\Models\CmsClientLogo::observe($cmsObserver);
         \App\Models\CmsTestimonial::observe($cmsObserver);

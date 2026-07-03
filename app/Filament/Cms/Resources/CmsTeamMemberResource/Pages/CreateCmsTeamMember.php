@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateCmsTeamMember extends CreateRecord
 {
     protected static string $resource = CmsTeamMemberResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl("index");
+    }
 }

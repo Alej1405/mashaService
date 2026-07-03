@@ -8,4 +8,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateStoreCategory extends CreateRecord
 {
     protected static string $resource = StoreCategoryResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl("index");
+    }
 }

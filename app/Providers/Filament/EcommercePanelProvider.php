@@ -60,11 +60,11 @@ class EcommercePanelProvider extends PanelProvider
                 fn (): string => view('filament.loading')->render(),
             )
             ->navigationGroups([
-                \Filament\Navigation\NavigationGroup::make('Catálogo'),
-                \Filament\Navigation\NavigationGroup::make('Ventas'),
-                \Filament\Navigation\NavigationGroup::make('Clientes'),
-                \Filament\Navigation\NavigationGroup::make('Promociones'),
-                \Filament\Navigation\NavigationGroup::make('Contratos'),
+                \Filament\Navigation\NavigationGroup::make('Catálogo')->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Ventas')->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Clientes')->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Promociones')->collapsed(),
+                \Filament\Navigation\NavigationGroup::make('Contratos')->collapsed(),
             ])
             ->discoverResources(
                 in: app_path('Filament/Ecommerce/Resources'),

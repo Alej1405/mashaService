@@ -55,7 +55,8 @@ class StoreProductResource extends Resource
                     Select::make('store_category_id')->label('Categoría')
                         ->options(fn () => StoreCategory::pluck('nombre', 'id'))
                         ->nullable()->searchable()->native(false)->columnSpan(1),
-                    TextInput::make('sku')->label('SKU')->maxLength(100)->columnSpan(1),
+                    TextInput::make('sku')->label('SKU')->maxLength(100)->columnSpan(1)
+                        ->helperText('Código único de referencia del producto (Stock Keeping Unit). Sirve para identificarlo en inventario y ventas. Ej: CAM-ROJ-M.'),
                     Toggle::make('publicado')->label('Publicado')->default(true)->columnSpan(1),
                     RichEditor::make('descripcion')->label('Descripción')
                         ->toolbarButtons(['bold','italic','bulletList','orderedList','link','undo','redo'])
@@ -66,6 +67,17 @@ class StoreProductResource extends Resource
                 ])->columns(3),
 
                 Tab::make('Landing / Vitrina')->schema([
+                    FileUpload::make('galeria')
+                        ->label('Galería de imágenes')
+                        ->image()
+                        ->multiple()
+                        ->maxFiles(5)
+                        ->reorderable()
+                        ->appendFiles()
+                        ->disk('public')->directory('store/products/gallery')
+                        ->imagePreviewHeight('120')->maxSize(3072)
+                        ->helperText('Hasta 5 imágenes para la landing del producto. Arrastra para reordenar.')
+                        ->columnSpanFull(),
                     TextInput::make('unidad_precio')
                         ->label('Unidad de precio')
                         ->placeholder('por kg, por unidad, por caja...')

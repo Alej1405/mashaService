@@ -63,10 +63,10 @@ class LogisticsPanelProvider extends PanelProvider
                 fn (): string => view('filament.loading')->render(),
             )
             ->navigationGroups([
-                NavigationGroup::make('Bodegas')->collapsible(false),
-                NavigationGroup::make('Importaciones')->collapsible(false),
-                NavigationGroup::make('Clientes')->collapsible(),
-                NavigationGroup::make('Configuración')->collapsible(),
+                NavigationGroup::make('Bodegas')->collapsible()->collapsed(),
+                NavigationGroup::make('Importaciones')->collapsible()->collapsed(),
+                NavigationGroup::make('Clientes')->collapsible()->collapsed(),
+                NavigationGroup::make('Configuración')->collapsible()->collapsed(),
             ])
             ->resources([
                 \App\Filament\Logistics\Resources\PackageResource::class,

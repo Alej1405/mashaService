@@ -778,3 +778,39 @@ Cambio de FORMA + funcionalidad pequeña en el panel /admin (pedido del usuario)
 - `UserResource`: navigationGroup 'Sistema' → 'Clientes' (junto a Empresas y Facturación), label 'Usuarios' → 'Usuarios de empresas', sort 3. El grupo 'Sistema' del AdminPanelProvider queda sin recursos → no se renderiza (no se tocó el provider).
 - Nuevo `UserResource/RelationManagers/EmpresasRelationManager` (relación `empresasAcceso` = pivote empresa_user_access con rol). Permite AGREGAR/quitar empresas a un usuario y asignar el rol por empresa (para clientes con más de una empresa). AttachAction (solo empresas activas) + EditAction (cambiar rol) + DetachAction. NO maneja contraseñas: el login es un solo password; aquí solo se da acceso + rol. Registrado en UserResource::getRelations().
 - Verificado local: lint OK; nav group=Clientes, label correcto; relación empresasAcceso resuelve; 7 roles como opciones. NO commiteado ni desplegado (el usuario commitea/verifica). Falta verificación visual del modal Attach/Edit en la UI.
+
+## 2026-07-03 — Consolidación de productos: CMS ya NO tiene productos (único origen = Tienda)
+
+Decisión del usuario: los productos vendibles viven SOLO en la Tienda (StoreProduct); CMS no debe tener productos (su vitrina es la del store). El diseño de productos desde Producción es tarea aparte (más tarde). Verificado SEGURO: cms_products = 0 en local Y prod (nada que migrar/perder); StoreProduct ya tiene los campos de vitrina (Fase 1 de la unificación ya hecha).
+Eliminado `CmsProduct`:
+- Resources borrados: `Filament/Cms/Resources/CmsProductResource` (+Pages) y `Filament/App/Resources/CmsProductResource` (+Pages). Modelo `app/Models/CmsProduct.php` borrado.
+- `Empresa::cmsProducts()` (relación) quitada; `CmsObserver` y `AppServiceProvider` (observe) sin la entrada de CmsProduct; `CmsDashboard` sin `productsCount` + sección "Productos CMS" quitada del blade; `ModuleRegistry` sin 'CmsProductResource'.
+- API pública `/api/cms/{slug}/products` NO se rompe (regla crítica: la usa el frontend): `CmsController::buildProducts` se desacopló de CmsProduct y ahora devuelve SOLO el catálogo de `ProductDesign` (enterprise). Verificado: endpoint responde 401 (token), no 500; buildProducts corre sin error.
+- composer dump-autoload + optimize:clear (por borrar clases). 0 referencias a CmsProduct en el código. Lint OK. NO commiteado ni desplegado (el usuario commitea/verifica).
+- NOTA: tabla `cms_products` se deja (vacía, inerte) para drop posterior (Fase 5) tras confirmar en prod.
+
+## 2026-07-03 — CMS: singletons sin botón "Crear" duplicado + volver a la tabla al guardar
+
+Reportado: error `duplicate key cms_heroes_empresa_id_unique` al crear un 2º hero. Causa: secciones "una por empresa" gestionadas como CRUD con botón Crear. Singletons (unique empresa_id): cms_heroes, cms_abouts, cms_contacts, cms_terminos (verificado en pg_constraint). Posts es unique(empresa_id,slug) = multi-registro.
+- Singletons (Hero/About/Contact/Terminos) List pages: `CreateAction->visible(fn()=> ! Model::query()->exists())` (EmpresaScope filtra por tenant) → oculta "Crear" si ya existe → no más duplicados.
+- TODOS los form CMS (10 recursos × Create+Edit = 20 páginas): agregado `getRedirectUrl(): return getResource()::getUrl('index')` → al guardar vuelve a la tabla (antes se quedaba en el form, "no pasaba nada"). El loading del botón + notificación de éxito son de Filament por defecto; con el redirect ahora hay feedback claro.
+- Verificado: lint OK (todas las páginas CMS), bootea, 161 rutas cms. Sin tocar productos/otros módulos. NO commiteado ni desplegado (el usuario commitea/verifica en el server local que ya corre).
+
+## 2026-07-03 — Tienda: galería de imágenes en la vitrina/landing del producto (máx 5)
+
+Para construir la landing del producto (necesita imágenes). StoreProduct.galeria ya es fillable + cast array.
+- `Ecommerce/Resources/StoreProductResource` pestaña "Landing / Vitrina": AGREGADO `FileUpload::make('galeria')->image()->multiple()->maxFiles(5)->reorderable()->appendFiles()->disk('public')->directory('store/products/gallery')->maxSize(3072)` (antes esa pestaña no tenía galería).
+- `App/Resources/StoreProductResource` galería existente: agregado `->maxFiles(5)->reorderable()->appendFiles()->maxSize(3072)` (antes multiple sin límite).
+- Límite 5 imágenes por producto en ambos paneles. Lint OK, bootea. NO commiteado ni desplegado.
+
+## 2026-07-03 — REGLA nueva: formularios redirigen a la tabla al guardar (aplicado a Tienda)
+
+Mismo problema del CMS en la Tienda: al guardar el usuario se quedaba en el form. Aplicado `getRedirectUrl(): return getResource()::getUrl('index')` a las 18 páginas Create/Edit de los recursos Store* (paneles Ecommerce y App: StoreProduct, StoreCategory, StoreCoupon, StoreCustomer, StoreOrder). Lint OK, bootea.
+REGLA nueva codificada en la skill `filament-conventions` (sección "Resources: convenciones") + memoria feedback: toda página Create/Edit de cualquier Resource debe redirigir al index al guardar. Aplica a todo módulo en adelante. Pendiente opcional: barrer los demás módulos (contabilidad, inventario, compras, etc.) retroactivamente.
+
+## 2026-07-03 — REGLA nueva: sidebar colapsado por defecto + acordeón (solo uno abierto)
+
+Pedido del usuario: los grupos del sidebar arrancan colapsados y solo uno abierto a la vez (evita contaminar la visión).
+- Colapsado por defecto: `->collapsed()` agregado a los 22 grupos (`NavigationGroup::make(...)` en Admin/Ecommerce/Cms/Basic/Logistics providers + `PlanHelper::navigationGroups/enterpriseNavigationGroups` para Pro/Enterprise). En Logística los `collapsible(false)` (Bodegas/Importaciones) pasaron a `collapsible()->collapsed()` para cumplir la regla.
+- Acordeón (Filament no lo trae): render hook global en `AppServiceProvider` (`FilamentView::registerRenderHook(PanelsRenderHook::BODY_END,...)`) inyecta un `<script>` que parchea `$store.sidebar.toggleCollapsedGroup`: al expandir un grupo colapsa los demás (labels de `.fi-sidebar-group` vía `Alpine.$data(el).label`).
+- Verificado: lint OK, boot OK (API render hook correcta), script inyectado en el panel. Falta verificación VISUAL en navegador. Codificado en skill filament-conventions + memoria. NO commiteado ni desplegado.
