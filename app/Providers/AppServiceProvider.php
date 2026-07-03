@@ -3,7 +3,10 @@
 namespace App\Providers;
 
 use Illuminate\Auth\Events\Login;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,6 +16,17 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(Login::class, \App\Listeners\UpdateLastLogin::class);
+
+        // Rate limiter de la superficie n8n: por sesión/chat (todo n8n sale de la
+        // misma IP del VPS, así que limitar por IP sería demasiado grueso).
+        RateLimiter::for('n8n', function (Request $request) {
+            $key = $request->bearerToken()
+                ?: $request->input('chat_id')
+                ?: $request->ip();
+
+            return Limit::perMinute((int) config('n8n.rate_limit', 60))
+                ->by('n8n:'.sha1((string) $key));
+        });
         // Forzar HTTPS en producción (necesario detrás de Cloudflare)
         if (config('app.env') === 'production') {
             \Illuminate\Support\Facades\URL::forceScheme('https');

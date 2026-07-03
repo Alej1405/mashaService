@@ -735,3 +735,39 @@ REPRODUCCIÓN/VERIFICACIÓN (flujo HTTP completo por el kernel con sesión auten
 Diagnóstico previo (para referencia): frontend/Vite compila OK y Filament no lo usa; assets 200; versiones consistentes (Filament 3.3.49 + Livewire 3.7.11); sin residuos de clases; middleware web no interfiere. El bug NO era frontend ni versión: era la lógica de canAccessTenant basada en el segmento de URL.
 
 PENDIENTE (residuo aparte, no bloqueante): theme resources/css/filament/*/theme.css + tailwind.config.js = estilo Filament v3 antiguo (Tailwind v3) vs proyecto en Tailwind v4; el theme.css compilado es viejo y no se regenera. Evaluar recompilación/migración del theme.
+
+## 2026-07-02 — Integración n8n↔Telegram: Fase 1 (Autenticación) backend
+
+Superficie de API AISLADA solo para n8n (`/api/n8n/v1`), separada de las APIs frontend (que son solo-lectura/cliente y NO se tocan). Objetivo: gestionar tienda/CMS desde Telegram vía n8n, sin IA.
+
+NUEVO (todo probado local 9/9 + verificado en vivo en VPS):
+- `config/n8n.php`: enabled (kill-switch), secret (X-N8N-Secret), session_ttl, rate_limit, allowed_ips.
+- Migración+modelo `telegram_sessions` (chat_id unique, user_id/empresa_id FK, token_hash sha256, estado, expires_at). El token de sesión vive SOLO aquí → vaciar la tabla o bajar el flag suspende n8n sin tocar el resto.
+- Middleware `N8nGate` (flag+secreto+IP opcional; la IP no es fiable por trustProxies '*', el control fuerte es el secreto) y `N8nAuthenticate` (valida token de sesión, expone user/empresa al request).
+- Action `app/Modules/N8n/Actions/IniciarSesionTelegram.php` (#[Documentado], grupo "Integración n8n") — verifica email+clave, captura chat_id dinámicamente, crea sesión. **Primer uso de `app/Modules/`.** NO se tocó el modelo User (token propio, no Sanctum).
+- `Api/N8n/AuthController` (login/me/select-empresa/logout) + grupo de rutas en routes/api.php + limiter `n8n` en AppServiceProvider (por sesión/chat, no IP).
+
+Endpoints: POST auth/login {email,password,chat_id} → token+empresa(s)+needs_empresa_selection · GET auth/me · POST auth/select-empresa · POST auth/logout.
+
+Seguridad verificada en vivo (https://erp.mashaec.net): sin secreto→403, secreto malo→403, credenciales malas→401, /me sin token→401, kill-switch→503.
+
+DESPLIEGUE: este Mac no tiene acceso SSH a GitHub (git fetch falla) → se desplegó DIRECTO al VPS por SSH (tar), NO por git pull. Archivos quedan sin commitear en local para revisión/push del usuario. Backups en VPS: *.pre_n8n.bak. VPS .env con N8N_API_ENABLED=true + secreto real.
+
+PENDIENTE: flujo n8n de Autenticación (bot Telegram — hay 2, decidir cuál), luego Fase 2 CMS y Fase 3 Tienda (endpoints /api/n8n/v1/cms|store + flujos).
+
+## 2026-07-02 (cont.) — n8n Fase 1 flujo activo + super_admin + Fase 2 CMS backend
+
+- Flujo Telegram de Autenticación construido y ACTIVO (bot @Masha_1405_bot), probado punta a punta por el usuario. Login por email+clave → sesión → menú por módulos del rol.
+- super_admin (Opción A): puede elegir cualquier empresa activa desde el bot (IniciarSesionTelegram + AuthController::selectEmpresa).
+- Login enriquecido: devuelve `modulos` permitidos (Query `app/Modules/N8n/Queries/ModulosGestionablesDelUsuario`, réplica de PanelAccess plan∩rol con user/empresa explícitos).
+- Fase 2 CMS backend: `N8nRequireModule` (gate por-módulo) + `Api/N8n/CmsController` (posts/services/faq index/store/destroy + resumen), SIEMPRE con empresa_id explícito y `withoutGlobalScope(EmpresaScope)` (la API n8n no tiene tenant/auth). Rutas n8n/v1/cms bajo N8nRequireModule:marketing. Probado local, desplegado.
+- Deploy directo por SSH (este Mac no pushea a GitHub). Backups *.pre_cms.bak / *.pre_n8n.bak en el VPS.
+- PENDIENTE: flujo CMS n8n (workflow separado vía executeWorkflow) + Fase 3 Tienda.
+
+## 2026-07-03 — n8n Fase 2 CMS (flujo) + Fase 3 Tienda completas
+
+- Flujos Telegram n8n construidos vía Public API sobre la instancia real: **Auth** (19 nodos), **CMS** (8) y **Tienda** (10), todos ACTIVOS. Auth enruta /cms y /tienda a sus sub-flujos vía executeWorkflow (aislamiento: un módulo no tumba a los otros); menú y permisos por rol∩plan.
+- Backend Fase 3 Tienda: `Api/N8n/StoreController` (cupones crear/listar/borrar; productos listar/actualizar/borrar) bajo N8nRequireModule:tienda. Crear productos NO se expone (store_products.inventory_item_id NOT NULL). Cupón tipo porcentaje|monto_fijo.
+- Backend CMS+Tienda probados EXHAUSTIVAMENTE en producción (sesión de prueba en telegram_sessions; ojo expires_at en UTC): crear/listar/borrar, aislamiento por empresa, validaciones 422, gates de permiso/secreto, super_admin, kill-switch. Todo verde.
+- REGLA n8n aprendida: activar sub-flujos ANTES del padre (si no: 400 "not published"); activación por API registra el Telegram webhook; el CLI/DB apuntaban a base equivocada (el servicio usa HOME=/root → /root/.n8n).
+- PENDIENTE: prueba en vivo del usuario por Telegram + commit/push del backend n8n desde su máquina.
