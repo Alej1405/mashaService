@@ -34,14 +34,12 @@ class StoreOrderService
                     ->where('empresa_id', $empresa->id)
                     ->where('id', $item['store_product_id'])
                     ->where('publicado', true)
-                    ->with('productDesign.inventoryItem')
                     ->firstOrFail();
 
-                $qty          = (float) $item['cantidad'];
-                $inventoryItem = $product->productDesign?->inventoryItem;
-                $stock         = (float) ($inventoryItem?->stock_actual ?? 0);
+                $qty   = (float) $item['cantidad'];
+                $stock = (float) ($product->stock ?? 0);
 
-                if ($inventoryItem && $stock < $qty) {
+                if ($product->gestionar_stock && $stock < $qty) {
                     throw new \Exception("Stock insuficiente para: {$product->nombre} (disponible: {$stock})");
                 }
 
@@ -56,7 +54,7 @@ class StoreOrderService
 
                 $orderItems[] = [
                     'store_product_id'  => $product->id,
-                    'inventory_item_id' => $inventoryItem?->id,
+                    'inventory_item_id' => null,
                     'nombre_snapshot'   => $product->nombre,
                     'precio_unitario'   => $precioAplicado,
                     'cantidad'          => $qty,

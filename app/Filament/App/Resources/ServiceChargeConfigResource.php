@@ -26,13 +26,17 @@ class ServiceChargeConfigResource extends Resource
 
     protected static ?string $navigationIcon   = 'heroicon-o-currency-dollar';
     protected static ?string $navigationLabel  = 'Cargos Adicionales';
-    protected static ?string $navigationGroup  = 'Diseño de Producto';
+    protected static ?string $navigationGroup  = 'Producto';
     protected static ?string $modelLabel       = 'Cargo adicional';
     protected static ?string $pluralModelLabel = 'Cargos adicionales';
     protected static ?int    $navigationSort   = 3;
 
     public static function canAccess(): bool
     {
+        if (\App\Helpers\PlanHelper::aislarProducto()) {
+            return false;
+        }
+
         return \App\Helpers\PlanHelper::hasModule('produccion');
     }
 

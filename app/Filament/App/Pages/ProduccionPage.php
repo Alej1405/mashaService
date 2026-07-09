@@ -34,6 +34,10 @@ class ProduccionPage extends Page
 
     public static function canAccess(): bool
     {
+        if (\App\Helpers\PlanHelper::aislarProducto()) {
+            return false;
+        }
+
         return \App\Helpers\PlanHelper::hasModule('produccion');
     }
 

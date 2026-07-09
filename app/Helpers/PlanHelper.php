@@ -82,7 +82,7 @@ class PlanHelper
                 'Inventario',
                 'Contabilidad',
                 'Logística',
-                'Diseño de Producto',
+                'Producto',
                 'Informes',
                 'Configuración',
             ]
@@ -126,6 +126,14 @@ class PlanHelper
             }
             if (! in_array($module, self::$panelModulesCache[$panelKey], true)) {
                 return false;
+            }
+
+            // Modo AISLAR PRODUCTO (temporal): además del módulo Producto
+            // (StoreProductResource, auto-permitido en su canAccess), dejamos
+            // visible el módulo Inventario para gestionar los insumos del
+            // producto. Todo lo demás, oculto.
+            if (self::aislarProducto()) {
+                return $module === 'inventario';
             }
 
             // Capa 2: ¿el rol del usuario ve este módulo? (null = sin restricción)
@@ -180,6 +188,19 @@ class PlanHelper
 
         return self::$roleModulesCache =
             \App\Models\Role::where('name', $rolName)->first()?->moduleKeys() ?? [];
+    }
+
+    /**
+     * Modo AISLAR PRODUCTO (temporal, para pruebas).
+     *
+     * Fuente única del interruptor `config('erp.aislar_producto')`
+     * (env ERP_AISLAR_PRODUCTO). Cuando es true, el panel oculta todo salvo
+     * el recurso "Productos" para probar el módulo Producto sin ruido.
+     * No elimina nada: apagar el flag reactiva toda la navegación.
+     */
+    public static function aislarProducto(): bool
+    {
+        return (bool) config('erp.aislar_producto', false);
     }
 
     /**

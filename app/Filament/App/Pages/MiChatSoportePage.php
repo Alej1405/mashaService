@@ -16,6 +16,15 @@ class MiChatSoportePage extends Page
 
     public ?SupportChat $chat = null;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (\App\Helpers\PlanHelper::aislarProducto()) {
+            return false;
+        }
+
+        return parent::shouldRegisterNavigation();
+    }
+
     public function mount(): void
     {
         $empresa = Filament::getTenant();

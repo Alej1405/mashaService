@@ -14,7 +14,7 @@ use App\Models\CmsTeamMember;
 use App\Models\CmsTerminos;
 use App\Models\CmsTestimonial;
 use App\Models\Empresa;
-use App\Models\ProductDesign;
+use App\Models\StoreProduct;
 use App\Models\ServiceDesign;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -445,38 +445,30 @@ class CmsController extends Controller
 
     private function buildProducts(Empresa $empresa): array
     {
-        // Los productos vendibles viven SOLO en la Tienda (StoreProduct). CMS ya no
-        // gestiona productos; este endpoint conserva únicamente el catálogo de
-        // diseños de producto (ProductDesign) para empresas enterprise.
-        $designs = collect();
-        if ($empresa->plan === 'enterprise') {
-            $designs = ProductDesign::withoutGlobalScopes()
-                ->select(['id', 'nombre', 'propuesta_valor', 'categoria'])
-                ->where('empresa_id', $empresa->id)
-                ->where('activo', true)
-                ->where('publicado_catalogo', true)
-                ->with(['presentations:id,product_design_id,nombre,pvp_estimado,margen_objetivo'])
-                ->get()
-                ->map(fn ($p) => [
-                    'id'              => $p->id,
-                    'source'          => 'design',
-                    'nombre'          => $p->nombre,
-                    'descripcion'     => $p->propuesta_valor,
-                    'precio'          => null,
-                    'unidad_precio'   => null,
-                    'categoria'       => $p->categoria,
-                    'caracteristicas' => [],
-                    'icono'           => null,
-                    'imagen'          => null,
-                    'presentaciones'  => $p->presentations->map(fn ($pres) => array_filter([
-                        'nombre' => $pres->nombre,
-                        'precio' => $pres->pvp_estimado ? (float) $pres->pvp_estimado : null,
-                        'margen' => $pres->margen_objetivo ? (float) $pres->margen_objetivo : null,
-                    ]))->values()->all(),
-                ]);
-        }
-
-        return $designs->values()->all();
+        // Los productos vendibles viven en la tabla ÚNICA store_products.
+        // El catálogo web solo muestra los publicados (misma verdad que api/store/products).
+        return StoreProduct::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('publicado', true)
+            ->with('storeCategory:id,nombre')
+            ->orderBy('orden')
+            ->get()
+            ->map(fn ($p) => [
+                'id'              => $p->id,
+                'source'          => 'store',
+                'nombre'          => $p->nombre,
+                'slug'            => $p->slug,
+                'descripcion'     => $p->descripcion,
+                'precio'          => $p->precio_venta !== null ? (float) $p->precio_venta : null,
+                'unidad_precio'   => $p->unidad_precio,
+                'categoria'       => $p->storeCategory?->nombre,
+                'caracteristicas' => is_array($p->caracteristicas) ? $p->caracteristicas : [],
+                'icono'           => null,
+                'imagen'          => $this->imageUrl($p->imagen_principal),
+                'presentaciones'  => [],
+            ])
+            ->values()
+            ->all();
     }
 
     private function terminosData(int $empresaId): ?array

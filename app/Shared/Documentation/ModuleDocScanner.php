@@ -47,6 +47,12 @@ final class ModuleDocScanner
             app_path('Shared/Queries'),
         ];
 
+        // Cada módulo aporta sus propias Queries/Actions documentadas.
+        foreach (glob(app_path('Modules/*'), GLOB_ONLYDIR) as $modulo) {
+            $directorios[] = $modulo . '/Actions';
+            $directorios[] = $modulo . '/Queries';
+        }
+
         $resultado = [];
 
         foreach ($directorios as $dir) {

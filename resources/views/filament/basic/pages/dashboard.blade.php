@@ -95,6 +95,21 @@
             <span class="hub-plan">{{ $stats['plan'] }}</span>
         </header>
 
+        {{-- Clientes: acceso transversal de la empresa (no vive en ningún panel) --}}
+        <a href="{{ $clientesUrl }}"
+           style="display:flex;align-items:center;gap:14px;margin:0 0 20px;padding:16px 18px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;text-decoration:none;box-shadow:0 1px 2px rgba(16,24,40,.04);transition:box-shadow .15s,border-color .15s"
+           onmouseover="this.style.boxShadow='0 6px 20px rgba(16,24,40,.08)';this.style.borderColor='#c7d2fe'"
+           onmouseout="this.style.boxShadow='0 1px 2px rgba(16,24,40,.04)';this.style.borderColor='#e5e7eb'">
+            <span style="flex:0 0 auto;width:44px;height:44px;border-radius:12px;background:#eef2ff;display:flex;align-items:center;justify-content:center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#4f46e5" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+            </span>
+            <span style="flex:1;min-width:0">
+                <strong style="display:block;font-size:15px;color:#111827">Clientes</strong>
+                <small style="color:#6b7280">Directorio y perfiles de los clientes de {{ $empresa->name }}</small>
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+        </a>
+
         {{-- Widgets de módulo (resumen de actividad) --}}
         @if (count($widgets))
             <section class="hub-section">

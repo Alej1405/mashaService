@@ -8,7 +8,7 @@ use App\Models\Empresa;
 use App\Models\LogisticsBillingRequest;
 use App\Models\LogisticsPackage;
 use App\Models\LogisticsPaymentClaim;
-use App\Models\ProductDesign;
+use App\Models\StoreProduct;
 use App\Models\ServiceContract;
 use App\Models\ServiceDesign;
 use App\Models\Customer;
@@ -83,10 +83,9 @@ class PortalController extends Controller
             ->with('bank')
             ->get();
 
-        $catalogoProductos = ProductDesign::withoutGlobalScopes()
-            ->with('presentations')
+        $catalogoProductos = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->where('activo', true)
+            ->where('publicado', true)
             ->orderBy('nombre')
             ->get();
 

@@ -61,11 +61,6 @@
         <p class="text-xs font-semibold text-amber-300">Producción</p>
         <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver órdenes</p>
     </a>
-    <a href="{{ route('mobile.disenos-producto.lista') }}"
-       class="card p-3 text-center active:scale-95 transition-transform">
-        <p class="text-xs font-semibold text-teal-300">Diseños</p>
-        <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.35);">Ver diseños</p>
-    </a>
 </div>
 
 <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: rgba(232,230,240,0.35);">Registrar</p>
@@ -182,25 +177,6 @@
         <div class="flex-1">
             <p class="text-sm font-semibold text-white">Deuda / Préstamo</p>
             <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Registrar nueva deuda</p>
-        </div>
-        <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-        </svg>
-    </a>
-
-    {{-- Diseño de Producto --}}
-    <a href="{{ route('mobile.diseno-producto.nuevo') }}"
-       class="card flex items-center gap-4 px-4 py-4 block active:scale-95 transition-transform">
-        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-             style="background: rgba(20,184,166,0.15); border: 1px solid rgba(20,184,166,0.25);">
-            <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-            </svg>
-        </div>
-        <div class="flex-1">
-            <p class="text-sm font-semibold text-white">Diseño de Producto</p>
-            <p class="text-xs mt-0.5" style="color: rgba(232,230,240,0.45);">Registrar info general y fórmula</p>
         </div>
         <svg class="w-4 h-4 flex-shrink-0" style="color: rgba(232,230,240,0.25);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>

@@ -36,14 +36,36 @@ class MeasurementUnitResource extends Resource
                 Forms\Components\TextInput::make('nombre')
                     ->label('Nombre de Unidad')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpan(2),
                 Forms\Components\TextInput::make('abreviatura')
                     ->label('Abreviatura')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpan(1),
+                Forms\Components\Select::make('tipo')
+                    ->label('Familia')
+                    ->options([
+                        'conteo'   => 'Conteo',
+                        'longitud' => 'Longitud',
+                        'masa'     => 'Masa',
+                        'volumen'  => 'Volumen',
+                    ])
+                    ->native(false)
+                    ->helperText('A qué magnitud pertenece. Solo se convierte entre unidades de la misma familia.')
+                    ->columnSpan(1),
+                Forms\Components\TextInput::make('factor')
+                    ->label('Equivale a (en la unidad base)')
+                    ->numeric()
+                    ->default(1)
+                    ->minValue(0.00000001)
+                    ->helperText('Cuánto vale en la base de su familia. Bases: mL, metro, gramo, unidad. Ej: 1 Litro = 1000 (base mL); 1 kg = 1000 (base g).')
+                    ->columnSpan(2),
                 Forms\Components\Toggle::make('activo')
                     ->label('Activo')
-                    ->default(true),
-            ]);
+                    ->default(true)
+                    ->columnSpan(1),
+            ])
+            ->columns(3);
     }
 
     public static function table(Table $table): Table
@@ -57,6 +79,13 @@ class MeasurementUnitResource extends Resource
                 Tables\Columns\TextColumn::make('abreviatura')
                     ->label('Abreviatura')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('tipo')
+                    ->label('Familia')
+                    ->badge()
+                    ->placeholder('—'),
+                Tables\Columns\TextColumn::make('factor')
+                    ->label('Factor (base)')
+                    ->numeric(),
                 Tables\Columns\IconColumn::make('activo')
                     ->label('Activo')
                     ->boolean()

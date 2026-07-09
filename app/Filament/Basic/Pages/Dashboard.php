@@ -91,6 +91,8 @@ class Dashboard extends Page
             'saludo'       => $saludo . ', ' . explode(' ', $user->name)[0],
             'fecha'        => ucfirst(now()->translatedFormat('l, d \d\e F \d\e Y')),
             'empresa'      => $empresa,
+            // Clientes: acceso transversal (no vive en ningún panel/módulo).
+            'clientesUrl'  => \App\Filament\App\Resources\CustomerResource::getUrl('index'),
             'user'         => $user,
             'logo'         => ($lp = $empresa->logo_path) && Storage::disk('public')->exists($lp) ? asset('storage/' . ltrim($lp, '/')) : null,
             'inicial'      => mb_strtoupper(mb_substr($empresa->name ?? '?', 0, 1)),

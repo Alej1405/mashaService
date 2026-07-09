@@ -79,8 +79,6 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::post('/deuda/guardar',                      [\App\Http\Controllers\MobileController::class, 'guardarDeuda'])->name('deuda.guardar');
         Route::get('/deudas/validar',                      [\App\Http\Controllers\MobileController::class, 'listValidarDeudas'])->name('deudas.validar');
         Route::post('/deudas/{debt}/activar',              [\App\Http\Controllers\MobileController::class, 'activarDeuda'])->name('deudas.activar');
-        Route::get('/diseno-producto/nuevo',               [\App\Http\Controllers\MobileController::class, 'showDisenoProducto'])->name('diseno-producto.nuevo');
-        Route::post('/diseno-producto/guardar',            [\App\Http\Controllers\MobileController::class, 'guardarDisenoProducto'])->name('diseno-producto.guardar');
 
         // ── Clientes ─────────────────────────────────────────────────────
         Route::get('/cliente/nuevo',               [\App\Http\Controllers\MobileController::class, 'showClienteNuevo'])->name('cliente.nuevo');
@@ -92,7 +90,6 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         Route::get('/compras',                             [\App\Http\Controllers\MobileController::class, 'listCompras'])->name('compras.lista');
         Route::get('/deudas',                              [\App\Http\Controllers\MobileController::class, 'listDeudas'])->name('deudas.lista');
         Route::get('/produccion/lista',                    [\App\Http\Controllers\MobileController::class, 'listProduccion'])->name('produccion.lista');
-        Route::get('/disenos-producto/lista',              [\App\Http\Controllers\MobileController::class, 'listDisenosProducto'])->name('disenos-producto.lista');
 
         // ── Ecommerce / CMS / Tienda ──────────────────────────────────────
         Route::get('/ecommerce',                           [\App\Http\Controllers\MobileController::class, 'showEcommerce'])->name('ecommerce.index');
@@ -270,9 +267,6 @@ Route::get('/app/{empresa}/debts/{debt}/payments/print', [\App\Http\Controllers\
     ->middleware(['auth'])
     ->name('debt.payments.print');
 
-Route::get('/enterprise/{empresa}/product-designs/{design}/equilibrio/print', [\App\Http\Controllers\ProductDesignPrintController::class, 'equilibrio'])
-    ->middleware(['auth'])
-    ->name('product-design.equilibrio.print');
 
 Route::get('/fichas/download/{file}', function ($file) {
     if (!Auth::check()) {

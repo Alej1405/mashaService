@@ -20,9 +20,17 @@ class CustomerResource extends Resource
     protected static ?string $modelLabel = 'Cliente';
     protected static ?string $pluralModelLabel = 'Clientes';
 
+    // Clientes es TRANSVERSAL a cada empresa: no pertenece a un módulo/plan ni a un
+    // panel concreto. Accesible para cualquier usuario del tenant, SOLO desde el
+    // botón del hub de inicio (no aparece en la navegación de ningún panel).
     public static function canAccess(): bool
     {
-        return \App\Helpers\PlanHelper::hasModule('clientes');
+        return \Filament\Facades\Filament::getTenant() !== null;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
     }
 
     public static function form(Form $form): Form

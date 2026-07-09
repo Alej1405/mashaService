@@ -7,7 +7,6 @@ use App\Filament\App\Resources\InventoryItemResource\RelationManagers;
 use App\Filament\App\Resources\SupplierResource;
 use App\Models\Almacen;
 use App\Models\InventoryItem;
-use App\Models\ItemPresentation;
 use App\Models\MeasurementUnit;
 use App\Models\UbicacionAlmacen;
 use App\Models\ZonaAlmacen;
@@ -34,6 +33,24 @@ class InventoryItemResource extends Resource
     public static function canAccess(): bool
     {
         return \App\Helpers\PlanHelper::hasModule('inventario');
+    }
+
+    /** Campos para crear una unidad de medida al vuelo (con familia + factor). */
+    public static function unidadCreateForm(): array
+    {
+        return [
+            Forms\Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(100),
+            Forms\Components\TextInput::make('abreviatura')->label('Abreviatura')->maxLength(10),
+            Forms\Components\Select::make('tipo')
+                ->label('Familia')
+                ->options(['conteo' => 'Conteo', 'longitud' => 'Longitud', 'masa' => 'Masa', 'volumen' => 'Volumen'])
+                ->native(false)
+                ->helperText('Solo se convierte entre unidades de la misma familia.'),
+            Forms\Components\TextInput::make('factor')
+                ->label('Factor (base de su familia)')
+                ->numeric()->default(1)
+                ->helperText('1 Litro = 1000 (base mL); 1 kg = 1000 (base g). Deja 1 para empaques (rollo, caja).'),
+        ];
     }
 
     public static function form(Form $form): Form
@@ -81,62 +98,12 @@ class InventoryItemResource extends Resource
                                     ->relationship('measurementUnit', 'nombre', fn ($query) => $query->where('activo', true))
                                     ->searchable()
                                     ->preload()
+                                    ->label('Unidad de uso / stock')
+                                    ->helperText('En esta unidad consumes el insumo y se lleva el stock (ej: metros, ml, gramos).')
                                     ->createOptionModalHeading('Nueva Unidad de Medida')
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('nombre')
-                                            ->label('Nombre')
-                                            ->required()
-                                            ->maxLength(100),
-                                        Forms\Components\TextInput::make('abreviatura')
-                                            ->label('Abreviatura')
-                                            ->maxLength(10),
-                                    ])
+                                    ->createOptionForm(static::unidadCreateForm())
                                     ->createOptionUsing(fn (array $data): int =>
                                         MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey()),
-                                Forms\Components\Select::make('presentation_id')
-                                    ->label('Presentación')
-                                    ->relationship('presentation', 'nombre', fn ($query) =>
-                                        $query->where('empresa_id', Filament::getTenant()->id)->where('activo', true)
-                                    )
-                                    ->getOptionLabelFromRecordUsing(fn ($record) =>
-                                        $record->nombre . ($record->capacidad
-                                            ? ' (' . number_format((float) $record->capacidad, 0) . ' ' . ($record->measurementUnit?->abreviatura ?? 'u.') . ')'
-                                            : '')
-                                    )
-                                    ->searchable()
-                                    ->preload()
-                                    ->nullable()
-                                    ->placeholder('— Sin presentación —')
-                                    ->createOptionModalHeading('Nueva Presentación')
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('nombre')
-                                            ->label('Nombre')
-                                            ->required()
-                                            ->maxLength(150)
-                                            ->placeholder('Ej: Caja x24, Paquete x12'),
-                                        Forms\Components\Select::make('measurement_unit_id')
-                                            ->label('Unidad')
-                                            ->options(fn () => MeasurementUnit::where('empresa_id', Filament::getTenant()->id)
-                                                ->where('activo', true)
-                                                ->orderBy('nombre')
-                                                ->pluck('nombre', 'id'))
-                                            ->searchable()
-                                            ->nullable()
-                                            ->placeholder('— Sin especificar —'),
-                                        Forms\Components\TextInput::make('capacidad')
-                                            ->label('Capacidad')
-                                            ->numeric()
-                                            ->minValue(0.0001)
-                                            ->placeholder('Ej: 24')
-                                            ->helperText('Cuántas unidades contiene. Ej: caja de 24 botellas → 24.'),
-                                    ])
-                                    ->createOptionUsing(fn (array $data): int =>
-                                        ItemPresentation::create([
-                                            ...$data,
-                                            'empresa_id' => Filament::getTenant()->id,
-                                            'activo'     => true,
-                                        ])->getKey()
-                                    ),
                                 // ── Ubicación en cascada: Almacén → Zona → Posición ──────
                                 Forms\Components\Select::make('almacen_id')
                                     ->label('Almacén')
@@ -224,37 +191,59 @@ class InventoryItemResource extends Resource
                                     ->label('Stock Mínimo (Alerta)')
                                     ->numeric()
                                     ->default(0),
-                                Forms\Components\Section::make('Conversión de Unidades')
-                                    ->description('Configura si compras en una unidad diferente a la que controlas en stock (ej: compras en kg pero el stock se lleva en gramos).')
+                                Forms\Components\Section::make('Cómo compras vs cómo usas')
+                                    ->description('Si compras el insumo en una unidad distinta a la que consumes (rollos→metros, kg→ml…). El stock siempre se lleva en la unidad de uso.')
                                     ->schema([
                                         Forms\Components\Select::make('purchase_unit_id')
-                                            ->label('Unidad de Compra')
+                                            ->label('Unidad de compra')
                                             ->relationship('purchaseUnit', 'nombre', fn ($query) => $query->where('activo', true))
                                             ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->nombre} ({$record->abreviatura})")
                                             ->searchable()
                                             ->preload()
                                             ->nullable()
                                             ->live()
-                                            ->helperText('Deja en blanco si compras y usas la misma unidad.')
+                                            ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                                // Misma familia (kg→g, L→ml): calcula la equivalencia sola.
+                                                $compra = $state ? MeasurementUnit::find($state) : null;
+                                                $uso    = ($u = $get('measurement_unit_id')) ? MeasurementUnit::find($u) : null;
+                                                if ($compra && $uso && $compra->esCompatibleCon($uso)) {
+                                                    $set('conversion_factor', $compra->convertir(1, $uso));
+                                                }
+                                            })
+                                            ->helperText('Déjala en blanco si compras y usas la misma unidad.')
                                             ->createOptionModalHeading('Nueva Unidad de Medida')
-                                            ->createOptionForm([
-                                                Forms\Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(100),
-                                                Forms\Components\TextInput::make('abreviatura')->label('Abreviatura')->maxLength(10),
-                                            ])
+                                            ->createOptionForm(static::unidadCreateForm())
                                             ->createOptionUsing(fn (array $data): int =>
-                                                MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey()),
+                                                MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey())
+                                            ->columnSpan(1),
                                         Forms\Components\TextInput::make('conversion_factor')
-                                            ->label('Factor de Conversión')
+                                            ->label(fn (Forms\Get $get) => '1 ' . (MeasurementUnit::find($get('purchase_unit_id'))?->abreviatura ?? 'compra') . ' = ? ' . (MeasurementUnit::find($get('measurement_unit_id'))?->abreviatura ?? 'uso'))
                                             ->numeric()
                                             ->default(1)
+                                            ->minValue(0.00000001)
+                                            ->live(onBlur: true)
                                             ->visible(fn (Forms\Get $get) => !empty($get('purchase_unit_id')))
                                             ->helperText(function (Forms\Get $get) {
-                                                $pu = MeasurementUnit::find($get('purchase_unit_id'));
-                                                $su = MeasurementUnit::find($get('measurement_unit_id'));
-                                                $puLabel = $pu?->abreviatura ?? 'unidad compra';
-                                                $suLabel = $su?->abreviatura ?? 'unidad stock';
-                                                return "1 {$puLabel} = ? {$suLabel}  (ej: kg→g pondrías 1000)";
-                                            }),
+                                                $compra = ($p = $get('purchase_unit_id')) ? MeasurementUnit::find($p) : null;
+                                                $uso    = ($u = $get('measurement_unit_id')) ? MeasurementUnit::find($u) : null;
+                                                if (! $compra || ! $uso) return 'Cuántas unidades de uso hay en 1 de compra.';
+                                                if ($compra->esCompatibleCon($uso)) return 'Misma familia: se calculó solo; puedes ajustarlo.';
+                                                return 'Distinta familia (ej. kg→ml): defínelo tú. En líquidos, es la densidad.';
+                                            })
+                                            ->columnSpan(1),
+                                        Forms\Components\Placeholder::make('_conv_preview')
+                                            ->label('')
+                                            ->content(function (Forms\Get $get): \Illuminate\Support\HtmlString {
+                                                $compra = ($p = $get('purchase_unit_id')) ? MeasurementUnit::find($p) : null;
+                                                $uso    = ($u = $get('measurement_unit_id')) ? MeasurementUnit::find($u) : null;
+                                                $f      = (float) ($get('conversion_factor') ?? 0);
+                                                if (! $compra || ! $uso || $f <= 0) {
+                                                    return new \Illuminate\Support\HtmlString('<span style="color:#9ca3af">Elige la unidad de compra para ver la equivalencia.</span>');
+                                                }
+                                                return new \Illuminate\Support\HtmlString("📦 Compras <b>1 {$compra->abreviatura}</b> → entran <b>{$f} {$uso->abreviatura}</b> al stock.");
+                                            })
+                                            ->visible(fn (Forms\Get $get) => ! empty($get('purchase_unit_id')))
+                                            ->columnSpanFull(),
                                     ])
                                     ->columns(2)
                                     ->columnSpanFull(),
@@ -354,22 +343,29 @@ class InventoryItemResource extends Resource
                 Tables\Columns\TextColumn::make('measurementUnit.abreviatura')
                     ->label('U.M.')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('presentation.nombre')
-                    ->label('Presentación')
+                Tables\Columns\TextColumn::make('purchaseUnit.abreviatura')
+                    ->label('Compra')
+                    ->placeholder('igual a U.M.')
                     ->formatStateUsing(function ($state, $record) {
-                        if (!$record->presentation) return '—';
-                        $cap  = $record->presentation->capacidad;
-                        $unit = $record->presentation->measurementUnit?->abreviatura ?? 'u.';
-                        return $cap
-                            ? "{$state} (" . number_format((float) $cap, 0) . " {$unit})"
-                            : $state;
+                        if (! $record->purchase_unit_id || ! $state) {
+                            return '—';
+                        }
+                        $um = $record->measurementUnit?->abreviatura ?? 'u.';
+                        $f  = rtrim(rtrim(number_format((float) $record->conversion_factor, 4, '.', ''), '0'), '.');
+                        return "{$state}  ·  1 = {$f} {$um}";
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('stock_actual')
                     ->label('Stock')
-                    ->numeric()
+                    ->badge()
                     ->sortable()
-                    ->color(fn ($record) => $record->stock_bajo ? 'danger' : 'success'),
+                    ->color(fn ($record) => match (true) {
+                        (float) $record->stock_actual <= 0 => 'danger',
+                        (bool) $record->stock_bajo         => 'warning',
+                        default                            => 'success',
+                    })
+                    ->formatStateUsing(fn ($state, $record) => rtrim(rtrim(number_format((float) $state, 4, '.', ''), '0'), '.') . ' ' . ($record->measurementUnit?->abreviatura ?? ''))
+                    ->description(fn ($record) => 'mín: ' . rtrim(rtrim(number_format((float) $record->stock_minimo, 4, '.', ''), '0'), '.')),
                 Tables\Columns\TextColumn::make('purchase_price')
                     ->label('P. Compra')
                     ->money('USD')

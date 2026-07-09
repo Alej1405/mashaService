@@ -986,87 +986,6 @@ class MobileController extends Controller
         }
     }
 
-    // ── Diseño de Producto ────────────────────────────────────────────────────
-
-    public function showDisenoProducto(Request $request)
-    {
-        if (!$this->tieneAccesoEnterprise()) {
-            return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
-        }
-        $empresa  = $this->empresa();
-        $unidades = MeasurementUnit::where('empresa_id', $empresa->id)->where('activo', true)->orderBy('nombre')->get();
-        $insumos  = InventoryItem::where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->whereIn('type', ['insumo', 'materia_prima'])
-            ->orderBy('nombre')
-            ->get(['id', 'nombre', 'codigo']);
-        return view('mobile.diseno-producto', compact('empresa', 'unidades', 'insumos'));
-    }
-
-    public function guardarDisenoProducto(Request $request)
-    {
-        if (!$this->tieneAccesoEnterprise()) {
-            return response()->json(['error' => 'Requiere plan Enterprise.'], 403);
-        }
-        $empresa = $this->empresa();
-
-        $validated = $request->validate([
-            'nombre'                       => ['required', 'string', 'max:150'],
-            'propuesta_valor'              => ['nullable', 'string'],
-            'notas_estrategicas'           => ['nullable', 'string', 'max:1000'],
-            'tiene_multiples_presentaciones' => ['boolean'],
-            'presentaciones'               => ['required', 'array', 'min:1'],
-            'presentaciones.*.nombre'      => ['nullable', 'string', 'max:150'],
-            'presentaciones.*.cantidad_minima_produccion' => ['required', 'numeric', 'min:0.0001'],
-            'presentaciones.*.measurement_unit_id' => ['nullable', 'integer', 'exists:measurement_units,id'],
-            'presentaciones.*.formula'     => ['nullable', 'array'],
-            'presentaciones.*.formula.*.inventory_item_id' => ['nullable', 'integer', 'exists:inventory_items,id'],
-            'presentaciones.*.formula.*.cantidad'          => ['required_with:presentaciones.*.formula.*.inventory_item_id', 'numeric', 'min:0.0001'],
-            'presentaciones.*.formula.*.measurement_unit_id' => ['nullable', 'integer', 'exists:measurement_units,id'],
-            'presentaciones.*.formula.*.notas'             => ['nullable', 'string', 'max:255'],
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $design = ProductDesign::create([
-                'empresa_id'                    => $empresa->id,
-                'nombre'                        => $validated['nombre'],
-                'propuesta_valor'               => $validated['propuesta_valor'] ?? null,
-                'notas_estrategicas'            => $validated['notas_estrategicas'] ?? null,
-                'tiene_multiples_presentaciones' => $validated['tiene_multiples_presentaciones'] ?? false,
-                'activo'                        => true,
-            ]);
-
-            foreach ($validated['presentaciones'] as $presData) {
-                $pres = ProductPresentation::create([
-                    'product_design_id'          => $design->id,
-                    'nombre'                     => $presData['nombre'] ?? null,
-                    'cantidad_minima_produccion' => $presData['cantidad_minima_produccion'],
-                    'measurement_unit_id'        => $presData['measurement_unit_id'] ?? null,
-                    'activa'                     => true,
-                ]);
-
-                foreach ($presData['formula'] ?? [] as $linea) {
-                    if (empty($linea['inventory_item_id'])) continue;
-                    ProductFormulaLine::create([
-                        'presentation_id'    => $pres->id,
-                        'inventory_item_id'  => $linea['inventory_item_id'],
-                        'cantidad'           => $linea['cantidad'],
-                        'measurement_unit_id' => $linea['measurement_unit_id'] ?? null,
-                        'notas'              => $linea['notas'] ?? null,
-                    ]);
-                }
-            }
-
-            DB::commit();
-            return response()->json(['success' => true, 'nombre' => $design->nombre]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error guardando diseño de producto móvil: ' . $e->getMessage());
-            return response()->json(['error' => 'Error al guardar el diseño.'], 500);
-        }
-    }
-
     // ── Listas de consulta ────────────────────────────────────────────────────
 
     public function listInventario(Request $request)
@@ -1107,14 +1026,6 @@ class MobileController extends Controller
         $empresa = $this->empresa();
         $ordenes = ProductionOrder::where('empresa_id', $empresa->id)->with('productPresentation.productDesign')->orderByDesc('fecha')->paginate(25);
         return view('mobile.produccion-lista', compact('empresa', 'ordenes'));
-    }
-
-    public function listDisenosProducto(Request $request)
-    {
-        if (!$this->tieneAccesoEnterprise()) return $this->denegarAcceso($request, 'Requiere plan Enterprise.');
-        $empresa = $this->empresa();
-        $disenos = ProductDesign::where('empresa_id', $empresa->id)->with('presentations')->orderByDesc('created_at')->paginate(25);
-        return view('mobile.disenos-producto-lista', compact('empresa', 'disenos'));
     }
 
     // ── Ecommerce ─────────────────────────────────────────────────────────────

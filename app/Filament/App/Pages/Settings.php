@@ -26,6 +26,15 @@ class Settings extends Page implements HasForms
 
     public ?array $data = [];
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        if (\App\Helpers\PlanHelper::aislarProducto()) {
+            return false;
+        }
+
+        return parent::shouldRegisterNavigation();
+    }
+
     public function mount(): void
     {
         $tenant = Filament::getTenant();

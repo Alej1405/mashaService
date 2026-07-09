@@ -36,13 +36,17 @@ class ServiceDesignResource extends Resource
 
     protected static ?string $navigationIcon   = 'heroicon-o-wrench-screwdriver';
     protected static ?string $navigationLabel  = 'Diseño de Servicios';
-    protected static ?string $navigationGroup  = 'Diseño de Producto';
+    protected static ?string $navigationGroup  = 'Producto';
     protected static ?int    $navigationSort   = 2;
     protected static ?string $modelLabel       = 'Diseño de Servicio';
     protected static ?string $pluralModelLabel = 'Diseño de Servicios';
 
     public static function canAccess(): bool
     {
+        if (\App\Helpers\PlanHelper::aislarProducto()) {
+            return false;
+        }
+
         return \App\Helpers\PlanHelper::hasModule('produccion');
     }
 

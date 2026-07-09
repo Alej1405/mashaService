@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Empresa;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class PortalAuthController extends Controller
 {
@@ -33,19 +32,22 @@ class PortalAuthController extends Controller
         $empresa = $this->empresa($slug);
 
         $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
+            'cedula' => 'required',
         ]);
+
+        // El cliente entra con su número de cédula/RUC (con el que se lo registró),
+        // único por empresa. No hay contraseñas propias: todo cliente activo de la
+        // empresa tiene acceso al portal.
+        $cedula = preg_replace('/\s+/', '', (string) $request->cedula);
 
         $customer = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->where('email', $request->email)
-            ->whereNotNull('password')
             ->where('activo', true)
+            ->where('numero_identificacion', $cedula)
             ->first();
 
-        if (! $customer || ! Hash::check($request->password, $customer->password)) {
-            return back()->withErrors(['email' => 'Correo o contraseña incorrectos.'])->withInput();
+        if (! $customer) {
+            return back()->withErrors(['cedula' => 'Cédula o RUC no encontrado para esta empresa.'])->withInput();
         }
 
         $request->session()->put('portal_customer_id', $customer->id);

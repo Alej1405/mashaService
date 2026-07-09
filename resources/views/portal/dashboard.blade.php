@@ -330,46 +330,29 @@
             <p class="text-xs text-gray-400 mt-0.5">Contáctanos para realizar tu pedido.</p>
         </div>
         <div class="divide-y divide-gray-100">
-            @foreach($catalogoProductos as $design)
+            @foreach($catalogoProductos as $producto)
             <div class="px-5 py-4">
-                <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    @if($producto->imagen_principal)
+                        <img src="{{ asset('storage/' . ltrim($producto->imagen_principal, '/')) }}" alt="{{ $producto->nombre }}"
+                             class="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0">
+                    @else
+                        <div class="w-12 h-12 rounded-lg bg-gray-50 border border-gray-100 shrink-0 flex items-center justify-center text-gray-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5 12 3 3.75 7.5m16.5 0L12 12m8.25-4.5v9L12 21m0-9L3.75 7.5m0 0v9L12 21"/></svg>
+                        </div>
+                    @endif
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-800">{{ $design->nombre }}</p>
-                        @if($design->propuesta_valor)
-                            <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ $design->propuesta_valor }}</p>
+                        <p class="text-sm font-semibold text-gray-800">{{ $producto->nombre }}</p>
+                        @if($producto->descripcion)
+                            <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ \Illuminate\Support\Str::limit(strip_tags($producto->descripcion), 90) }}</p>
                         @endif
                     </div>
-                    {{-- Precio único (sin múltiples presentaciones) --}}
-                    @if(!$design->tiene_multiples_presentaciones && $design->pvp_venta)
+                    @if($producto->precio_venta)
                         <div class="shrink-0 text-right">
-                            <p class="text-base font-bold text-indigo-700">${{ number_format($design->pvp_venta, 2) }}</p>
-                            @if($design->pvp_incluye_iva)
-                                <p class="text-[10px] text-gray-400">IVA incluido</p>
-                            @else
-                                <p class="text-[10px] text-gray-400">+ IVA</p>
-                            @endif
+                            <p class="text-base font-bold text-indigo-700">${{ number_format($producto->precio_venta, 2) }}</p>
                         </div>
                     @endif
                 </div>
-
-                {{-- Presentaciones --}}
-                @if($design->tiene_multiples_presentaciones && $design->presentations->isNotEmpty())
-                    <div class="mt-3 space-y-1.5">
-                        @foreach($design->presentations->where('activa', true) as $pres)
-                        <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                            <p class="text-xs text-gray-700 font-medium">{{ $pres->nombre }}</p>
-                            @if($pres->pvp_estimado)
-                                <p class="text-xs font-bold text-indigo-700">${{ number_format($pres->pvp_estimado, 2) }}</p>
-                            @endif
-                        </div>
-                        @endforeach
-                        @if($design->pvp_incluye_iva)
-                            <p class="text-[10px] text-gray-400 pl-1">Precios con IVA incluido</p>
-                        @else
-                            <p class="text-[10px] text-gray-400 pl-1">Precios no incluyen IVA</p>
-                        @endif
-                    </div>
-                @endif
             </div>
             @endforeach
         </div>

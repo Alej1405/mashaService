@@ -81,7 +81,7 @@ class ModuleRegistry
             'tienda' => [
                 'r' => [
                     'ServiceContractResource', 'StoreCategoryResource', 'StoreCouponResource',
-                    'StoreCustomerResource', 'StoreOrderResource', 'StoreProductResource',
+                    'StoreOrderResource', 'StoreProductResource',
                 ],
                 'p' => [],
             ],

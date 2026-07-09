@@ -38,6 +38,10 @@ class ProductionOrderResource extends Resource
 
     public static function canAccess(): bool
     {
+        if (\App\Helpers\PlanHelper::aislarProducto()) {
+            return false;
+        }
+
         return \App\Helpers\PlanHelper::hasModule('produccion');
     }
 
@@ -50,9 +54,9 @@ class ProductionOrderResource extends Resource
                 Wizard\Step::make('Producto a Fabricar')
                     ->schema([
 
-                        // Selector de Diseño (solo UI, no se guarda)
+                        // Selector de Producto (solo UI, no se guarda)
                         Select::make('_product_design_id')
-                            ->label('Diseño de Producto')
+                            ->label('Producto')
                             ->options(fn () => ProductDesign::where('empresa_id', \Filament\Facades\Filament::getTenant()->id)
                                 ->where('activo', true)
                                 ->pluck('nombre', 'id'))

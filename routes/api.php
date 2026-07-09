@@ -177,3 +177,24 @@ Route::prefix('n8n/v1')
             });
         });
     });
+
+/*
+|--------------------------------------------------------------------------
+| API Routes — ERP interno (consumido por el motor de cálculo externo)
+|--------------------------------------------------------------------------
+| Base URL: /api/erp/v1/{empresa_slug}/...
+|
+| Rol de Laravel: RECOLECTAR y PRESENTAR. El procesamiento (costeo, ROI,
+| payback) vive en el microservicio externo. Autenticación server-to-server
+| por secreto compartido (header X-Engine-Secret). Sin API gateway por ahora.
+|
+| Módulo Producto:
+|   GET    products                       → lista ligera
+|   GET    products/{id}                  → dataset crudo completo (para el motor)
+|   GET    products/{id}/simulations      → resultados guardados
+|   POST   products/{id}/simulations      → ingesta un resultado del motor (push)
+|   POST   products/{id}/simulate         → arma dataset → motor → guarda (pull)
+*/
+// NOTA: las rutas erp/v1 (dataset/simulación de costos → motor Python) se retiraron.
+// Se reconstruirán limpias cuando entre la fase de costos. El bridge al motor
+// (config engine, MotorClient) queda dormido para esa fase.

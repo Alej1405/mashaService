@@ -3,8 +3,6 @@
 namespace App\Filament\Ecommerce\Resources;
 
 use App\Filament\Ecommerce\Resources\StoreProductResource\Pages;
-use App\Models\ProductDesign;
-use App\Models\ProductPresentation;
 use App\Models\StoreCategory;
 use App\Models\StoreProduct;
 use Filament\Forms\Components\FileUpload;
@@ -114,16 +112,6 @@ class StoreProductResource extends Resource
                 ]),
 
                 Tab::make('Precios')->schema([
-                    Select::make('product_design_id')->label('Diseño de producto (ERP)')
-                        ->options(fn () => ProductDesign::pluck('nombre', 'id'))
-                        ->nullable()->searchable()->native(false)->live()
-                        ->afterStateUpdated(fn (Set $set) => $set('product_presentation_id', null))
-                        ->columnSpanFull(),
-                    Select::make('product_presentation_id')->label('Presentación')
-                        ->options(fn (Get $get) => $get('product_design_id')
-                            ? ProductPresentation::where('product_design_id', $get('product_design_id'))->pluck('nombre', 'id')
-                            : [])
-                        ->nullable()->searchable()->native(false)->columnSpanFull(),
                     TextInput::make('precio_venta')->label('Precio base')->numeric()->prefix('$')->required()->columnSpan(1),
                     TextInput::make('precio_distribuidor')->label('Precio distribuidor')->numeric()->prefix('$')->nullable()->columnSpan(1),
                     TextInput::make('cantidad_minima_distribuidor')->label('Cant. mín. distribuidor')->numeric()->default(1)->columnSpan(1),

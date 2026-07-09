@@ -450,12 +450,11 @@
             <span class="eco-metric-sub">Pagos aprobados</span>
         </a>
 
-        <a href="{{ route('filament.ecommerce.resources.store-customers.index', ['tenant' => $tenant]) }}"
-           class="eco-metric">
+        <div class="eco-metric">
             <span class="eco-metric-value">{{ $customersCount }}</span>
             <span class="eco-metric-label">Clientes</span>
             <span class="eco-metric-sub">Registrados en el portal</span>
-        </a>
+        </div>
 
         <a href="{{ route('filament.ecommerce.resources.store-products.index', ['tenant' => $tenant]) }}"
            class="eco-metric">
