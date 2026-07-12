@@ -105,6 +105,7 @@ HTML
         \App\Models\LogisticsShipmentBill::observe(\App\Observers\LogisticsShipmentBillObserver::class);
         \App\Models\ProductDesign::observe(\App\Observers\ProductDesignObserver::class);
         \App\Models\ServiceDesign::observe(\App\Observers\ServiceDesignObserver::class);
+        \App\Models\StoreOrder::observe(\App\Observers\StoreOrderObserver::class);
 
         // CMS — invalidación de caché automática al guardar/eliminar
         $cmsObserver = \App\Observers\CmsObserver::class;

@@ -49,6 +49,7 @@ class StoreOrderResource extends Resource
                 ->options([
                     'pendiente'  => 'Pendiente',
                     'pagado'     => 'Pagado',
+                    'receptado'  => 'Receptado',
                     'procesando' => 'Procesando',
                     'enviado'    => 'Enviado',
                     'entregado'  => 'Entregado',
@@ -95,6 +96,7 @@ class StoreOrderResource extends Resource
                     ->color(fn ($state) => match ($state) {
                         'pendiente'  => 'warning',
                         'pagado'     => 'info',
+                        'receptado'  => 'primary',
                         'procesando' => 'primary',
                         'enviado'    => 'info',
                         'entregado'  => 'success',
@@ -122,6 +124,7 @@ class StoreOrderResource extends Resource
                     ->options([
                         'pendiente'  => 'Pendiente',
                         'pagado'     => 'Pagado',
+                        'receptado'  => 'Receptado',
                         'procesando' => 'Procesando',
                         'enviado'    => 'Enviado',
                         'entregado'  => 'Entregado',

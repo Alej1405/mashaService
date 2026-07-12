@@ -3,8 +3,10 @@
 namespace App\Filament\Ecommerce\Resources;
 
 use App\Filament\Ecommerce\Resources\StoreProductResource\Pages;
+use App\Models\InventoryItem;
 use App\Models\StoreCategory;
 use App\Models\StoreProduct;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -115,10 +117,42 @@ class StoreProductResource extends Resource
                     TextInput::make('precio_venta')->label('Precio base')->numeric()->prefix('$')->required()->columnSpan(1),
                     TextInput::make('precio_distribuidor')->label('Precio distribuidor')->numeric()->prefix('$')->nullable()->columnSpan(1),
                     TextInput::make('cantidad_minima_distribuidor')->label('Cant. mín. distribuidor')->numeric()->default(1)->columnSpan(1),
-                    TextInput::make('stock')->label('Stock disponible')->numeric()->default(0)->columnSpan(1),
-                    TextInput::make('stock_minimo')->label('Stock mínimo')->numeric()->default(0)->columnSpan(1),
-                    Toggle::make('gestionar_stock')->label('Gestionar stock')->default(true)->columnSpan(1),
                 ])->columns(3),
+
+                Tab::make('Inventario')->schema([
+                    Placeholder::make('stock_disponible_info')
+                        ->label('Stock disponible')
+                        ->content(fn (?StoreProduct $record): string => $record && $record->gestiona_stock
+                            ? $record->stock_disponible . ' unidades disponibles (leído del inventario)'
+                            : 'Sin control de stock — el producto se trata como «bajo pedido».')
+                        ->columnSpanFull(),
+                    Repeater::make('stockItems')
+                        ->relationship()
+                        ->label('Origen de stock')
+                        ->helperText('Enlaza el producto a uno o varios items de inventario terminado. El stock disponible se lee de ahí y, al gestionar un pedido, se descuenta de estos items.')
+                        ->schema([
+                            Select::make('inventory_item_id')
+                                ->label('Item de inventario')
+                                ->options(fn () => InventoryItem::query()
+                                    ->where('type', 'producto_terminado')
+                                    ->orderBy('nombre')
+                                    ->pluck('nombre', 'id'))
+                                ->searchable()
+                                ->required()
+                                ->columnSpan(2),
+                            TextInput::make('cantidad')
+                                ->label('Unids. por producto')
+                                ->numeric()
+                                ->minValue(0.0001)
+                                ->default(1)
+                                ->required()
+                                ->helperText('Cuántas unidades de inventario equivalen a 1 unidad vendible.')
+                                ->columnSpan(1),
+                        ])
+                        ->columns(3)
+                        ->addActionLabel('Enlazar item de inventario')
+                        ->columnSpanFull(),
+                ]),
             ])->columnSpanFull(),
         ]);
     }
@@ -132,14 +166,25 @@ class StoreProductResource extends Resource
                     ->description(fn ($record) => $record->sku ? 'SKU: ' . $record->sku : null),
                 TextColumn::make('storeCategory.nombre')->label('Categoría')->badge()->color('primary'),
                 TextColumn::make('precio_venta')->label('Precio')->money('USD')->sortable(),
-                TextColumn::make('stock')->label('Stock')->sortable()
-                    ->color(fn ($state) => $state <= 0 ? 'danger' : ($state < 5 ? 'warning' : 'success')),
+                TextColumn::make('stock_disponible')->label('Stock')->badge()
+                    ->state(fn (StoreProduct $record): string => $record->gestiona_stock
+                        ? (string) $record->stock_disponible
+                        : '—')
+                    ->color(fn (StoreProduct $record): string => ! $record->gestiona_stock
+                        ? 'gray'
+                        : ((int) $record->stock_disponible <= 0 ? 'danger' : ((int) $record->stock_disponible < 5 ? 'warning' : 'success'))),
                 IconColumn::make('publicado')->label('Publicado')->boolean(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([TernaryFilter::make('publicado')->label('Publicado')])
             ->actions([EditAction::make(), DeleteAction::make()])
             ->bulkActions([\Filament\Tables\Actions\BulkActionGroup::make([\Filament\Tables\Actions\DeleteBulkAction::make()])]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        // Eager-load del origen de stock para el cálculo de stock_disponible (evita N+1).
+        return parent::getEloquentQuery()->with('stockItems.inventoryItem');
     }
 
     public static function getPages(): array

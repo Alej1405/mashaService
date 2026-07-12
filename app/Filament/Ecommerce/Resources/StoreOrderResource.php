@@ -3,10 +3,14 @@
 namespace App\Filament\Ecommerce\Resources;
 
 use App\Filament\Ecommerce\Resources\StoreOrderResource\Pages;
+use App\Models\Customer;
 use App\Models\StoreOrder;
+use App\Models\StoreProduct;
 use App\Services\StoreOrderService;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -31,12 +35,48 @@ class StoreOrderResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            // ── INGRESAR pedido (solo al crear) ─────────────────────────────
+            Select::make('customer_id')
+                ->label('Cliente')
+                ->options(fn () => Customer::query()->orderBy('nombre')
+                    ->get()->mapWithKeys(fn ($c) => [$c->id => trim(($c->nombre ?? '') . ' ' . ($c->apellido ?? ''))]))
+                ->searchable()
+                ->required()
+                ->visible(fn (string $operation) => $operation === 'create')
+                ->columnSpanFull(),
+            Repeater::make('items')
+                ->label('Productos del pedido')
+                ->schema([
+                    Select::make('store_product_id')
+                        ->label('Producto')
+                        ->options(fn () => StoreProduct::query()->where('publicado', true)->orderBy('nombre')->pluck('nombre', 'id'))
+                        ->searchable()
+                        ->required()
+                        ->columnSpan(2),
+                    TextInput::make('cantidad')
+                        ->label('Cantidad')
+                        ->numeric()
+                        ->minValue(0.0001)
+                        ->default(1)
+                        ->required()
+                        ->columnSpan(1),
+                ])
+                ->columns(3)
+                ->minItems(1)
+                ->addActionLabel('Agregar producto')
+                ->dehydrated(false)
+                ->visible(fn (string $operation) => $operation === 'create')
+                ->columnSpanFull(),
+
+            // ── GESTIÓN (solo al editar) ────────────────────────────────────
             Select::make('estado')->label('Estado')
-                ->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','procesando'=>'Procesando','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])
-                ->required()->native(false),
+                ->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','receptado'=>'Receptado','procesando'=>'Procesando','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])
+                ->required()->native(false)
+                ->visible(fn (string $operation) => $operation === 'edit'),
             Select::make('estado_pago')->label('Estado de Pago')
                 ->options(['pendiente'=>'Pendiente','aprobado'=>'Aprobado','fallido'=>'Fallido','reembolsado'=>'Reembolsado'])
-                ->required()->native(false),
+                ->required()->native(false)
+                ->visible(fn (string $operation) => $operation === 'edit'),
             Textarea::make('notas_cliente')->label('Notas')->rows(3)->columnSpanFull(),
         ]);
     }
@@ -51,7 +91,7 @@ class StoreOrderResource extends Resource
                 TextColumn::make('total')->label('Total')->money('USD')->sortable(),
                 TextColumn::make('estado')->label('Estado')->badge()
                     ->color(fn ($state) => match ($state) {
-                        'pendiente'  => 'warning', 'pagado' => 'info', 'procesando' => 'primary',
+                        'pendiente'  => 'warning', 'pagado' => 'info', 'receptado' => 'primary', 'procesando' => 'primary',
                         'enviado'    => 'info',    'entregado' => 'success', 'cancelado' => 'danger', default => 'gray',
                     }),
                 TextColumn::make('estado_pago')->label('Pago')->badge()
@@ -63,7 +103,7 @@ class StoreOrderResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                SelectFilter::make('estado')->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','procesando'=>'Procesando','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])->native(false),
+                SelectFilter::make('estado')->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','receptado'=>'Receptado','procesando'=>'Procesando','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])->native(false),
                 SelectFilter::make('estado_pago')->options(['pendiente'=>'Pendiente','aprobado'=>'Aprobado','fallido'=>'Fallido','reembolsado'=>'Reembolsado'])->native(false),
             ])
             ->actions([
@@ -81,6 +121,20 @@ class StoreOrderResource extends Resource
                             Notification::make()->title('Error')->body($e->getMessage())->danger()->send();
                         }
                     }),
+                Action::make('aceptar')
+                    ->label('Aceptar pedido')->icon('heroicon-o-check-circle')->color('success')
+                    ->visible(fn (StoreOrder $r) => in_array($r->estado, ['pendiente', 'pagado'], true))
+                    ->requiresConfirmation()
+                    ->modalHeading('¿Aceptar el pedido?')
+                    ->modalDescription('Pasa a «receptado». El inventario disponible se descuenta automáticamente; lo que falte se mapea a producción.')
+                    ->action(function (StoreOrder $record) {
+                        try {
+                            $record->update(['estado' => 'receptado']);
+                            Notification::make()->title('Pedido receptado')->success()->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()->title('Error')->body($e->getMessage())->danger()->send();
+                        }
+                    }),
                 EditAction::make()->label('Estado'),
             ]);
     }
@@ -88,8 +142,9 @@ class StoreOrderResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListStoreOrders::route('/'),
-            'edit'  => Pages\EditStoreOrder::route('/{record}/edit'),
+            'index'  => Pages\ListStoreOrders::route('/'),
+            'create' => Pages\CreateStoreOrder::route('/create'),
+            'edit'   => Pages\EditStoreOrder::route('/{record}/edit'),
         ];
     }
 }

@@ -15,6 +15,7 @@ class StoreOrder extends Model
         'empresa_id',
         'customer_id',
         'numero',
+        'origen',
         'estado',
         'subtotal',
         'descuento',

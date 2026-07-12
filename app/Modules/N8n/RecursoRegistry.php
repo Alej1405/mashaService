@@ -165,8 +165,7 @@ class RecursoRegistry
                 'rules' => [
                     'nombre' => 'required|string|max:255', 'sku' => 'nullable|string|max:100',
                     'descripcion' => 'nullable|string', 'precio_venta' => 'required|numeric|min:0',
-                    'precio_distribuidor' => 'nullable|numeric|min:0', 'stock' => 'nullable|integer|min:0',
-                    'stock_minimo' => 'nullable|integer|min:0', 'gestionar_stock' => 'nullable|boolean',
+                    'precio_distribuidor' => 'nullable|numeric|min:0',
                     'unidad_precio' => 'nullable|string|max:80', 'caracteristicas' => 'nullable|array',
                     'meta_titulo' => 'nullable|string|max:200', 'meta_descripcion' => 'nullable|string|max:300',
                     'publicado' => 'nullable|boolean', 'destacado' => 'nullable|boolean',
@@ -174,7 +173,7 @@ class RecursoRegistry
                 ],
                 'imagenes' => ['imagen_principal' => 'store/products'],
                 'galeria' => ['galeria' => 'store/products/gallery', 'max' => 5],
-                'lista' => ['id', 'nombre', 'precio_venta', 'stock', 'publicado'], 'orden' => ['id', 'desc'],
+                'lista' => ['id', 'nombre', 'precio_venta', 'publicado'], 'orden' => ['id', 'desc'],
             ],
             'categories' => [
                 'model' => StoreCategory::class, 'label' => 'Categoría', 'slug_from' => 'nombre',

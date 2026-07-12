@@ -22,9 +22,6 @@ class StoreProduct extends Model
         'precio_venta',
         'precio_distribuidor',
         'cantidad_minima_distribuidor',
-        'stock',
-        'stock_minimo',
-        'gestionar_stock',
         'imagen_principal',
         'galeria',
         'caracteristicas',
@@ -40,9 +37,6 @@ class StoreProduct extends Model
         'precio_venta'                 => 'decimal:4',
         'precio_distribuidor'          => 'decimal:4',
         'cantidad_minima_distribuidor' => 'integer',
-        'stock'                        => 'integer',
-        'stock_minimo'                 => 'integer',
-        'gestionar_stock'              => 'boolean',
         'caracteristicas'              => 'array',
         'publicado'                    => 'boolean',
         'destacado'                    => 'boolean',
@@ -146,5 +140,61 @@ class StoreProduct extends Model
     public function materiales(): HasMany
     {
         return $this->hasMany(ProductMaterial::class);
+    }
+
+    /** Origen(es) de stock: items de inventario terminado que respaldan al producto. */
+    public function stockItems(): HasMany
+    {
+        return $this->hasMany(StoreProductStock::class);
+    }
+
+    // ── Stock VIRTUAL: se lee del inventario real, no se guarda en store_products ──
+    // Reemplaza a las columnas físicas stock / stock_minimo / gestionar_stock, que
+    // se retiraron (una sola fuente de verdad = inventory_items.stock_actual).
+
+    /**
+     * ¿El producto controla stock? Sí cuando tiene al menos un item de inventario
+     * enlazado. Sin enlace = no se valida stock (se trata como bajo pedido).
+     */
+    public function getGestionarStockAttribute(): bool
+    {
+        // Usa la relación ya cargada si existe (evita N+1 en listados con eager-load).
+        return $this->relationLoaded('stockItems')
+            ? $this->stockItems->isNotEmpty()
+            : $this->stockItems()->exists();
+    }
+
+    /** Alias legible del anterior. */
+    public function getGestionaStockAttribute(): bool
+    {
+        return $this->getGestionarStockAttribute();
+    }
+
+    /**
+     * Unidades vendibles disponibles = el mínimo, entre todos los items enlazados,
+     * de floor(stock_actual / cantidad). Null cuando el producto no gestiona stock.
+     */
+    public function getStockDisponibleAttribute(): ?int
+    {
+        $items = $this->relationLoaded('stockItems')
+            ? $this->stockItems
+            : $this->stockItems()->with('inventoryItem')->get();
+
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        return (int) $items->min(function (StoreProductStock $si): int {
+            $porUnidad = (float) $si->cantidad ?: 1.0;
+            $existencia = (float) ($si->inventoryItem?->stock_actual ?? 0);
+
+            return (int) floor($existencia / $porUnidad);
+        });
+    }
+
+    /** Compatibilidad: lectura de `stock` como número (0 si no gestiona stock). */
+    public function getStockAttribute(): int
+    {
+        return $this->getStockDisponibleAttribute() ?? 0;
     }
 }

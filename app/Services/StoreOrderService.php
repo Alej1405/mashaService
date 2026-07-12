@@ -23,9 +23,10 @@ class StoreOrderService
         array $items,
         array $shippingAddress,
         ?string $couponCode = null,
-        ?string $notes = null
+        ?string $notes = null,
+        string $origen = 'cliente'
     ): StoreOrder {
-        return DB::transaction(function () use ($empresa, $customer, $items, $shippingAddress, $couponCode, $notes) {
+        return DB::transaction(function () use ($empresa, $customer, $items, $shippingAddress, $couponCode, $notes, $origen) {
             $subtotal   = 0;
             $orderItems = [];
 
@@ -36,11 +37,12 @@ class StoreOrderService
                     ->where('publicado', true)
                     ->firstOrFail();
 
-                $qty   = (float) $item['cantidad'];
-                $stock = (float) ($product->stock ?? 0);
+                $qty = (float) $item['cantidad'];
 
-                if ($product->gestionar_stock && $stock < $qty) {
-                    throw new \Exception("Stock insuficiente para: {$product->nombre} (disponible: {$stock})");
+                // Stock leído del inventario real (store_product_stock → inventory_items).
+                // Sin items enlazados el producto es "bajo pedido": no se valida stock.
+                if ($product->gestiona_stock && (float) ($product->stock_disponible ?? 0) < $qty) {
+                    throw new \Exception("Stock insuficiente para: {$product->nombre} (disponible: " . ($product->stock_disponible ?? 0) . ")");
                 }
 
                 // Precio distribuidor si compra la cantidad mínima configurada
@@ -80,6 +82,7 @@ class StoreOrderService
             $order = StoreOrder::create([
                 'empresa_id'        => $empresa->id,
                 'customer_id' => $customer->id,
+                'origen'            => in_array($origen, ['cliente', 'tienda', 'erp'], true) ? $origen : 'cliente',
                 'estado'            => 'pendiente',
                 'subtotal'          => $subtotal,
                 'descuento'         => $descuento,

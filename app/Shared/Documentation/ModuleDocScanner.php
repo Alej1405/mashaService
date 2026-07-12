@@ -106,7 +106,9 @@ final class ModuleDocScanner
      */
     private function resolveClassName(string $path): ?string
     {
-        $lineas    = array_slice(file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES), 0, 20);
+        // Ventana amplia (80 líneas no vacías): un docblock + atributo #[Documentado]
+        // largo puede empujar la declaración `class` más allá de las primeras líneas.
+        $lineas    = array_slice(file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES), 0, 80);
         $namespace = null;
         $clase     = null;
 

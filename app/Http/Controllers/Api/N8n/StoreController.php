@@ -94,17 +94,19 @@ class StoreController extends Controller
     public function productsIndex(Request $request): JsonResponse
     {
         $items = $this->scope(StoreProduct::query(), $this->empresaId($request))
+            ->with('stockItems.inventoryItem')
             ->latest('id')->limit(15)
-            ->get(['id', 'nombre', 'precio_venta', 'stock', 'publicado']);
+            ->get(['id', 'nombre', 'precio_venta', 'publicado'])
+            ->each->append('stock'); // stock ahora es virtual (leído del inventario)
 
         return response()->json(['ok' => true, 'items' => $items]);
     }
 
     public function productsUpdate(Request $request, int $id): JsonResponse
     {
+        // 'stock' ya no es editable: se deriva del inventario (store_product_stock).
         $data = $request->validate([
             'precio_venta' => ['nullable', 'numeric', 'min:0'],
-            'stock' => ['nullable', 'integer', 'min:0'],
             'publicado' => ['nullable', 'boolean'],
         ]);
 
@@ -117,7 +119,7 @@ class StoreController extends Controller
             ], 404);
         }
 
-        foreach (['precio_venta', 'stock', 'publicado'] as $campo) {
+        foreach (['precio_venta', 'publicado'] as $campo) {
             if (array_key_exists($campo, $data) && $data[$campo] !== null) {
                 $producto->{$campo} = $data[$campo];
             }
