@@ -27,7 +27,6 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 /**
  * Módulo Producto — opera sobre la tabla ÚNICA de productos (store_products).
@@ -79,20 +78,8 @@ class StoreProductResource extends Resource
                                 ->label('Nombre')
                                 ->required()
                                 ->maxLength(255)
-                                ->live(onBlur: true)
-                                ->afterStateUpdated(function (Set $set, ?string $state, string $operation) {
-                                    if ($operation === 'create' && filled($state)) {
-                                        $set('slug', Str::slug($state));
-                                    }
-                                })
+                                ->helperText('El enlace (slug) se genera solo a partir del nombre.')
                                 ->columnSpan(2),
-
-                            TextInput::make('slug')
-                                ->label('Slug')
-                                ->required()
-                                ->maxLength(255)
-                                ->helperText('Identificador para la URL. Se genera del nombre; puedes ajustarlo.')
-                                ->columnSpan(1),
 
                             Select::make('store_category_id')
                                 ->label('Categoría')
@@ -242,6 +229,70 @@ class StoreProductResource extends Resource
                                 ->reorderable(false)
                                 ->collapsible()
                                 ->cloneable()
+                                ->columnSpanFull(),
+                        ]),
+
+                    Tab::make('Origen de stock')
+                        ->icon('heroicon-o-cube')
+                        ->schema([
+                            Placeholder::make('origen_stock_ayuda')
+                                ->label('')
+                                ->content(new HtmlString('Define de qué <b>item(s) de inventario</b> (producto terminado) sale el stock vendible. El stock disponible se lee de ahí y las ventas lo descuentan. Los productos creados desde la tienda ya traen su item automáticamente; aquí se ajusta o se añaden orígenes para productos compuestos.'))
+                                ->columnSpanFull(),
+                            Repeater::make('stockItems')
+                                ->relationship()
+                                ->label('Items de inventario que respaldan el stock')
+                                ->schema([
+                                    Select::make('inventory_item_id')
+                                        ->label('Item de inventario (producto terminado)')
+                                        ->options(fn () => InventoryItem::query()
+                                            ->where('type', 'producto_terminado')
+                                            ->where('activo', true)
+                                            ->orderBy('nombre')
+                                            ->get()
+                                            ->mapWithKeys(fn ($i) => [$i->id => trim(($i->codigo ? $i->codigo . ' · ' : '') . $i->nombre)]))
+                                        ->searchable()
+                                        ->preload()
+                                        ->required()
+                                        ->distinct()
+                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                        ->live()
+                                        ->columnSpan(3),
+                                    Placeholder::make('info_item_stock')
+                                        ->label('')
+                                        ->content(function (Get $get): HtmlString {
+                                            $id = $get('inventory_item_id');
+                                            if (! $id) {
+                                                return new HtmlString('<span style="color:#9ca3af">Elige un item para ver su stock actual.</span>');
+                                            }
+                                            $i = InventoryItem::with('measurementUnit')->find($id);
+                                            if (! $i) {
+                                                return new HtmlString('—');
+                                            }
+                                            $um    = $i->measurementUnit?->abreviatura ?? '';
+                                            $stock = rtrim(rtrim(number_format((float) $i->stock_actual, 4, '.', ''), '0'), '.');
+                                            $bajo  = $i->stock_actual <= $i->stock_minimo
+                                                ? ' <span style="color:#dc2626;font-weight:600">(stock bajo)</span>' : '';
+
+                                            return new HtmlString("📦 Stock actual: <b>{$stock} {$um}</b>{$bajo}");
+                                        })
+                                        ->columnSpanFull(),
+                                    TextInput::make('cantidad')
+                                        ->label('Unids. de inventario por unidad vendible')
+                                        ->numeric()
+                                        ->required()
+                                        ->minValue(0.0001)
+                                        ->default(1)
+                                        ->helperText('Cuántas unidades del item equivalen a 1 unidad vendible del producto.')
+                                        ->columnSpan(1),
+                                ])
+                                ->columns(3)
+                                ->itemLabel(fn (array $state): ?string => ($state['inventory_item_id'] ?? null)
+                                    ? optional(InventoryItem::find($state['inventory_item_id']))->nombre
+                                    : 'Nuevo origen')
+                                ->addActionLabel('Añadir origen de stock')
+                                ->defaultItems(0)
+                                ->collapsible()
                                 ->columnSpanFull(),
                         ]),
                 ])

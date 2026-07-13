@@ -3,7 +3,6 @@
 namespace App\Filament\Ecommerce\Resources;
 
 use App\Filament\Ecommerce\Resources\StoreProductResource\Pages;
-use App\Models\InventoryItem;
 use App\Models\StoreCategory;
 use App\Models\StoreProduct;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +18,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\EditAction;
@@ -28,7 +26,6 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 class StoreProductResource extends Resource
 {
@@ -48,10 +45,8 @@ class StoreProductResource extends Resource
             Tabs::make()->tabs([
                 Tab::make('Información')->schema([
                     TextInput::make('nombre')->label('Nombre')->required()->maxLength(200)
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(fn (Set $set, ?string $state) => $set('slug', Str::slug($state ?? '')))
+                        ->helperText('El enlace (slug) se genera solo a partir del nombre.')
                         ->columnSpan(2),
-                    TextInput::make('slug')->label('Slug')->required()->maxLength(200)->columnSpan(1),
                     Select::make('store_category_id')->label('Categoría')
                         ->options(fn () => StoreCategory::pluck('nombre', 'id'))
                         ->nullable()->searchable()->native(false)->columnSpan(1),
@@ -78,11 +73,20 @@ class StoreProductResource extends Resource
                         ->imagePreviewHeight('120')->maxSize(3072)
                         ->helperText('Hasta 5 imágenes para la landing del producto. Arrastra para reordenar.')
                         ->columnSpanFull(),
-                    TextInput::make('unidad_precio')
+                    Select::make('unidad_precio')
                         ->label('Unidad de precio')
-                        ->placeholder('por kg, por unidad, por caja...')
-                        ->maxLength(80)
-                        ->helperText('Se muestra junto al precio en la landing y el catálogo.')
+                        ->options(fn () => \App\Models\MeasurementUnit::query()
+                            ->where('activo', true)
+                            ->orderBy('nombre')
+                            ->get()
+                            ->mapWithKeys(fn ($u) => [
+                                $u->nombre => $u->nombre . ($u->abreviatura ? " ({$u->abreviatura})" : ''),
+                            ])
+                            ->all())
+                        ->searchable()
+                        ->native(false)
+                        ->placeholder('Selecciona una unidad')
+                        ->helperText('Se muestra junto al precio en la landing. Sale del catálogo de unidades de la empresa.')
                         ->columnSpanFull(),
                     Repeater::make('caracteristicas')
                         ->label('Características del producto')
@@ -120,37 +124,30 @@ class StoreProductResource extends Resource
                 ])->columns(3),
 
                 Tab::make('Inventario')->schema([
+                    // Alta: existencias iniciales. Al guardar se crea automáticamente el
+                    // item de inventario (producto terminado) vinculado a este producto.
+                    TextInput::make('existencias_iniciales')
+                        ->label('Existencias iniciales')
+                        ->numeric()
+                        ->minValue(0)
+                        ->default(0)
+                        ->suffix('unidades')
+                        ->helperText('Cantidad con la que arranca el producto. Se registra en el inventario como producto terminado; luego el stock se ajusta desde el módulo Inventario del ERP.')
+                        ->visibleOn('create')
+                        ->columnSpanFull(),
+
+                    // Edición: el stock es de solo lectura (se gestiona en el ERP).
                     Placeholder::make('stock_disponible_info')
                         ->label('Stock disponible')
                         ->content(fn (?StoreProduct $record): string => $record && $record->gestiona_stock
-                            ? $record->stock_disponible . ' unidades disponibles (leído del inventario)'
+                            ? $record->stock_disponible . ' unidades (leído del inventario)'
                             : 'Sin control de stock — el producto se trata como «bajo pedido».')
+                        ->visibleOn('edit')
                         ->columnSpanFull(),
-                    Repeater::make('stockItems')
-                        ->relationship()
-                        ->label('Origen de stock')
-                        ->helperText('Enlaza el producto a uno o varios items de inventario terminado. El stock disponible se lee de ahí y, al gestionar un pedido, se descuenta de estos items.')
-                        ->schema([
-                            Select::make('inventory_item_id')
-                                ->label('Item de inventario')
-                                ->options(fn () => InventoryItem::query()
-                                    ->where('type', 'producto_terminado')
-                                    ->orderBy('nombre')
-                                    ->pluck('nombre', 'id'))
-                                ->searchable()
-                                ->required()
-                                ->columnSpan(2),
-                            TextInput::make('cantidad')
-                                ->label('Unids. por producto')
-                                ->numeric()
-                                ->minValue(0.0001)
-                                ->default(1)
-                                ->required()
-                                ->helperText('Cuántas unidades de inventario equivalen a 1 unidad vendible.')
-                                ->columnSpan(1),
-                        ])
-                        ->columns(3)
-                        ->addActionLabel('Enlazar item de inventario')
+                    Placeholder::make('stock_ayuda')
+                        ->label('')
+                        ->content('El stock se administra desde el módulo Inventario del ERP. Aquí solo se consulta.')
+                        ->visibleOn('edit')
                         ->columnSpanFull(),
                 ]),
             ])->columnSpanFull(),

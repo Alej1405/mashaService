@@ -35,6 +35,7 @@ final class SchemaInspector
 
             return [
                 'name'        => $table,
+                'module'      => $this->moduleFor($table),
                 'is_tenant'   => collect($columns)->contains(fn ($c) => $c['name'] === 'empresa_id'),
                 'columns'     => $columns,
                 'constraints' => $this->constraints($table),
@@ -42,7 +43,147 @@ final class SchemaInspector
             ];
         }, $tables);
 
-        return ['tables' => $detail, 'foreignKeys' => $fks];
+        return [
+            'tables'      => $detail,
+            'foreignKeys' => $fks,
+            'modules'     => $this->modules($detail),
+            'moduleLinks' => $this->moduleLinks($detail, $fks),
+        ];
+    }
+
+    /**
+     * Orden de presentación de los módulos del ERP. El grafo de primer nivel usa
+     * exactamente estos, en este orden.
+     *
+     * @var list<string>
+     */
+    private const MODULE_ORDER = [
+        'Tienda', 'CMS', 'Ventas', 'Compras', 'Inventario', 'Producción',
+        'Contabilidad', 'Tesorería', 'Logística', 'Servicios', 'Mailing',
+        'Soporte', 'Sistema', 'Otros',
+    ];
+
+    /**
+     * Clasifica una tabla en su módulo de negocio. Primero excepciones exactas
+     * (tablas que no siguen su prefijo), luego reglas por prefijo en orden. Todo
+     * lo no reconocido cae en 'Otros' para que ninguna tabla quede fuera del mapa.
+     */
+    public function moduleFor(string $table): string
+    {
+        // Excepciones: nombre exacto → módulo (ganan sobre las reglas de prefijo).
+        $exact = [
+            'product_images'        => 'Tienda',   // imágenes del producto de tienda
+            'product_materials'     => 'Tienda',   // materiales del producto de tienda
+            'empresa_mailing_stats' => 'Mailing',  // 'empresa_' pero es de Mailing
+            'customers'             => 'Ventas',
+            'suppliers'             => 'Compras',
+            'banks'                 => 'Tesorería',
+            'measurement_units'     => 'Inventario',
+            'almacenes'             => 'Inventario',
+            'ubicaciones_almacen'   => 'Inventario',
+            'zonas_almacen'         => 'Inventario',
+            'costos_fijos'          => 'Producción',
+            'carta_presentaciones'  => 'CMS',
+            'account_plans'         => 'Contabilidad',
+            'accounting_maps'       => 'Contabilidad',
+        ];
+        if (isset($exact[$table])) {
+            return $exact[$table];
+        }
+
+        // Reglas por prefijo, evaluadas en orden (la primera que casa gana).
+        $prefixes = [
+            'store_'       => 'Tienda',
+            'cms_'         => 'CMS',
+            'logistics_'   => 'Logística',
+            'service_'     => 'Servicios',
+            'production_'  => 'Producción',
+            'product_'     => 'Producción',
+            'inventory_'   => 'Inventario',
+            'item_'        => 'Inventario',
+            'purchase'     => 'Compras',
+            'sale'         => 'Ventas',
+            'journal_'     => 'Contabilidad',
+            'bank_'        => 'Tesorería',
+            'cash_'        => 'Tesorería',
+            'credit_card'  => 'Tesorería',
+            'debt'         => 'Tesorería',
+            'mail'         => 'Mailing',
+            'support_'     => 'Soporte',
+        ];
+        foreach ($prefixes as $prefix => $module) {
+            if (str_starts_with($table, $prefix)) {
+                return $module;
+            }
+        }
+
+        // Núcleo de plataforma / acceso / multi-tenant.
+        $sistema = [
+            'empresas', 'users', 'empresa_user_access', 'panels', 'panel_modules',
+            'plan_panel', 'role_module', 'roles', 'permissions',
+            'model_has_permissions', 'model_has_roles', 'role_has_permissions',
+            'personal_access_tokens', 'system_events', 'telegram_sessions',
+        ];
+        if (in_array($table, $sistema, true)) {
+            return 'Sistema';
+        }
+
+        return 'Otros';
+    }
+
+    /**
+     * Resumen de módulos presentes (nodos del grafo de primer nivel), en el orden
+     * canónico y solo los que tienen al menos una tabla.
+     *
+     * @param  list<array{name:string,module:string,is_tenant:bool}>  $tables
+     * @return list<array{name:string,table_count:int,tenant_count:int}>
+     */
+    private function modules(array $tables): array
+    {
+        $byModule = collect($tables)->groupBy('module');
+
+        return collect(self::MODULE_ORDER)
+            ->filter(fn (string $m) => $byModule->has($m))
+            ->map(fn (string $m) => [
+                'name'         => $m,
+                'table_count'  => $byModule[$m]->count(),
+                'tenant_count' => $byModule[$m]->where('is_tenant', true)->count(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Aristas entre módulos: cada FK se agrega al par (módulo_origen, módulo_destino).
+     * Se descartan los enlaces internos (mismo módulo); el peso es el nº de FKs.
+     *
+     * @param  list<array{name:string,module:string}>  $tables
+     * @param  list<array{from_table:string,to_table:string}>  $fks
+     * @return list<array{from_module:string,to_module:string,count:int}>
+     */
+    private function moduleLinks(array $tables, array $fks): array
+    {
+        $moduleByTable = collect($tables)->pluck('module', 'name');
+        $links = [];
+
+        foreach ($fks as $fk) {
+            $from = $moduleByTable[$fk['from_table']] ?? 'Otros';
+            $to   = $moduleByTable[$fk['to_table']] ?? 'Otros';
+            if ($from === $to) {
+                continue;
+            }
+            $key = $from . '→' . $to;
+            $links[$key] = ($links[$key] ?? 0) + 1;
+        }
+
+        return collect($links)
+            ->map(function (int $count, string $key) {
+                [$from, $to] = explode('→', $key);
+
+                return ['from_module' => $from, 'to_module' => $to, 'count' => $count];
+            })
+            ->values()
+            ->all();
     }
 
     /** @return list<string> */
