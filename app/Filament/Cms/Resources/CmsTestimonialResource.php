@@ -35,7 +35,7 @@ class CmsTestimonialResource extends Resource
                     ->required()->rows(4)->maxLength(600)->columnSpanFull(),
                 Forms\Components\FileUpload::make('autor_foto')->label('Foto del cliente (opcional)')
                     ->image()->disk('public')->directory('cms/testimonials')
-                    ->imagePreviewHeight('80')->maxSize(1024)->columnSpanFull(),
+                    ->imagePreviewHeight('80')->columnSpanFull(),
                 Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
                 Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
             ]),

@@ -42,7 +42,7 @@ class CmsPostResource extends Resource
                     ->columnSpanFull(),
                 Forms\Components\FileUpload::make('imagen')
                     ->label('Imagen principal')->image()->disk('public')->directory('cms/posts')
-                    ->imagePreviewHeight('120')->maxSize(3072)
+                    ->imagePreviewHeight('120')
                     ->helperText('JPG o PNG. Recomendado: 1200×630 px.')->columnSpanFull(),
                 Forms\Components\DateTimePicker::make('publicado_en')
                     ->label('Fecha de publicación')->placeholder('Dejar vacío para publicar ahora')->native(false),

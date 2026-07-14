@@ -47,7 +47,7 @@ class CmsAboutResource extends Resource
                         ->disk('public')
                         ->directory('cms/about')
                         ->imagePreviewHeight('120')
-                        ->maxSize(4096)
+                        
                         ->helperText('Recomendado: 800×600 px.')
                         ->columnSpanFull(),
                 ]),

@@ -75,7 +75,7 @@ class CmsHeroResource extends Resource
                         ->disk('public')
                         ->directory('cms/hero')
                         ->imagePreviewHeight('160')
-                        ->maxSize(5120)
+                        
                         ->helperText('Recomendado: 1920×1080 px, JPG o WebP. Máx 5 MB.')
                         ->columnSpanFull(),
 

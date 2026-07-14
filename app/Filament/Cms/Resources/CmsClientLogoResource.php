@@ -27,7 +27,7 @@ class CmsClientLogoResource extends Resource
         return $form->schema([
             Forms\Components\TextInput::make('nombre')->label('Nombre del cliente / empresa')->required()->maxLength(150)->columnSpanFull(),
             Forms\Components\FileUpload::make('logo')->label('Logo')->image()->disk('public')->directory('cms/clients')
-                ->imagePreviewHeight('80')->maxSize(2048)->helperText('PNG con fondo transparente recomendado.')->columnSpanFull(),
+                ->imagePreviewHeight('80')->helperText('PNG con fondo transparente recomendado.')->columnSpanFull(),
             Forms\Components\TextInput::make('url')->label('Sitio web del cliente (opcional)')->url()->maxLength(500)->columnSpanFull(),
             Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
             Forms\Components\Toggle::make('activo')->label('Visible')->default(true),

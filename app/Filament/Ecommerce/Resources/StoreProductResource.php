@@ -132,21 +132,15 @@ class StoreProductResource extends Resource
                         ->minValue(0)
                         ->default(0)
                         ->suffix('unidades')
-                        ->helperText('Cantidad con la que arranca el producto. Se registra en el inventario como producto terminado; luego el stock se ajusta desde el módulo Inventario del ERP.')
+                        ->helperText('Cantidad con la que arranca el producto.')
                         ->visibleOn('create')
                         ->columnSpanFull(),
 
-                    // Edición: el stock es de solo lectura (se gestiona en el ERP).
                     Placeholder::make('stock_disponible_info')
                         ->label('Stock disponible')
                         ->content(fn (?StoreProduct $record): string => $record && $record->gestiona_stock
-                            ? $record->stock_disponible . ' unidades (leído del inventario)'
-                            : 'Sin control de stock — el producto se trata como «bajo pedido».')
-                        ->visibleOn('edit')
-                        ->columnSpanFull(),
-                    Placeholder::make('stock_ayuda')
-                        ->label('')
-                        ->content('El stock se administra desde el módulo Inventario del ERP. Aquí solo se consulta.')
+                            ? $record->stock_disponible . ' unidades disponibles'
+                            : 'Sin control de stock — «bajo pedido».')
                         ->visibleOn('edit')
                         ->columnSpanFull(),
                 ]),

@@ -42,7 +42,7 @@ class CmsServiceResource extends Resource
                     ->label('Ícono (emoji o heroicon)')->placeholder('🚚')->maxLength(60),
                 Forms\Components\FileUpload::make('imagen')
                     ->label('Imagen')->image()->disk('public')->directory('cms/services')
-                    ->imagePreviewHeight('80')->maxSize(2048),
+                    ->imagePreviewHeight('80'),
                 Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
                 Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
             ]),

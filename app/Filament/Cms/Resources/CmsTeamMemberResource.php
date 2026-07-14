@@ -31,7 +31,7 @@ class CmsTeamMemberResource extends Resource
                 Forms\Components\Textarea::make('bio')->label('Biografía corta')->rows(3)->maxLength(400)->columnSpanFull(),
                 Forms\Components\FileUpload::make('foto')->label('Foto')
                     ->image()->disk('public')->directory('cms/team')
-                    ->imagePreviewHeight('100')->maxSize(2048)->columnSpanFull(),
+                    ->imagePreviewHeight('100')->columnSpanFull(),
                 Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
                 Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
             ]),
