@@ -36,6 +36,16 @@ class Customer extends Authenticatable
         'cuenta_contable_id',
         'activo',
         'is_super_admin',
+        // Punto de venta / landing pública (el cliente es el punto de venta)
+        'publicado',
+        'menu_activo',
+        'slug',
+        'descripcion_web',
+        'horario',
+        'logo',
+        'banner',
+        'latitud',
+        'longitud',
     ];
 
     protected $hidden = ['password'];
@@ -45,6 +55,10 @@ class Customer extends Authenticatable
         'es_exportador'     => 'boolean',
         'activo'            => 'boolean',
         'is_super_admin'    => 'boolean',
+        'publicado'         => 'boolean',
+        'menu_activo'       => 'boolean',
+        'latitud'           => 'decimal:7',
+        'longitud'          => 'decimal:7',
     ];
 
     protected static function boot()
@@ -121,5 +135,33 @@ class Customer extends Authenticatable
     public function companies(): HasMany
     {
         return $this->hasMany(StoreCustomerCompany::class);
+    }
+
+    /** Ítems del menú del punto de venta (tabla independiente customer_menu_items). */
+    public function menuItems(): HasMany
+    {
+        return $this->hasMany(CustomerMenuItem::class);
+    }
+
+    /**
+     * URL pública de la landing del punto de venta. La base sale de FRONTEND_URL
+     * (config app.frontend_url) y cae a app.url si no está definida; el front la
+     * resuelve como /clientes/{slug}.
+     */
+    public function landingUrl(): string
+    {
+        $base = rtrim((string) (config('app.frontend_url') ?: config('app.url')), '/');
+
+        return $this->slug ? "{$base}/clientes/{$this->slug}" : $base;
+    }
+
+    /** QR (SVG inline) que apunta a la landing del punto de venta. */
+    public function qrSvg(int $size = 220): string
+    {
+        return \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+            ->size($size)
+            ->margin(1)
+            ->errorCorrection('M')
+            ->generate($this->landingUrl());
     }
 }
