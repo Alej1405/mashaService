@@ -43,9 +43,28 @@ class StoreProduct extends Model
         'orden'                        => 'integer',
     ];
 
+    /**
+     * Columnas NOT NULL en la BD. Su default solo aplica si la columna NO viaja en el
+     * INSERT; un null explícito (campo vacío del form, payload de la API) lo ignora y
+     * revienta contra la constraint. Aquí se normalizan antes de tocar la base.
+     */
+    private const SIN_NULOS = [
+        'precio_distribuidor'          => 0,
+        'cantidad_minima_distribuidor' => 1,
+        'orden'                        => 0,
+    ];
+
     protected static function boot(): void
     {
         parent::boot();
+
+        static::saving(function (self $model) {
+            foreach (self::SIN_NULOS as $columna => $porDefecto) {
+                if ($model->{$columna} === null) {
+                    $model->{$columna} = $porDefecto;
+                }
+            }
+        });
 
         static::creating(function (self $model) {
             if (empty($model->slug)) {

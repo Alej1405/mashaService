@@ -119,7 +119,7 @@ class StoreProductResource extends Resource
 
                 Tab::make('Precios')->schema([
                     TextInput::make('precio_venta')->label('Precio base')->numeric()->prefix('$')->required()->columnSpan(1),
-                    TextInput::make('precio_distribuidor')->label('Precio distribuidor')->numeric()->prefix('$')->nullable()->columnSpan(1),
+                    TextInput::make('precio_distribuidor')->label('Precio distribuidor')->numeric()->prefix('$')->default(0)->columnSpan(1),
                     TextInput::make('cantidad_minima_distribuidor')->label('Cant. mín. distribuidor')->numeric()->default(1)->columnSpan(1),
                 ])->columns(3),
 

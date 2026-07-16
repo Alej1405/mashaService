@@ -226,6 +226,33 @@ JSON,
 JSON,
             ],
             [
+                'metodo' => 'GET', 'ruta' => '/puntos-venta', 'desc' => 'Puntos de venta publicados (ficha pública de cada cliente).',
+                'ejemplo' => <<<'JSON'
+[{
+  "id": 1, "slug": "mi-punto", "nombre": "Distribuidora Norte",
+  "descripcion": "Punto de venta oficial", "horario": "L-V 9:00-18:00",
+  "logo": "https://…", "banner": "https://…",
+  "direccion": "Av. Principal 123", "telefono": "0999999999",
+  "latitud": "-0.1806532", "longitud": "-78.4678382", "menu_activo": true
+}]
+JSON,
+            ],
+            [
+                'metodo' => 'GET', 'ruta' => '/puntos-venta/{slug}', 'desc' => 'Ficha de un punto de venta con su carta. El front lo pinta en /clientes/{slug}.',
+                'ejemplo' => <<<'JSON'
+{
+  "id": 1, "slug": "mi-punto", "nombre": "Distribuidora Norte",
+  "descripcion": "Punto de venta oficial", "horario": "L-V 9:00-18:00",
+  "logo": "https://…", "banner": "https://…",
+  "direccion": "Av. Principal 123", "telefono": "0999999999",
+  "latitud": "-0.1806532", "longitud": "-78.4678382", "menu_activo": true,
+  "menu": [{ "id": 2, "nombre": "Café", "descripcion": "…", "precio": "3.50", "imagen": "https://…" }]
+}
+// 404 si el slug no existe o el punto no está publicado.
+// "menu" llega vacío si el punto tiene la carta desactivada.
+JSON,
+            ],
+            [
                 'metodo' => 'GET', 'ruta' => '/all', 'desc' => 'Todas las secciones en una sola llamada (optimiza la carga inicial).',
                 'ejemplo' => <<<'JSON'
 {

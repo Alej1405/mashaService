@@ -79,20 +79,29 @@ class StoreProductController extends Controller
         return response()->json($product);
     }
 
-    public function related(Request $request, int $id): JsonResponse
+    /**
+     * La URL es /products/{id}/related, pero los consumidores tienen el slug a mano y lo
+     * mandan ahí. Con el type-hint `int` eso era un TypeError (500), así que se acepta
+     * cualquiera de los dos: los ids que ya se usaban siguen resolviendo igual.
+     */
+    public function related(Request $request, string $idOSlug): JsonResponse
     {
         $empresa = app('store.empresa');
 
         $product = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->where('id', $id)
+            ->when(
+                ctype_digit($idOSlug),
+                fn ($q) => $q->where('id', (int) $idOSlug),
+                fn ($q) => $q->where('slug', $idOSlug),
+            )
             ->firstOrFail();
 
         $related = StoreProduct::withoutGlobalScopes()
             ->with(['storeCategory', 'imagenes'])
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
-            ->where('id', '!=', $id)
+            ->where('id', '!=', $product->id)
             ->where('store_category_id', $product->store_category_id)
             ->limit(6)
             ->get();

@@ -119,6 +119,12 @@ Route::prefix('cms/{slug}')
         Route::get('posts',        [CmsController::class, 'posts']);
         Route::get('posts/{post}', [CmsController::class, 'post']);
         Route::get('terminos',     [CmsController::class, 'terminos']);
+
+        // Puntos de venta (cada cliente es un punto de venta): ficha pública + carta.
+        // El front los resuelve como /clientes/{slug}. No confundir con 'clients',
+        // que son los logos de marcas.
+        Route::get('puntos-venta',          [CmsController::class, 'puntosVenta']);
+        Route::get('puntos-venta/{punto}',  [CmsController::class, 'puntoVenta']);
     });
 
 /*

@@ -13,6 +13,8 @@ use App\Models\CmsService;
 use App\Models\CmsTeamMember;
 use App\Models\CmsTerminos;
 use App\Models\CmsTestimonial;
+use App\Models\Customer;
+use App\Models\CustomerMenuItem;
 use App\Models\Empresa;
 use App\Models\StoreProduct;
 use App\Models\ServiceDesign;
@@ -165,6 +167,102 @@ class CmsController extends Controller
         });
 
         return response()->json($data);
+    }
+
+    /**
+     * Puntos de venta publicados (cada cliente es un punto de venta). Alimenta el
+     * listado/mapa del front. Ojo: NO confundir con clients(), que son los logos de
+     * marcas del CMS.
+     *
+     * Solo se exponen los campos de la ficha pública: el resto del Customer (email,
+     * identificación, cuenta contable) es interno y no sale de aquí.
+     */
+    public function puntosVenta(string $slug): JsonResponse
+    {
+        $data = $this->cached("cms:{$slug}:puntos-venta", self::TTL, function () use ($slug) {
+            $empresa = $this->empresa($slug);
+
+            return Customer::withoutGlobalScopes()
+                ->select([
+                    'id', 'slug', 'nombre', 'apellido', 'razon_social', 'tipo_persona',
+                    'descripcion_web', 'horario', 'logo', 'banner', 'direccion',
+                    'telefono', 'latitud', 'longitud', 'menu_activo',
+                ])
+                ->where('empresa_id', $empresa->id)
+                ->where('publicado', true)
+                ->where('activo', true)
+                ->whereNotNull('slug')
+                ->orderBy('nombre')
+                ->get()
+                ->map(fn (Customer $c) => $this->puntoVentaPayload($c))
+                ->all();
+        });
+
+        return response()->json($data);
+    }
+
+    /**
+     * Ficha pública de un punto de venta + su carta. El menú solo viaja si el punto
+     * lo tiene activo; si no, `menu` va vacío y el front no dibuja la sección.
+     */
+    public function puntoVenta(string $slug, string $punto): JsonResponse
+    {
+        $data = $this->cached("cms:{$slug}:punto-venta:{$punto}", self::TTL, function () use ($slug, $punto) {
+            $empresa = $this->empresa($slug);
+
+            $cliente = Customer::withoutGlobalScopes()
+                ->where('empresa_id', $empresa->id)
+                ->where('slug', $punto)
+                ->where('publicado', true)
+                ->where('activo', true)
+                ->first();
+
+            if (! $cliente) {
+                return null;
+            }
+
+            $menu = $cliente->menu_activo
+                ? $cliente->menuItems()
+                    ->withoutGlobalScopes()
+                    ->where('activo', true)
+                    ->orderBy('orden')
+                    ->get()
+                    ->map(fn (CustomerMenuItem $i) => [
+                        'id'          => $i->id,
+                        'nombre'      => $i->nombre,
+                        'descripcion' => $i->descripcion,
+                        'precio'      => $i->precio,
+                        'imagen'      => $this->imageUrl($i->imagen),
+                    ])->all()
+                : [];
+
+            return $this->puntoVentaPayload($cliente) + ['menu' => $menu];
+        });
+
+        if ($data === null) {
+            return response()->json(['message' => 'Punto de venta no encontrado.'], 404);
+        }
+
+        return response()->json($data);
+    }
+
+    /** Forma común de la ficha pública, para que listado y detalle no se desincronicen. */
+    private function puntoVentaPayload(Customer $c): array
+    {
+        return [
+            'id'          => $c->id,
+            'slug'        => $c->slug,
+            'nombre'      => $c->nombre_completo,
+            'descripcion' => $c->descripcion_web,
+            'horario'     => $c->horario,
+            'logo'        => $this->imageUrl($c->logo),
+            'banner'      => $this->imageUrl($c->banner),
+            'direccion'   => $c->direccion,
+            'telefono'    => $c->telefono,
+            'latitud'     => $c->latitud,
+            'longitud'    => $c->longitud,
+            'menu_activo' => $c->menu_activo,
+        ];
     }
 
     public function testimonials(string $slug): JsonResponse
