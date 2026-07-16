@@ -65,7 +65,13 @@ class StoreProductController extends Controller
         return response()->json($products);
     }
 
-    public function show(Request $request, string $slug): JsonResponse
+    /**
+     * OJO con la firma: la URL es /ecommerce/{empresa_slug}/products/{slug} y Laravel
+     * inyecta los parámetros de ruta POR POSICIÓN. Si no se declara $empresaSlug, el
+     * primer hueco se lo come el slug de la empresa y $slug nunca recibe el del
+     * producto (era un 404 permanente). La empresa real viene del middleware.
+     */
+    public function show(Request $request, string $empresaSlug, string $slug): JsonResponse
     {
         $empresa = app('store.empresa');
 
@@ -80,11 +86,13 @@ class StoreProductController extends Controller
     }
 
     /**
-     * La URL es /products/{id}/related, pero los consumidores tienen el slug a mano y lo
-     * mandan ahí. Con el type-hint `int` eso era un TypeError (500), así que se acepta
-     * cualquiera de los dos: los ids que ya se usaban siguen resolviendo igual.
+     * Mismo cuidado con la firma que en show(): sin $empresaSlug, aquí llegaba el slug
+     * de la empresa contra un type-hint `int` y reventaba con TypeError (500).
+     *
+     * Se acepta id o slug: la URL dice {id}, pero los consumidores tienen el slug a mano
+     * y da igual resolver por cualquiera de los dos.
      */
-    public function related(Request $request, string $idOSlug): JsonResponse
+    public function related(Request $request, string $empresaSlug, string $idOSlug): JsonResponse
     {
         $empresa = app('store.empresa');
 

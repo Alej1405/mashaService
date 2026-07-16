@@ -28,7 +28,12 @@ class StoreCategoryController extends Controller
         return response()->json($categories);
     }
 
-    public function show(Request $request, string $slug): JsonResponse
+    /**
+     * $empresaSlug es obligatorio en la firma: la URL es /ecommerce/{empresa_slug}/...
+     * y Laravel inyecta los parámetros de ruta por posición. Sin él, $slug recibía el
+     * slug de la empresa y esto era un 404 permanente. La empresa la da el middleware.
+     */
+    public function show(Request $request, string $empresaSlug, string $slug): JsonResponse
     {
         $empresa = app('store.empresa');
 
@@ -41,7 +46,10 @@ class StoreCategoryController extends Controller
         $products = $category->products()
             ->withoutGlobalScopes()
             ->where('publicado', true)
-            ->with('inventoryItem:id,stock_actual')
+            // El stock vive en los items de inventario enlazados (stockItems), no en el
+            // producto: la vieja relación inventoryItem ya no existe y esto era un 500.
+            // Cargarla aquí además evita el N+1 del accessor stock_disponible.
+            ->with('stockItems.inventoryItem:id,stock_actual')
             ->orderBy('orden')
             ->paginate(24);
 
@@ -55,8 +63,10 @@ class StoreCategoryController extends Controller
      * Datos completos para que el frontend genere la LANDING de una categoría:
      * cabecera (banner, contenido, SEO), breadcrumb, subcategorías y productos.
      * Endpoint aditivo — no altera index() ni show() (en uso).
+     *
+     * Ver show(): $empresaSlug va en la firma por el orden posicional de los parámetros.
      */
-    public function landing(Request $request, string $slug): JsonResponse
+    public function landing(Request $request, string $empresaSlug, string $slug): JsonResponse
     {
         $empresa = app('store.empresa');
 

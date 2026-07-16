@@ -52,7 +52,12 @@ class StoreOrderController extends Controller
         return response()->json($orders);
     }
 
-    public function show(Request $request, int $id): JsonResponse
+    /**
+     * $empresaSlug va en la firma porque la URL es /ecommerce/{empresa_slug}/orders/{id}
+     * y los parámetros de ruta se inyectan por posición: sin él, aquí llegaba el slug de
+     * la empresa contra un `int` y era un TypeError (500).
+     */
+    public function show(Request $request, string $empresaSlug, int $id): JsonResponse
     {
         $order = $request->user()
             ->orders()

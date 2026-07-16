@@ -79,7 +79,12 @@ class StoreCustomerController extends Controller
         return response()->json($address, 201);
     }
 
-    public function updateAddress(Request $request, int $id): JsonResponse
+    /**
+     * $empresaSlug va en la firma porque la URL es /ecommerce/{empresa_slug}/... y los
+     * parámetros de ruta se inyectan por posición: sin él, aquí llegaba el slug de la
+     * empresa contra un `int` y era un TypeError (500).
+     */
+    public function updateAddress(Request $request, string $empresaSlug, int $id): JsonResponse
     {
         $address = $request->user()->addresses()->findOrFail($id);
 
@@ -104,7 +109,8 @@ class StoreCustomerController extends Controller
         return response()->json($address);
     }
 
-    public function destroyAddress(Request $request, int $id): JsonResponse
+    /** Ver updateAddress(): $empresaSlug es obligatorio por el orden posicional. */
+    public function destroyAddress(Request $request, string $empresaSlug, int $id): JsonResponse
     {
         $request->user()->addresses()->findOrFail($id)->delete();
         return response()->json(['message' => 'Dirección eliminada']);
