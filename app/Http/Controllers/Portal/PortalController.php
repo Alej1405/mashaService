@@ -118,6 +118,71 @@ class PortalController extends Controller
         return view('portal.orders', compact('empresa', 'customer', 'orders'));
     }
 
+    /** Formulario para armar un pedido nuevo con el catálogo publicado de la empresa. */
+    public function orderCreate(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $productos = StoreProduct::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('publicado', true)
+            ->with('storeCategory')
+            ->orderBy('nombre')
+            ->get();
+
+        return view('portal.order-create', compact('empresa', 'customer', 'productos'));
+    }
+
+    /** Crea el pedido (queda pendiente) reutilizando el mismo servicio que la API. */
+    public function orderStore(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        $data = $request->validate([
+            'items'            => 'required|array|min:1',
+            'items.*.id'       => 'required|integer',
+            'items.*.cantidad' => 'required|numeric|min:1',
+            'notas'            => 'nullable|string|max:500',
+        ]);
+
+        // Solo líneas con cantidad real, en el formato que espera el servicio.
+        $items = collect($data['items'])
+            ->filter(fn ($i) => (float) $i['cantidad'] > 0)
+            ->map(fn ($i) => ['store_product_id' => (int) $i['id'], 'cantidad' => (float) $i['cantidad']])
+            ->values()
+            ->all();
+
+        if (empty($items)) {
+            return back()->withErrors(['items' => 'Agrega al menos un producto al pedido.'])->withInput();
+        }
+
+        // El servicio exige dirección de envío; usamos la del cliente.
+        $shipping = [
+            'linea1' => $customer->direccion ?: 'Retiro en tienda',
+            'ciudad' => 'N/D',
+        ];
+
+        try {
+            $order = app(\App\Services\StoreOrderService::class)->createOrder(
+                empresa:         $empresa,
+                customer:        $customer,
+                items:           $items,
+                shippingAddress: $shipping,
+                couponCode:      null,
+                notes:           $data['notas'] ?? null,
+                origen:          'cliente',
+            );
+        } catch (\Throwable $e) {
+            return back()->withErrors(['items' => $e->getMessage()])->withInput();
+        }
+
+        return redirect()
+            ->route('portal.orders.show', [$empresa->slug, $order->id])
+            ->with('success', "Pedido #{$order->id} creado. Ya lo recibimos, está pendiente de confirmación.");
+    }
+
     public function orderShow(Request $request, string $slug, int $id)
     {
         $empresa  = $this->empresa($slug);
@@ -129,6 +194,166 @@ class PortalController extends Controller
             ->findOrFail($id);
 
         return view('portal.order-show', compact('empresa', 'customer', 'order'));
+    }
+
+    // ── Mi web (landing) ────────────────────────────────────────────────────
+
+    /** Fila web del cliente (get-or-new), fuente de verdad del CONTENIDO de la landing. */
+    private function webRow(Customer $customer): \App\Models\CustomerWeb
+    {
+        return $customer->web()->withoutGlobalScopes()->first()
+            ?? new \App\Models\CustomerWeb(['customer_id' => $customer->id, 'empresa_id' => $customer->empresa_id]);
+    }
+
+    public function webEdit(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        if (! $customer->publicado) {
+            return redirect()->route('portal.dashboard', $empresa->slug)
+                ->with('success', 'Tu página web aún no está habilitada. Contáctanos para activarla.');
+        }
+
+        $web = $this->webRow($customer);
+
+        return view('portal.web-edit', compact('empresa', 'customer', 'web'));
+    }
+
+    public function webUpdate(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+        abort_unless($customer->publicado, 403);
+
+        $data = $request->validate([
+            'descripcion_web' => 'nullable|string|max:2000',
+            'horario'         => 'nullable|string|max:180',
+            'latitud'         => 'nullable|numeric|between:-90,90',
+            'longitud'        => 'nullable|numeric|between:-180,180',
+            'logo'            => 'nullable|image|max:4096',
+            'banner'          => 'nullable|image|max:8192',
+        ]);
+
+        $web = $this->webRow($customer);
+        $web->descripcion_web = $data['descripcion_web'] ?? null;
+        $web->horario         = $data['horario'] ?? null;
+        $web->latitud         = $data['latitud'] ?? null;
+        $web->longitud        = $data['longitud'] ?? null;
+        if ($request->hasFile('logo')) {
+            $web->logo = $request->file('logo')->store('clientes/logos', 'public');
+        }
+        if ($request->hasFile('banner')) {
+            $web->banner = $request->file('banner')->store('clientes/banners', 'public');
+        }
+        $web->save();
+
+        return back()->with('success', 'Tu página web se actualizó.');
+    }
+
+    // ── Mi menú (carta + promociones + QR) ──────────────────────────────────
+
+    private function assertMenu(Customer $customer): void
+    {
+        abort_unless($customer->menu_activo, 403);
+    }
+
+    public function menuIndex(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+
+        if (! $customer->menu_activo) {
+            return redirect()->route('portal.dashboard', $empresa->slug)
+                ->with('success', 'Tu menú aún no está habilitado. Contáctanos para activarlo.');
+        }
+
+        // El QR necesita slug; si el cliente aún no lo tiene, el hook lo genera al guardar.
+        if (! $customer->slug) {
+            $customer->save();
+        }
+
+        $items = $customer->menuItems()->withoutGlobalScopes()
+            ->orderBy('orden')->orderBy('id')->get();
+
+        return view('portal.menu', compact('empresa', 'customer', 'items'));
+    }
+
+    public function menuItemStore(Request $request, string $slug)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+        $this->assertMenu($customer);
+
+        $data = $this->validateMenuItem($request);
+
+        \App\Models\CustomerMenuItem::create([
+            'empresa_id'   => $empresa->id,
+            'customer_id'  => $customer->id,
+            'nombre'       => $data['nombre'],
+            'descripcion'  => $data['descripcion'] ?? null,
+            'precio'       => $data['precio'],
+            'orden'        => $data['orden'] ?? 0,
+            'activo'       => true,
+            'es_promocion' => $request->boolean('es_promocion'),
+            'precio_promo' => $request->boolean('es_promocion') ? ($data['precio_promo'] ?? null) : null,
+            'imagen'       => $request->hasFile('imagen') ? $request->file('imagen')->store('clientes/menu', 'public') : null,
+        ]);
+
+        return back()->with('success', 'Producto agregado al menú.');
+    }
+
+    public function menuItemUpdate(Request $request, string $slug, int $item)
+    {
+        $empresa  = $this->empresa($slug);
+        $customer = $this->customer($request);
+        $this->assertMenu($customer);
+
+        $registro = \App\Models\CustomerMenuItem::withoutGlobalScopes()
+            ->where('customer_id', $customer->id)->findOrFail($item);
+
+        $data = $this->validateMenuItem($request);
+
+        $registro->fill([
+            'nombre'       => $data['nombre'],
+            'descripcion'  => $data['descripcion'] ?? null,
+            'precio'       => $data['precio'],
+            'orden'        => $data['orden'] ?? $registro->orden,
+            'activo'       => $request->boolean('activo', true),
+            'es_promocion' => $request->boolean('es_promocion'),
+            'precio_promo' => $request->boolean('es_promocion') ? ($data['precio_promo'] ?? null) : null,
+        ]);
+        if ($request->hasFile('imagen')) {
+            $registro->imagen = $request->file('imagen')->store('clientes/menu', 'public');
+        }
+        $registro->save();
+
+        return back()->with('success', 'Producto actualizado.');
+    }
+
+    public function menuItemDestroy(Request $request, string $slug, int $item)
+    {
+        $customer = $this->customer($request);
+        $this->assertMenu($customer);
+
+        \App\Models\CustomerMenuItem::withoutGlobalScopes()
+            ->where('customer_id', $customer->id)->findOrFail($item)->delete();
+
+        return back()->with('success', 'Producto eliminado del menú.');
+    }
+
+    private function validateMenuItem(Request $request): array
+    {
+        return $request->validate([
+            'nombre'       => 'required|string|max:200',
+            'descripcion'  => 'nullable|string|max:1000',
+            'precio'       => 'required|numeric|min:0',
+            'orden'        => 'nullable|integer|min:0',
+            'es_promocion' => 'sometimes|boolean',
+            'precio_promo' => 'nullable|numeric|min:0|required_if:es_promocion,1',
+            'imagen'       => 'nullable|image|max:4096',
+            'activo'       => 'sometimes|boolean',
+        ]);
     }
 
     public function services(Request $request, string $slug)

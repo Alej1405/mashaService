@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\HasEmpresa;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -86,6 +87,37 @@ class Customer extends Authenticatable
                 }
             }
         });
+
+        // Al publicar web o menú el cliente necesita un slug para su URL pública/QR.
+        static::saving(function ($model) {
+            self::asegurarSlugPublico($model);
+        });
+    }
+
+    /** Genera un slug único por empresa si el cliente es público (web o menú) y no tiene. */
+    protected static function asegurarSlugPublico($model): void
+    {
+        if (! empty($model->slug)) {
+            return;
+        }
+        if (! $model->publicado && ! $model->menu_activo) {
+            return;
+        }
+
+        $base = \Illuminate\Support\Str::slug($model->nombre_completo ?: ('cliente-' . ($model->codigo ?? '')));
+        $base = $base !== '' ? $base : 'punto-venta';
+
+        $slug = $base;
+        $i = 2;
+        while (self::withoutGlobalScopes()
+                ->where('empresa_id', $model->empresa_id)
+                ->where('slug', $slug)
+                ->when($model->id, fn ($q) => $q->where('id', '!=', $model->id))
+                ->exists()) {
+            $slug = $base . '-' . $i++;
+        }
+
+        $model->slug = $slug;
     }
 
     // ── Accessors ─────────────────────────────────────────────────────────────
@@ -141,6 +173,20 @@ class Customer extends Authenticatable
     public function menuItems(): HasMany
     {
         return $this->hasMany(CustomerMenuItem::class);
+    }
+
+    // ── Módulos normalizados del cliente (1:1) ─────────────────────────────────
+
+    /** Parte web/landing pública. No todos los clientes la tienen. */
+    public function web(): HasOne
+    {
+        return $this->hasOne(CustomerWeb::class);
+    }
+
+    /** Parte financiera (cuenta contable, saldo, crédito). */
+    public function finance(): HasOne
+    {
+        return $this->hasOne(CustomerFinance::class);
     }
 
     /**

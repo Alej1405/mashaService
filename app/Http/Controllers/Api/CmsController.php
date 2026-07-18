@@ -192,6 +192,7 @@ class CmsController extends Controller
                 ->where('publicado', true)
                 ->where('activo', true)
                 ->whereNotNull('slug')
+                ->with(['web' => fn ($q) => $q->withoutGlobalScopes()])
                 ->orderBy('nombre')
                 ->get()
                 ->map(fn (Customer $c) => $this->puntoVentaPayload($c))
@@ -228,11 +229,13 @@ class CmsController extends Controller
                     ->orderBy('orden')
                     ->get()
                     ->map(fn (CustomerMenuItem $i) => [
-                        'id'          => $i->id,
-                        'nombre'      => $i->nombre,
-                        'descripcion' => $i->descripcion,
-                        'precio'      => $i->precio,
-                        'imagen'      => $this->imageUrl($i->imagen),
+                        'id'           => $i->id,
+                        'nombre'       => $i->nombre,
+                        'descripcion'  => $i->descripcion,
+                        'precio'       => $i->precio,
+                        'es_promocion' => (bool) $i->es_promocion,
+                        'precio_promo' => $i->es_promocion ? $i->precio_promo : null,
+                        'imagen'       => $this->imageUrl($i->imagen),
                     ])->all()
                 : [];
 
@@ -249,18 +252,22 @@ class CmsController extends Controller
     /** Forma común de la ficha pública, para que listado y detalle no se desincronicen. */
     private function puntoVentaPayload(Customer $c): array
     {
+        // El CONTENIDO web vive en customer_web (lo edita el cliente en el portal);
+        // fallback a las columnas viejas de customers por si algún dato no se migró.
+        $web = $c->relationLoaded('web') ? $c->web : $c->web()->withoutGlobalScopes()->first();
+
         return [
             'id'          => $c->id,
             'slug'        => $c->slug,
             'nombre'      => $c->nombre_completo,
-            'descripcion' => $c->descripcion_web,
-            'horario'     => $c->horario,
-            'logo'        => $this->imageUrl($c->logo),
-            'banner'      => $this->imageUrl($c->banner),
+            'descripcion' => $web?->descripcion_web ?? $c->descripcion_web,
+            'horario'     => $web?->horario ?? $c->horario,
+            'logo'        => $this->imageUrl($web?->logo ?? $c->logo),
+            'banner'      => $this->imageUrl($web?->banner ?? $c->banner),
             'direccion'   => $c->direccion,
             'telefono'    => $c->telefono,
-            'latitud'     => $c->latitud,
-            'longitud'    => $c->longitud,
+            'latitud'     => $web?->latitud ?? $c->latitud,
+            'longitud'    => $web?->longitud ?? $c->longitud,
             'menu_activo' => $c->menu_activo,
         ];
     }

@@ -123,6 +123,13 @@ Route::prefix('cms/{slug}')
         // Puntos de venta (cada cliente es un punto de venta): ficha pública + carta.
         // El front los resuelve como /clientes/{slug}. No confundir con 'clients',
         // que son los logos de marcas.
+        //
+        // Se exponen bajo dos nombres que apuntan al MISMO handler:
+        //   - 'clientes'      → nombre que consume el front (landing /clientes/{slug}).
+        //   - 'puntos-venta'  → alias histórico ya desplegado; se conserva por la
+        //                       regla de endpoints inmutables (no se renombra lo vivo).
+        Route::get('clientes',              [CmsController::class, 'puntosVenta']);
+        Route::get('clientes/{punto}',      [CmsController::class, 'puntoVenta']);
         Route::get('puntos-venta',          [CmsController::class, 'puntosVenta']);
         Route::get('puntos-venta/{punto}',  [CmsController::class, 'puntoVenta']);
     });

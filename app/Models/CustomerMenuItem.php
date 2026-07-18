@@ -24,12 +24,16 @@ class CustomerMenuItem extends Model
         'imagen',
         'orden',
         'activo',
+        'es_promocion',
+        'precio_promo',
     ];
 
     protected $casts = [
-        'precio' => 'decimal:2',
-        'orden'  => 'integer',
-        'activo' => 'boolean',
+        'precio'       => 'decimal:2',
+        'orden'        => 'integer',
+        'activo'       => 'boolean',
+        'es_promocion' => 'boolean',
+        'precio_promo' => 'decimal:2',
     ];
 
     public function customer(): BelongsTo

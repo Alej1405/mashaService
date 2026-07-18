@@ -18,12 +18,24 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
     Route::middleware(\App\Http\Middleware\AuthenticateStoreCustomer::class)->group(function () {
         Route::get('/',               [\App\Http\Controllers\Portal\PortalController::class, 'dashboard'])->name('dashboard');
         Route::get('/orders',         [\App\Http\Controllers\Portal\PortalController::class, 'orders'])->name('orders');
-        Route::get('/orders/{id}',    [\App\Http\Controllers\Portal\PortalController::class, 'orderShow'])->name('orders.show');
+        Route::get('/orders/create',  [\App\Http\Controllers\Portal\PortalController::class, 'orderCreate'])->name('orders.create');
+        Route::post('/orders',        [\App\Http\Controllers\Portal\PortalController::class, 'orderStore'])->name('orders.store');
+        Route::get('/orders/{id}',    [\App\Http\Controllers\Portal\PortalController::class, 'orderShow'])->name('orders.show')->whereNumber('id');
         Route::get('/services',       [\App\Http\Controllers\Portal\PortalController::class, 'services'])->name('services');
         Route::get('/packages',       [\App\Http\Controllers\Portal\PortalController::class, 'packages'])->name('packages');
         Route::get('/profile',        [\App\Http\Controllers\Portal\PortalController::class, 'profile'])->name('profile');
         Route::post('/profile',       [\App\Http\Controllers\Portal\PortalController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/password', [\App\Http\Controllers\Portal\PortalController::class, 'updatePassword'])->name('profile.password');
+
+        // ── Mi web (landing pública, editable por el cliente si está habilitada) ──
+        Route::get('/mi-web',   [\App\Http\Controllers\Portal\PortalController::class, 'webEdit'])->name('web.edit');
+        Route::post('/mi-web',  [\App\Http\Controllers\Portal\PortalController::class, 'webUpdate'])->name('web.update');
+
+        // ── Mi menú (carta del punto de venta + promociones + QR) ──
+        Route::get('/mi-menu',                  [\App\Http\Controllers\Portal\PortalController::class, 'menuIndex'])->name('menu.index');
+        Route::post('/mi-menu/items',           [\App\Http\Controllers\Portal\PortalController::class, 'menuItemStore'])->name('menu.items.store');
+        Route::put('/mi-menu/items/{item}',     [\App\Http\Controllers\Portal\PortalController::class, 'menuItemUpdate'])->name('menu.items.update')->whereNumber('item');
+        Route::delete('/mi-menu/items/{item}',  [\App\Http\Controllers\Portal\PortalController::class, 'menuItemDestroy'])->name('menu.items.destroy')->whereNumber('item');
         Route::get('/customers',                    [\App\Http\Controllers\Portal\PortalController::class, 'customers'])->name('customers');
         Route::post('/payments',                    [\App\Http\Controllers\Portal\PortalController::class, 'submitPayment'])->name('payments.store');
         Route::get('/companies',                    [\App\Http\Controllers\Portal\PortalController::class, 'companies'])->name('companies');

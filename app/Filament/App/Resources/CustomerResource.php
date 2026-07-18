@@ -122,88 +122,29 @@ class CustomerResource extends Resource
                     ])->columns(2),
 
                 // ── El cliente ES el punto de venta: su landing pública ──
-                Forms\Components\Section::make('Punto de venta (web)')
-                    ->description('Publica al cliente como punto de venta y define su landing pública.')
-                    ->collapsed()
+                // ── Punto de venta: SOLO los toggles. El contenido (web y menú) lo
+                //    edita el propio cliente desde su portal. ──
+                Forms\Components\Section::make('Punto de venta')
+                    ->description('Habilita qué puede publicar este cliente. El contenido de la web y del menú lo edita el cliente desde su portal.')
                     ->schema([
                         Forms\Components\Toggle::make('publicado')
-                            ->label('Publicar en la web')
-                            ->helperText('Si está activo, el cliente aparece como punto de venta en la web.')
-                            ->default(false)
-                            ->columnSpanFull(),
-                        Forms\Components\TextInput::make('slug')
-                            ->label('Slug (URL)')
-                            ->helperText('Identificador para la dirección pública. Se genera del nombre; puedes ajustarlo.')
-                            ->maxLength(180)
-                            ->unique(ignoreRecord: true)
-                            ->columnSpan(1),
-                        Forms\Components\TextInput::make('horario')
-                            ->label('Horario de atención')
-                            ->placeholder('Lun–Vie 9:00–18:00')
-                            ->maxLength(180)
-                            ->columnSpan(1),
-                        Forms\Components\Textarea::make('descripcion_web')
-                            ->label('Descripción')
-                            ->rows(3)
-                            ->columnSpanFull(),
-                        Forms\Components\FileUpload::make('logo')
-                            ->label('Logo')->image()->disk('public')->directory('clientes/logos')
-                            ->columnSpan(1),
-                        Forms\Components\FileUpload::make('banner')
-                            ->label('Banner / portada')->image()->disk('public')->directory('clientes/banners')
-                            ->columnSpan(1),
-                        Forms\Components\TextInput::make('latitud')->label('Latitud')->numeric()->columnSpan(1),
-                        Forms\Components\TextInput::make('longitud')->label('Longitud')->numeric()->columnSpan(1),
-                    ])->columns(2),
-
-                // ── Menú (tabla independiente), dependiente de la landing ──
-                Forms\Components\Section::make('Menú del punto de venta')
-                    ->description('Página de menú dependiente de la landing. Actívala solo si este cliente la necesita.')
-                    ->collapsed()
-                    ->schema([
+                            ->label('Habilitar página web')
+                            ->helperText('Si está activo, el cliente puede editar y se publica su landing.')
+                            ->default(false),
                         Forms\Components\Toggle::make('menu_activo')
-                            ->label('Activar menú')
-                            ->helperText('Si está activo, la landing muestra la página de menú con estos productos.')
-                            ->live()
-                            ->default(false)
-                            ->columnSpanFull(),
-                        Forms\Components\Repeater::make('menuItems')
-                            ->relationship()
-                            ->label('Productos del menú')
-                            ->schema([
-                                Forms\Components\TextInput::make('nombre')->label('Producto')->required()->maxLength(200)->columnSpan(2),
-                                Forms\Components\TextInput::make('precio')->label('Precio')->numeric()->prefix('$')->required()->minValue(0)->columnSpan(1),
-                                Forms\Components\Textarea::make('descripcion')->label('Detalle')->rows(2)->columnSpanFull(),
-                                Forms\Components\FileUpload::make('imagen')->label('Imagen')->image()->disk('public')->directory('clientes/menu')->columnSpan(1),
-                                Forms\Components\TextInput::make('orden')->label('Orden')->numeric()->default(0)->columnSpan(1),
-                            ])
-                            ->columns(2)
-                            ->defaultItems(0)
-                            ->reorderable()
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => $state['nombre'] ?? 'Nuevo ítem')
-                            ->addActionLabel('Agregar producto')
-                            ->columnSpanFull()
-                            ->visible(fn (Forms\Get $get): bool => (bool) $get('menu_activo')),
-                    ])->columns(2),
-
-                // ── QR a la landing/menú del punto de venta ──
-                Forms\Components\Section::make('Código QR')
-                    ->description('Lleva a la landing (y al menú si está activo) de este punto de venta.')
-                    ->collapsed()
-                    ->schema([
-                        Forms\Components\Placeholder::make('qr')
+                            ->label('Habilitar menú')
+                            ->helperText('Si está activo, el cliente puede editar y se publica su menú / carta.')
+                            ->default(false),
+                        Forms\Components\Placeholder::make('portal_link')
                             ->label('')
                             ->content(fn (?Customer $record): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(
-                                $record && $record->publicado && $record->slug
-                                    ? '<div style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-start">'
-                                        . $record->qrSvg(200)
-                                        . '<a href="' . e($record->landingUrl()) . '" target="_blank" style="color:#b45309;font-weight:600;font-size:.85rem">' . e($record->landingUrl()) . '</a></div>'
-                                    : '<span style="color:#64748b">Publica el cliente y define su slug para generar el QR.</span>'
+                                $record && $record->slug
+                                    ? '<a href="' . e($record->landingUrl()) . '" target="_blank" style="color:#4338ca;font-weight:600;font-size:.85rem">Ver landing pública →</a>'
+                                    : '<span style="color:#64748b;font-size:.85rem">El slug y la landing se generan al habilitar la web o el menú.</span>'
                             ))
+                            ->visibleOn('edit')
                             ->columnSpanFull(),
-                    ])
-                    ->visibleOn('edit'),
+                    ])->columns(2),
             ]);
     }
 

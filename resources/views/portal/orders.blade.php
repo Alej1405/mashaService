@@ -3,14 +3,30 @@
 
 <div class="space-y-5">
 
-    <h1 class="text-xl font-bold text-gray-800">Mis órdenes</h1>
+    <div class="flex items-center justify-between gap-3">
+        <h1 class="text-xl font-bold text-gray-800">Mis órdenes</h1>
+        <a href="{{ route('portal.orders.create', $empresa->slug) }}"
+           class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold px-4 py-2.5 shadow-sm hover:bg-indigo-700 active:scale-[0.98] transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Nuevo pedido
+        </a>
+    </div>
 
     @if($orders->isEmpty())
-        <div class="bg-white rounded-xl border border-gray-200 px-6 py-12 text-center">
-            <p class="text-gray-500 text-sm">Aún no tienes órdenes registradas.</p>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-14 text-center">
+            <div class="mx-auto w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200 grid place-items-center text-slate-300 mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+            <p class="text-slate-800 text-sm font-medium">Aún no tienes órdenes</p>
+            <p class="text-slate-500 text-sm mt-0.5 mb-4">Crea tu primer pedido y aparecerá aquí.</p>
+            <a href="{{ route('portal.orders.create', $empresa->slug) }}"
+               class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold px-4 py-2.5 shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 active:scale-[0.98] transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Nuevo pedido
+            </a>
         </div>
     @else
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
