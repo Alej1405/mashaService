@@ -25,6 +25,10 @@ Thumbs.db
 
 # Claude Code — configuración y memoria local (nunca al repo)
 /.claude/
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.cursorrules
 contextAc.md
 descripcion
 handoff.md
