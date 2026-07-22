@@ -7,7 +7,10 @@
     $cs = old('color_secundario', $web->color_secundario);
     $ca = old('color_acento', $web->color_acento);
     $tieneColores = filled($cp) || filled($cs) || filled($ca);
-    $imagenes = $customer->webImages;
+    // El portal es cross-tenant (sesión, sin tenant de Filament). Si el cliente abre
+    // /mi-web con una sesión de admin/app activa en el mismo navegador, EmpresaScope
+    // filtraría la galería y se vería vacía → withoutGlobalScopes la hace determinista.
+    $imagenes = $customer->webImages()->withoutGlobalScopes()->get();
 @endphp
 
 <style>

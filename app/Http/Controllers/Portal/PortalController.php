@@ -250,10 +250,13 @@ class PortalController extends Controller
         ]);
 
         // ── Galería: tope de 5 imágenes (autoritativo, sin importar el cliente) ──
+        // withoutGlobalScopes: el portal es cross-tenant por sesión; si EmpresaScope
+        // filtrara las imágenes existentes (sesión de admin/app activa), el conteo daría
+        // 0 y colaría subidas de más con `orden` repetido (duplicados en la galería).
         $removeIds = array_map('intval', $request->input('remove_images', []));
-        $aBorrar   = $customer->webImages()->whereIn('id', $removeIds)->get();
+        $aBorrar   = $customer->webImages()->withoutGlobalScopes()->whereIn('id', $removeIds)->get();
         $nuevas    = $request->file('galeria', []);
-        $totalFinal = $customer->webImages()->count() - $aBorrar->count() + count($nuevas);
+        $totalFinal = $customer->webImages()->withoutGlobalScopes()->count() - $aBorrar->count() + count($nuevas);
         if ($totalFinal > 5) {
             return back()
                 ->withErrors(['galeria' => 'La galería admite máximo 5 imágenes.'])
@@ -289,8 +292,8 @@ class PortalController extends Controller
             $img->delete();
         }
 
-        // Subir las nuevas, continuando el orden.
-        $orden = (int) $customer->webImages()->max('orden');
+        // Subir las nuevas, continuando el orden (withoutGlobalScopes: ver nota arriba).
+        $orden = (int) $customer->webImages()->withoutGlobalScopes()->max('orden');
         foreach ($nuevas as $file) {
             $customer->webImages()->create([
                 'empresa_id' => $customer->empresa_id,
