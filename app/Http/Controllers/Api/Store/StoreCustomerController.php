@@ -42,11 +42,17 @@ class StoreCustomerController extends Controller
             'password'         => 'required|min:8|confirmed',
         ]);
 
-        if (!Hash::check($request->current_password, $request->user()->password)) {
+        $customer = $request->user();
+
+        if (!Hash::check($request->current_password, (string) $customer->password)) {
             return response()->json(['message' => 'Contraseña actual incorrecta'], 422);
         }
 
-        $request->user()->update(['password' => Hash::make($request->password)]);
+        // La contraseña vive en customer_access (contexto de acceso al portal).
+        $customer->access()->updateOrCreate(
+            ['customer_id' => $customer->id],
+            ['empresa_id' => $customer->empresa_id, 'password' => Hash::make($request->password)],
+        );
 
         return response()->json(['message' => 'Contraseña actualizada']);
     }

@@ -15,6 +15,7 @@ use App\Models\CmsTerminos;
 use App\Models\CmsTestimonial;
 use App\Models\Customer;
 use App\Models\CustomerMenuItem;
+use App\Models\CustomerWebImage;
 use App\Models\Empresa;
 use App\Models\StoreProduct;
 use App\Models\ServiceDesign;
@@ -185,8 +186,7 @@ class CmsController extends Controller
             return Customer::withoutGlobalScopes()
                 ->select([
                     'id', 'slug', 'nombre', 'apellido', 'razon_social', 'tipo_persona',
-                    'descripcion_web', 'horario', 'logo', 'banner', 'direccion',
-                    'telefono', 'latitud', 'longitud', 'menu_activo',
+                    'direccion', 'telefono', 'menu_activo',
                 ])
                 ->where('empresa_id', $empresa->id)
                 ->where('publicado', true)
@@ -239,7 +239,17 @@ class CmsController extends Controller
                     ])->all()
                 : [];
 
-            return $this->puntoVentaPayload($cliente) + ['menu' => $menu];
+            $galeria = $cliente->webImages()
+                ->withoutGlobalScopes()
+                ->get()
+                ->map(fn (CustomerWebImage $img) => [
+                    'id'     => $img->id,
+                    'imagen' => $this->imageUrl($img->imagen),
+                    'alt'    => $img->alt,
+                    'orden'  => $img->orden,
+                ])->all();
+
+            return $this->puntoVentaPayload($cliente) + ['menu' => $menu, 'galeria' => $galeria];
         });
 
         if ($data === null) {
@@ -252,23 +262,28 @@ class CmsController extends Controller
     /** Forma común de la ficha pública, para que listado y detalle no se desincronicen. */
     private function puntoVentaPayload(Customer $c): array
     {
-        // El CONTENIDO web vive en customer_web (lo edita el cliente en el portal);
-        // fallback a las columnas viejas de customers por si algún dato no se migró.
+        // El CONTENIDO web vive en customer_web (lo edita el cliente en el portal).
         $web = $c->relationLoaded('web') ? $c->web : $c->web()->withoutGlobalScopes()->first();
 
         return [
             'id'          => $c->id,
             'slug'        => $c->slug,
             'nombre'      => $c->nombre_completo,
-            'descripcion' => $web?->descripcion_web ?? $c->descripcion_web,
-            'horario'     => $web?->horario ?? $c->horario,
-            'logo'        => $this->imageUrl($web?->logo ?? $c->logo),
-            'banner'      => $this->imageUrl($web?->banner ?? $c->banner),
+            'descripcion' => $web?->descripcion_web,
+            'horario'     => $web?->horario,
+            'logo'        => $this->imageUrl($web?->logo),
+            'banner'      => $this->imageUrl($web?->banner),
             'direccion'   => $c->direccion,
             'telefono'    => $c->telefono,
-            'latitud'     => $web?->latitud ?? $c->latitud,
-            'longitud'    => $web?->longitud ?? $c->longitud,
-            'menu_activo' => $c->menu_activo,
+            'latitud'         => $web?->latitud,
+            'longitud'        => $web?->longitud,
+            'google_maps_url' => $web?->google_maps_url,
+            'colores'         => [
+                'primario'   => $web?->color_primario,
+                'secundario' => $web?->color_secundario,
+                'acento'     => $web?->color_acento,
+            ],
+            'menu_activo'     => $c->menu_activo,
         ];
     }
 

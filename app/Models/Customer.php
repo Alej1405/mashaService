@@ -28,38 +28,24 @@ class Customer extends Authenticatable
         'tipo_identificacion',
         'numero_identificacion',
         'email',
-        'password',
-        'email_verified_at',
         'telefono',
         'direccion',
-        'es_exportador',
-        'pais_destino',
-        'cuenta_contable_id',
         'activo',
-        'is_super_admin',
-        // Punto de venta / landing pública (el cliente es el punto de venta)
+        // Punto de venta: núcleo + toggles/handle. El CONTENIDO de la landing
+        // (descripción, horario, logo, banner, ubicación) vive en customer_web.
         'publicado',
         'menu_activo',
         'slug',
-        'descripcion_web',
-        'horario',
-        'logo',
-        'banner',
-        'latitud',
-        'longitud',
+        // NOTA: contabilidad (cuenta_contable_id → customer_finance), comercio exterior
+        // (es_exportador/pais_destino → customer_export) y acceso al portal (password/
+        // email_verified_at/is_super_admin → customer_access) viven en su contexto.
+        // Se leen aquí vía accessors-puente; se escriben en sus tablas.
     ];
 
-    protected $hidden = ['password'];
-
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'es_exportador'     => 'boolean',
-        'activo'            => 'boolean',
-        'is_super_admin'    => 'boolean',
-        'publicado'         => 'boolean',
-        'menu_activo'       => 'boolean',
-        'latitud'           => 'decimal:7',
-        'longitud'          => 'decimal:7',
+        'activo'      => 'boolean',
+        'publicado'   => 'boolean',
+        'menu_activo' => 'boolean',
     ];
 
     protected static function boot()
@@ -74,17 +60,24 @@ class Customer extends Authenticatable
                 $model->codigo = "CLI-{$year}-" . str_pad($next, 5, '0', STR_PAD_LEFT);
             }
 
-            if (empty($model->cuenta_contable_id)) {
-                try {
-                    $empresaId = $model->empresa_id
-                        ?? (function_exists('filament') ? \Filament\Facades\Filament::getTenant()?->id : null);
-                    if ($empresaId) {
-                        $cuenta = \App\Services\AccountingService::getMapeo($empresaId, 'global', 'venta_credito');
-                        $model->cuenta_contable_id = $cuenta->id;
-                    }
-                } catch (\Exception) {
-                    \Illuminate\Support\Facades\Log::warning("Customer accounting map failed: {$model->codigo}");
+        });
+
+        // La cuenta contable vive en customer_finance (contexto). Al crear el cliente
+        // se resuelve el mapeo y se asegura su fila de finanzas con la cuenta por defecto.
+        static::created(function ($model) {
+            try {
+                $empresaId = $model->empresa_id
+                    ?? (function_exists('filament') ? \Filament\Facades\Filament::getTenant()?->id : null);
+                if (! $empresaId) {
+                    return;
                 }
+                $cuenta = \App\Services\AccountingService::getMapeo($empresaId, 'global', 'venta_credito');
+                $model->finance()->firstOrCreate(
+                    ['customer_id' => $model->id],
+                    ['empresa_id' => $empresaId, 'cuenta_contable_id' => $cuenta->id, 'saldo' => 0, 'limite_credito' => 0],
+                );
+            } catch (\Exception) {
+                \Illuminate\Support\Facades\Log::warning("Customer accounting map failed: {$model->codigo}");
             }
         });
 
@@ -142,9 +135,17 @@ class Customer extends Authenticatable
         return $this->hasMany(Sale::class);
     }
 
-    public function cuentaContable(): BelongsTo
+    /** Cuenta contable del cliente, ahora en customer_finance (contexto). */
+    public function cuentaContable(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
     {
-        return $this->belongsTo(AccountPlan::class, 'cuenta_contable_id');
+        return $this->hasOneThrough(
+            AccountPlan::class,
+            CustomerFinance::class,
+            'customer_id',        // FK en customer_finance → customers
+            'id',                 // PK en account_plans
+            'id',                 // PK en customers
+            'cuenta_contable_id', // FK en customer_finance → account_plans
+        );
     }
 
     // ── Relaciones Portal ─────────────────────────────────────────────────────
@@ -175,6 +176,12 @@ class Customer extends Authenticatable
         return $this->hasMany(CustomerMenuItem::class);
     }
 
+    /** Galería de imágenes de la landing (tabla propia, máx. 5, opcional). */
+    public function webImages(): HasMany
+    {
+        return $this->hasMany(CustomerWebImage::class)->orderBy('orden')->orderBy('id');
+    }
+
     // ── Módulos normalizados del cliente (1:1) ─────────────────────────────────
 
     /** Parte web/landing pública. No todos los clientes la tienen. */
@@ -187,6 +194,51 @@ class Customer extends Authenticatable
     public function finance(): HasOne
     {
         return $this->hasOne(CustomerFinance::class);
+    }
+
+    /** Comercio exterior (aduana). Solo quien exporta la tiene. */
+    public function export(): HasOne
+    {
+        return $this->hasOne(CustomerExport::class);
+    }
+
+    /** Acceso al portal (password, verificación, rol super admin). */
+    public function access(): HasOne
+    {
+        return $this->hasOne(CustomerAccess::class);
+    }
+
+    // ── Accessors-puente: exponen datos de contexto como si fueran del cliente ──
+    // Reads. Las escrituras van a la tabla de contexto correspondiente.
+
+    public function getCuentaContableIdAttribute(): ?int
+    {
+        return $this->finance?->cuenta_contable_id;
+    }
+
+    public function getEsExportadorAttribute(): bool
+    {
+        return (bool) ($this->export?->es_exportador ?? false);
+    }
+
+    public function getPaisDestinoAttribute(): ?string
+    {
+        return $this->export?->pais_destino;
+    }
+
+    public function getPasswordAttribute(): ?string
+    {
+        return $this->access?->password;
+    }
+
+    public function getEmailVerifiedAtAttribute()
+    {
+        return $this->access?->email_verified_at;
+    }
+
+    public function getIsSuperAdminAttribute(): bool
+    {
+        return (bool) ($this->access?->is_super_admin ?? false);
     }
 
     /**

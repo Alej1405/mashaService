@@ -1620,7 +1620,7 @@ class MobileController extends Controller
         $clientes  = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('activo', true)
-            ->where('is_super_admin', false)
+            ->whereDoesntHave('access', fn ($q) => $q->where('is_super_admin', true))
             ->orderBy('nombre')
             ->get();
         return view('mobile.logistica-carga', compact('empresa', 'bodegas', 'clientes'));
@@ -1886,8 +1886,13 @@ class MobileController extends Controller
             'email'        => $data['email'],
             'telefono'     => $data['telefono'] ?? null,
             'cedula_ruc'   => $data['cedula_ruc'] ?? null,
-            'password'     => \Illuminate\Support\Facades\Hash::make($passwordInicial),
             'activo'       => true,
+        ]);
+
+        // Credencial inicial del portal en customer_access (contexto de acceso).
+        $cliente->access()->create([
+            'empresa_id' => $empresa->id,
+            'password'   => \Illuminate\Support\Facades\Hash::make($passwordInicial),
         ]);
 
         $nombre = $cliente->nombre_completo;

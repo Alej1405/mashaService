@@ -13,6 +13,7 @@ class CreatePortalSuperAdmin extends Command
                             {slug : Slug de la empresa}
                             {--email=admin@masheec.net : Correo del super admin}
                             {--password=12345678 : Contraseña del super admin}
+                            {--cedula=9999999999 : Cédula/RUC (con esto entra al portal)}
                             {--nombre=Admin : Nombre}';
 
     protected $description = 'Crea un cliente super admin en el portal de clientes para una empresa';
@@ -31,17 +32,30 @@ class CreatePortalSuperAdmin extends Command
         $email    = $this->option('email');
         $password = $this->option('password');
         $nombre   = $this->option('nombre');
+        $cedula   = $this->option('cedula');
 
+        // El login del portal es por cédula/RUC → numero_identificacion es obligatorio.
         $customer = Customer::withoutGlobalScopes()
             ->updateOrCreate(
                 ['empresa_id' => $empresa->id, 'email' => $email],
                 [
-                    'nombre'        => $nombre,
-                    'password'      => Hash::make($password),
-                    'activo'        => true,
-                    'is_super_admin' => true,
+                    'nombre'                => $nombre,
+                    'numero_identificacion' => $cedula,
+                    'tipo_identificacion'   => 'cedula',
+                    'tipo_persona'          => 'natural',
+                    'activo'                => true,
                 ]
             );
+
+        // Acceso al portal (password + rol) vive en customer_access.
+        $customer->access()->updateOrCreate(
+            ['customer_id' => $customer->id],
+            [
+                'empresa_id'     => $empresa->id,
+                'password'       => Hash::make($password),
+                'is_super_admin' => true,
+            ]
+        );
 
         $this->info("Super admin del portal creado/actualizado:");
         $this->table(

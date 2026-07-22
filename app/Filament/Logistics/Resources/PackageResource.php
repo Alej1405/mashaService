@@ -85,7 +85,7 @@ class PackageResource extends Resource
                         return Customer::withoutGlobalScopes()
                             ->where('empresa_id', $empresaId)
                             ->where('activo', true)
-                            ->where('is_super_admin', false)
+                            ->whereDoesntHave('access', fn ($q) => $q->where('is_super_admin', true))
                             ->orderBy('nombre')
                             ->get()
                             ->mapWithKeys(fn ($c) => [
@@ -151,9 +151,15 @@ class PackageResource extends Resource
                             'email'                 => $data['email'] ?? null,
                             'telefono'              => $data['telefono'] ?? null,
                             'numero_identificacion' => $cedula,
-                            'password'              => $cedula ? Hash::make($cedula) : null,
                             'activo'                => true,
                         ]);
+                        // Credencial inicial (cédula) en customer_access.
+                        if ($cedula) {
+                            $customer->access()->create([
+                                'empresa_id' => $customer->empresa_id,
+                                'password'   => Hash::make($cedula),
+                            ]);
+                        }
                         return $customer->id;
                     })
                     ->createOptionModalHeading('Registrar nuevo cliente')
@@ -715,7 +721,7 @@ class PackageResource extends Resource
                         return Customer::withoutGlobalScopes()
                             ->where('empresa_id', Filament::getTenant()->id)
                             ->where('activo', true)
-                            ->where('is_super_admin', false)
+                            ->whereDoesntHave('access', fn ($q) => $q->where('is_super_admin', true))
                             ->orderBy('nombre')
                             ->get()
                             ->mapWithKeys(fn ($c) => [$c->id => $c->nombre_completo]);

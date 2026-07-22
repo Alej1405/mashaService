@@ -226,20 +226,55 @@ class PortalController extends Controller
         $customer = $this->customer($request);
         abort_unless($customer->publicado, 403);
 
+        $hex = ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'];
+
         $data = $request->validate([
-            'descripcion_web' => 'nullable|string|max:2000',
-            'horario'         => 'nullable|string|max:180',
-            'latitud'         => 'nullable|numeric|between:-90,90',
-            'longitud'        => 'nullable|numeric|between:-180,180',
-            'logo'            => 'nullable|image|max:4096',
-            'banner'          => 'nullable|image|max:8192',
+            'descripcion_web'  => 'nullable|string|max:2000',
+            'horario'          => 'nullable|string|max:180',
+            'latitud'          => 'nullable|numeric|between:-90,90',
+            'longitud'         => 'nullable|numeric|between:-180,180',
+            'google_maps_url'  => 'nullable|url|max:500',
+            'logo'             => 'nullable|image|max:4096',
+            'banner'           => 'nullable|image|max:8192',
+            'color_primario'   => $hex,
+            'color_secundario' => $hex,
+            'color_acento'     => $hex,
+            'galeria'          => 'nullable|array',
+            'galeria.*'        => 'image|max:8192',
+            'remove_images'    => 'nullable|array',
+            'remove_images.*'  => 'integer',
+        ], [
+            'color_primario.regex'   => 'El color primario debe ser un hex válido (#RRGGBB).',
+            'color_secundario.regex' => 'El color secundario debe ser un hex válido (#RRGGBB).',
+            'color_acento.regex'     => 'El color de acento debe ser un hex válido (#RRGGBB).',
         ]);
 
+        // ── Galería: tope de 5 imágenes (autoritativo, sin importar el cliente) ──
+        $removeIds = array_map('intval', $request->input('remove_images', []));
+        $aBorrar   = $customer->webImages()->whereIn('id', $removeIds)->get();
+        $nuevas    = $request->file('galeria', []);
+        $totalFinal = $customer->webImages()->count() - $aBorrar->count() + count($nuevas);
+        if ($totalFinal > 5) {
+            return back()
+                ->withErrors(['galeria' => 'La galería admite máximo 5 imágenes.'])
+                ->withInput();
+        }
+
+        // Ubicación: si el cliente pegó un link de Google Maps y se pudo extraer la
+        // coordenada, esa manda; si no, se usan las coords del botón "usar mi ubicación".
+        $mapsUrl = $data['google_maps_url'] ?? null;
+        $coords  = $this->coordsDesdeGoogleMaps($mapsUrl);
+
         $web = $this->webRow($customer);
-        $web->descripcion_web = $data['descripcion_web'] ?? null;
-        $web->horario         = $data['horario'] ?? null;
-        $web->latitud         = $data['latitud'] ?? null;
-        $web->longitud        = $data['longitud'] ?? null;
+        $web->descripcion_web  = $data['descripcion_web'] ?? null;
+        $web->horario          = $data['horario'] ?? null;
+        $web->google_maps_url  = $mapsUrl ?: null;
+        $web->latitud          = $coords[0] ?? ($data['latitud'] ?? null);
+        $web->longitud         = $coords[1] ?? ($data['longitud'] ?? null);
+        // Colores: cadena vacía o ausente → null (usa el branding por defecto).
+        $web->color_primario   = ($data['color_primario']   ?? '') ?: null;
+        $web->color_secundario = ($data['color_secundario'] ?? '') ?: null;
+        $web->color_acento     = ($data['color_acento']     ?? '') ?: null;
         if ($request->hasFile('logo')) {
             $web->logo = $request->file('logo')->store('clientes/logos', 'public');
         }
@@ -248,7 +283,64 @@ class PortalController extends Controller
         }
         $web->save();
 
+        // Borrar las imágenes marcadas (archivo + fila).
+        foreach ($aBorrar as $img) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($img->imagen);
+            $img->delete();
+        }
+
+        // Subir las nuevas, continuando el orden.
+        $orden = (int) $customer->webImages()->max('orden');
+        foreach ($nuevas as $file) {
+            $customer->webImages()->create([
+                'empresa_id' => $customer->empresa_id,
+                'imagen'     => $file->store('clientes/galeria', 'public'),
+                'orden'      => ++$orden,
+            ]);
+        }
+
         return back()->with('success', 'Tu página web se actualizó.');
+    }
+
+    /**
+     * Extrae [lat, long] de un link de Google Maps. Soporta los formatos comunes
+     * (@lat,lng · q=lat,lng · !3d!4d) y resuelve los acortadores (goo.gl /
+     * maps.app.goo.gl) siguiendo el redirect. Devuelve null si no se pudo extraer.
+     */
+    private function coordsDesdeGoogleMaps(?string $url): ?array
+    {
+        if (! $url) {
+            return null;
+        }
+
+        // Acortadores: seguir el redirect para llegar a la URL con las coordenadas.
+        if (preg_match('/(?:goo\.gl|maps\.app\.goo\.gl)/i', $url)) {
+            try {
+                $url = (string) \Illuminate\Support\Facades\Http::timeout(5)
+                    ->withHeaders(['User-Agent' => 'Mozilla/5.0'])
+                    ->get($url)
+                    ->effectiveUri();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        $patrones = [
+            '/@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/',                          // .../@lat,lng,17z
+            '/[?&](?:q|query|ll|sll|destination)=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/', // ?q=lat,lng
+            '/!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/',                      // !3dlat!4dlng
+        ];
+        foreach ($patrones as $re) {
+            if (preg_match($re, $url, $m)) {
+                $lat = (float) $m[1];
+                $lng = (float) $m[2];
+                if ($lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180) {
+                    return [$lat, $lng];
+                }
+            }
+        }
+
+        return null;
     }
 
     // ── Mi menú (carta + promociones + QR) ──────────────────────────────────
@@ -440,11 +532,15 @@ class PortalController extends Controller
             'password'         => 'required|min:8|confirmed',
         ]);
 
-        if (! Hash::check($request->current_password, $customer->password)) {
+        if (! Hash::check($request->current_password, (string) $customer->password)) {
             return back()->withErrors(['current_password' => 'La contraseña actual no es correcta.']);
         }
 
-        $customer->update(['password' => Hash::make($request->password)]);
+        // La contraseña vive en customer_access (contexto de acceso al portal).
+        $customer->access()->updateOrCreate(
+            ['customer_id' => $customer->id],
+            ['empresa_id' => $customer->empresa_id, 'password' => Hash::make($request->password)],
+        );
 
         return back()->with('success', 'Contraseña actualizada correctamente.');
     }
@@ -666,7 +762,7 @@ class PortalController extends Controller
 
         $customers = Customer::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->where('is_super_admin', false)
+            ->whereDoesntHave('access', fn ($q) => $q->where('is_super_admin', true))
             ->latest()
             ->paginate(20);
 

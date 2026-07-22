@@ -62,8 +62,13 @@ class StoreAuthController extends Controller
             'nombre'     => $request->nombre,
             'apellido'   => $request->apellido,
             'email'      => $request->email,
-            'password'   => Hash::make($request->password),
             'telefono'   => $request->telefono,
+        ]);
+
+        // La credencial vive en customer_access (contexto de acceso al portal).
+        $customer->access()->create([
+            'empresa_id' => $empresa->id,
+            'password'   => Hash::make($request->password),
         ]);
 
         $token = $customer->createToken('store')->plainTextToken;

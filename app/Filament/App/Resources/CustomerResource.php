@@ -103,6 +103,8 @@ class CustomerResource extends Resource
                     ])->columns(2),
 
                 Forms\Components\Section::make('Comercio Exterior')
+                    // Datos de comercio exterior normalizados en customer_export (1:1).
+                    ->relationship('export')
                     ->schema([
                         Forms\Components\Toggle::make('es_exportador')
                             ->label('Es Exportador')
