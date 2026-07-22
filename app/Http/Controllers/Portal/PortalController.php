@@ -14,6 +14,7 @@ use App\Models\ServiceDesign;
 use App\Models\Customer;
 use App\Models\StoreCustomerCompany;
 use App\Models\StoreOrder;
+use App\Shared\Actions\OlvidarCacheCmsPunto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -28,6 +29,16 @@ class PortalController extends Controller
     {
         return Customer::withoutGlobalScopes()
             ->findOrFail($request->session()->get('portal_customer_id'));
+    }
+
+    /**
+     * Tras cualquier cambio del portal que afecte la landing pública (web, galería,
+     * menú), se invalida la caché de la API CMS para que se refleje al instante y no
+     * espere los 10 min del TTL. Ver App\Shared\Actions\OlvidarCacheCmsPunto.
+     */
+    private function olvidarCacheCms(Customer $customer): void
+    {
+        (new OlvidarCacheCmsPunto)->handle($customer);
     }
 
     public function dashboard(Request $request, string $slug)
@@ -302,6 +313,8 @@ class PortalController extends Controller
             ]);
         }
 
+        $this->olvidarCacheCms($customer);
+
         return back()->with('success', 'Tu página web se actualizó.');
     }
 
@@ -395,6 +408,8 @@ class PortalController extends Controller
             'imagen'       => $request->hasFile('imagen') ? $request->file('imagen')->store('clientes/menu', 'public') : null,
         ]);
 
+        $this->olvidarCacheCms($customer);
+
         return back()->with('success', 'Producto agregado al menú.');
     }
 
@@ -423,6 +438,8 @@ class PortalController extends Controller
         }
         $registro->save();
 
+        $this->olvidarCacheCms($customer);
+
         return back()->with('success', 'Producto actualizado.');
     }
 
@@ -433,6 +450,8 @@ class PortalController extends Controller
 
         \App\Models\CustomerMenuItem::withoutGlobalScopes()
             ->where('customer_id', $customer->id)->findOrFail($item)->delete();
+
+        $this->olvidarCacheCms($customer);
 
         return back()->with('success', 'Producto eliminado del menú.');
     }
