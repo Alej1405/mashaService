@@ -60,10 +60,11 @@ return [
     |--------------------------------------------------------------------------
     | Dominio donde vive la landing pública de cada punto de venta y el flujo de
     | ecommerce. El QR del menú y los correos de verificación del ecommerce se
-    | construyen sobre esta base. Si no se define, cae a APP_URL (el backend),
-    | donde no hay landing: debe apuntar al front, no al ERP.
+    | construyen sobre esta base. El default es el dominio del front de tiendas,
+    | para no depender de que la variable esté en el .env del servidor; se puede
+    | sobreescribir con FRONTEND_URL si el dominio cambia.
     */
-    'frontend_url' => env('FRONTEND_URL'),
+    'frontend_url' => env('FRONTEND_URL', 'https://tienda.mashaec.net'),
 
     /*
     |--------------------------------------------------------------------------
