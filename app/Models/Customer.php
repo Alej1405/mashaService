@@ -242,15 +242,30 @@ class Customer extends Authenticatable
     }
 
     /**
-     * URL pública de la landing del punto de venta. La base sale de FRONTEND_URL
-     * (config app.frontend_url) y cae a app.url si no está definida; el front la
-     * resuelve como /clientes/{slug}.
+     * URL pública de la landing del punto de venta.
+     *
+     * Formato: {FRONTEND_URL}/{empresa_slug}/{customer_slug}
+     *
+     * Antes generaba /clientes/{slug} — sin la empresa. Eso rompía el QR por dos
+     * motivos: (1) el slug del customer es único POR EMPRESA, no global, así que
+     * sin la empresa la landing es irresoluble; (2) el API que la alimenta es
+     * /api/cms/{empresa}/clientes/{slug}, y el front no podía construir esa
+     * llamada sin la empresa en la URL. Ahora la URL lleva las dos partes, igual
+     * que urlFront() en el flujo de ecommerce.
+     *
+     * La base sale de FRONTEND_URL. Si no está definida cae a app.url, pero eso
+     * apuntaría al backend (el ERP), donde no hay landing: FRONTEND_URL debe estar
+     * configurada en producción con el dominio del front de tiendas.
      */
     public function landingUrl(): string
     {
         $base = rtrim((string) (config('app.frontend_url') ?: config('app.url')), '/');
 
-        return $this->slug ? "{$base}/clientes/{$this->slug}" : $base;
+        $empresaSlug = $this->empresa?->slug;
+
+        return $this->slug && $empresaSlug
+            ? "{$base}/{$empresaSlug}/{$this->slug}"
+            : $base;
     }
 
     /** QR (SVG inline) que apunta a la landing del punto de venta. */

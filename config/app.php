@@ -56,6 +56,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend URL (front de tiendas de cara al cliente final)
+    |--------------------------------------------------------------------------
+    | Dominio donde vive la landing pública de cada punto de venta y el flujo de
+    | ecommerce. El QR del menú y los correos de verificación del ecommerce se
+    | construyen sobre esta base. Si no se define, cae a APP_URL (el backend),
+    | donde no hay landing: debe apuntar al front, no al ERP.
+    */
+    'frontend_url' => env('FRONTEND_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
