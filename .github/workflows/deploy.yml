@@ -20,8 +20,31 @@ jobs:
 
             php artisan down --retry=60
 
+            # Pase lo que pase de aquí en adelante, el ERP vuelve a estar en
+            # línea al salir del script: con `set -e` cualquier error cortaba
+            # la ejecución antes del `up` y dejaba el sitio en mantenimiento.
+            trap 'php artisan up || true' EXIT
+
             PREV_COMMIT=$(git rev-parse HEAD)
             echo $PREV_COMMIT > /tmp/mashaec_prev_commit
+
+            # Archivos sin seguimiento que el pull sobrescribiría: git aborta
+            # el merge por ellos. Se apartan con su ruta a un respaldo fechado
+            # en vez de borrarlos, por si llevan cambios hechos en el servidor.
+            RESPALDO=~/respaldo-untracked-$(date +%F-%H%M%S)
+            CHOQUES=$(git fetch origin main -q && git diff --name-only HEAD origin/main | while read f; do
+              if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then echo "$f"; fi
+            done)
+
+            if [ -n "$CHOQUES" ]; then
+              echo "Apartando archivos sin seguimiento que bloquean el pull:"
+              echo "$CHOQUES"
+              echo "$CHOQUES" | while read f; do
+                mkdir -p "$RESPALDO/$(dirname "$f")"
+                mv "$f" "$RESPALDO/$f"
+              done
+              echo "Respaldo en: $RESPALDO"
+            fi
 
             git pull origin main
 
@@ -54,6 +77,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd /var/www/erp.mashaec.net
+            trap 'php artisan up || true' EXIT
             PREV=$(cat /tmp/mashaec_prev_commit)
             git reset --hard $PREV
             composer install --no-dev --optimize-autoloader
