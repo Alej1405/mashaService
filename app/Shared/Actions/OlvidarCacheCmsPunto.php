@@ -19,8 +19,7 @@ final class OlvidarCacheCmsPunto
      * expire el TTL. Estas son las MISMAS claves que arma CmsController::puntoVenta/
      * puntosVenta; si allá cambian, acá también.
      *
-     * Olvida el listado de la empresa y la ficha del punto. Sin slug de empresa no hay
-     * clave que olvidar (early return); sin slug de cliente solo se olvida el listado.
+     * Olvida el listado de la empresa. Sin slug de empresa no hay clave que olvidar.
      */
     public function handle(Customer $customer): void
     {
@@ -31,9 +30,5 @@ final class OlvidarCacheCmsPunto
         }
 
         Cache::forget("cms:{$empresaSlug}:puntos-venta");
-
-        if ($customer->slug) {
-            Cache::forget("cms:{$empresaSlug}:punto-venta:{$customer->slug}");
-        }
     }
 }

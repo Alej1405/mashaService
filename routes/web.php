@@ -31,11 +31,6 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
         Route::get('/mi-web',   [\App\Http\Controllers\Portal\PortalController::class, 'webEdit'])->name('web.edit');
         Route::post('/mi-web',  [\App\Http\Controllers\Portal\PortalController::class, 'webUpdate'])->name('web.update');
 
-        // ── Mi menú (carta del punto de venta + promociones + QR) ──
-        Route::get('/mi-menu',                  [\App\Http\Controllers\Portal\PortalController::class, 'menuIndex'])->name('menu.index');
-        Route::post('/mi-menu/items',           [\App\Http\Controllers\Portal\PortalController::class, 'menuItemStore'])->name('menu.items.store');
-        Route::put('/mi-menu/items/{item}',     [\App\Http\Controllers\Portal\PortalController::class, 'menuItemUpdate'])->name('menu.items.update')->whereNumber('item');
-        Route::delete('/mi-menu/items/{item}',  [\App\Http\Controllers\Portal\PortalController::class, 'menuItemDestroy'])->name('menu.items.destroy')->whereNumber('item');
         Route::get('/customers',                    [\App\Http\Controllers\Portal\PortalController::class, 'customers'])->name('customers');
         Route::post('/payments',                    [\App\Http\Controllers\Portal\PortalController::class, 'submitPayment'])->name('payments.store');
         Route::get('/companies',                    [\App\Http\Controllers\Portal\PortalController::class, 'companies'])->name('companies');

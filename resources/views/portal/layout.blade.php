@@ -55,10 +55,6 @@
         $links[] = ['route' => 'portal.web.edit', 'pattern' => 'portal.web*', 'label' => 'Mi web',
             'icon' => 'M21 12a9 9 0 11-18 0 9 9 0 0118 0z M3.6 9h16.8 M3.6 15h16.8 M12 3a15 15 0 000 18 M12 3a15 15 0 010 18'];
     }
-    if ($customer->menu_activo) {
-        $links[] = ['route' => 'portal.menu.index', 'pattern' => 'portal.menu*', 'label' => 'Mi menú',
-            'icon' => 'M4 6h16M4 12h16M4 18h7'];
-    }
 
     if ($customer->is_super_admin) {
         $links[] = ['route' => 'portal.customers', 'label' => 'Clientes', 'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z'];

@@ -237,8 +237,6 @@ class PortalController extends Controller
         $customer = $this->customer($request);
         abort_unless($customer->publicado, 403);
 
-        $hex = ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'];
-
         $data = $request->validate([
             'descripcion_web'  => 'nullable|string|max:2000',
             'horario'          => 'nullable|string|max:180',
@@ -246,37 +244,9 @@ class PortalController extends Controller
             'longitud'         => 'nullable|numeric|between:-180,180',
             'google_maps_url'  => 'nullable|url|max:500',
             'logo'             => 'nullable|image|max:4096',
-            'banner'           => 'nullable|image|max:8192',
-            'color_primario'   => $hex,
-            'color_secundario' => $hex,
-            'color_acento'     => $hex,
-            'galeria'          => 'nullable|array',
-            'galeria.*'        => 'image|max:8192',
-            'remove_images'    => 'nullable|array',
-            'remove_images.*'  => 'integer',
-        ], [
-            'color_primario.regex'   => 'El color primario debe ser un hex válido (#RRGGBB).',
-            'color_secundario.regex' => 'El color secundario debe ser un hex válido (#RRGGBB).',
-            'color_acento.regex'     => 'El color de acento debe ser un hex válido (#RRGGBB).',
         ]);
 
-        // ── Galería: tope de 5 imágenes (autoritativo, sin importar el cliente) ──
-        // withoutGlobalScopes: el portal es cross-tenant por sesión; si EmpresaScope
-        // filtrara las imágenes existentes (sesión de admin/app activa), el conteo daría
-        // 0 y colaría subidas de más con `orden` repetido (duplicados en la galería).
-        $removeIds = array_map('intval', $request->input('remove_images', []));
-        $aBorrar   = $customer->webImages()->withoutGlobalScopes()->whereIn('id', $removeIds)->get();
-        $nuevas    = $request->file('galeria', []);
-        $totalFinal = $customer->webImages()->withoutGlobalScopes()->count() - $aBorrar->count() + count($nuevas);
-        if ($totalFinal > 5) {
-            return back()
-                ->withErrors(['galeria' => 'La galería admite máximo 5 imágenes.'])
-                ->withInput();
-        }
-
-        // Ubicación: si el cliente pegó un link de Google Maps y se pudo extraer la
-        // coordenada, esa manda; si no, se usan las coords del botón "usar mi ubicación".
-        $mapsUrl = $data['google_maps_url'] ?? null;
+        $mapsUrl = trim((string) ($data['google_maps_url'] ?? ''));
         $coords  = $this->coordsDesdeGoogleMaps($mapsUrl);
 
         $web = $this->webRow($customer);
@@ -285,189 +255,16 @@ class PortalController extends Controller
         $web->google_maps_url  = $mapsUrl ?: null;
         $web->latitud          = $coords[0] ?? ($data['latitud'] ?? null);
         $web->longitud         = $coords[1] ?? ($data['longitud'] ?? null);
-        // Colores: cadena vacía o ausente → null (usa el branding por defecto).
-        $web->color_primario   = ($data['color_primario']   ?? '') ?: null;
-        $web->color_secundario = ($data['color_secundario'] ?? '') ?: null;
-        $web->color_acento     = ($data['color_acento']     ?? '') ?: null;
+
         if ($request->hasFile('logo')) {
             $web->logo = $request->file('logo')->store('clientes/logos', 'public');
         }
-        if ($request->hasFile('banner')) {
-            $web->banner = $request->file('banner')->store('clientes/banners', 'public');
-        }
+
         $web->save();
 
-        // Borrar las imágenes marcadas (archivo + fila).
-        foreach ($aBorrar as $img) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($img->imagen);
-            $img->delete();
-        }
-
-        // Subir las nuevas, continuando el orden (withoutGlobalScopes: ver nota arriba).
-        $orden = (int) $customer->webImages()->withoutGlobalScopes()->max('orden');
-        foreach ($nuevas as $file) {
-            $customer->webImages()->create([
-                'empresa_id' => $customer->empresa_id,
-                'imagen'     => $file->store('clientes/galeria', 'public'),
-                'orden'      => ++$orden,
-            ]);
-        }
-
         $this->olvidarCacheCms($customer);
 
-        return back()->with('success', 'Tu página web se actualizó.');
-    }
-
-    /**
-     * Extrae [lat, long] de un link de Google Maps. Soporta los formatos comunes
-     * (@lat,lng · q=lat,lng · !3d!4d) y resuelve los acortadores (goo.gl /
-     * maps.app.goo.gl) siguiendo el redirect. Devuelve null si no se pudo extraer.
-     */
-    private function coordsDesdeGoogleMaps(?string $url): ?array
-    {
-        if (! $url) {
-            return null;
-        }
-
-        // Acortadores: seguir el redirect para llegar a la URL con las coordenadas.
-        if (preg_match('/(?:goo\.gl|maps\.app\.goo\.gl)/i', $url)) {
-            try {
-                $url = (string) \Illuminate\Support\Facades\Http::timeout(5)
-                    ->withHeaders(['User-Agent' => 'Mozilla/5.0'])
-                    ->get($url)
-                    ->effectiveUri();
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        $patrones = [
-            '/@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/',                          // .../@lat,lng,17z
-            '/[?&](?:q|query|ll|sll|destination)=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/', // ?q=lat,lng
-            '/!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/',                      // !3dlat!4dlng
-        ];
-        foreach ($patrones as $re) {
-            if (preg_match($re, $url, $m)) {
-                $lat = (float) $m[1];
-                $lng = (float) $m[2];
-                if ($lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180) {
-                    return [$lat, $lng];
-                }
-            }
-        }
-
-        return null;
-    }
-
-    // ── Mi menú (carta + promociones + QR) ──────────────────────────────────
-
-    private function assertMenu(Customer $customer): void
-    {
-        abort_unless($customer->menu_activo, 403);
-    }
-
-    public function menuIndex(Request $request, string $slug)
-    {
-        $empresa  = $this->empresa($slug);
-        $customer = $this->customer($request);
-
-        if (! $customer->menu_activo) {
-            return redirect()->route('portal.dashboard', $empresa->slug)
-                ->with('success', 'Tu menú aún no está habilitado. Contáctanos para activarlo.');
-        }
-
-        // El QR necesita slug; si el cliente aún no lo tiene, el hook lo genera al guardar.
-        if (! $customer->slug) {
-            $customer->save();
-        }
-
-        $items = $customer->menuItems()->withoutGlobalScopes()
-            ->orderBy('orden')->orderBy('id')->get();
-
-        return view('portal.menu', compact('empresa', 'customer', 'items'));
-    }
-
-    public function menuItemStore(Request $request, string $slug)
-    {
-        $empresa  = $this->empresa($slug);
-        $customer = $this->customer($request);
-        $this->assertMenu($customer);
-
-        $data = $this->validateMenuItem($request);
-
-        \App\Models\CustomerMenuItem::create([
-            'empresa_id'   => $empresa->id,
-            'customer_id'  => $customer->id,
-            'nombre'       => $data['nombre'],
-            'descripcion'  => $data['descripcion'] ?? null,
-            'precio'       => $data['precio'],
-            'orden'        => $data['orden'] ?? 0,
-            'activo'       => true,
-            'es_promocion' => $request->boolean('es_promocion'),
-            'precio_promo' => $request->boolean('es_promocion') ? ($data['precio_promo'] ?? null) : null,
-            'imagen'       => $request->hasFile('imagen') ? $request->file('imagen')->store('clientes/menu', 'public') : null,
-        ]);
-
-        $this->olvidarCacheCms($customer);
-
-        return back()->with('success', 'Producto agregado al menú.');
-    }
-
-    public function menuItemUpdate(Request $request, string $slug, int $item)
-    {
-        $empresa  = $this->empresa($slug);
-        $customer = $this->customer($request);
-        $this->assertMenu($customer);
-
-        $registro = \App\Models\CustomerMenuItem::withoutGlobalScopes()
-            ->where('customer_id', $customer->id)->findOrFail($item);
-
-        $data = $this->validateMenuItem($request);
-
-        $registro->fill([
-            'nombre'       => $data['nombre'],
-            'descripcion'  => $data['descripcion'] ?? null,
-            'precio'       => $data['precio'],
-            'orden'        => $data['orden'] ?? $registro->orden,
-            'activo'       => $request->boolean('activo', true),
-            'es_promocion' => $request->boolean('es_promocion'),
-            'precio_promo' => $request->boolean('es_promocion') ? ($data['precio_promo'] ?? null) : null,
-        ]);
-        if ($request->hasFile('imagen')) {
-            $registro->imagen = $request->file('imagen')->store('clientes/menu', 'public');
-        }
-        $registro->save();
-
-        $this->olvidarCacheCms($customer);
-
-        return back()->with('success', 'Producto actualizado.');
-    }
-
-    public function menuItemDestroy(Request $request, string $slug, int $item)
-    {
-        $customer = $this->customer($request);
-        $this->assertMenu($customer);
-
-        \App\Models\CustomerMenuItem::withoutGlobalScopes()
-            ->where('customer_id', $customer->id)->findOrFail($item)->delete();
-
-        $this->olvidarCacheCms($customer);
-
-        return back()->with('success', 'Producto eliminado del menú.');
-    }
-
-    private function validateMenuItem(Request $request): array
-    {
-        return $request->validate([
-            'nombre'       => 'required|string|max:200',
-            'descripcion'  => 'nullable|string|max:1000',
-            'precio'       => 'required|numeric|min:0',
-            'orden'        => 'nullable|integer|min:0',
-            'es_promocion' => 'sometimes|boolean',
-            'precio_promo' => 'nullable|numeric|min:0|required_if:es_promocion,1',
-            'imagen'       => 'nullable|image|max:4096',
-            'activo'       => 'sometimes|boolean',
-        ]);
+        return back()->with('success', 'Tu información se actualizó.');
     }
 
     public function services(Request $request, string $slug)

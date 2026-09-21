@@ -34,7 +34,6 @@ class Customer extends Authenticatable
         // Punto de venta: núcleo + toggles/handle. El CONTENIDO de la landing
         // (descripción, horario, logo, banner, ubicación) vive en customer_web.
         'publicado',
-        'menu_activo',
         'slug',
         // NOTA: contabilidad (cuenta_contable_id → customer_finance), comercio exterior
         // (es_exportador/pais_destino → customer_export) y acceso al portal (password/
@@ -45,7 +44,6 @@ class Customer extends Authenticatable
     protected $casts = [
         'activo'      => 'boolean',
         'publicado'   => 'boolean',
-        'menu_activo' => 'boolean',
     ];
 
     protected static function boot()
@@ -87,13 +85,13 @@ class Customer extends Authenticatable
         });
     }
 
-    /** Genera un slug único por empresa si el cliente es público (web o menú) y no tiene. */
+    /** Genera un slug único por empresa si el cliente es público y no tiene. */
     protected static function asegurarSlugPublico($model): void
     {
         if (! empty($model->slug)) {
             return;
         }
-        if (! $model->publicado && ! $model->menu_activo) {
+        if (! $model->publicado) {
             return;
         }
 
@@ -170,21 +168,11 @@ class Customer extends Authenticatable
         return $this->hasMany(StoreCustomerCompany::class);
     }
 
-    /** Ítems del menú del punto de venta (tabla independiente customer_menu_items). */
-    public function menuItems(): HasMany
-    {
-        return $this->hasMany(CustomerMenuItem::class);
-    }
 
-    /** Galería de imágenes de la landing (tabla propia, máx. 5, opcional). */
-    public function webImages(): HasMany
-    {
-        return $this->hasMany(CustomerWebImage::class)->orderBy('orden')->orderBy('id');
-    }
 
     // ── Módulos normalizados del cliente (1:1) ─────────────────────────────────
 
-    /** Parte web/landing pública. No todos los clientes la tienen. */
+    /** Datos públicos del local: descripción, horario, ubicación. */
     public function web(): HasOne
     {
         return $this->hasOne(CustomerWeb::class);
@@ -241,40 +229,4 @@ class Customer extends Authenticatable
         return (bool) ($this->access?->is_super_admin ?? false);
     }
 
-    /**
-     * URL pública de la landing del punto de venta.
-     *
-     * Formato: {FRONTEND_URL}/{empresa_slug}/{customer_slug}
-     *
-     * Antes generaba /clientes/{slug} — sin la empresa. Eso rompía el QR por dos
-     * motivos: (1) el slug del customer es único POR EMPRESA, no global, así que
-     * sin la empresa la landing es irresoluble; (2) el API que la alimenta es
-     * /api/cms/{empresa}/clientes/{slug}, y el front no podía construir esa
-     * llamada sin la empresa en la URL. Ahora la URL lleva las dos partes, igual
-     * que urlFront() en el flujo de ecommerce.
-     *
-     * La base sale de FRONTEND_URL. Si no está definida cae a app.url, pero eso
-     * apuntaría al backend (el ERP), donde no hay landing: FRONTEND_URL debe estar
-     * configurada en producción con el dominio del front de tiendas.
-     */
-    public function landingUrl(): string
-    {
-        $base = rtrim((string) (config('app.frontend_url') ?: config('app.url')), '/');
-
-        $empresaSlug = $this->empresa?->slug;
-
-        return $this->slug && $empresaSlug
-            ? "{$base}/{$empresaSlug}/{$this->slug}"
-            : $base;
-    }
-
-    /** QR (SVG inline) que apunta a la landing del punto de venta. */
-    public function qrSvg(int $size = 220): string
-    {
-        return \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
-            ->size($size)
-            ->margin(1)
-            ->errorCorrection('M')
-            ->generate($this->landingUrl());
-    }
 }

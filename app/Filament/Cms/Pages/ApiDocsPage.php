@@ -226,30 +226,17 @@ JSON,
 JSON,
             ],
             [
-                'metodo' => 'GET', 'ruta' => '/puntos-venta', 'desc' => 'Puntos de venta publicados (ficha pública de cada cliente).',
+                'metodo' => 'GET', 'ruta' => '/puntos-venta', 'desc' => 'Locales publicados. El front abre cada ficha en un modal con estos mismos datos, sin pedir un detalle aparte.',
                 'ejemplo' => <<<'JSON'
 [{
   "id": 1, "slug": "mi-punto", "nombre": "Distribuidora Norte",
-  "descripcion": "Punto de venta oficial", "horario": "L-V 9:00-18:00",
-  "logo": "https://…", "banner": "https://…",
+  "descripcion": "De qué se trata el local", "horario": "L-V 9:00-18:00",
+  "logo": "https://…",
   "direccion": "Av. Principal 123", "telefono": "0999999999",
-  "latitud": "-0.1806532", "longitud": "-78.4678382", "menu_activo": true
+  "latitud": "-0.1806532", "longitud": "-78.4678382",
+  "google_maps_url": "https://maps.google.com/…"
 }]
-JSON,
-            ],
-            [
-                'metodo' => 'GET', 'ruta' => '/puntos-venta/{slug}', 'desc' => 'Ficha de un punto de venta con su carta. El front lo pinta en /clientes/{slug}.',
-                'ejemplo' => <<<'JSON'
-{
-  "id": 1, "slug": "mi-punto", "nombre": "Distribuidora Norte",
-  "descripcion": "Punto de venta oficial", "horario": "L-V 9:00-18:00",
-  "logo": "https://…", "banner": "https://…",
-  "direccion": "Av. Principal 123", "telefono": "0999999999",
-  "latitud": "-0.1806532", "longitud": "-78.4678382", "menu_activo": true,
-  "menu": [{ "id": 2, "nombre": "Café", "descripcion": "…", "precio": "3.50", "imagen": "https://…" }]
-}
-// 404 si el slug no existe o el punto no está publicado.
-// "menu" llega vacío si el punto tiene la carta desactivada.
+// Alias equivalente: /clientes
 JSON,
             ],
             [

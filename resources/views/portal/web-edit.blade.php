@@ -3,14 +3,6 @@
 
 @php
     use Illuminate\Support\Facades\Storage;
-    $cp = old('color_primario', $web->color_primario);
-    $cs = old('color_secundario', $web->color_secundario);
-    $ca = old('color_acento', $web->color_acento);
-    $tieneColores = filled($cp) || filled($cs) || filled($ca);
-    // El portal es cross-tenant (sesión, sin tenant de Filament). Si el cliente abre
-    // /mi-web con una sesión de admin/app activa en el mismo navegador, EmpresaScope
-    // filtraría la galería y se vería vacía → withoutGlobalScopes la hace determinista.
-    $imagenes = $customer->webImages()->withoutGlobalScopes()->get();
 @endphp
 
 <style>
@@ -22,15 +14,8 @@
     @csrf
 
     <div>
-        <h1 class="text-xl font-bold text-gray-800">Mi página web</h1>
-        <p class="text-sm text-gray-500">Así te ven tus clientes en la web. Estos datos alimentan tu landing pública.</p>
-        @if($customer->slug)
-            <a href="{{ $customer->landingUrl() }}" target="_blank" rel="noopener"
-               class="wb-tr inline-flex items-center gap-1 mt-1 text-xs font-medium text-indigo-600 hover:underline">
-                Ver mi página
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-            </a>
-        @endif
+        <h1 class="text-xl font-bold text-gray-800">Mi información</h1>
+        <p class="text-sm text-gray-500">Así te ven tus clientes: es la ficha que se abre con tu nombre.</p>
     </div>
 
     @if($errors->any())
@@ -95,7 +80,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
                 @if($web->logo)
@@ -103,113 +88,7 @@
                 @endif
                 <input type="file" name="logo" accept="image/*" class="block w-full text-xs text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:text-xs file:font-semibold hover:file:bg-indigo-100">
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Banner / portada</label>
-                @if($web->banner)
-                    <img src="{{ Storage::disk('public')->url($web->banner) }}" alt="Banner" class="w-full h-16 rounded-lg object-cover border border-gray-200 mb-2">
-                @endif
-                <input type="file" name="banner" accept="image/*" class="block w-full text-xs text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:text-xs file:font-semibold hover:file:bg-indigo-100">
-            </div>
         </div>
-    </div>
-
-    {{-- ── Identidad visual: colores de marca (los define el cliente) ── --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-5"
-         x-data="{ custom: {{ $tieneColores ? 'true' : 'false' }}, p: '{{ $cp ?: '#4f46e5' }}', s: '{{ $cs ?: '#0f172a' }}', a: '{{ $ca ?: '#f59e0b' }}' }">
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <h2 class="text-sm font-semibold text-gray-800">Identidad visual</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Los colores de tu marca para tu página pública. Si lo dejas apagado, usamos un estilo neutro.</p>
-            </div>
-            <button type="button" role="switch" :aria-checked="custom" @click="custom = !custom"
-                    class="wb-tr relative shrink-0 w-11 h-6 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                    :class="custom ? 'bg-indigo-600' : 'bg-gray-200'">
-                <span class="wb-tr absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow" :class="custom ? 'translate-x-5' : ''"></span>
-            </button>
-        </div>
-
-        <div x-show="custom" x-transition.opacity.duration.200ms class="mt-4 space-y-4" x-cloak>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                @foreach(['p' => 'Primario', 's' => 'Secundario', 'a' => 'Acento'] as $var => $label)
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1.5">{{ $label }}</label>
-                        <div class="wb-tr flex items-center gap-2 rounded-lg border border-gray-200 pl-1.5 pr-2 py-1.5 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
-                            <input type="color" x-model="{{ $var }}" :disabled="!custom" aria-label="{{ $label }}"
-                                   class="w-7 h-7 shrink-0 cursor-pointer rounded-md border border-gray-200 bg-transparent p-0 disabled:cursor-not-allowed [&::-webkit-color-swatch-wrapper]:p-0.5 [&::-webkit-color-swatch]:rounded [&::-webkit-color-swatch]:border-0 [&::-moz-color-swatch]:rounded [&::-moz-color-swatch]:border-0">
-                            <input type="text" name="color_{{ ['p'=>'primario','s'=>'secundario','a'=>'acento'][$var] }}"
-                                   x-model="{{ $var }}" :disabled="!custom" maxlength="7" spellcheck="false"
-                                   class="w-full border-0 p-0 text-sm font-mono uppercase text-gray-700 focus:ring-0 bg-transparent" placeholder="#4F46E5">
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
-            {{-- Vista previa en vivo --}}
-            <div class="flex items-center gap-3 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5">
-                <span class="text-xs text-gray-500">Vista previa</span>
-                <span class="flex items-center gap-1.5">
-                    <span class="w-5 h-5 rounded-full border border-black/5" :style="{ backgroundColor: p }"></span>
-                    <span class="w-5 h-5 rounded-full border border-black/5" :style="{ backgroundColor: s }"></span>
-                    <span class="w-5 h-5 rounded-full border border-black/5" :style="{ backgroundColor: a }"></span>
-                </span>
-                <span class="ml-auto inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-lg text-white shadow-sm" :style="{ backgroundColor: p }">Botón de ejemplo</span>
-            </div>
-        </div>
-    </div>
-
-    {{-- ── Galería: hasta 5 imágenes para la landing ── --}}
-    <div class="bg-white rounded-xl border border-gray-200 p-5" x-data="galeriaWeb({{ $imagenes->count() }})">
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <h2 class="text-sm font-semibold text-gray-800">Galería</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Hasta 5 imágenes que se muestran en distintas partes de tu página.</p>
-            </div>
-            <span class="wb-tr text-xs font-semibold tabular-nums px-2 py-1 rounded-md"
-                  :class="total > 5 ? 'text-red-600 bg-red-50' : 'text-gray-500 bg-gray-50'"
-                  x-text="`${total} / 5`"></span>
-        </div>
-
-        @if($imagenes->count())
-            <div class="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-2.5">
-                @foreach($imagenes as $img)
-                    <label class="group relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer block"
-                           x-data="{ rm: false }">
-                        <img src="{{ Storage::disk('public')->url($img->imagen) }}" alt="{{ $img->alt ?? 'Imagen de la galería' }}"
-                             class="wb-tr w-full h-full object-cover" :class="rm ? 'opacity-30 grayscale' : ''">
-                        <input type="checkbox" name="remove_images[]" value="{{ $img->id }}" class="sr-only"
-                               x-model="rm" @change="removed += $event.target.checked ? 1 : -1">
-                        <span class="wb-tr absolute top-1 right-1 w-6 h-6 rounded-full grid place-items-center text-white shadow-sm"
-                              :class="rm ? 'bg-red-500' : 'bg-black/45 group-hover:bg-black/65'">
-                            <svg x-show="!rm" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                            <svg x-show="rm" x-cloak class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        </span>
-                    </label>
-                @endforeach
-            </div>
-            <p class="mt-2 text-xs text-gray-400">Toca una imagen para marcarla y quitarla al guardar.</p>
-        @endif
-
-        <label class="wb-tr mt-3 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40"
-               :class="total >= 5 ? 'opacity-50 pointer-events-none' : ''">
-            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-            <span class="text-sm font-medium text-gray-700">Agregar imágenes</span>
-            <span class="text-xs text-gray-400" x-text="total >= 5 ? 'Llegaste al máximo de 5' : `Puedes agregar ${Math.max(0, 5 - (existing - removed))} más`"></span>
-            <input type="file" name="galeria[]" accept="image/*" multiple class="sr-only" x-ref="fileInput" @change="onPick($event)">
-        </label>
-
-        <div class="mt-2.5 grid grid-cols-3 sm:grid-cols-5 gap-2.5" x-show="previews.length" x-cloak>
-            <template x-for="(src, i) in previews" :key="src">
-                <div class="relative aspect-square rounded-lg overflow-hidden border border-indigo-200">
-                    <img :src="src" alt="" class="w-full h-full object-cover">
-                    <span class="absolute bottom-1 left-1 text-[10px] font-semibold text-white bg-indigo-600 px-1.5 py-0.5 rounded">Nueva</span>
-                    <button type="button" @click="removeAt(i)" aria-label="Quitar imagen"
-                            class="wb-tr absolute top-1 right-1 w-6 h-6 rounded-full grid place-items-center text-white bg-black/45 hover:bg-red-500 shadow-sm">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
-                </div>
-            </template>
-        </div>
-        <p class="mt-2 text-xs text-red-600" x-show="total > 5" x-cloak>Te pasaste del máximo de 5. Quita algunas (toca la <span class="font-semibold">✕</span> en las nuevas o marca las existentes) antes de guardar.</p>
     </div>
 
     <div>
@@ -262,33 +141,6 @@
         };
     }
 
-    // Galería: administra un array de File (se puede quitar de a una) y reconstruye
-    // el FileList del input con DataTransfer. total = existentes - quitadas + nuevas.
-    function galeriaWeb(existing) {
-        return {
-            existing,
-            removed: 0,
-            files: [],
-            previews: [],
-            get total() { return this.existing - this.removed + this.files.length; },
-            onPick(e) {
-                this.files = this.files.concat(Array.from(e.target.files || []));
-                this.sync();
-            },
-            removeAt(i) {
-                this.files.splice(i, 1);
-                this.sync();
-            },
-            sync() {
-                // Reconstruye el FileList del input desde el array (permite quitar de a una).
-                const dt = new DataTransfer();
-                this.files.forEach(f => dt.items.add(f));
-                this.$refs.fileInput.files = dt.files;
-                this.previews.forEach(URL.revokeObjectURL);
-                this.previews = this.files.map(f => URL.createObjectURL(f));
-            },
-        };
-    }
 </script>
 
 @endsection

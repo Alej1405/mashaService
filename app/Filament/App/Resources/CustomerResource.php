@@ -123,29 +123,15 @@ class CustomerResource extends Resource
                             ->default(true),
                     ])->columns(2),
 
-                // ── El cliente ES el punto de venta: su landing pública ──
-                // ── Punto de venta: SOLO los toggles. El contenido (web y menú) lo
-                //    edita el propio cliente desde su portal. ──
-                Forms\Components\Section::make('Punto de venta')
-                    ->description('Habilita qué puede publicar este cliente. El contenido de la web y del menú lo edita el cliente desde su portal.')
+                // ── Ficha pública: solo el permiso. El contenido (descripción,
+                //    horario, ubicación) lo edita el propio cliente en su portal. ──
+                Forms\Components\Section::make('Ficha pública')
+                    ->description('Si está habilitada, el cliente edita su información desde el portal y su ficha se muestra en la web.')
                     ->schema([
                         Forms\Components\Toggle::make('publicado')
-                            ->label('Habilitar página web')
-                            ->helperText('Si está activo, el cliente puede editar y se publica su landing.')
+                            ->label('Habilitar ficha pública')
+                            ->helperText('El cliente podrá editar su descripción, horario y ubicación.')
                             ->default(false),
-                        Forms\Components\Toggle::make('menu_activo')
-                            ->label('Habilitar menú')
-                            ->helperText('Si está activo, el cliente puede editar y se publica su menú / carta.')
-                            ->default(false),
-                        Forms\Components\Placeholder::make('portal_link')
-                            ->label('')
-                            ->content(fn (?Customer $record): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(
-                                $record && $record->slug
-                                    ? '<a href="' . e($record->landingUrl()) . '" target="_blank" style="color:#4338ca;font-weight:600;font-size:.85rem">Ver landing pública →</a>'
-                                    : '<span style="color:#64748b;font-size:.85rem">El slug y la landing se generan al habilitar la web o el menú.</span>'
-                            ))
-                            ->visibleOn('edit')
-                            ->columnSpanFull(),
                     ])->columns(2),
             ]);
     }

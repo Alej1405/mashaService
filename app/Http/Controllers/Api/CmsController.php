@@ -14,8 +14,6 @@ use App\Models\CmsTeamMember;
 use App\Models\CmsTerminos;
 use App\Models\CmsTestimonial;
 use App\Models\Customer;
-use App\Models\CustomerMenuItem;
-use App\Models\CustomerWebImage;
 use App\Models\Empresa;
 use App\Models\StoreProduct;
 use App\Models\ServiceDesign;
@@ -178,6 +176,7 @@ class CmsController extends Controller
      * Solo se exponen los campos de la ficha pública: el resto del Customer (email,
      * identificación, cuenta contable) es interno y no sale de aquí.
      */
+    /** Locales publicados de la empresa. El front abre cada uno en un modal. */
     public function puntosVenta(string $slug): JsonResponse
     {
         $data = $this->cached("cms:{$slug}:puntos-venta", self::TTL, function () use ($slug) {
@@ -186,7 +185,7 @@ class CmsController extends Controller
             return Customer::withoutGlobalScopes()
                 ->select([
                     'id', 'slug', 'nombre', 'apellido', 'razon_social', 'tipo_persona',
-                    'direccion', 'telefono', 'menu_activo',
+                    'direccion', 'telefono',
                 ])
                 ->where('empresa_id', $empresa->id)
                 ->where('publicado', true)
@@ -202,64 +201,8 @@ class CmsController extends Controller
         return response()->json($data);
     }
 
-    /**
-     * Ficha pública de un punto de venta + su carta. El menú solo viaja si el punto
-     * lo tiene activo; si no, `menu` va vacío y el front no dibuja la sección.
-     */
-    public function puntoVenta(string $slug, string $punto): JsonResponse
-    {
-        $data = $this->cached("cms:{$slug}:punto-venta:{$punto}", self::TTL, function () use ($slug, $punto) {
-            $empresa = $this->empresa($slug);
 
-            $cliente = Customer::withoutGlobalScopes()
-                ->where('empresa_id', $empresa->id)
-                ->where('slug', $punto)
-                ->where('publicado', true)
-                ->where('activo', true)
-                ->first();
-
-            if (! $cliente) {
-                return null;
-            }
-
-            $menu = $cliente->menu_activo
-                ? $cliente->menuItems()
-                    ->withoutGlobalScopes()
-                    ->where('activo', true)
-                    ->orderBy('orden')
-                    ->get()
-                    ->map(fn (CustomerMenuItem $i) => [
-                        'id'           => $i->id,
-                        'nombre'       => $i->nombre,
-                        'descripcion'  => $i->descripcion,
-                        'precio'       => $i->precio,
-                        'es_promocion' => (bool) $i->es_promocion,
-                        'precio_promo' => $i->es_promocion ? $i->precio_promo : null,
-                        'imagen'       => $this->imageUrl($i->imagen),
-                    ])->all()
-                : [];
-
-            $galeria = $cliente->webImages()
-                ->withoutGlobalScopes()
-                ->get()
-                ->map(fn (CustomerWebImage $img) => [
-                    'id'     => $img->id,
-                    'imagen' => $this->imageUrl($img->imagen),
-                    'alt'    => $img->alt,
-                    'orden'  => $img->orden,
-                ])->all();
-
-            return $this->puntoVentaPayload($cliente) + ['menu' => $menu, 'galeria' => $galeria];
-        });
-
-        if ($data === null) {
-            return response()->json(['message' => 'Punto de venta no encontrado.'], 404);
-        }
-
-        return response()->json($data);
-    }
-
-    /** Forma común de la ficha pública, para que listado y detalle no se desincronicen. */
+    /** Ficha del local: lo que el modal muestra y nada más. */
     private function puntoVentaPayload(Customer $c): array
     {
         // El CONTENIDO web vive en customer_web (lo edita el cliente en el portal).
@@ -272,18 +215,11 @@ class CmsController extends Controller
             'descripcion' => $web?->descripcion_web,
             'horario'     => $web?->horario,
             'logo'        => $this->imageUrl($web?->logo),
-            'banner'      => $this->imageUrl($web?->banner),
             'direccion'   => $c->direccion,
             'telefono'    => $c->telefono,
             'latitud'         => $web?->latitud,
             'longitud'        => $web?->longitud,
             'google_maps_url' => $web?->google_maps_url,
-            'colores'         => [
-                'primario'   => $web?->color_primario,
-                'secundario' => $web?->color_secundario,
-                'acento'     => $web?->color_acento,
-            ],
-            'menu_activo'     => $c->menu_activo,
         ];
     }
 

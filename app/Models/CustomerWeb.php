@@ -22,13 +22,9 @@ class CustomerWeb extends Model
         'descripcion_web',
         'horario',
         'logo',
-        'banner',
         'latitud',
         'longitud',
         'google_maps_url',
-        'color_primario',
-        'color_secundario',
-        'color_acento',
     ];
 
     protected $casts = [
