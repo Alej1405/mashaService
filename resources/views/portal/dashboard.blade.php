@@ -10,14 +10,14 @@
 
     {{-- Tarjetas resumen --}}
     <div class="grid grid-cols-2 {{ $tieneServicios ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-3 sm:gap-4">
-        <a href="{{ route('portal.packages', $empresa->slug) }}"
-           class="pv-nav bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 hover:shadow-md hover:-translate-y-0.5 transition block">
+        {{-- Ya no enlaza: el detalle de cargas salió del portal. La cifra se queda. --}}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
             <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center mb-3">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
             </span>
             <p class="text-2xl sm:text-3xl font-bold text-slate-900 leading-none">{{ $totalPackages }}</p>
             <p class="text-[11px] font-semibold text-slate-500 mt-1.5 uppercase tracking-wide">Mis cargas</p>
-        </a>
+        </div>
 
         <div class="bg-white rounded-2xl border shadow-sm p-4 sm:p-5 {{ $pendingPackages->isNotEmpty() ? 'border-amber-300' : 'border-slate-200' }}">
             <span class="w-9 h-9 rounded-xl grid place-items-center mb-3 {{ $pendingPackages->isNotEmpty() ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400' }}">
@@ -250,7 +250,6 @@
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm">
         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-slate-900">Últimas cargas</h2>
-            <a href="{{ route('portal.packages', $empresa->slug) }}" class="text-xs text-indigo-600 hover:underline">Ver todas</a>
         </div>
         <div class="divide-y divide-slate-100">
             @foreach($recentPackages as $pkg)

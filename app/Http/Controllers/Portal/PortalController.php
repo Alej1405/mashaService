@@ -282,42 +282,6 @@ class PortalController extends Controller
         return view('portal.services', compact('empresa', 'customer', 'contracts'));
     }
 
-    public function packages(Request $request, string $slug)
-    {
-        $empresa  = $this->empresa($slug);
-        $customer = $this->customer($request);
-
-        $packages = LogisticsPackage::withoutGlobalScopes()
-            ->with([
-                'shipments'       => fn ($q) => $q->orderByDesc('created_at')->limit(1),
-                'documents',
-                'items',
-                'servicePackage',
-                'billingRequests' => fn ($q) => $q->latest()->limit(1),
-            ])
-            ->where('customer_id', $customer->id)
-            ->where('empresa_id', $empresa->id)
-            ->latest()
-            ->paginate(15);
-
-        // Cargar payment claims del cliente para estos paquetes
-        $packageIds   = $packages->pluck('id')->toArray();
-        $paymentClaims = LogisticsPaymentClaim::withoutGlobalScopes()
-            ->where('customer_id', $customer->id)
-            ->where('empresa_id', $empresa->id)
-            ->get()
-            ->filter(fn ($claim) => count(array_intersect($claim->package_ids ?? [], $packageIds)) > 0);
-
-        // Indexar por package_id para acceso rápido en la vista
-        $claimsByPackage = [];
-        foreach ($paymentClaims as $claim) {
-            foreach ($claim->package_ids ?? [] as $pid) {
-                $claimsByPackage[$pid][] = $claim;
-            }
-        }
-
-        return view('portal.packages', compact('empresa', 'customer', 'packages', 'claimsByPackage'));
-    }
 
     public function profile(Request $request, string $slug)
     {

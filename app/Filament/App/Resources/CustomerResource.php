@@ -133,6 +133,32 @@ class CustomerResource extends Resource
                             ->helperText('El cliente podrá editar su descripción, horario y ubicación.')
                             ->default(false),
                     ])->columns(2),
+
+                // Es la MISMA fila de customer_web que el cliente edita en su portal:
+                // no hay copia ni versión nuestra. Lo que se escriba aquí es lo que ve
+                // el cliente, y lo que él escriba es lo que se ve aquí.
+                Forms\Components\Section::make('Información del local')
+                    ->description('Lo que se muestra en la web. El cliente edita estos mismos campos desde su portal: hay un solo dato.')
+                    ->relationship('web')
+                    ->schema([
+                        Forms\Components\Textarea::make('descripcion_web')
+                            ->label('De qué se trata el local')
+                            ->rows(3)->maxLength(2000)->columnSpanFull(),
+                        Forms\Components\TextInput::make('horario')
+                            ->label('Horario de atención')
+                            ->placeholder('Lun a Vie 9:00 a 18:00')
+                            ->maxLength(180),
+                        Forms\Components\FileUpload::make('logo')
+                            ->label('Logo')->image()->disk('public')->directory('clientes/logos')
+                            ->imagePreviewHeight('80'),
+                        Forms\Components\TextInput::make('google_maps_url')
+                            ->label('Enlace de Google Maps')
+                            ->url()->maxLength(500)->columnSpanFull(),
+                        Forms\Components\TextInput::make('latitud')
+                            ->label('Latitud')->numeric()->minValue(-90)->maxValue(90),
+                        Forms\Components\TextInput::make('longitud')
+                            ->label('Longitud')->numeric()->minValue(-180)->maxValue(180),
+                    ])->columns(2),
             ]);
     }
 

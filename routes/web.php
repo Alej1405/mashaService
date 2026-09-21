@@ -22,7 +22,6 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
         Route::post('/orders',        [\App\Http\Controllers\Portal\PortalController::class, 'orderStore'])->name('orders.store');
         Route::get('/orders/{id}',    [\App\Http\Controllers\Portal\PortalController::class, 'orderShow'])->name('orders.show')->whereNumber('id');
         Route::get('/services',       [\App\Http\Controllers\Portal\PortalController::class, 'services'])->name('services');
-        Route::get('/packages',       [\App\Http\Controllers\Portal\PortalController::class, 'packages'])->name('packages');
         Route::get('/profile',        [\App\Http\Controllers\Portal\PortalController::class, 'profile'])->name('profile');
         Route::post('/profile',       [\App\Http\Controllers\Portal\PortalController::class, 'updateProfile'])->name('profile.update');
         Route::post('/profile/password', [\App\Http\Controllers\Portal\PortalController::class, 'updatePassword'])->name('profile.password');
