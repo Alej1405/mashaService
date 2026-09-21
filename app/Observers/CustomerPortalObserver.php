@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Mail\WelcomeCustomerMail;
 use App\Models\Customer;
 use App\Models\Empresa;
+use App\Shared\Actions\OlvidarCacheCmsPunto;
 use Illuminate\Support\Facades\Log;
 use Resend\Laravel\Facades\Resend;
 
@@ -17,6 +18,22 @@ class CustomerPortalObserver
     public function created(Customer $customer): void
     {
         $this->enviarBienvenida($customer);
+    }
+
+    /**
+     * El listado público se cachea 10 minutos. Hasta ahora solo lo invalidaba el
+     * portal del cliente, así que un cambio hecho desde el panel del ERP —marcar
+     * la ficha como visible, corregir la dirección— no se veía en la web hasta
+     * que expiraba el TTL. Ahora cualquier guardado lo invalida.
+     */
+    public function saved(Customer $customer): void
+    {
+        (new OlvidarCacheCmsPunto)->handle($customer);
+    }
+
+    public function deleted(Customer $customer): void
+    {
+        (new OlvidarCacheCmsPunto)->handle($customer);
     }
 
     private function enviarBienvenida(Customer $customer): void
