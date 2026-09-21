@@ -43,7 +43,7 @@ class CmsAboutResource extends Resource
 
                     Forms\Components\FileUpload::make('imagen')
                         ->label('Imagen representativa')
-                        ->image()
+                        ->image()->maxSize(2048)
                         ->disk('public')
                         ->directory('cms/about')
                         ->imagePreviewHeight('120')

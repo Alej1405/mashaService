@@ -25,10 +25,15 @@ class CmsFaqResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('pregunta')->label('Pregunta')->required()->maxLength(300)->columnSpanFull(),
-            Forms\Components\Textarea::make('respuesta')->label('Respuesta')->required()->rows(4)->columnSpanFull(),
-            Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
-            Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
+            Forms\Components\Section::make()
+                ->description('Las dudas que llegan una y otra vez. Responderlas aquí ahorra mensajes y ayuda a que te encuentren en los buscadores.')
+                ->schema([
+                Forms\Components\TextInput::make('pregunta')->label('Pregunta')->required()->maxLength(300)->columnSpanFull(),
+                Forms\Components\Textarea::make('respuesta')->label('Respuesta')
+                        ->helperText('Responde completo: quien lee esto no va a preguntar de nuevo.')->required()->rows(4)->columnSpanFull(),
+                Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
+                Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
+                ])->columns(2),
         ]);
     }
 

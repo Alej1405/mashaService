@@ -86,7 +86,7 @@
                 @if($web->logo)
                     <img src="{{ Storage::disk('public')->url($web->logo) }}" alt="Logo" class="w-16 h-16 rounded-lg object-cover border border-gray-200 mb-2">
                 @endif
-                <input type="file" name="logo" accept="image/*" class="block w-full text-xs text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 file:text-xs file:font-semibold hover:file:bg-indigo-100">
+                <input type="file" name="logo" accept="image/*" class="block w-full text-xs text-gray-700 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-800 file:text-xs file:font-semibold hover:file:bg-indigo-100">
             </div>
         </div>
     </div>

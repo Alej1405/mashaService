@@ -26,6 +26,7 @@ class CmsContactResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('Información de contacto')
+                ->description('Cómo te encuentran y te escriben. Estos datos salen en el pie de página de todo tu sitio.')
                 ->icon('heroicon-o-phone')
                 ->schema([
                     Forms\Components\TextInput::make('direccion')
@@ -45,6 +46,7 @@ class CmsContactResource extends Resource
 
                     Forms\Components\TextInput::make('whatsapp')
                         ->label('WhatsApp (número con código de país)')
+                    ->helperText('Con código de país y sin espacios: 5939XXXXXXX.')
                         ->placeholder('+593999999999')
                         ->maxLength(30),
                 ])->columns(2),
@@ -64,6 +66,7 @@ class CmsContactResource extends Resource
                 ->schema([
                     Forms\Components\Textarea::make('mapa_embed')
                         ->label('Código embed de Google Maps')
+                    ->helperText('El código que da Google Maps en Compartir → Insertar un mapa.')
                         ->rows(4)
                         ->placeholder('<iframe src="https://www.google.com/maps/embed?..." ...></iframe>')
                         ->helperText('Pega el código iframe de Google Maps → Compartir → Insertar mapa.')

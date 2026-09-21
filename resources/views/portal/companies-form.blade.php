@@ -38,7 +38,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                     RUC <span class="text-red-500">*</span>
                 </label>
-                <input type="text" name="ruc" maxlength="13"
+                <input type="text" name="ruc" inputmode="numeric" autocomplete="off" maxlength="13"
                        value="{{ old('ruc', $companyRecord->ruc ?? '') }}"
                        placeholder="13 dígitos"
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
@@ -54,7 +54,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                     Nombre de la empresa <span class="text-red-500">*</span>
                 </label>
-                <input type="text" name="nombre" maxlength="200"
+                <input type="text" name="nombre" autocomplete="name" maxlength="200"
                        value="{{ old('nombre', $companyRecord->nombre ?? '') }}"
                        placeholder="Razón social"
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
@@ -70,7 +70,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                     Correo de la empresa
                 </label>
-                <input type="email" name="correo" maxlength="200"
+                <input type="email" name="correo" autocomplete="email" maxlength="200"
                        value="{{ old('correo', $companyRecord->correo ?? '') }}"
                        placeholder="contacto@empresa.com"
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
@@ -86,7 +86,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                     Tu cargo en la empresa
                 </label>
-                <input type="text" name="cargo" maxlength="150"
+                <input type="text" name="cargo" autocomplete="organization-title" maxlength="150"
                        value="{{ old('cargo', $companyRecord->cargo ?? '') }}"
                        placeholder="Ej. Representante legal, Contador..."
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
@@ -102,7 +102,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                     Dirección
                 </label>
-                <input type="text" name="direccion" maxlength="300"
+                <input type="text" name="direccion" autocomplete="street-address" maxlength="300"
                        value="{{ old('direccion', $companyRecord->direccion ?? '') }}"
                        placeholder="Dirección fiscal de la empresa"
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm

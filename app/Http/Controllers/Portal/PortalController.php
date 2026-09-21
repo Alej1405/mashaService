@@ -243,7 +243,9 @@ class PortalController extends Controller
             'latitud'          => 'nullable|numeric|between:-90,90',
             'longitud'         => 'nullable|numeric|between:-180,180',
             'google_maps_url'  => 'nullable|url|max:500',
-            'logo'             => 'nullable|image|max:4096',
+            // 2048 KB = el upload_max_filesize del servidor. Más alto, PHP corta
+            // la petición antes de validar y el error no dice nada.
+            'logo'             => 'nullable|image|max:2048',
         ]);
 
         $mapsUrl = trim((string) ($data['google_maps_url'] ?? ''));

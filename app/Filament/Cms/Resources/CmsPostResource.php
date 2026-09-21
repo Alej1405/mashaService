@@ -41,7 +41,7 @@ class CmsPostResource extends Resource
                     ->toolbarButtons(['bold','italic','underline','bulletList','orderedList','h2','h3','paragraph','link','blockquote','undo','redo'])
                     ->columnSpanFull(),
                 Forms\Components\FileUpload::make('imagen')
-                    ->label('Imagen principal')->image()->disk('public')->directory('cms/posts')
+                    ->label('Imagen principal')->image()->maxSize(2048)->disk('public')->directory('cms/posts')
                     ->imagePreviewHeight('120')
                     ->helperText('JPG o PNG. Recomendado: 1200×630 px.')->columnSpanFull(),
                 Forms\Components\DateTimePicker::make('publicado_en')

@@ -71,7 +71,7 @@ class CmsHeroResource extends Resource
                 ->schema([
                     Forms\Components\FileUpload::make('imagen')
                         ->label('Imagen hero')
-                        ->image()
+                        ->image()->maxSize(2048)
                         ->disk('public')
                         ->directory('cms/hero')
                         ->imagePreviewHeight('160')

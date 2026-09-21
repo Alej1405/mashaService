@@ -26,6 +26,7 @@ class CmsTerminosResource extends Resource
     {
         return $form->schema([
             Forms\Components\Section::make('Documento legal')
+                ->description('El texto legal que se publica en tu sitio. Se muestra tal como lo escribas aquí.')
                 ->icon('heroicon-o-scale')
                 ->schema([
                     Forms\Components\TextInput::make('titulo')
@@ -48,6 +49,7 @@ class CmsTerminosResource extends Resource
 
                     Forms\Components\DatePicker::make('ultima_actualizacion')
                         ->label('Última actualización')
+                    ->helperText('La fecha se muestra junto al texto: actualízala cuando cambies algo.')
                         ->default(now())
                         ->native(false),
 

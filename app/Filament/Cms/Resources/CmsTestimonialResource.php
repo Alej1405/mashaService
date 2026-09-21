@@ -25,16 +25,19 @@ class CmsTestimonialResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make()->columns(2)->schema([
-                Forms\Components\TextInput::make('autor_nombre')->label('Nombre del cliente')->required()->maxLength(150),
+            Forms\Components\Section::make()
+                ->description('Lo que dicen tus clientes. Un testimonio con nombre y cargo reales convence; uno anónimo no.')->columns(2)->schema([
+                Forms\Components\TextInput::make('autor_nombre')->label('Nombre del cliente')
+                    ->helperText('Nombre real. Un testimonio anónimo no convence a nadie.')->required()->maxLength(150),
                 Forms\Components\TextInput::make('autor_cargo')->label('Cargo')->placeholder('Gerente de Operaciones')->maxLength(150),
                 Forms\Components\TextInput::make('autor_empresa')->label('Empresa')->maxLength(150),
                 Forms\Components\Select::make('estrellas')->label('Calificación')
                     ->options([5=>'⭐⭐⭐⭐⭐',4=>'⭐⭐⭐⭐',3=>'⭐⭐⭐',2=>'⭐⭐',1=>'⭐'])->default(5)->native(false),
                 Forms\Components\Textarea::make('contenido')->label('Testimonio')
+                    ->helperText('Textual, como lo dijo el cliente. Sin corregirle el tono.')
                     ->required()->rows(4)->maxLength(600)->columnSpanFull(),
                 Forms\Components\FileUpload::make('autor_foto')->label('Foto del cliente (opcional)')
-                    ->image()->disk('public')->directory('cms/testimonials')
+                    ->image()->maxSize(2048)->disk('public')->directory('cms/testimonials')
                     ->imagePreviewHeight('80')->columnSpanFull(),
                 Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
                 Forms\Components\Toggle::make('activo')->label('Visible')->default(true),

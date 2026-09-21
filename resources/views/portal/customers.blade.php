@@ -14,6 +14,7 @@
                 No hay clientes registrados aún.
             </div>
         @else
+            <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100 text-sm">
                 <thead class="bg-gray-50">
                     <tr>
@@ -44,6 +45,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
 
             @if($customers->hasPages())
             <div class="px-5 py-3 border-t border-gray-100">

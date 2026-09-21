@@ -25,12 +25,15 @@ class CmsTeamMemberResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make()->columns(2)->schema([
+            Forms\Components\Section::make()
+                ->description('Las personas detrás del negocio. Poner cara y nombre genera más confianza que cualquier texto.')->columns(2)->schema([
                 Forms\Components\TextInput::make('nombre')->label('Nombre completo')->required()->maxLength(150),
                 Forms\Components\TextInput::make('cargo')->label('Cargo / Rol')->placeholder('Gerente General')->maxLength(150),
-                Forms\Components\Textarea::make('bio')->label('Biografía corta')->rows(3)->maxLength(400)->columnSpanFull(),
+                Forms\Components\Textarea::make('bio')->label('Biografía corta')
+                    ->helperText('Dos o tres líneas. Qué hace y desde cuándo.')->rows(3)->maxLength(400)->columnSpanFull(),
                 Forms\Components\FileUpload::make('foto')->label('Foto')
-                    ->image()->disk('public')->directory('cms/team')
+                    ->helperText('Retrato cuadrado, mirando a cámara. Máximo 2 MB.')
+                    ->image()->maxSize(2048)->disk('public')->directory('cms/team')
                     ->imagePreviewHeight('100')->columnSpanFull(),
                 Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
                 Forms\Components\Toggle::make('activo')->label('Visible')->default(true),

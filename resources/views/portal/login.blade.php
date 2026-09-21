@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Iniciar sesión — {{ $empresa->name }}</title>
     @if($empresa->logo_path)
         <link rel="icon" type="image/png" href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($empresa->logo_path) }}">
         <link rel="apple-touch-icon" href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($empresa->logo_path) }}">
     @endif
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
         .login-card { animation: lc .4s cubic-bezier(0.23,1,0.32,1) both; }
@@ -61,11 +61,11 @@
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 9h3m-3 3h3m-6 4h6a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v9a2 2 0 002 2h1m2-6a2 2 0 11-4 0 2 2 0 014 0zm-4 4a3 3 0 016 0v.5H5z"/></svg>
                     </span>
-                    <input type="text" id="cedula" name="cedula" value="{{ old('cedula') }}" required autofocus inputmode="numeric"
+                    <input type="text" id="cedula" name="cedula" value="{{ old('cedula') }}" required autofocus inputmode="numeric" autocomplete="username"
                            placeholder="1712345678"
                            class="w-full rounded-xl border border-slate-300 pl-11 pr-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
                 </div>
-                <p class="mt-1.5 text-xs text-slate-400">El número con el que te registró {{ $empresa->name }}.</p>
+                <p class="mt-1.5 text-xs text-slate-500">El número con el que te registró {{ $empresa->name }}.</p>
             </div>
             <button type="submit"
                     class="group w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 text-sm shadow-sm shadow-indigo-600/25 transition active:scale-[0.98] flex items-center justify-center gap-2">

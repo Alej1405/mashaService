@@ -2,27 +2,36 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{ $title ?? 'Portal' }} — {{ $empresa->name }}</title>
     @if($empresa->logo_path)
         <link rel="icon" type="image/png" href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($empresa->logo_path) }}">
         <link rel="apple-touch-icon" href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($empresa->logo_path) }}">
     @endif
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
-        :root { --accent:#4f46e5; --accent-soft:#eef2ff; }
+        :root { --ease-salida: cubic-bezier(0.23, 1, 0.32, 1); }
         body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
         [x-cloak] { display:none !important; }
-        .pv-in { animation: pv-in .32s cubic-bezier(0.23,1,0.32,1) both; }
-        @keyframes pv-in { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
-        .pv-nav { transition: background-color .15s ease, color .15s ease, box-shadow .15s ease; }
-        .pv-nav:active { transform: scale(0.98); }
-        @media (prefers-reduced-motion: reduce) { .pv-in, .pv-nav { animation: none; transition: none; } }
+        .pv-in { animation: pv-in .2s var(--ease-salida) both; }
+        @keyframes pv-in { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+        .pv-nav { transition: background-color .15s var(--ease-salida), color .15s var(--ease-salida), box-shadow .15s var(--ease-salida); }
+        /* El :hover se queda pegado tras un toque: solo con puntero fino. */
+        @media (hover: hover) and (pointer: fine) { .pv-nav:active { transform: scale(0.98); } }
+        @media (pointer: coarse) { .pv-nav:active { opacity: .7; } }
+        /* Movimiento reducido no es cero movimiento: se queda el fundido,
+           se va el desplazamiento. */
+        @media (prefers-reduced-motion: reduce) {
+            .pv-in { animation: pv-fade .2s ease both; }
+            @keyframes pv-fade { from { opacity:0 } to { opacity:1 } }
+            .pv-nav { transition: none; }
+            .pv-nav:active { transform: none; }
+        }
     </style>
 </head>
-<body class="min-h-screen text-slate-800" style="background:#f6f7f9">
+<body x-data="{ masAbierto: false }" class="min-h-screen text-slate-800" style="background:#f6f7f9">
 
 @php
     $slug = $empresa->slug;
@@ -77,7 +86,7 @@
             </div>
             <form action="{{ route('portal.logout', $slug) }}" method="POST">
                 @csrf
-                <button type="submit" title="Cerrar sesión" class="pv-nav flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg px-2.5 py-1.5">
+                <button type="submit" title="Cerrar sesión" class="pv-nav flex items-center justify-center gap-1.5 min-h-11 min-w-11 px-3 text-sm text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     <span class="hidden sm:inline">Salir</span>
                 </button>
@@ -86,24 +95,8 @@
     </div>
 </header>
 
-<div class="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-7">
+<div class="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-7 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-7">
 
-    {{-- Navegación móvil: pills desplazables --}}
-    <div class="md:hidden mb-5 -mx-4 px-4">
-        <div class="flex gap-2 overflow-x-auto pb-1">
-            @foreach($links as $link)
-                @php $active = request()->routeIs($link['pattern'] ?? $link['route']); @endphp
-                <a href="{{ route($link['route'], $slug) }}"
-                   class="pv-nav shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium
-                          {{ $active ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20' : 'bg-white text-slate-600 border border-slate-200' }}">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $link['icon'] }}"/>
-                    </svg>
-                    {{ $link['label'] }}
-                </a>
-            @endforeach
-        </div>
-    </div>
 
     <div class="flex gap-7">
 
@@ -113,6 +106,7 @@
                 @foreach($links as $link)
                     @php $active = request()->routeIs($link['pattern'] ?? $link['route']); @endphp
                     <a href="{{ route($link['route'], $slug) }}"
+                       @if($active) aria-current="page" @endif
                        class="pv-nav flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
                               {{ $active
                                   ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
@@ -141,9 +135,74 @@
 
 </div>
 
+
+{{-- Barra inferior: la navegación del móvil vive al alcance del pulgar, no
+     arriba. Cuatro destinos fijos y el resto en una hoja, para que ningún
+     ítem quede escondido en un scroll horizontal. --}}
+@php
+    $principales = array_slice($links, 0, 4);
+    $restantes   = array_slice($links, 4);
+@endphp
+<nav aria-label="Navegación principal"
+     class="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+    <div class="grid {{ $restantes ? 'grid-cols-5' : 'grid-cols-4' }}">
+        @foreach($principales as $link)
+            @php $active = request()->routeIs($link['pattern'] ?? $link['route']); @endphp
+            <a href="{{ route($link['route'], $slug) }}"
+               @if($active) aria-current="page" @endif
+               class="pv-nav flex min-h-14 flex-col items-center justify-center gap-1 px-1
+                      {{ $active ? 'text-indigo-600' : 'text-slate-500' }}">
+                <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="{{ $active ? '2.2' : '1.8' }}" d="{{ $link['icon'] }}"/>
+                </svg>
+                <span class="text-[11px] font-medium leading-none truncate max-w-full">{{ $link['label'] }}</span>
+            </a>
+        @endforeach
+
+        @if($restantes)
+            @php $activoEnRestantes = collect($restantes)->contains(fn ($l) => request()->routeIs($l['pattern'] ?? $l['route'])); @endphp
+            <button type="button" @click="masAbierto = true" aria-haspopup="dialog"
+                    class="pv-nav flex min-h-14 flex-col items-center justify-center gap-1 px-1
+                           {{ $activoEnRestantes ? 'text-indigo-600' : 'text-slate-500' }}">
+                <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+                <span class="text-[11px] font-medium leading-none">Más</span>
+            </button>
+        @endif
+    </div>
+</nav>
+
+@if($restantes)
+    <div x-cloak x-show="masAbierto" class="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Más secciones">
+        <div x-show="masAbierto" x-transition.opacity.duration.150ms
+             class="absolute inset-0 bg-slate-900/40" @click="masAbierto = false"></div>
+        <div x-show="masAbierto"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+             class="absolute bottom-0 inset-x-0 rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl">
+            <div class="mx-auto mt-2.5 h-1 w-9 rounded-full bg-slate-200"></div>
+            <div class="p-3">
+                @foreach($restantes as $link)
+                    @php $active = request()->routeIs($link['pattern'] ?? $link['route']); @endphp
+                    <a href="{{ route($link['route'], $slug) }}"
+                       @if($active) aria-current="page" @endif
+                       class="pv-nav flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium
+                              {{ $active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700' }}">
+                        <svg class="w-5 h-5 shrink-0 {{ $active ? 'text-indigo-600' : 'text-slate-400' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $link['icon'] }}"/>
+                        </svg>
+                        {{ $link['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+@endif
+
 {{-- Loader global del ERP: único para todo el portal, se dispara al enviar
      formularios o al navegar entre páginas. --}}
-<div id="erp-loader" class="fixed inset-0 z-50 hidden items-center justify-center bg-white/75 backdrop-blur-sm" aria-hidden="true">
+<div id="erp-loader" role="status" aria-live="polite" class="fixed inset-0 z-[60] hidden items-center justify-center bg-white/75 backdrop-blur-sm" aria-hidden="true">
     <div class="flex flex-col items-center gap-3">
         <svg class="w-10 h-10 animate-spin text-indigo-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>

@@ -25,9 +25,11 @@ class CmsServiceResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make()->columns(2)->schema([
+            Forms\Components\Section::make()
+                ->description('Lo que ofreces, en el orden en que quieres que se lea. Arrastra las filas para cambiarlo.')->columns(2)->schema([
                 Forms\Components\TextInput::make('titulo')
                     ->label('Nombre del servicio')
+                    ->helperText('Nombre corto y reconocible, no una frase de venta.')
                     ->required()->maxLength(150)->columnSpanFull(),
                 Forms\Components\Textarea::make('descripcion')
                     ->label('Descripción')->rows(3)->maxLength(500)->columnSpanFull(),
@@ -41,7 +43,7 @@ class CmsServiceResource extends Resource
                 Forms\Components\TextInput::make('icono')
                     ->label('Ícono (emoji o heroicon)')->placeholder('🚚')->maxLength(60),
                 Forms\Components\FileUpload::make('imagen')
-                    ->label('Imagen')->image()->disk('public')->directory('cms/services')
+                    ->label('Imagen')->image()->maxSize(2048)->disk('public')->directory('cms/services')
                     ->imagePreviewHeight('80'),
                 Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
                 Forms\Components\Toggle::make('activo')->label('Visible')->default(true),

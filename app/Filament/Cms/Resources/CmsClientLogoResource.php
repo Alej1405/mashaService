@@ -25,12 +25,17 @@ class CmsClientLogoResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('nombre')->label('Nombre del cliente / empresa')->required()->maxLength(150)->columnSpanFull(),
-            Forms\Components\FileUpload::make('logo')->label('Logo')->image()->disk('public')->directory('cms/clients')
-                ->imagePreviewHeight('80')->helperText('PNG con fondo transparente recomendado.')->columnSpanFull(),
-            Forms\Components\TextInput::make('url')->label('Sitio web del cliente (opcional)')->url()->maxLength(500)->columnSpanFull(),
-            Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
-            Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
+            Forms\Components\Section::make()
+                ->description('Las marcas con las que trabajas. Se muestran como una fila de logos en tu sitio.')
+                ->schema([
+                Forms\Components\TextInput::make('nombre')->label('Nombre del cliente / empresa')->required()->maxLength(150)->columnSpanFull(),
+                Forms\Components\FileUpload::make('logo')->label('Logo')->image()->maxSize(2048)->disk('public')->directory('cms/clients')
+                    ->imagePreviewHeight('80')->helperText('PNG con fondo transparente recomendado.')->columnSpanFull(),
+                Forms\Components\TextInput::make('url')->label('Sitio web del cliente (opcional)')
+                        ->helperText('Opcional. Si la pones, el logo enlaza al sitio de esa marca.')->url()->maxLength(500)->columnSpanFull(),
+                Forms\Components\TextInput::make('sort_order')->label('Orden')->numeric()->default(0),
+                Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
+                ])->columns(2),
         ]);
     }
 

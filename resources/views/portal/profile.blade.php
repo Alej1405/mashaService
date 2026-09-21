@@ -15,13 +15,13 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                    <input type="text" name="nombre" value="{{ old('nombre', $customer->nombre) }}" required
+                    <input type="text" name="nombre" autocomplete="name" value="{{ old('nombre', $customer->nombre) }}" required
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     @error('nombre')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
-                    <input type="text" name="apellido" value="{{ old('apellido', $customer->apellido) }}"
+                    <input type="text" name="apellido" autocomplete="family-name" value="{{ old('apellido', $customer->apellido) }}"
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
                 <div>
@@ -31,7 +31,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                    <input type="text" name="telefono" value="{{ old('telefono', $customer->telefono) }}"
+                    <input type="tel" name="telefono" inputmode="tel" autocomplete="tel" value="{{ old('telefono', $customer->telefono) }}"
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
             </div>
@@ -54,19 +54,19 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña actual</label>
-                    <input type="password" name="current_password" required
+                    <input type="password" name="current_password" autocomplete="current-password" required
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     @error('current_password')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
-                    <input type="password" name="password" required
+                    <input type="password" name="password" autocomplete="new-password" required
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     @error('password')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
-                    <input type="password" name="password_confirmation" required
+                    <input type="password" name="password_confirmation" autocomplete="new-password" required
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
             </div>

@@ -149,7 +149,7 @@ class CustomerResource extends Resource
                             ->placeholder('Lun a Vie 9:00 a 18:00')
                             ->maxLength(180),
                         Forms\Components\FileUpload::make('logo')
-                            ->label('Logo')->image()->disk('public')->directory('clientes/logos')
+                            ->label('Logo')->image()->maxSize(2048)->disk('public')->directory('clientes/logos')
                             ->imagePreviewHeight('80'),
                         Forms\Components\TextInput::make('google_maps_url')
                             ->label('Enlace de Google Maps')

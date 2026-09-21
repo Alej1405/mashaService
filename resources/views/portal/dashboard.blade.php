@@ -20,7 +20,7 @@
         </div>
 
         <div class="bg-white rounded-2xl border shadow-sm p-4 sm:p-5 {{ $pendingPackages->isNotEmpty() ? 'border-amber-300' : 'border-slate-200' }}">
-            <span class="w-9 h-9 rounded-xl grid place-items-center mb-3 {{ $pendingPackages->isNotEmpty() ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400' }}">
+            <span class="w-9 h-9 rounded-xl grid place-items-center mb-3 {{ $pendingPackages->isNotEmpty() ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-amber-700' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
             </span>
             <p class="text-2xl sm:text-3xl font-bold leading-none {{ $pendingPackages->isNotEmpty() ? 'text-amber-700' : 'text-slate-900' }}">{{ $pendingPackages->count() }}</p>
@@ -221,7 +221,7 @@
                                 Foto del comprobante <span class="text-slate-400 font-normal">(opcional)</span>
                             </label>
                             <input type="file" name="comprobante" accept="image/*"
-                                   class="w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+                                   class="w-full text-sm text-amber-800 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
                             <p class="text-[10px] text-slate-400 mt-1">PNG, JPG o WEBP. Máx 5 MB.</p>
                         </div>
 
