@@ -120,6 +120,15 @@ HTML
         \App\Models\CmsTerminos::observe($cmsObserver);
         \App\Models\CmsPost::observe($cmsObserver);
 
+        // Sitio propio — un cambio renueva el sello y cae el caché de la API
+        $sitioObserver = \App\Observers\SitioObserver::class;
+        \App\Models\SitioPagina::observe($sitioObserver);
+        \App\Models\SitioCaso::observe($sitioObserver);
+        \App\Models\SitioCasoImagen::observe($sitioObserver);
+        \App\Models\SitioPlan::observe($sitioObserver);
+        \App\Models\SitioSeo::observe($sitioObserver);
+        \App\Models\SitioNavegacion::observe($sitioObserver);
+
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
             return $user->hasRole('super_admin') ? true : null;
         });

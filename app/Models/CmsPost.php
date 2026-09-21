@@ -13,12 +13,15 @@ class CmsPost extends Model
     protected $table = 'cms_posts';
 
     protected $fillable = [
-        'empresa_id', 'titulo', 'slug', 'contenido', 'imagen', 'publicado_en', 'activo',
+        'empresa_id', 'titulo', 'slug', 'resumen', 'serie', 'minutos_lectura',
+        'contenido', 'imagen', 'publicado_en', 'destacado', 'activo',
     ];
 
     protected $casts = [
-        'activo'        => 'boolean',
-        'publicado_en'  => 'datetime',
+        'activo'          => 'boolean',
+        'destacado'       => 'boolean',
+        'minutos_lectura' => 'integer',
+        'publicado_en'    => 'datetime',
     ];
 
     protected static function booted(): void

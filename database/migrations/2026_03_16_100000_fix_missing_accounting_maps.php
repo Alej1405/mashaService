@@ -18,22 +18,26 @@ return new class extends Migration
     public function up(): void
     {
         // ── 1. Ampliar ENUM tipo_movimiento ──────────────────────────────────
-        DB::statement("ALTER TABLE accounting_maps MODIFY COLUMN tipo_movimiento ENUM(
-            'compra_contado',
-            'compra_credito_local',
-            'compra_credito_exterior',
-            'venta_contado',
-            'venta_credito',
-            'consumo_produccion',
-            'costo_venta',
-            'iva_compras',
-            'iva_ventas',
-            'depreciacion',
-            'ajuste_inventario',
-            'ajuste_sobrante',
-            'entrada_produccion',
-            'salida_produccion'
-        ) NOT NULL");
+        // MODIFY COLUMN … ENUM es sintaxis de MySQL: en Postgres y SQLite
+        // la columna ya es texto y la sentencia no aplica.
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            DB::statement("ALTER TABLE accounting_maps MODIFY COLUMN tipo_movimiento ENUM(
+                'compra_contado',
+                'compra_credito_local',
+                'compra_credito_exterior',
+                'venta_contado',
+                'venta_credito',
+                'consumo_produccion',
+                'costo_venta',
+                'iva_compras',
+                'iva_ventas',
+                'depreciacion',
+                'ajuste_inventario',
+                'ajuste_sobrante',
+                'entrada_produccion',
+                'salida_produccion'
+            ) NOT NULL");
+        }
 
         $nuevosMapas = [
             ['producto_terminado', 'compra_contado',          '1.1.03.04'],
@@ -162,19 +166,23 @@ return new class extends Migration
                 ->delete();
         }
 
-        DB::statement("ALTER TABLE accounting_maps MODIFY COLUMN tipo_movimiento ENUM(
-            'compra_contado',
-            'compra_credito_local',
-            'compra_credito_exterior',
-            'venta_contado',
-            'venta_credito',
-            'consumo_produccion',
-            'costo_venta',
-            'iva_compras',
-            'iva_ventas',
-            'depreciacion',
-            'ajuste_inventario',
-            'ajuste_sobrante'
-        ) NOT NULL");
+        // MODIFY COLUMN … ENUM es sintaxis de MySQL: en Postgres y SQLite
+        // la columna ya es texto y la sentencia no aplica.
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            DB::statement("ALTER TABLE accounting_maps MODIFY COLUMN tipo_movimiento ENUM(
+                'compra_contado',
+                'compra_credito_local',
+                'compra_credito_exterior',
+                'venta_contado',
+                'venta_credito',
+                'consumo_produccion',
+                'costo_venta',
+                'iva_compras',
+                'iva_ventas',
+                'depreciacion',
+                'ajuste_inventario',
+                'ajuste_sobrante'
+            ) NOT NULL");
+        }
     }
 };

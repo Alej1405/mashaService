@@ -23,14 +23,34 @@ class CustomerAccess extends Model
         'password',
         'email_verified_at',
         'is_super_admin',
+        'verification_token',
+        'verification_sent_at',
+        'reset_token',
+        'reset_expires_at',
     ];
 
-    protected $hidden = ['password'];
+    protected $hidden = ['password', 'verification_token', 'reset_token'];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'is_super_admin'    => 'boolean',
+        'email_verified_at'    => 'datetime',
+        'is_super_admin'       => 'boolean',
+        'verification_sent_at' => 'datetime',
+        'reset_expires_at'     => 'datetime',
     ];
+
+    public function estaVerificado(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    /** El token de reset caduca a la hora; se limpia al usarlo. */
+    public function resetTokenVigente(string $token): bool
+    {
+        return $this->reset_token !== null
+            && $this->reset_expires_at !== null
+            && $this->reset_expires_at->isFuture()
+            && hash_equals($this->reset_token, $token);
+    }
 
     public function customer(): BelongsTo
     {

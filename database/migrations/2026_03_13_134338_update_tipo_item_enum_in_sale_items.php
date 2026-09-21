@@ -14,18 +14,21 @@ return new class extends Migration
         // Normalizar datos existentes antes de cambiar el ENUM
         DB::table('sale_items')->where('tipo_item', 'producto')->update(['tipo_item' => 'producto_terminado']);
 
-        Schema::table('sale_items', function (Blueprint $table) {
-            $table->enum('tipo_item', [
-                'producto_terminado',
-                'materia_prima',
-                'insumo',
-                'servicio',
-                'activo_fijo_maquinaria',
-                'activo_fijo_computo',
-                'activo_fijo_vehiculo',
-                'activo_fijo_muebles',
-            ])->default('producto_terminado')->change();
-        });
+        // ENUM es de MySQL: en Postgres la columna ya es texto.
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            Schema::table('sale_items', function (Blueprint $table) {
+                $table->enum('tipo_item', [
+                    'producto_terminado',
+                    'materia_prima',
+                    'insumo',
+                    'servicio',
+                    'activo_fijo_maquinaria',
+                    'activo_fijo_computo',
+                    'activo_fijo_vehiculo',
+                    'activo_fijo_muebles',
+                ])->default('producto_terminado')->change();
+            });
+        }
     }
 
     /**
@@ -33,8 +36,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sale_items', function (Blueprint $table) {
-            $table->enum('tipo_item', ['producto', 'servicio'])->default('producto')->change();
-        });
+        // ENUM es de MySQL: en Postgres la columna ya es texto.
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            Schema::table('sale_items', function (Blueprint $table) {
+                $table->enum('tipo_item', ['producto', 'servicio'])->default('producto')->change();
+            });
+        }
     }
 };

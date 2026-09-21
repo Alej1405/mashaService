@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('journal_entries', function (Blueprint $table) {
-            if (Schema::hasColumn('journal_entries', 'empresa_id')) {
-                $table->renameColumn('empresa_id', 'empresa_id');
+            if (Schema::hasColumn('journal_entries', 'company_id')) {
+                $table->renameColumn('company_id', 'empresa_id');
             }
         });
     }
@@ -24,8 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('journal_entries', function (Blueprint $table) {
-            if (Schema::hasColumn('journal_entries', 'empresa_id')) {
-                $table->renameColumn('empresa_id', 'empresa_id');
+            if (Schema::hasColumn('journal_entries', 'company_id')) {
+                $table->renameColumn('company_id', 'empresa_id');
             }
         });
     }

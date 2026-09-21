@@ -14,6 +14,24 @@ class Empresa extends Model implements HasName
     use HasApiTokens;
 
     protected $table = 'empresas';
+    /**
+     * Empresas cliente: todas menos la del sitio propio.
+     *
+     * MashaCorp es una Empresa en la base para reusar el CMS, pero no es un
+     * cliente: se administra desde /admin y no aparece como tenant en los
+     * paneles de empresa.
+     */
+    public function scopeClientes(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('slug', '!=', config('sitio.empresa_slug'));
+    }
+
+    /** ¿Es la empresa del sitio propio? */
+    public function esSitioPropio(): bool
+    {
+        return $this->slug === config('sitio.empresa_slug');
+    }
+
     protected $fillable = [
         'name', 'email', 'website_url', 'slug', 'activo',
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',

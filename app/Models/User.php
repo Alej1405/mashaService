@@ -53,24 +53,29 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
         // Paneles basados en roles: todas las empresas activas accesibles.
         if (isset(self::ROLE_BASED_PANELS[$panelId])) {
             if ($this->hasRole('super_admin')) {
-                return Empresa::where('activo', true)->get();
+                return Empresa::clientes()->where('activo', true)->get();
             }
-            return $this->empresasAcceso()->where('activo', true)->get();
+            return $this->empresasAcceso()->clientes()->where('activo', true)->get();
         }
 
         // Paneles por plan: empresas cuyo plan abre este panel.
         $planKeys = $this->plansThatOpenPanel($panelId);
 
         if ($this->hasRole('super_admin')) {
-            return Empresa::where('activo', true)->whereIn('plan', $planKeys)->get();
+            return Empresa::clientes()->where('activo', true)->whereIn('plan', $planKeys)->get();
         }
 
-        return $this->empresasAcceso()->where('activo', true)->whereIn('plan', $planKeys)->get();
+        return $this->empresasAcceso()->clientes()->where('activo', true)->whereIn('plan', $planKeys)->get();
     }
 
     public function canAccessTenant(Model $tenant): bool
     {
         if (! $tenant->activo) {
+            return false;
+        }
+
+        // El sitio propio no se abre como empresa: se administra en /admin.
+        if ($tenant instanceof Empresa && $tenant->esSitioPropio()) {
             return false;
         }
 

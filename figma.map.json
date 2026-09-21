@@ -1,0 +1,273 @@
+{
+  "$comentario": "Mapa Figma <-> Blade para el flujo diseno -> codigo. Pablo edita en Figma, la IA lee este mapa y aplica los cambios en los archivos. Generado 2026-08-12 desde el codigo, no al reves.",
+  "archivo": {
+    "nombre": "erp_ui_dash",
+    "fileKey": "oibBL5lRMkOkSWzEeRwNYE",
+    "url": "https://www.figma.com/design/oibBL5lRMkOkSWzEeRwNYE/erp_ui_dash"
+  },
+  "paginas": {
+    "0:1": "01 · Referencia",
+    "3:2": "02 · Dashboards",
+    "3:3": "03 · Login"
+  },
+  "comoLeerLosCambios": [
+    "1. Pablo edita en Figma y avisa que hay cambios.",
+    "2. La IA llama get_design_context o get_metadata sobre el nodo cambiado.",
+    "3. Busca ese nodeId en este archivo para saber que variable CSS o que blade tocar.",
+    "4. Aplica el cambio SOLO en los archivos listados en 'destino'."
+  ],
+  "variables": {
+    "coleccionBase": {
+      "id": "VariableCollectionId:4:2",
+      "modo": "Valor",
+      "destino": "El bloque <style> de cada dashboard, dentro del selector .dash / .cms / .ecom segun el archivo",
+      "nota": "Son identicos en los 7 dashboards. Cambiar uno aqui implica cambiarlo en TODOS los blades listados en 'dashboards'.",
+      "tokens": {
+        "surface": "--surface",
+        "surface-2": "--surface-2",
+        "surface-3": "--surface-3",
+        "border": "--border",
+        "border-2": "--border-2",
+        "text": "--text",
+        "text-2": "--text-2",
+        "muted": "--muted",
+        "muted-2": "--muted-2",
+        "ok": "--ok",
+        "warn": "--warn",
+        "danger": "--danger",
+        "ok-soft": "--ok-soft",
+        "warn-soft": "--warn-soft",
+        "warn-border": "--warn-border",
+        "danger-soft": "--danger-soft",
+        "danger-border": "--danger-border"
+      }
+    },
+    "coleccionPanel": {
+      "id": "VariableCollectionId:4:15",
+      "modos": {
+        "App · Pro": "accent #4f46e5 · accent-2 #4338ca · radio 14/10",
+        "CMS": "accent #7c3aed · accent-2 #6d28d9 · radio 12/8",
+        "Ecommerce": "accent #7c3aed · accent-2 #6d28d9 · radio 12/8",
+        "Admin": "accent #4f46e5 · accent-2 #4338ca · radio 12/8",
+        "Logistics": "accent #0891b2 · accent-2 #0e7490 · radio 12/8"
+      },
+      "destino": "Cada modo corresponde al <style> de UN blade. Ver 'dashboards'. NO tocar los Color:: de los PanelProvider: esos gobiernan el chrome de Filament (sidebar, botones), no el contenido del dashboard.",
+      "tokens": {
+        "accent": "--accent",
+        "accent-2": "--accent-2",
+        "accent-soft": "--accent-soft",
+        "accent-12": "color-mix(in srgb, var(--accent) 12%, #fff)",
+        "radio": "--r",
+        "radio-sm": "--r-sm"
+      }
+    }
+  },
+  "componentes": [
+    {
+      "nodeId": "6:20",
+      "figma": "Métrica",
+      "variantes": [
+        "estado=normal",
+        "estado=alerta"
+      ],
+      "selector": ".dash-metric / .dash-metric.is-warn",
+      "destino": "resources/views/filament/app/pages/dashboard.blade.php",
+      "tambienEn": [
+        "filament/ecommerce/pages/ecommerce-dashboard.blade.php",
+        "filament/cms/pages/cms-dashboard.blade.php"
+      ],
+      "partes": {
+        "caja-icono": ".dash-metric-ico",
+        "valor": ".dash-metric-value",
+        "etiqueta": ".dash-metric-label",
+        "sub": ".dash-metric-sub"
+      }
+    },
+    {
+      "nodeId": "7:13",
+      "figma": "Panel",
+      "selector": ".dash-panel + .dash-panel-head",
+      "destino": "resources/views/filament/app/pages/dashboard.blade.php",
+      "partes": {
+        "cabecera": ".dash-panel-head",
+        "titulo": ".dash-panel-title",
+        "enlace": ".dash-panel-link"
+      }
+    },
+    {
+      "nodeId": "7:7",
+      "figma": "Fila stock",
+      "selector": ".dash-srow",
+      "destino": "resources/views/filament/app/pages/dashboard.blade.php",
+      "partes": {
+        "nombre": ".dash-srow-name",
+        "minimo": ".dash-srow-min"
+      },
+      "nota": "Entra con animacion escalonada: animation-delay calc(var(--i) * 45ms + 60ms)"
+    },
+    {
+      "nodeId": "7:6",
+      "figma": "Badge stock",
+      "variantes": [
+        "nivel=crit",
+        "nivel=low"
+      ],
+      "selector": ".dash-badge.crit / .dash-badge.low",
+      "destino": "resources/views/filament/app/pages/dashboard.blade.php"
+    },
+    {
+      "nodeId": "7:35",
+      "figma": "Estado vacío",
+      "selector": ".dash-empty",
+      "destino": "resources/views/filament/app/pages/dashboard.blade.php"
+    },
+    {
+      "nodeId": "7:42",
+      "figma": "Enlace rápido",
+      "selector": ".dash-link",
+      "destino": "resources/views/filament/app/pages/dashboard.blade.php",
+      "partes": {
+        "caja-icono": ".dash-link-ico",
+        "titulo": ".dash-link-title",
+        "sub": ".dash-link-sub"
+      }
+    }
+  ],
+  "dashboards": [
+    {
+      "nodeId": "10:18",
+      "figma": "Dashboard · App / Pro",
+      "modoPanel": "App · Pro",
+      "blade": "resources/views/filament/app/pages/dashboard.blade.php",
+      "page": "app/Filament/App/Pages/Dashboard.php",
+      "paneles": [
+        "ProPanelProvider",
+        "EnterprisePanelProvider"
+      ],
+      "estado": "hecho"
+    },
+    {
+      "figma": "Dashboard · Admin",
+      "modoPanel": "Admin",
+      "blade": "resources/views/filament/admin/pages/admin-dashboard.blade.php",
+      "page": "app/Filament/Admin/Pages/AdminDashboard.php",
+      "lineas": 854,
+      "estado": "hecho",
+      "nodeId": "13:95"
+    },
+    {
+      "figma": "Dashboard · CMS",
+      "modoPanel": "CMS",
+      "blade": "resources/views/filament/cms/pages/cms-dashboard.blade.php",
+      "page": "app/Filament/Cms/Pages/CmsDashboard.php",
+      "lineas": 719,
+      "estado": "hecho",
+      "nodeId": "14:95"
+    },
+    {
+      "figma": "Dashboard · Ecommerce",
+      "modoPanel": "Ecommerce",
+      "blade": "resources/views/filament/ecommerce/pages/ecommerce-dashboard.blade.php",
+      "page": "app/Filament/Ecommerce/Pages/EcommerceDashboard.php",
+      "lineas": 615,
+      "estado": "hecho",
+      "nodeId": "14:168"
+    },
+    {
+      "figma": "Dashboard · Portal de clientes",
+      "modoPanel": "App · Pro",
+      "blade": "resources/views/portal/dashboard.blade.php",
+      "controlador": "app/Http/Controllers/Portal/PortalController.php",
+      "lineas": 375,
+      "estado": "hecho",
+      "nota": "Portal de clientes: NO es Filament, es Blade suelto con su propio CSS",
+      "nodeId": "15:157"
+    },
+    {
+      "figma": "Dashboard · Mobile",
+      "modoPanel": "App · Pro",
+      "blade": "resources/views/mobile/dashboard.blade.php",
+      "lineas": 304,
+      "estado": "hecho",
+      "nodeId": "15:208"
+    },
+    {
+      "figma": "Dashboard · Mailing",
+      "modoPanel": "App · Pro",
+      "blade": "resources/views/filament/app/pages/mailing-dashboard.blade.php",
+      "lineas": 343,
+      "estado": "hecho",
+      "nodeId": "15:117"
+    },
+    {
+      "figma": "Dashboard · Basic",
+      "modoPanel": "App · Pro",
+      "blade": "resources/views/filament/basic/pages/dashboard.blade.php",
+      "lineas": 185,
+      "estado": "hecho",
+      "nota": "El accent es dinamico por widget: --accent: {{ $w['color'] }}",
+      "nodeId": "15:95"
+    }
+  ],
+  "logins": [
+    {
+      "figma": "Login · admin",
+      "quien": "admin",
+      "blade": "resources/views/filament/auth/admin-login.blade.php",
+      "clase": "app/Filament/Auth/Login.php",
+      "prefijoCss": "--al-",
+      "estado": "hecho",
+      "nodeId": "16:19"
+    },
+    {
+      "figma": "Login · clientes",
+      "quien": "clientes",
+      "blade": "resources/views/portal/login.blade.php",
+      "controlador": "app/Http/Controllers/Portal/PortalAuthController.php",
+      "estado": "hecho",
+      "nodeId": "16:42"
+    },
+    {
+      "figma": "Login · usuarios",
+      "quien": "usuarios",
+      "blade": "resources/views/mobile/login.blade.php",
+      "estado": "hecho",
+      "nodeId": "16:62"
+    }
+  ],
+  "tipografia": {
+    "familia": "Sansation",
+    "pesosReales": [
+      400,
+      700
+    ],
+    "pesosQueUsaElCss": [
+      400,
+      500,
+      600,
+      650,
+      700,
+      800
+    ],
+    "problema": "Google Fonts solo sirve Sansation en 400 y 700. Filament pide 400;500;600;700 y recibe dos. Todo lo intermedio lo redondea el navegador. La jerarquia entre 500, 600 y 700 no existe en pantalla.",
+    "dondeSeDeclara": "->font('Sansation') en los PanelProvider + font-family en el <style> de cada blade",
+    "opciones": [
+      "Aceptarlo y usar solo 400/700 en el CSS (lo que hace el Figma hoy)",
+      "Cambiar a una familia con mas pesos (Inter ya se usa en 4 PanelProviders y si tiene 400/500/600/700)",
+      "Servir Sansation local con @font-face y los pesos que hagan falta"
+    ]
+  },
+  "inconsistenciasDetectadas": [
+    "EcommercePanelProvider declara Color::Cyan pero su dashboard usa violeta #7c3aed",
+    "AdminPanelProvider declara Color::Amber pero admin-login usa indigo #4f46e5",
+    "Basic, Enterprise, Logistics y Pro declaran ->font('Inter') pero sus blades fuerzan font-family Sansation",
+    "Los verdes y rojos difieren entre dashboards: app usa ok #059669 / danger #be123c, admin usa #16a34a / #dc2626"
+  ],
+  "reglas": [
+    "El chrome de Filament (sidebar, topbar, botones, tablas) NO se controla desde estos blades: viene de los Color:: del PanelProvider. Un cambio de color de sidebar en Figma se aplica ahi, no en el <style>.",
+    "Los dashboards son vistas Blade propias con CSS embebido: ahi si se puede cambiar cualquier cosa sin romper Filament.",
+    "No tocar app/Services/AccountingService.php, los Observers ni el flujo contable.",
+    "No modificar migraciones existentes."
+  ],
+  "$actualizado": "2026-08-12 · 8 dashboards y 3 logins construidos"
+}

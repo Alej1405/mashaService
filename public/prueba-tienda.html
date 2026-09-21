@@ -1,0 +1,218 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Prueba · API Tienda</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 24px; max-width: 1100px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; margin: 28px 0 10px;
+       padding-bottom: 6px; border-bottom: 1px solid currentColor; opacity: .75; }
+  .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 8px; }
+  label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; opacity: .7; }
+  input { font: inherit; padding: 5px 8px; border: 1px solid #8884; border-radius: 6px;
+          background: transparent; color: inherit; }
+  button { font: inherit; padding: 5px 11px; border: 1px solid #8886; border-radius: 6px;
+           background: transparent; color: inherit; cursor: pointer; }
+  button:hover { border-color: currentColor; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+  .fila { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid #8883;
+          border-radius: 6px; font-size: 12px; }
+  .fila b { flex: 1; font-weight: 400; }
+  .est { width: 9px; height: 9px; border-radius: 50%; background: #8886; flex: none; }
+  .ok  { background: #16a34a; } .mal { background: #dc2626; } .esp { background: #eab308; }
+  .ms { opacity: .55; font-variant-numeric: tabular-nums; font-size: 11px; }
+  pre { background: #8881; padding: 12px; border-radius: 8px; overflow: auto; max-height: 340px;
+        font-size: 12px; margin: 10px 0 0; }
+  .resumen { font-size: 13px; padding: 10px 12px; border: 1px solid #8884; border-radius: 8px;
+             margin-top: 14px; }
+</style>
+
+<h1>API Tienda · pantalla de prueba</h1>
+<p class="ms">Ejercita los endpoints de <code>/api/ecommerce/{empresa}</code>. No es diseño: solo verifica que el módulo responde.</p>
+
+<div class="barra">
+  <label>Base URL <input id="base" value="http://127.0.0.1:8000" size="26"></label>
+  <label>Empresa (slug) <input id="empresa" value="rivet-ecuador" size="18"></label>
+  <label>Email <input id="email" type="email" placeholder="cliente@correo.com" size="20"></label>
+  <label>Contraseña <input id="pass" type="password" size="14"></label>
+  <label>Token (verificación / reset) <input id="token" placeholder="pégalo del correo" size="24"></label>
+  <button onclick="login()">Login</button>
+  <button onclick="todo()">Probar todo</button>
+</div>
+<div class="ms" id="sesion">Sin sesión — las rutas protegidas darán 401.</div>
+
+<h2>Catálogo público</h2>
+<div class="grid" id="g-publico"></div>
+
+<h2>Autenticación</h2>
+<div class="grid" id="g-auth"></div>
+
+<h2>Protegido · requiere token</h2>
+<div class="grid" id="g-priv"></div>
+
+<h2>Cupones y pagos</h2>
+<div class="grid" id="g-otros"></div>
+
+<div class="resumen" id="resumen">Sin ejecutar.</div>
+<pre id="salida">Pulsa un endpoint para ver su respuesta.</pre>
+
+<script>
+const $ = id => document.getElementById(id);
+let token = null;
+
+const ENDPOINTS = {
+  'g-publico': [
+    ['GET',  'products',                'Listado de productos'],
+    ['GET',  'products/featured',       'Destacados'],
+    ['GET',  'products/{slug}',         'Detalle por slug'],
+    ['GET',  'products/{id}/related',   'Relacionados'],
+    ['GET',  'categories',              'Categorías'],
+    ['GET',  'categories/{slug}',       'Categoría por slug'],
+    ['GET',  'categories/{slug}/landing', 'Landing de categoría'],
+  ],
+  'g-auth': [
+    ['POST', 'auth/login',                'Login (403 si no está verificado)'],
+    ['POST', 'auth/register',             'Registro · envía correo de verificación'],
+    ['POST', 'auth/verify-email',         'Verificar correo con token'],
+    ['POST', 'auth/resend-verification',  'Reenviar verificación'],
+    ['POST', 'auth/forgot-password',      'Olvidé contraseña · envía enlace'],
+    ['POST', 'auth/reset-password',       'Cambiar clave con token'],
+    ['GET',  'auth/me',                   'Perfil de sesión'],
+    ['POST', 'auth/logout',               'Logout'],
+  ],
+  'g-priv': [
+    ['GET',  'orders',                 'Mis pedidos'],
+    ['POST', 'orders',                 'Crear pedido'],
+    ['GET',  'orders/{id}',            'Detalle de pedido'],
+    ['GET',  'customers/me',           'Mi perfil'],
+    ['PUT',  'customers/me',           'Actualizar perfil'],
+    ['PUT',  'customers/me/password',  'Cambiar contraseña'],
+    ['GET',  'customers/me/addresses', 'Mis direcciones'],
+    ['POST', 'customers/me/addresses', 'Crear dirección'],
+  ],
+  'g-otros': [
+    ['POST', 'coupons/validate',  'Validar cupón'],
+    ['POST', 'payments/intent',   'Intento de pago'],
+  ],
+};
+
+// Valores capturados de respuestas previas para rellenar {slug} e {id}
+const ctx = { slug: null, id: null, catSlug: null, orderId: null };
+
+function url(ruta) {
+  return `${$('base').value.replace(/\/$/, '')}/api/ecommerce/${$('empresa').value}/`
+    + ruta.replace('{slug}', ctx.slug ?? 'sin-slug')
+          .replace('{id}',   ctx.id   ?? '1')
+    ;
+}
+
+// Los payloads siguen las reglas de validación reales de cada controlador.
+function cuerpo(ruta) {
+  const e = $('email').value, p = $('pass').value;
+  if (ruta === 'auth/login')            return { email: e, password: p };
+  if (ruta === 'auth/register')         return { nombre: 'Prueba', apellido: 'API', email: e,
+                                                 password: p, password_confirmation: p };
+  if (ruta === 'auth/forgot-password')  return { email: e };
+  if (ruta === 'auth/verify-email')     return { token: $('token').value };
+  if (ruta === 'auth/resend-verification') return { email: e };
+  if (ruta === 'auth/reset-password')   return { token: $('token').value, password: p, password_confirmation: p };
+  if (ruta === 'orders')                return {
+      items: [{ store_product_id: ctx.id ?? 1, cantidad: 1 }],
+      shipping_address: { linea1: 'Av. Amazonas 123', ciudad: 'Quito' },
+      notas: 'Pedido de prueba',
+  };
+  if (ruta === 'coupons/validate')      return { code: 'PRUEBA', subtotal: 10 };
+  if (ruta === 'payments/intent')       return { monto: 1.00 };
+  if (ruta === 'customers/me')          return { nombre: 'Prueba', apellido: 'API' };
+  if (ruta === 'customers/me/password') return { current_password: p, password: p, password_confirmation: p };
+  if (ruta === 'customers/me/addresses')return { nombre_destinatario: 'Prueba API', linea1: 'Av. Amazonas 123',
+                                                 ciudad: 'Quito', provincia: 'Pichincha', pais: 'EC' };
+  return {};
+}
+
+function recordar(ruta, datos) {
+  const d = datos?.data ?? datos;
+  const primero = Array.isArray(d) ? d[0] : (Array.isArray(d?.data) ? d.data[0] : d);
+  if (!primero || typeof primero !== 'object') return;
+  if (ruta === 'products' || ruta === 'products/featured') {
+    ctx.slug = primero.slug ?? ctx.slug;
+    ctx.id   = primero.id   ?? ctx.id;
+  }
+  if (ruta === 'categories') ctx.catSlug = primero.slug ?? ctx.catSlug;
+}
+
+async function llamar(metodo, ruta, celda) {
+  const punto = celda.querySelector('.est');
+  const reloj = celda.querySelector('.ms');
+  punto.className = 'est esp';
+  const t0 = performance.now();
+  try {
+    const cab = { 'Accept': 'application/json' };
+    if (token) cab['Authorization'] = 'Bearer ' + token;
+    const opt = { method: metodo, headers: cab };
+    if (metodo !== 'GET') {
+      cab['Content-Type'] = 'application/json';
+      opt.body = JSON.stringify(cuerpo(ruta));
+    }
+    const r = await fetch(url(ruta), opt);
+    const ms = Math.round(performance.now() - t0);
+    let datos; try { datos = await r.json(); } catch { datos = await r.text(); }
+
+    punto.className = 'est ' + (r.ok ? 'ok' : 'mal');
+    reloj.textContent = r.status + ' · ' + ms + 'ms';
+    recordar(ruta, datos);
+    if (ruta === 'auth/login' && datos?.token) { token = datos.token; sesion(); }
+    $('salida').textContent = `${metodo} ${url(ruta)}\n${r.status} ${r.statusText} · ${ms}ms\n\n`
+      + (typeof datos === 'string' ? datos : JSON.stringify(datos, null, 2));
+    return r.ok;
+  } catch (err) {
+    punto.className = 'est mal';
+    reloj.textContent = 'red';
+    $('salida').textContent = `${metodo} ${url(ruta)}\n\nFalló la conexión: ${err.message}`
+      + `\n\n¿Está corriendo el servidor en ${$('base').value}?`;
+    return false;
+  }
+}
+
+function sesion() {
+  $('sesion').textContent = token
+    ? 'Sesión activa · token ' + token.slice(0, 18) + '…'
+    : 'Sin sesión — las rutas protegidas darán 401.';
+}
+
+function pintar() {
+  for (const [grupo, lista] of Object.entries(ENDPOINTS)) {
+    $(grupo).innerHTML = '';
+    for (const [metodo, ruta, etiqueta] of lista) {
+      const d = document.createElement('div');
+      d.className = 'fila';
+      d.innerHTML = `<span class="est"></span><b>${metodo} ${ruta}</b><span class="ms"></span>`;
+      d.title = etiqueta;
+      d.onclick = () => llamar(metodo, ruta, d);
+      $(grupo).appendChild(d);
+    }
+  }
+}
+
+async function login() {
+  const celda = [...document.querySelectorAll('.fila')].find(f => f.textContent.includes('auth/login'));
+  await llamar('POST', 'auth/login', celda);
+}
+
+async function todo() {
+  let ok = 0, total = 0;
+  // El catálogo primero: de ahí salen el slug y el id que usan los demás
+  for (const grupo of ['g-publico', 'g-auth', 'g-priv', 'g-otros']) {
+    for (const celda of $(grupo).children) {
+      const [metodo, ruta] = celda.querySelector('b').textContent.split(' ');
+      total++;
+      if (await llamar(metodo, ruta, celda)) ok++;
+    }
+  }
+  $('resumen').textContent = `${ok} de ${total} endpoints respondieron correctamente.`
+    + (ok < total ? '  Revisa los que están en rojo — un 401 sin sesión es esperado.' : '');
+}
+
+pintar();
+sesion();
+</script>

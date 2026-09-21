@@ -33,6 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->font('Sansation')
             ->darkMode(false)
             ->navigationGroups([
+                NavigationGroup::make('Sitio MashaCorp')->collapsed(),
                 NavigationGroup::make('Clientes')->collapsed(),
                 NavigationGroup::make('Plataforma')->collapsed(),
                 NavigationGroup::make('Monitoreo')->collapsed(),

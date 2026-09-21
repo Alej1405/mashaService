@@ -52,6 +52,10 @@ class CmsObserver
         if ($model instanceof \App\Models\CmsPost && $model->slug) {
             Cache::forget("cms:{$slug}:post:{$model->slug}");
         }
+
+        // El sitio propio arma sus payloads con estos mismos modelos:
+        // renovar su sello para que la API no siga sirviendo lo viejo.
+        \App\Support\SitioPropio::renovarSello($slug);
     }
 
     private function slug(Model $model): ?string

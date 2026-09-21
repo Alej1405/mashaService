@@ -26,9 +26,12 @@ return new class extends Migration
         DB::statement("UPDATE debts SET sistema_amortizacion = 'frances'
                         WHERE sistema_amortizacion IN ('compuesto', 'simple')");
 
-        Schema::table('debts', function (Blueprint $table) {
-            $table->enum('sistema_amortizacion', ['frances', 'aleman', 'americano'])->default('frances')->change();
-        });
+        // ENUM es de MySQL: en Postgres la columna se queda como texto de 20.
+        if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+            Schema::table('debts', function (Blueprint $table) {
+                $table->enum('sistema_amortizacion', ['frances', 'aleman', 'americano'])->default('frances')->change();
+            });
+        }
     }
 
     public function down(): void

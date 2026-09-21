@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('inventory_movements', function (Blueprint $table) {
-            if (Schema::hasColumn('inventory_movements', 'empresa_id')) {
-                $table->renameColumn('empresa_id', 'empresa_id');
+            if (Schema::hasColumn('inventory_movements', 'company_id')) {
+                $table->renameColumn('company_id', 'empresa_id');
             }
         });
     }
@@ -24,8 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('inventory_movements', function (Blueprint $table) {
-            if (Schema::hasColumn('inventory_movements', 'empresa_id')) {
-                $table->renameColumn('empresa_id', 'empresa_id');
+            if (Schema::hasColumn('inventory_movements', 'company_id')) {
+                $table->renameColumn('company_id', 'empresa_id');
             }
         });
     }

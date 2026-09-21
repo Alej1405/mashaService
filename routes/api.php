@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CmsController;
+use App\Http\Controllers\Api\SitioController;
 use App\Http\Controllers\Api\Store\StoreAuthController;
 use App\Http\Controllers\Api\Store\StoreCategoryController;
 use App\Http\Controllers\Api\Store\StoreCouponController;
@@ -64,6 +65,8 @@ Route::prefix('ecommerce/{empresa_slug}')
         Route::prefix('auth')->group(function () {
             Route::post('login',            [StoreAuthController::class, 'login']);
             Route::post('register',         [StoreAuthController::class, 'register']);
+            Route::post('verify-email',     [StoreAuthController::class, 'verifyEmail']);
+            Route::post('resend-verification', [StoreAuthController::class, 'resendVerification']);
             Route::post('forgot-password',  [StoreAuthController::class, 'forgotPassword']);
             Route::post('reset-password',   [StoreAuthController::class, 'resetPassword']);
 
@@ -211,3 +214,40 @@ Route::prefix('n8n/v1')
 // NOTA: las rutas erp/v1 (dataset/simulación de costos → motor Python) se retiraron.
 // Se reconstruirán limpias cuando entre la fase de costos. El bridge al motor
 // (config engine, MotorClient) queda dormido para esa fase.
+
+/*
+|--------------------------------------------------------------------------
+| API Routes — Sitio propio (front en Svelte)
+|--------------------------------------------------------------------------
+| Base URL: /api/sitio/{slug}/...
+|
+| Mismo token que el CMS (ValidateCmsApiToken): es el token de la empresa,
+| y vive en el servidor de SvelteKit, nunca en el navegador.
+|
+| Una petición por ruta, no una por sección:
+|   GET  layout                 → marca, navegación (incluye nav inferior) y pie
+|   GET  inicio                 → hero, fuerzas, casos, prueba social, FAQ, SEO
+|   GET  paginas/{pagina}       → sección autónoma + casos + planes + SEO
+|   GET  casos/{caso}           → un caso del portafolio
+|   GET  articulos              → índice del Laboratorio
+|   GET  articulos/{articulo}   → artículo completo
+|   POST mensajes               → formulario de un solo campo (única escritura)
+|
+| Toda respuesta GET trae ETag y Cache-Control: si nadie editó en el panel,
+| la revalidación de SvelteKit responde 304 sin cuerpo.
+*/
+
+Route::prefix('sitio/{slug}')
+    ->middleware(ValidateCmsApiToken::class)
+    ->group(function () {
+        Route::get('layout',                [SitioController::class, 'layout']);
+        Route::get('inicio',                [SitioController::class, 'inicio']);
+        Route::get('paginas/{pagina}',      [SitioController::class, 'pagina']);
+        Route::get('casos/{caso}',          [SitioController::class, 'caso']);
+        Route::get('articulos',             [SitioController::class, 'articulos']);
+        Route::get('articulos/{articulo}',  [SitioController::class, 'articulo']);
+
+        // Escritura: limitada por IP para que un robot no llene la bandeja.
+        Route::post('mensajes', [SitioController::class, 'mensaje'])
+            ->middleware('throttle:6,1');
+    });
