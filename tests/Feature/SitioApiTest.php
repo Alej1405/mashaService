@@ -24,7 +24,7 @@ use Tests\TestCase;
  *     | psql -U erp_user -d erp_mashaec_test
  *
  *   DB_CONNECTION=pgsql DB_DATABASE=erp_mashaec_test DB_USERNAME=erp_user \
- *   DB_PASSWORD=1405 php artisan test --filter=SitioApiTest
+ *   DB_PASSWORD=… php artisan test --filter=SitioApiTest
  *
  * Fija tres cosas que el front en Svelte da por hechas: que una ruta se
  * resuelve en una sola petición, que revalidar cuesta un 304 mientras nadie

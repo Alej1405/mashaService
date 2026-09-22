@@ -9,16 +9,31 @@ use Symfony\Component\HttpFoundation\Response;
 class RedirectMobileToPortal
 {
     /**
-     * Patrones que identifican teléfonos (excluye tablets como iPad y Android tablets).
-     * iPad no lleva "Mobile" en su UA. Tablets Android tampoco en la mayoría de casos.
+     * Teléfonos y tablets. El iPad no lleva "Mobile" en su user-agent y las
+     * tablets Android tampoco, por eso van aparte: desde una tablet tampoco se
+     * abre el ERP de escritorio.
      */
-    private const PHONE_PATTERN = '/\b(Mobile|iPhone|iPod|Android.*Mobile|BlackBerry|IEMobile|Opera Mini|Windows Phone)\b/i';
+    private const MOVIL_PATTERN = '/\b(Mobile|iPhone|iPod|Android.*Mobile|BlackBerry|IEMobile|Opera Mini|Windows Phone)\b/i';
+    private const TABLET_PATTERN = '/\b(iPad|Tablet|PlayBook|Silk|Kindle)\b|Android(?!.*Mobile)/i';
+
+    /**
+     * Lo único que se abre desde un celular o una tablet. El resto del ERP es de
+     * escritorio y se redirige al portal móvil.
+     *
+     *   operaciones/…        el panel de bodega, que está hecho para esto
+     *   i/…                  la ficha que abre el QR de la gaveta
+     *   inventario/etiquetas las etiquetas para imprimir
+     *   mobile/…             el portal móvil
+     *   tienda/…             el portal de clientes, ya responsive
+     */
+    private const PERMITIDO_EN_MOVIL = ['operaciones', 'i/', 'inventario/etiquetas', 'mobile', 'tienda/'];
 
     public function handle(Request $request, Closure $next): Response
     {
-        // No redirigir si ya está en el portal móvil
-        if (str_starts_with($request->path(), 'mobile')) {
-            return $next($request);
+        foreach (self::PERMITIDO_EN_MOVIL as $prefijo) {
+            if (str_starts_with($request->path(), $prefijo)) {
+                return $next($request);
+            }
         }
 
         // No redirigir peticiones AJAX/Livewire/JSON
@@ -36,14 +51,9 @@ class RedirectMobileToPortal
             return $next($request);
         }
 
-        // No redirigir el portal de clientes (rutas /tienda/): ya son responsive
-        if (str_starts_with($request->path(), 'tienda/')) {
-            return $next($request);
-        }
-
         $userAgent = $request->userAgent() ?? '';
 
-        if (preg_match(self::PHONE_PATTERN, $userAgent)) {
+        if (preg_match(self::MOVIL_PATTERN, $userAgent) || preg_match(self::TABLET_PATTERN, $userAgent)) {
             return redirect('/mobile');
         }
 

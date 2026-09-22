@@ -27,7 +27,7 @@ use App\Filament\App\Resources\BankAccountResource;
 use App\Filament\App\Resources\CashRegisterResource;
 use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\SupplierResource;
-use App\Filament\App\Resources\InventoryItemResource;
+use App\Filament\Operaciones\Resources\InventarioResource;
 use App\Services\AccountingService;
 
 class PurchaseResource extends Resource
@@ -177,7 +177,7 @@ class PurchaseResource extends Resource
                                         ->required()
                                         ->columnSpan(4)
                                         ->createOptionModalHeading('Nuevo Ítem de Inventario')
-                                        ->createOptionForm(fn () => InventoryItemResource::getQuickCreateFormSchema())
+                                        ->createOptionForm(fn () => InventarioResource::getQuickCreateFormSchema())
                                         ->createOptionUsing(function (array $data): int {
                                             return \App\Models\InventoryItem::create([
                                                 ...$data,
@@ -567,19 +567,21 @@ class PurchaseResource extends Resource
 
                                     $stockQty = round($item->quantity * $factor, 6);
 
-                                    InventoryMovement::create([
-                                        'empresa_id'        => $record->empresa_id,
-                                        'inventory_item_id' => $item->inventory_item_id,
-                                        'type'              => 'salida',
-                                        'quantity'          => $stockQty,
-                                        'unit_price'        => $item->unit_price / $factor,
-                                        'total'             => $item->subtotal,
-                                        'reference_type'    => 'purchase_void',
-                                        'reference_id'      => $record->id,
-                                        'notes'             => 'Anulación de compra ' . $record->number,
-                                        'date'              => now(),
+                                    // La anulación sale al costo con el que entró
+                                    // esa compra, no al promedio de hoy: es la
+                                    // reversa de una entrada, y el kardex la trata
+                                    // como tal recalculando el promedio.
+                                    app(\App\Services\KardexService::class)->registrar([
+                                        'item'            => $item->inventoryItem,
+                                        'motivo'          => 'devolucion_compra',
+                                        'cantidad'        => $stockQty,
+                                        'costo_unitario'  => $factor > 0 ? $item->unit_price / $factor : (float) $item->unit_price,
+                                        'fecha'           => now()->toDateString(),
+                                        'ubicacion_id'    => $item->inventoryItem->ubicacion_almacen_id,
+                                        'documento'       => 'Anulación de compra ' . $record->number,
+                                        'referencia_tipo' => 'purchase_void',
+                                        'referencia_id'   => $record->id,
                                     ]);
-                                    $item->inventoryItem->decrement('stock_actual', $stockQty);
                                 }
 
                                 if ($record->journalEntry) {

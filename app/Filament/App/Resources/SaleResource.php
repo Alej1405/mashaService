@@ -25,7 +25,7 @@ use App\Filament\App\Resources\BankAccountResource;
 use App\Filament\App\Resources\CashRegisterResource;
 use App\Filament\App\Resources\CreditCardResource;
 use App\Filament\App\Resources\CustomerResource;
-use App\Filament\App\Resources\InventoryItemResource;
+use App\Filament\Operaciones\Resources\InventarioResource;
 use App\Services\AccountingService;
 
 class SaleResource extends Resource
@@ -202,7 +202,7 @@ class SaleResource extends Resource
                                         ->required()
                                         ->reactive()
                                         ->createOptionModalHeading('Nuevo Ítem de Inventario')
-                                        ->createOptionForm(fn () => InventoryItemResource::getQuickCreateFormSchema())
+                                        ->createOptionForm(fn () => InventarioResource::getQuickCreateFormSchema())
                                         ->createOptionUsing(function (array $data): int {
                                             return \App\Models\InventoryItem::create([
                                                 ...$data,

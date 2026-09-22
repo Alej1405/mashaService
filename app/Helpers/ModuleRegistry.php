@@ -52,8 +52,15 @@ class ModuleRegistry
                 'p' => [],
             ],
             'inventario' => [
-                'r' => ['AlmacenResource', 'InventoryItemResource', 'MeasurementUnitResource'],
-                'p' => ['ImportarInventarioPage'],
+                'r' => [
+                    'App\\Filament\\Operaciones\\Resources\\AlmacenResource',
+                    'App\\Filament\\Operaciones\\Resources\\InventarioResource',
+                    'App\\Filament\\Operaciones\\Resources\\MeasurementUnitResource',
+                ],
+                'p' => [
+                    'App\\Filament\\Operaciones\\Pages\\ImportarInventarioPage',
+                    'App\\Filament\\Operaciones\\Pages\\RegistrarMovimiento',
+                ],
             ],
             'ventas' => [
                 'r' => ['CustomerResource', 'SaleResource'],
@@ -113,10 +120,12 @@ class ModuleRegistry
         $map = [];
         foreach (self::definition() as $module => $buckets) {
             foreach ($buckets['r'] as $rel) {
-                $map[self::R . $rel] = $module;
+                // Una clase con namespace propio vive en otro panel (p. ej. el
+                // inventario, que se mudó a Operaciones): se usa tal cual.
+                $map[str_starts_with($rel, 'App\\') ? $rel : self::R . $rel] = $module;
             }
             foreach ($buckets['p'] as $rel) {
-                $map[self::P . $rel] = $module;
+                $map[str_starts_with($rel, 'App\\') ? $rel : self::P . $rel] = $module;
             }
         }
 

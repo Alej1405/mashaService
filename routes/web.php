@@ -286,3 +286,24 @@ Route::get('/fichas/download/{file}', function ($file) {
     
     return Storage::disk('local')->download($path);
 })->name('fichas.download');
+
+/*
+|--------------------------------------------------------------------------
+| Inventario — QR de producto
+|--------------------------------------------------------------------------
+| /i/{token} es la URL que viaja impresa en la etiqueta de cada gaveta. Es
+| corta a propósito: cuanto más corta, menos denso el QR y mejor lee la cámara
+| de lejos y con mala luz.
+|
+| Exige sesión. El token dice QUÉ producto es, no da permiso para verlo.
+*/
+Route::middleware(\App\Http\Middleware\AutenticarEnBodega::class)->group(function () {
+    Route::get('/i/{token}', [\App\Http\Controllers\Inventario\QrController::class, 'ficha'])
+        ->name('inventario.qr.ficha');
+
+    Route::get('/inventario/etiquetas', [\App\Http\Controllers\Inventario\QrController::class, 'etiquetas'])
+        ->name('inventario.etiquetas');
+
+    Route::get('/inventario/etiquetas/pdf', [\App\Http\Controllers\Inventario\QrController::class, 'etiquetasPdf'])
+        ->name('inventario.etiquetas.pdf');
+});

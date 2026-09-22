@@ -24,8 +24,11 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
 
     /** Paneles que usan roles de acceso en lugar del plan. Se mantienen igual. */
     private const ROLE_BASED_PANELS = [
-        'cms'        => ['admin_empresa', 'marketing', 'cms_editor'],
-        'ecommerce'  => ['admin_empresa', 'ecommerce_manager'],
+        'cms'         => ['admin_empresa', 'marketing', 'cms_editor'],
+        'ecommerce'   => ['admin_empresa', 'ecommerce_manager'],
+        // Operaciones se abre por rol, no por plan: quien trabaja en bodega
+        // entra por lo que hace, no por lo que su empresa contrató.
+        'operaciones' => ['admin_empresa', 'inventario'],
     ];
 
     /** Mapa de paneles basados en rol (lectura pública para el hub de inicio). */

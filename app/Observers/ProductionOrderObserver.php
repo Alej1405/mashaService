@@ -25,53 +25,70 @@ class ProductionOrderObserver
                     $order->load(['finishedProduct', 'materials.inventoryItem']);
                     $accountingService = app(AccountingService::class);
 
-                    // 2. Generar Asiento Contable
-                    $journalEntry = $accountingService->generarAsientoProduccion($order);
+                    $kardex = app(\App\Services\KardexService::class);
 
-                    // 3. Movimientos de Salida (Consumo de Materiales)
+                    // 2. Consumo de materiales POR EL KARDEX, antes del asiento:
+                    //    cada salida se valora al promedio vigente, y ese es el
+                    //    costo real de la orden. Hacerlo después obligaría a
+                    //    contabilizar un costo y descargar otro.
+                    $costoMateriales = 0.0;
+
                     foreach ($order->materials as $material) {
-                        InventoryMovement::create([
-                            'empresa_id'        => $order->empresa_id,
-                            'inventory_item_id' => $material->inventory_item_id,
-                            'type'              => 'salida',
-                            'quantity'          => -$material->cantidad_consumida,
-                            'unit_price'        => $material->costo_unitario,
-                            'total'             => $material->costo_total,
-                            'reference_type'    => 'production_order',
-                            'reference_id'      => $order->id,
-                            'journal_entry_id'  => $journalEntry->id,
-                            'notes'             => 'Consumo por producción ' . $order->referencia,
-                            'date'              => $order->fecha,
+                        $movimiento = $kardex->registrar([
+                            'item'            => $material->inventoryItem,
+                            'motivo'          => 'consumo_produccion',
+                            'cantidad'        => (float) $material->cantidad_consumida,
+                            'fecha'           => $order->fecha,
+                            'ubicacion_id'    => $material->inventoryItem->ubicacion_almacen_id,
+                            'documento'       => 'Consumo por producción ' . $order->referencia,
+                            'referencia_tipo' => 'production_order',
+                            'referencia_id'   => $order->id,
                         ]);
 
-                        // Descontar stock del catálogo
-                        $material->inventoryItem->decrement('stock_actual', $material->cantidad_consumida);
+                        // El costo de la orden pasa a ser el del kardex, no el
+                        // que se estimó al planificarla.
+                        $material->updateQuietly([
+                            'costo_unitario' => $movimiento->unit_price,
+                            'costo_total'    => $movimiento->total,
+                        ]);
+
+                        $costoMateriales += (float) $movimiento->total;
                     }
 
-                    // 4. Movimiento de Entrada (Producto Terminado)
-                    $costoUnitarioReal = $order->cantidad_producida > 0 
-                        ? $order->costo_total / $order->cantidad_producida 
+                    $order->updateQuietly(['costo_total' => round($costoMateriales, 2)]);
+                    $order->refresh()->load(['finishedProduct', 'materials.inventoryItem']);
+
+                    // 3. Asiento, ya con el costo real: Dr producto terminado /
+                    //    Cr materia prima, cuadrado contra el kardex.
+                    $journalEntry = $accountingService->generarAsientoProduccion($order);
+
+                    \App\Models\InventoryMovement::where('reference_type', 'production_order')
+                        ->where('reference_id', $order->id)
+                        ->whereNull('journal_entry_id')
+                        ->update(['journal_entry_id' => $journalEntry->id]);
+
+                    // 4. Entrada del producto terminado al costo de producción.
+                    $costoUnitarioReal = $order->cantidad_producida > 0
+                        ? round($order->costo_total / $order->cantidad_producida, 4)
                         : 0;
 
-                    InventoryMovement::create([
-                        'empresa_id'        => $order->empresa_id,
-                        'inventory_item_id' => $order->inventory_item_id,
-                        'type'              => 'entrada',
-                        'quantity'          => $order->cantidad_producida,
-                        'unit_price'        => $costoUnitarioReal,
-                        'total'             => $order->costo_total,
-                        'reference_type'    => 'production_order',
-                        'reference_id'      => $order->id,
-                        'journal_entry_id'  => $journalEntry->id,
-                        'notes'             => 'Ingreso por producción ' . $order->referencia,
-                        'date'              => $order->fecha,
-                    ]);
+                    if ($costoUnitarioReal > 0) {
+                        $kardex->registrar([
+                            'item'            => $order->finishedProduct,
+                            'motivo'          => 'ingreso_produccion',
+                            'cantidad'        => (float) $order->cantidad_producida,
+                            'costo_unitario'  => $costoUnitarioReal,
+                            'fecha'           => $order->fecha,
+                            'ubicacion_id'    => $order->finishedProduct->ubicacion_almacen_id,
+                            'documento'       => 'Ingreso por producción ' . $order->referencia,
+                            'referencia_tipo' => 'production_order',
+                            'referencia_id'   => $order->id,
+                            'asiento_id'      => $journalEntry->id,
+                        ]);
+                    }
 
-                    // Incrementar stock y actualizar costo en el catálogo
-                    $order->finishedProduct->increment('stock_actual', $order->cantidad_producida);
-                    $order->finishedProduct->update([
-                        'purchase_price' => $costoUnitarioReal // Asumimos purchase_price como costo base para inventario
-                    ]);
+                    // purchase_price ya no se pisa: el costo de producción vive
+                    // en costo_promedio, y el precio de compra es otra cosa.
 
                     // 5. Cierre de la Orden (Silencioso para evitar recursión)
                     $order->updateQuietly([

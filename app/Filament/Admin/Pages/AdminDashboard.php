@@ -12,6 +12,12 @@ class AdminDashboard extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-squares-2x2';
     protected static ?string $navigationLabel = 'Dashboard';
+
+    /** El inicio del panel vive en /admin, no en /admin/admin-dashboard. */
+    public static function getRoutePath(): string
+    {
+        return '/';
+    }
     protected static ?string $title           = 'Dashboard';
     protected static ?string $navigationGroup = null;
     protected static ?int    $navigationSort  = -10;

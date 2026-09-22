@@ -3,7 +3,7 @@
 namespace App\Filament\App\Pages;
 
 use App\Filament\App\Resources\CustomerResource;
-use App\Filament\App\Resources\InventoryItemResource;
+use App\Filament\Operaciones\Resources\InventarioResource;
 use App\Filament\App\Resources\StoreProductResource;
 use App\Models\Customer;
 use App\Models\InventoryItem;
@@ -69,7 +69,10 @@ class Dashboard extends BaseDashboard
             'alertas'        => $alertas,
             'stockBajo'      => $stockBajo,
             'urlProductos'   => StoreProductResource::getUrl('index'),
-            'urlInventario'  => InventoryItemResource::getUrl('index'),
+            // El inventario vive en el panel de operaciones: hay que pedir la URL
+            // con su panel y su tenant, o Filament no puede resolver la ruta
+            // desde aquí y revienta el dashboard entero.
+            'urlInventario'  => InventarioResource::getUrl('index', panel: 'operaciones', tenant: $empresa),
             'urlClientes'    => CustomerResource::getUrl('index'),
         ];
     }

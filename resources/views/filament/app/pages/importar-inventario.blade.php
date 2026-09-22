@@ -240,7 +240,7 @@
                     <x-filament::button
                         color="gray"
                         tag="a"
-                        :href="\App\Filament\App\Resources\InventoryItemResource::getUrl('index')"
+                        :href="\App\Filament\Operaciones\Resources\InventarioResource::getUrl('index', panel: 'operaciones', tenant: \Filament\Facades\Filament::getTenant())"
                     >
                         Ver inventario
                     </x-filament::button>

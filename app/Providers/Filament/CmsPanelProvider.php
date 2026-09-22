@@ -27,7 +27,7 @@ class CmsPanelProvider extends PanelProvider
         return $panel
             ->id('cms')
             ->path('cms')
-            ->login(\App\Filament\Auth\Login::class)
+            ->login(\App\Filament\Auth\LoginUsuarios::class)
             ->tenant(Empresa::class, slugAttribute: 'slug')
             ->tenantProfile(\App\Filament\Pages\Tenancy\EditEmpresaProfile::class)
             ->colors([
@@ -88,6 +88,9 @@ class CmsPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                // Desde un celular o una tablet este panel no se abre: se va al
+                // portal móvil. Solo Operaciones y la ficha del QR son de bodega.
+                \App\Http\Middleware\RedirectMobileToPortal::class,
             ])
             ->authMiddleware([
                 FilamentAuthenticate::class,

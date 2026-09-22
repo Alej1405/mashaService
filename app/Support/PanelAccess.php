@@ -26,7 +26,7 @@ class PanelAccess
     ];
 
     /**
-     * Metadatos de navegación de los 6 paneles reales (fijos por código Filament).
+     * Metadatos de navegación de los 7 paneles reales (fijos por código Filament).
      * Define etiqueta, ícono y orden del menú de cambio de panel.
      */
     private const NAV = [
@@ -36,6 +36,7 @@ class PanelAccess
         'logistics'  => ['label' => 'Panel Logística',   'icon' => 'heroicon-o-truck',            'path' => 'logistics'],
         'cms'        => ['label' => 'Panel CMS',         'icon' => 'heroicon-o-globe-alt',        'path' => 'cms'],
         'ecommerce'  => ['label' => 'Panel Tienda',      'icon' => 'heroicon-o-shopping-bag',     'path' => 'store'],
+        'operaciones'=> ['label' => 'Panel Operaciones', 'icon' => 'heroicon-o-cube',             'path' => 'operaciones'],
     ];
 
     /** Cache por request del resultado (el tenant es fijo dentro de un request). */

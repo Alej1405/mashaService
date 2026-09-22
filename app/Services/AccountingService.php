@@ -167,7 +167,11 @@ class AccountingService
                     $totalDebe += $item->iva_monto;
                 }
 
-                // 3. Registrar Movimiento de Inventario (solo si hay item de inventario vinculado)
+                // 3. Entrada al kardex (solo si hay item de inventario vinculado).
+                //    Antes se creaba el movimiento a mano y se incrementaba el
+                //    stock: la entrada no formaba el costo promedio y el método
+                //    de valoración no se aplicaba nunca. Ahora entra por el
+                //    kardex, que recalcula el promedio y deja el saldo escrito.
                 if ($item->inventoryItem) {
                     // Si el ítem tiene presentación, la cantidad comprada es en unidades de presentación.
                     // factor = capacidad_presentación × factor_conversion (p.ej. botellón 20L × 1000 ml/L = 20000 ml)
@@ -178,21 +182,21 @@ class AccountingService
 
                     $stockQty = round($item->quantity * $factor, 6);
 
-                    InventoryMovement::create([
-                        'empresa_id'        => $purchase->empresa_id,
-                        'inventory_item_id' => $item->inventory_item_id,
-                        'type'              => 'entrada',
-                        'quantity'          => $stockQty,
-                        'unit_price'        => $item->unit_price / $factor,
-                        'total'             => $item->subtotal,
-                        'reference_type'    => 'purchase',
-                        'reference_id'      => $purchase->id,
-                        'journal_entry_id'  => $journalEntry->id,
-                        'notes'             => 'Compra ' . $purchase->number,
-                        'date'              => $purchase->date,
+                    app(KardexService::class)->registrar([
+                        'item'            => $item->inventoryItem,
+                        'motivo'          => 'compra',
+                        'cantidad'        => $stockQty,
+                        // El costo por unidad de consumo: el IVA no es costo del
+                        // inventario, por eso va el precio sin impuesto.
+                        'costo_unitario'  => $factor > 0 ? $item->unit_price / $factor : (float) $item->unit_price,
+                        'fecha'           => $purchase->date,
+                        'ubicacion_id'    => $item->inventoryItem->ubicacion_almacen_id,
+                        'documento'       => 'Compra ' . $purchase->number,
+                        'referencia_tipo' => 'purchase',
+                        'referencia_id'   => $purchase->id,
+                        'asiento_id'      => $journalEntry->id,
+                        'lote'            => $item->inventoryItem->lote,
                     ]);
-
-                    $item->inventoryItem->increment('stock_actual', $stockQty);
                 }
             }
 
@@ -440,9 +444,17 @@ class AccountingService
                     $cuentaCosto = self::getMapeo($sale->empresa_id, $tipoItemMapa, 'costo_venta');
                     $cuentaInventario = self::getMapeo($sale->empresa_id, $tipoItemMapa, 'compra_contado');
 
-                    // Cálculo de costo estándar solicitado
-                    $costoUnitario = (float)($item->inventoryItem->purchase_price ?? 0);
-                    $costoTotal = $costoUnitario * (float)$item->cantidad;
+                    // El costo de la salida sale del kardex, no del precio de la
+                    // ficha: el promedio ponderado es el único método admitido
+                    // por NIIF de los que el sistema puede sostener.
+                    //
+                    // purchase_price queda de respaldo para el ítem que todavía
+                    // no tiene historia de kardex; ese caso desaparece cuando se
+                    // cargue el saldo inicial valorado.
+                    $costoUnitario = (float) ($item->inventoryItem->costo_promedio > 0
+                        ? $item->inventoryItem->costo_promedio
+                        : ($item->inventoryItem->purchase_price ?? 0));
+                    $costoTotal = round($costoUnitario * (float) $item->cantidad, 4);
 
                     if ($costoTotal > 0) {
                         // DEBE: costo de venta
@@ -468,8 +480,9 @@ class AccountingService
                         $totalHaber += $costoTotal;
                     }
 
-                    // Movimiento inventario (siempre registrar el movimiento, aunque costo sea 0 para trazabilidad)
-                    \App\Models\InventoryMovement::create([
+                    // Movimiento de inventario: queda con el saldo que dejó, para que
+                    // el kardex se lea sin recalcular la historia entera.
+                    $movimientoInventario = \App\Models\InventoryMovement::create([
                         'empresa_id'        => $sale->empresa_id,
                         'inventory_item_id' => $item->inventory_item_id,
                         'type'              => 'salida',
@@ -481,13 +494,31 @@ class AccountingService
                         'journal_entry_id'  => $journalEntry->id,
                         'notes'             => 'Venta ' . $sale->referencia,
                         'date'              => $sale->fecha,
+                        'motivo'            => 'venta',
                     ]);
 
                     // Validar stock
                     if ((float)$item->inventoryItem->stock_actual < (float)$item->cantidad) {
                         throw new \Exception("Stock insuficiente para " . $item->inventoryItem->nombre . ": disponible " . $item->inventoryItem->stock_actual . ", requerido " . $item->cantidad);
                     }
-                    $item->inventoryItem->decrement('stock_actual', $item->cantidad);
+
+                    // El saldo y su valor bajan juntos: si solo baja la cantidad,
+                    // el inventario contable queda inflado.
+                    $saldoCantidad = round((float) $item->inventoryItem->stock_actual - (float) $item->cantidad, 4);
+                    $saldoValor    = round(max((float) $item->inventoryItem->saldo_valorado - $costoTotal, 0), 4);
+
+                    $item->inventoryItem->forceFill([
+                        'stock_actual'   => $saldoCantidad,
+                        'saldo_valorado' => $saldoValor,
+                        // La salida no mueve el promedio: solo lo pierde al quedar en cero.
+                        'costo_promedio' => $saldoCantidad > 0 ? $item->inventoryItem->costo_promedio : 0,
+                    ])->save();
+
+                    $movimientoInventario->forceFill([
+                        'saldo_cantidad' => $saldoCantidad,
+                        'costo_promedio' => $item->inventoryItem->costo_promedio,
+                        'saldo_valor'    => $saldoValor,
+                    ])->save();
                 }
             }
 

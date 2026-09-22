@@ -42,3 +42,10 @@ PRODUCT.md
 # Archivos de trabajo de Claude (no van al repo)
 /logsErp.md
 /memory/
+
+# Documentación y notas: ningún .md va al repo.
+# Se quedan en disco para trabajar, pero no se publican.
+*.md
+
+# Volcados de base de datos: nunca al repo.
+*.sql

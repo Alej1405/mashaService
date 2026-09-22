@@ -110,6 +110,16 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Solicitudes de acceso al ERP
+    |--------------------------------------------------------------------------
+    | A dónde llega el aviso cuando alguien pide unirse desde la pantalla de
+    | ingreso. Sin variable definida, cae en el remitente del sistema.
+    */
+
+    'solicitudes_acceso' => env('CORREO_SOLICITUDES_ACCESO'),
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
