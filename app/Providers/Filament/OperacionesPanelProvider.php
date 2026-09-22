@@ -65,25 +65,14 @@ class OperacionesPanelProvider extends PanelProvider
                     . '@media(max-width:640px){.fi-main{padding-top:1.25rem;padding-bottom:1.75rem}}</style>'
                 ),
             )
-            // Filament recuerda el sidebar abierto y en un celular eso significa
-            // entrar y encontrarse el menú tapando la pantalla. En bodega se entra
-            // a trabajar, no a navegar: por debajo de 1024 px arranca cerrado.
+            // En celular y tablet esto no es una web con menú lateral: es una app.
+            // El sidebar desaparece y la navegación vive abajo, al alcance del
+            // pulgar. En escritorio no cambia nada.
             ->renderHook(
                 'panels::body.end',
-                fn (): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(<<<'HTML'
-                    <script>
-                        document.addEventListener('alpine:initialized', () => {
-                            const cerrarEnMovil = () => {
-                                if (window.innerWidth < 1024) {
-                                    window.Alpine.store('sidebar').isOpen = false
-                                }
-                            }
-                            cerrarEnMovil()
-                            window.addEventListener('resize', cerrarEnMovil)
-                            document.addEventListener('livewire:navigated', cerrarEnMovil)
-                        })
-                    </script>
-                    HTML),
+                fn (): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(
+                    view('filament.operaciones.nav-inferior')->render()
+                ),
             )
             // El logo usaba el tenant por defecto del usuario: estando en Rivet
             // enlazaba a Link Cargo. Que apunte a la empresa abierta.

@@ -26,6 +26,7 @@
     .op-btn:active { transform:scale(.98); }
     .op-btn-principal { background:var(--op-accent); border-color:var(--op-accent); color:#fff; }
     .op-btn svg { width:16px; height:16px; }
+    .op-ayuda-escaneo { flex:1 1 100%; margin:0; font-size:12px; color:var(--op-muted); }
 
     .op-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
     .op-panel { background:var(--op-surface); border:1px solid var(--op-border);
@@ -78,9 +79,13 @@
             </label>
         </form>
 
+        <p class="op-ayuda-escaneo" x-show="! soportado" x-cloak>
+            Para escanear, apunta la cámara del teléfono al QR de la gaveta: abre la ficha sola.
+        </p>
+
         {{-- El lector usa el del propio navegador. Donde no existe (iPhone), se
              explica que la cámara del teléfono ya abre la ficha con el QR. --}}
-        <button type="button" class="op-btn" x-on:click="abrir">
+        <button type="button" class="op-btn" x-on:click="abrir" x-show="soportado" x-cloak>
             <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round"
                       d="M3.75 4.875A1.125 1.125 0 0 1 4.875 3.75h2.25M20.25 4.875A1.125 1.125 0 0 0 19.125 3.75h-2.25M3.75 19.125c0 .621.504 1.125 1.125 1.125h2.25M20.25 19.125c0 .621-.504 1.125-1.125 1.125h-2.25M3 12h18"/>
@@ -175,7 +180,8 @@
                 this.abierto = true;
 
                 if (! this.soportado) {
-                    this.mensaje = 'Este navegador no lee códigos. Apunta la cámara del teléfono al QR de la gaveta: abre la ficha del producto sola.';
+                    this.abierto = false;
+
                     return;
                 }
 
