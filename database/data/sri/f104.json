@@ -1,0 +1,1077 @@
+[
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "401",
+  "descripcion": "Ventas locales (excluye activos fijos) gravadas tarifa diferente de cero · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "411",
+  "descripcion": "Ventas locales gravadas tarifa diferente de cero · valor neto",
+  "formula": "401 - notas de crédito"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "421",
+  "descripcion": "Ventas locales gravadas tarifa diferente de cero · impuesto generado"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "402",
+  "descripcion": "Ventas de activos fijos gravadas tarifa diferente de cero · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "412",
+  "descripcion": "Ventas de activos fijos gravadas tarifa diferente de cero · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "422",
+  "descripcion": "Ventas de activos fijos gravadas tarifa diferente de cero · impuesto generado"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "410",
+  "descripcion": "Ventas locales gravadas tarifa variable (actividades turísticas) · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "420",
+  "descripcion": "Ventas locales gravadas tarifa variable · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "430",
+  "descripcion": "Ventas locales gravadas tarifa variable · impuesto generado"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "425",
+  "descripcion": "Ventas locales (excluye activos fijos) gravadas tarifa 5 % · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "435",
+  "descripcion": "Ventas locales gravadas tarifa 5 % · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "445",
+  "descripcion": "Ventas locales gravadas tarifa 5 % · impuesto generado"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "423",
+  "descripcion": "IVA generado en la diferencia entre ventas y notas de crédito con distinta tarifa (ajuste a pagar)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "424",
+  "descripcion": "IVA generado en la diferencia entre ventas y notas de crédito con distinta tarifa (ajuste a favor)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "403",
+  "descripcion": "Ventas locales gravadas tarifa 0 % que no dan derecho a crédito tributario · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "413",
+  "descripcion": "Ventas locales tarifa 0 % sin derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "404",
+  "descripcion": "Ventas de activos fijos gravadas tarifa 0 % que no dan derecho a crédito tributario · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "414",
+  "descripcion": "Ventas de activos fijos tarifa 0 % sin derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "405",
+  "descripcion": "Ventas locales gravadas tarifa 0 % que dan derecho a crédito tributario · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "415",
+  "descripcion": "Ventas locales tarifa 0 % con derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "406",
+  "descripcion": "Ventas de activos fijos gravadas tarifa 0 % que dan derecho a crédito tributario · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "416",
+  "descripcion": "Ventas de activos fijos tarifa 0 % con derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "407",
+  "descripcion": "Exportaciones de bienes · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "417",
+  "descripcion": "Exportaciones de bienes · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "408",
+  "descripcion": "Exportaciones de servicios y/o derechos · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "418",
+  "descripcion": "Exportaciones de servicios y/o derechos · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "409",
+  "descripcion": "Total ventas y otras operaciones · valor bruto",
+  "formula": "401+402+410+425+403+404+405+406+407+408"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "419",
+  "descripcion": "Total ventas y otras operaciones · valor neto",
+  "formula": "411+412+420+435+413+414+415+416+417+418"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "429",
+  "descripcion": "Total ventas y otras operaciones · impuesto generado",
+  "formula": "421+422+430+445+423-424"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "431",
+  "descripcion": "Transferencias de bienes y prestación de servicios no objeto o exentos de IVA · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "441",
+  "descripcion": "Transferencias no objeto o exentas de IVA · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "442",
+  "descripcion": "Notas de crédito tarifa 0 % por compensar el próximo mes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "443",
+  "descripcion": "Notas de crédito tarifa diferente de cero por compensar el próximo mes · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "453",
+  "descripcion": "Notas de crédito tarifa diferente de cero por compensar · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "434",
+  "descripcion": "Ingresos por reembolso como intermediario (informativo) · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "444",
+  "descripcion": "Ingresos por reembolso como intermediario (informativo) · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "ventas",
+  "nombre_tabla": "Resumen de ventas y otras operaciones",
+  "codigo": "454",
+  "descripcion": "Ingresos por reembolso como intermediario (informativo) · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "480",
+  "descripcion": "Total transferencias gravadas tarifa diferente de cero a contado este mes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "481",
+  "descripcion": "Total transferencias gravadas tarifa diferente de cero a crédito este mes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "482",
+  "descripcion": "Total impuesto generado",
+  "formula": "429"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "483",
+  "descripcion": "Impuesto a liquidar del mes anterior",
+  "formula": "485 de la declaración anterior"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "484",
+  "descripcion": "Impuesto a liquidar en este mes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "485",
+  "descripcion": "Impuesto a liquidar en el próximo mes",
+  "formula": "482-484"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "486",
+  "descripcion": "Mes a pagar el monto de IVA por ventas a crédito de este mes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "487",
+  "descripcion": "Tamaño COPCI"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "499",
+  "descripcion": "Total impuesto a liquidar en este mes",
+  "formula": "483+484"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "111",
+  "descripcion": "Total comprobantes de venta emitidos"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "liquidacion",
+  "nombre_tabla": "Liquidación del IVA en el mes",
+  "codigo": "113",
+  "descripcion": "Total comprobantes de venta anulados"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "500",
+  "descripcion": "Adquisiciones y pagos (excluye activos fijos) gravados tarifa diferente de cero con derecho a crédito tributario · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "510",
+  "descripcion": "Adquisiciones gravadas tarifa diferente de cero con derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "520",
+  "descripcion": "Adquisiciones gravadas tarifa diferente de cero con derecho a crédito · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "501",
+  "descripcion": "Adquisiciones locales de activos fijos gravados tarifa diferente de cero con derecho a crédito · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "511",
+  "descripcion": "Activos fijos gravados tarifa diferente de cero con derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "521",
+  "descripcion": "Activos fijos gravados tarifa diferente de cero con derecho a crédito · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "530",
+  "descripcion": "Adquisiciones gravadas tarifa variable con derecho a crédito · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "533",
+  "descripcion": "Adquisiciones gravadas tarifa variable con derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "534",
+  "descripcion": "Adquisiciones gravadas tarifa variable con derecho a crédito · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "540",
+  "descripcion": "Adquisiciones y pagos locales gravados con tarifa 5 % con derecho a crédito · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "550",
+  "descripcion": "Adquisiciones gravadas tarifa 5 % con derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "560",
+  "descripcion": "Adquisiciones gravadas tarifa 5 % con derecho a crédito · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "502",
+  "descripcion": "Otras adquisiciones y pagos gravados tarifa diferente de cero sin derecho a crédito tributario · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "512",
+  "descripcion": "Otras adquisiciones sin derecho a crédito · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "522",
+  "descripcion": "Otras adquisiciones sin derecho a crédito · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "503",
+  "descripcion": "Importaciones de servicios y/o derechos gravados tarifa diferente de cero · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "513",
+  "descripcion": "Importaciones de servicios y/o derechos · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "523",
+  "descripcion": "Importaciones de servicios y/o derechos · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "504",
+  "descripcion": "Importaciones de bienes (excluye activos fijos) gravados tarifa diferente de cero · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "514",
+  "descripcion": "Importaciones de bienes · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "524",
+  "descripcion": "Importaciones de bienes · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "505",
+  "descripcion": "Importaciones de activos fijos gravados tarifa diferente de cero · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "515",
+  "descripcion": "Importaciones de activos fijos · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "525",
+  "descripcion": "Importaciones de activos fijos · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "526",
+  "descripcion": "IVA generado en la diferencia entre adquisiciones y notas de crédito con distinta tarifa (ajuste positivo al crédito tributario)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "527",
+  "descripcion": "IVA generado en la diferencia entre adquisiciones y notas de crédito con distinta tarifa (ajuste negativo al crédito tributario)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "506",
+  "descripcion": "Importaciones de bienes (incluye activos fijos) gravados tarifa 0 % · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "516",
+  "descripcion": "Importaciones gravadas tarifa 0 % · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "507",
+  "descripcion": "Adquisiciones y pagos (incluye activos fijos) gravados tarifa 0 % · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "517",
+  "descripcion": "Adquisiciones gravadas tarifa 0 % · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "508",
+  "descripcion": "Adquisiciones realizadas a negocios populares (RISE hasta diciembre 2021) · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "518",
+  "descripcion": "Adquisiciones a negocios populares · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "509",
+  "descripcion": "Total adquisiciones y pagos · valor bruto",
+  "formula": "500+501+530+540+502+503+504+505+506+507+508"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "519",
+  "descripcion": "Total adquisiciones y pagos · valor neto",
+  "formula": "510+511+533+550+512+513+514+515+516+517+518"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "529",
+  "descripcion": "Total adquisiciones y pagos · impuesto",
+  "formula": "520+521+534+560+522+523+524+525+526-527"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "531",
+  "descripcion": "Adquisiciones no objeto de IVA · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "541",
+  "descripcion": "Adquisiciones no objeto de IVA · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "532",
+  "descripcion": "Adquisiciones exentas del pago de IVA · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "542",
+  "descripcion": "Adquisiciones exentas del pago de IVA · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "543",
+  "descripcion": "Notas de crédito tarifa 0 % por compensar el próximo mes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "544",
+  "descripcion": "Notas de crédito tarifa diferente de cero por compensar el próximo mes · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "554",
+  "descripcion": "Notas de crédito tarifa diferente de cero por compensar · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "535",
+  "descripcion": "Pagos netos por reembolso como intermediario (informativo) · valor bruto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "545",
+  "descripcion": "Pagos netos por reembolso como intermediario (informativo) · valor neto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "555",
+  "descripcion": "Pagos netos por reembolso como intermediario (informativo) · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "563",
+  "descripcion": "Factor de proporcionalidad para crédito tributario",
+  "formula": "(411+412+420+435+415+416+417+418) / 419"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "564",
+  "descripcion": "Crédito tributario aplicable en este período",
+  "formula": "(520+521+534+560+523+524+525+526-527) x 563"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "565",
+  "descripcion": "Valor de IVA no considerado como crédito tributario por factor de proporcionalidad"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "115",
+  "descripcion": "Total comprobantes de venta recibidos por adquisiciones y pagos (excepto notas de venta)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "117",
+  "descripcion": "Total notas de venta recibidas"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "compras",
+  "nombre_tabla": "Resumen de adquisiciones y pagos",
+  "codigo": "119",
+  "descripcion": "Total liquidaciones de compra emitidas"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "601",
+  "descripcion": "Impuesto causado",
+  "formula": "499-564 si es mayor que cero"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "602",
+  "descripcion": "Crédito tributario aplicable en este período",
+  "formula": "499-564 si es menor que cero"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "603",
+  "descripcion": "(-) Compensación de IVA por ventas con medio electrónico o IVA devuelto a adultos mayores y personas con discapacidad"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "604",
+  "descripcion": "(-) Compensación de IVA por ventas en zonas afectadas y restitución de crédito tributario"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "605",
+  "descripcion": "(-) Saldo crédito tributario del mes anterior por adquisiciones e importaciones",
+  "formula": "615 de la declaración anterior"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "606",
+  "descripcion": "(-) Saldo crédito tributario del mes anterior por retenciones de IVA que le fueron efectuadas",
+  "formula": "617 de la declaración anterior"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "607",
+  "descripcion": "(-) Saldo del mes anterior por compensación de IVA con medio electrónico",
+  "formula": "618 de la declaración anterior"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "608",
+  "descripcion": "(-) Saldo del mes anterior por compensación de IVA en zonas afectadas",
+  "formula": "619 de la declaración anterior"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "623",
+  "descripcion": "(-) Crédito tributario por procesos de fusión o absorción de sociedades"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "492",
+  "descripcion": "Fecha de inscripción en el registro mercantil de la escritura de fusión por absorción"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "609",
+  "descripcion": "(-) Retenciones en la fuente de IVA que le han sido efectuadas en este período"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "622",
+  "descripcion": "(-) IVA devuelto o descontado a adultos mayores o personas con discapacidad"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "610",
+  "descripcion": "(+) Ajuste por IVA devuelto o descontado por adquisiciones con medio electrónico"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "611",
+  "descripcion": "(+) Ajuste por IVA devuelto o descontado en adquisiciones en zonas afectadas"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "612",
+  "descripcion": "(+) Ajuste por IVA devuelto y rechazado imputable al crédito tributario (adquisiciones e importaciones)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "613",
+  "descripcion": "(+) Ajuste por IVA devuelto y rechazado imputable al crédito tributario (retenciones de IVA)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "614",
+  "descripcion": "(+) Ajuste por IVA devuelto por otras instituciones del sector público"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "615",
+  "descripcion": "Saldo crédito tributario para el próximo mes por adquisiciones e importaciones"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "617",
+  "descripcion": "Saldo crédito tributario para el próximo mes por retenciones de IVA efectuadas"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "618",
+  "descripcion": "Saldo para el próximo mes por compensación de IVA con medio electrónico"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "619",
+  "descripcion": "Saldo para el próximo mes por compensación de IVA en zonas afectadas"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "624",
+  "descripcion": "IVA pagado y no compensado que se carga al gasto de impuesto a la renta"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "625",
+  "descripcion": "Ajuste del crédito tributario de IVA en adquisiciones superior a cinco años"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "620",
+  "descripcion": "Subtotal a pagar",
+  "formula": "601-602-603-604-605-606-607-608-609-622-623+610+611+612+613+614 si es mayor que cero"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "621",
+  "descripcion": "Retención de IVA en ventas a diferentes porcentajes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "percepcion",
+  "nombre_tabla": "Resumen impositivo: agente de percepción",
+  "codigo": "699",
+  "descripcion": "Total impuesto a pagar por percepción y retenciones efectuadas en ventas",
+  "formula": "620+621"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "721",
+  "descripcion": "Retención del 10 %",
+  "porcentaje": "10"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "723",
+  "descripcion": "Retención del 20 %",
+  "porcentaje": "20"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "725",
+  "descripcion": "Retención del 30 %",
+  "porcentaje": "30"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "727",
+  "descripcion": "Retención del 50 %",
+  "porcentaje": "50"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "729",
+  "descripcion": "Retención del 70 %",
+  "porcentaje": "70"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "731",
+  "descripcion": "Retención del 100 %",
+  "porcentaje": "100"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "799",
+  "descripcion": "Total impuesto retenido",
+  "formula": "721+723+725+727+729+731"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "800",
+  "descripcion": "Devolución provisional de IVA mediante compensación con retenciones efectuadas"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "802",
+  "descripcion": "Retenciones efectuadas y no pagadas: sector público, universidades y escuelas politécnicas"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "retencion",
+  "nombre_tabla": "Agente de retención del IVA",
+  "codigo": "801",
+  "descripcion": "Total impuesto a pagar por retención",
+  "formula": "799-800-802"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "859",
+  "descripcion": "Total consolidado de impuesto al valor agregado",
+  "formula": "699+801"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "890",
+  "descripcion": "Pago previo"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "897",
+  "descripcion": "Detalle de imputación al pago · interés"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "898",
+  "descripcion": "Detalle de imputación al pago · impuesto"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "899",
+  "descripcion": "Detalle de imputación al pago · multa"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "880",
+  "descripcion": "Pago directo en cuenta única del tesoro nacional (sector público)"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "902",
+  "descripcion": "Total impuesto a pagar",
+  "formula": "859-898"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "903",
+  "descripcion": "Interés por mora"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "904",
+  "descripcion": "Multa"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "total",
+  "nombre_tabla": "Totales y pago",
+  "codigo": "999",
+  "descripcion": "Total pagado",
+  "formula": "902+903+904"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "isd",
+  "nombre_tabla": "Devolución de ISD por exportaciones",
+  "codigo": "700",
+  "descripcion": "Importaciones de materias primas, insumos y bienes de capital incorporados a procesos productivos de bienes exportados · valor"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "isd",
+  "nombre_tabla": "Devolución de ISD por exportaciones",
+  "codigo": "701",
+  "descripcion": "ISD pagado sobre esas importaciones"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "isd",
+  "nombre_tabla": "Devolución de ISD por exportaciones",
+  "codigo": "702",
+  "descripcion": "Proporción del ingreso neto de divisas respecto del total de exportaciones netas de bienes"
+ },
+ {
+  "anexo": "f104",
+  "tabla": "cabecera",
+  "nombre_tabla": "Cabecera",
+  "codigo": "203",
+  "descripcion": "Decreto de tarifa variable de IVA para actividades turísticas"
+ }
+]

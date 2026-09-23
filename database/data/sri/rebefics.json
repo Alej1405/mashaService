@@ -1,0 +1,4419 @@
+[
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "01",
+  "descripcion": "SOCIEDADES EN GENERAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "02",
+  "descripcion": "SOCIEDADES QUE COTIZAN SUS ACCIONES EN BOLSAS DE VALORES"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "03",
+  "descripcion": "FIDEICOMISOS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "04",
+  "descripcion": "INSTITUCIONES SIN FINES DE LUCRO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "05",
+  "descripcion": "SECTOR ECONOMICO POPULAR Y SOLIDARIO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "06",
+  "descripcion": "SECTOR FINANCIERO POPULAR Y SOLIDARIO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "07",
+  "descripcion": "FONDOS DE INVERSION, COMPLEMENTARIOS Y OTROS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "08",
+  "descripcion": "SUCESIÓN INDIVISA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "09",
+  "descripcion": "ADMINISTRADORA Y JUNTA DE AGUA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de Sociedad",
+  "codigo": "10",
+  "descripcion": "FIDEICOMISOS Y SIMILARES EXTRANJEROS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de Identificación",
+  "codigo": "C",
+  "descripcion": "CEDULA DE IDENTIDAD"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de Identificación",
+  "codigo": "P",
+  "descripcion": "PASAPORTE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de Identificación",
+  "codigo": "R",
+  "descripcion": "REGISTRO UNICO CONTRIBUYENTE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de Identificación",
+  "codigo": "E",
+  "descripcion": "IDENTIFICACION DEL EXTERIOR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "04",
+  "descripcion": "MIEMBRO DE DIRECTORIO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "05",
+  "descripcion": "ADMINISTRADOR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "06",
+  "descripcion": "CONSTITUYENTE O FIDEICOMITENTE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "07",
+  "descripcion": "BENEFICIARIO O FIDEICOMISARIO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "08",
+  "descripcion": "SOCIO FUNDADOR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "09",
+  "descripcion": "APODERADO GENERAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "10",
+  "descripcion": "TITULARES DE DERECHO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "11",
+  "descripcion": "PODER DE DECISIÓN O CONTROL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "12",
+  "descripcion": "FIDUCIARIO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "13",
+  "descripcion": "PROTECTOR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "3",
+  "nombre_tabla": "Tipo de Relacionado Sociedad",
+  "codigo": "14",
+  "descripcion": "CONSTITUYENTE ADHERENTE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "4",
+  "nombre_tabla": "Tipo de Sociedad Extranjera",
+  "codigo": "00",
+  "descripcion": "PERSONA NATURAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "4",
+  "nombre_tabla": "Tipo de Sociedad Extranjera",
+  "codigo": "01",
+  "descripcion": "SOCIEDADES EN GENERAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "4",
+  "nombre_tabla": "Tipo de Sociedad Extranjera",
+  "codigo": "02",
+  "descripcion": "SOCIEDADES QUE COTIZAN SUS ACCIONES EN BOLSAS DE VALORES"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "4",
+  "nombre_tabla": "Tipo de Sociedad Extranjera",
+  "codigo": "04",
+  "descripcion": "INSTITUCIONES SIN FINES DE LUCRO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "4",
+  "nombre_tabla": "Tipo de Sociedad Extranjera",
+  "codigo": "07",
+  "descripcion": "FONDOS DE INVERSIÓN Y COMPLEMENTARIOS Y OTROS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "4",
+  "nombre_tabla": "Tipo de Sociedad Extranjera",
+  "codigo": "10",
+  "descripcion": "FIDEICOMISOS Y SIMILARES EXTRANJEROS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "074",
+  "descripcion": "BOUVET ISLAND"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "101",
+  "descripcion": "ARGENTINA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "102",
+  "descripcion": "BOLIVIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "103",
+  "descripcion": "BRASIL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "104",
+  "descripcion": "CANADA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "105",
+  "descripcion": "COLOMBIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "106",
+  "descripcion": "COSTA RICA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "107",
+  "descripcion": "CUBA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "108",
+  "descripcion": "CHILE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "110",
+  "descripcion": "ESTADOS UNIDOS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "111",
+  "descripcion": "GUATEMALA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "112",
+  "descripcion": "HAITI"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "113",
+  "descripcion": "HONDURAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "114",
+  "descripcion": "JAMAICA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "115",
+  "descripcion": "MALVINAS ISLAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "116",
+  "descripcion": "MEXICO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "117",
+  "descripcion": "NICARAGUA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "118",
+  "descripcion": "PANAMA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "119",
+  "descripcion": "PARAGUAY"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "120",
+  "descripcion": "PERU"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "122",
+  "descripcion": "REPUBLICA DOMINICANA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "123",
+  "descripcion": "EL SALVADOR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "125",
+  "descripcion": "URUGUAY"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "126",
+  "descripcion": "VENEZUELA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "133",
+  "descripcion": "SURINAM"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "140",
+  "descripcion": "ANTILLAS HOLANDESAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "143",
+  "descripcion": "GUADALUPE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "144",
+  "descripcion": "GUYANA FRANCESA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "147",
+  "descripcion": "JOHNSTON ISLA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "148",
+  "descripcion": "MARTINICA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "202",
+  "descripcion": "ALEMANIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "203",
+  "descripcion": "AUSTRIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "204",
+  "descripcion": "BELGICA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "205",
+  "descripcion": "BULGARIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "207",
+  "descripcion": "ALBORAN Y PEREJIL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "208",
+  "descripcion": "DINAMARCA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "209",
+  "descripcion": "ESPAÑA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "211",
+  "descripcion": "FRANCIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "212",
+  "descripcion": "FINLANDIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "213",
+  "descripcion": "REINO UNIDO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "214",
+  "descripcion": "GRECIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "216",
+  "descripcion": "HUNGRIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "217",
+  "descripcion": "IRLANDA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "218",
+  "descripcion": "ISLANDIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "219",
+  "descripcion": "ITALIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "222",
+  "descripcion": "NORUEGA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "220",
+  "descripcion": "LUXEMBURGO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "221",
+  "descripcion": "MALTA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "223",
+  "descripcion": "POLONIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "224",
+  "descripcion": "PORTUGAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "225",
+  "descripcion": "RUMANIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "226",
+  "descripcion": "SUECIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "227",
+  "descripcion": "SUIZA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "228",
+  "descripcion": "CANARIAS ISLAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "229",
+  "descripcion": "UCRANIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "230",
+  "descripcion": "RUSIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "231",
+  "descripcion": "YUGOSLAVIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "233",
+  "descripcion": "ANDORRA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "234",
+  "descripcion": "LIECHTENSTEIN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "237",
+  "descripcion": "SAN MARINO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "238",
+  "descripcion": "VATICANO (SANTA SEDE)"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "241",
+  "descripcion": "BELARUS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "242",
+  "descripcion": "BOSNIA Y HERZEGOVINA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "243",
+  "descripcion": "CROACIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "244",
+  "descripcion": "ESLOVENIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "245",
+  "descripcion": "ESTONIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "246",
+  "descripcion": "GEORGIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "248",
+  "descripcion": "LETONIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "249",
+  "descripcion": "LITUANIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "250",
+  "descripcion": "MOLDOVA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "251",
+  "descripcion": "MACEDONIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "252",
+  "descripcion": "ESLOVAQUIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "253",
+  "descripcion": "ISLAS FAROE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "260",
+  "descripcion": "FRENCH SOUTHERN TERRITORIES"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "301",
+  "descripcion": "AFGANISTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "302",
+  "descripcion": "ARABIA SAUDITA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "304",
+  "descripcion": "CAMBOYA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "306",
+  "descripcion": "COREA NORTE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "307",
+  "descripcion": "TAIWAN (CHINA)"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "308",
+  "descripcion": "FILIPINAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "309",
+  "descripcion": "INDIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "310",
+  "descripcion": "INDONESIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "311",
+  "descripcion": "IRAK"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "312",
+  "descripcion": "IRAN (REPUBLICA ISLAMICA)"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "313",
+  "descripcion": "ISRAEL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "314",
+  "descripcion": "JAPON"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "317",
+  "descripcion": "LAOS, REP. POP. DEMOC."
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "318",
+  "descripcion": "LIBANO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "319",
+  "descripcion": "MALASIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "321",
+  "descripcion": "MONGOLIA (MANCHURIA)"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "322",
+  "descripcion": "PAKISTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "323",
+  "descripcion": "SIRIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "325",
+  "descripcion": "TAILANDIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "328",
+  "descripcion": "BANGLADESH"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "329",
+  "descripcion": "BUTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "330",
+  "descripcion": "COREA DEL SUR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "331",
+  "descripcion": "CHINA POPULAR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "332",
+  "descripcion": "CHIPRE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "334",
+  "descripcion": "QATAR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "336",
+  "descripcion": "NEPAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "338",
+  "descripcion": "SINGAPUR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "341",
+  "descripcion": "VIETNAM"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "343",
+  "descripcion": "ISLAS HEARD Y MCDONALD"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "346",
+  "descripcion": "TURQUIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "347",
+  "descripcion": "AZERBAIJAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "348",
+  "descripcion": "KAZAJSTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "349",
+  "descripcion": "KIRGUIZISTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "350",
+  "descripcion": "TAJIKISTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "351",
+  "descripcion": "TURKMENISTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "352",
+  "descripcion": "UZBEKISTAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "353",
+  "descripcion": "PALESTINA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "354",
+  "descripcion": "HONG KONG"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "356",
+  "descripcion": "ARMENIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "382",
+  "descripcion": "MONTENEGRO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "402",
+  "descripcion": "BURKINA FASO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "403",
+  "descripcion": "ARGELIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "404",
+  "descripcion": "BURUNDI"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "405",
+  "descripcion": "CAMERUN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "406",
+  "descripcion": "CONGO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "407",
+  "descripcion": "ETIOPIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "408",
+  "descripcion": "GAMBIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "409",
+  "descripcion": "GUINEA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "412",
+  "descripcion": "MADAGASCAR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "413",
+  "descripcion": "MALAWI"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "414",
+  "descripcion": "MALI"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "415",
+  "descripcion": "MARRUECOS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "416",
+  "descripcion": "MAURITANIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "419",
+  "descripcion": "ZIMBABWE (RHODESIA)"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "420",
+  "descripcion": "SENEGAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "421",
+  "descripcion": "SUDAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "422",
+  "descripcion": "SUDAFRICA (CISKEI)"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "423",
+  "descripcion": "SIERRA LEONA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "425",
+  "descripcion": "TANZANIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "426",
+  "descripcion": "UGANDA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "427",
+  "descripcion": "ZAMBIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "428",
+  "descripcion": "ÅLAND ISLANDS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "429",
+  "descripcion": "BENIN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "430",
+  "descripcion": "BOTSWANA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "431",
+  "descripcion": "REPUBLICA CENTROAFRICANA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "432",
+  "descripcion": "COSTA DE MARFIL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "433",
+  "descripcion": "CHAD"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "434",
+  "descripcion": "EGIPTO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "435",
+  "descripcion": "GABON"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "436",
+  "descripcion": "GHANA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "437",
+  "descripcion": "GUINEA-BISSAU"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "438",
+  "descripcion": "GUINEA ECUATORIAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "439",
+  "descripcion": "KENIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "440",
+  "descripcion": "LESOTHO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "442",
+  "descripcion": "MOZAMBIQUE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "443",
+  "descripcion": "MAYOTTE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "444",
+  "descripcion": "NIGER"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "445",
+  "descripcion": "RWANDA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "447",
+  "descripcion": "SAHARA OCCIDENTAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "448",
+  "descripcion": "SOMALIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "449",
+  "descripcion": "SANTO TOME Y PRINCIPE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "451",
+  "descripcion": "TOGO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "453",
+  "descripcion": "ZAIRE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "458",
+  "descripcion": "COMORAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "460",
+  "descripcion": "NAMIBIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "463",
+  "descripcion": "ERITREA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "464",
+  "descripcion": "MOROCCO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "465",
+  "descripcion": "REUNION"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "499",
+  "descripcion": "JERSEY"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "501",
+  "descripcion": "AUSTRALIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "503",
+  "descripcion": "NUEVA ZELANDA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "506",
+  "descripcion": "FIJI"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "507",
+  "descripcion": "PAPUA NUEVA GUINEA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "512",
+  "descripcion": "MICRONESIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "513",
+  "descripcion": "NAURU"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "521",
+  "descripcion": "MIDWAY ISLAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "524",
+  "descripcion": "NUEVA CALEDONIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "529",
+  "descripcion": "TIMOR DEL ESTE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "531",
+  "descripcion": "WAKE ISLA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "532",
+  "descripcion": "WALLIS Y FUTUNA, ISLAS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "590",
+  "descripcion": "SAINT BARTHELEMY"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "593",
+  "descripcion": "ECUADOR"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "594",
+  "descripcion": "AGUAS INTERNACIONALES"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "595",
+  "descripcion": "ALTO VOLTA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "596",
+  "descripcion": "BIELORRUSIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "597",
+  "descripcion": "COTE DÍVOIRE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "598",
+  "descripcion": "CYPRUS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "599",
+  "descripcion": "REPUBLICA CHECA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "600",
+  "descripcion": "FALKLAND ISLANDS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "601",
+  "descripcion": "LATVIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "602",
+  "descripcion": "LIBIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "603",
+  "descripcion": "NORTHERN MARIANA ISL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "604",
+  "descripcion": "ST. PIERRE AND MIQUE"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "605",
+  "descripcion": "SYRIAN ARAB REPUBLIC"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "606",
+  "descripcion": "TERRITORIO ANTARTICO BRITANICO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "607",
+  "descripcion": "TERRITORIO BRITANICO OCEANO IN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "688",
+  "descripcion": "SERBIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "831",
+  "descripcion": "GUERNSEY"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "833",
+  "descripcion": "ISLA DE MAN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "5",
+  "nombre_tabla": "Países Régimen General",
+  "codigo": "999",
+  "descripcion": "GENERAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "1",
+  "descripcion": "ANGUILA (Territorio no autónomo del Reino Unido)",
+  "compatible_con": "ANGUILA · 109"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "2",
+  "descripcion": "ANTIGUA Y BARBUDA (Estado independiente)",
+  "compatible_con": "ANTIGUA Y BARBUDA · 134"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "4",
+  "descripcion": "ARUBA",
+  "compatible_con": "141"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "5",
+  "descripcion": "BARBADOS (Estado independiente)",
+  "compatible_con": "BARBADOS · 130"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "6",
+  "descripcion": "BELICE (Estado independiente)",
+  "compatible_con": "BELICE · 135"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "7",
+  "descripcion": "BERMUDAS (Territorio no autónomo del Reino Unido)",
+  "compatible_con": "BERMUDA · 142"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "8",
+  "descripcion": "BONAIRE, SABA Y SAN EUSTAQUIO",
+  "compatible_con": "PAISES BAJOS (HOLANDA) · 215"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "9",
+  "descripcion": "BRUNEI DARUSSALAM (Estado independiente)",
+  "compatible_con": "BRUNEI DARUSSALAM · 344"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "10",
+  "descripcion": "CAMPIONE D'ITALIA (Comune di Campioned'Italia)",
+  "compatible_con": "ITALIA · 219"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "11",
+  "descripcion": "COLONIA DE GIBRALTAR",
+  "compatible_con": "GIBRALTAR · 239"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "12",
+  "descripcion": "COMUNIDAD DE LAS BAHAMAS (Estado independiente)",
+  "compatible_con": "BAHAMAS · 129"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "13",
+  "descripcion": "CURAZAO",
+  "compatible_con": "127"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "14",
+  "descripcion": "ESTADO ASOCIADO DE GRANADA (Estado independiente)",
+  "compatible_con": "GRANADA · 131"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "15",
+  "descripcion": "ESTADO DE BAHREIN (Estado independiente)",
+  "compatible_con": "BAHREIN · 327"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "16",
+  "descripcion": "ESTADO DE KUWAIT (Estado independiente)",
+  "compatible_con": "KUWAIT · 316"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "17",
+  "descripcion": "ESTADO LIBRE ASOCIADO DE PUERTO RICO (Estado asociado a los EEUU)",
+  "compatible_con": "PUERTO RICO · 121"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "18",
+  "descripcion": "EMIRATOS ÁRABES UNIDOS (Estado independiente)",
+  "compatible_con": "EMIRATOS ARABES UNIDOS · 333"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "19",
+  "descripcion": "FEDERACIÓN DE SAN CRISTÓBAL (Islas Saint Kitts and Nevis: independientes)",
+  "compatible_con": "SAN CRISTOBAL Y NEVIS · 137"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "21",
+  "descripcion": "GROENLANDIA",
+  "compatible_con": "247"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "22",
+  "descripcion": "GUAM (Territorio no autónomo de los EEUU)",
+  "compatible_con": "GUAM · 517"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "89",
+  "descripcion": "HONG KONG",
+  "compatible_con": "354"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "23",
+  "descripcion": "ISLA DE ASCENSIÓN",
+  "compatible_con": "SANTA ELENA · 466"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "24",
+  "descripcion": "ISLAS AZORES",
+  "compatible_con": "PORTUGAL · 224"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "25",
+  "descripcion": "ISLAS CAIMÁN (Territorio no autónomo del Reino Unido)",
+  "compatible_con": "ISLAS CAIMAN · 145"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "26",
+  "descripcion": "ISLAS CHRISTMAS",
+  "compatible_con": "ISLAS NAVIDAD · 520"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "27",
+  "descripcion": "ISLA DE COCOS O KEELING",
+  "compatible_con": "ISLAS COCOS (KEELING) · 518"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "28",
+  "descripcion": "ISLA DE COOK (Territorio autónomo asociado a Nueva Zelanda)",
+  "compatible_con": "ISLAS COOK · 519"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "30",
+  "descripcion": "ISLA DE NORFOLK",
+  "compatible_con": "NORFOLK ISLA · 523"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "31",
+  "descripcion": "ISLA DE SAN PEDRO Y MIGUELÓN",
+  "compatible_con": "ST. PIERRE AND MIQUE · 604"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "33",
+  "descripcion": "ISLA QESHM",
+  "compatible_con": "IRAN (REPUBLICA ISLAMICA) · 312"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "34",
+  "descripcion": "ISLAS SALOMÓN",
+  "compatible_con": "SALOMON ISLAS · 514"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "35",
+  "descripcion": "ISLAS TURKAS E ISLAS CAICOS (Territorio no autónomo del Reino Unido)",
+  "compatible_con": "TURCAS Y CAICOS ISLAS · 151"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "36",
+  "descripcion": "ISLAS VÍRGENES BRITÁNICAS (Territorio no autónomo del Reino Unido)",
+  "compatible_con": "ISLAS VIRGENES (BRITANICAS) · 146"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "37",
+  "descripcion": "ISLAS VÍRGENES DE ESTADOS UNIDOS DE AMÉRICA",
+  "compatible_con": "VIRGENES,ISLAS(NORT.AMER.) · 152"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "38",
+  "descripcion": "KIRIBATI",
+  "compatible_con": "510"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "39",
+  "descripcion": "LABUAN",
+  "compatible_con": "MALASIA · 319"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "40",
+  "descripcion": "MACAO",
+  "compatible_con": "355"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "41",
+  "descripcion": "MADEIRA (Territorio de Portugal)",
+  "compatible_con": "PORTUGAL · 224"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "42",
+  "descripcion": "MANCOMUNIDAD DE DOMINICA (Estado asociado)",
+  "compatible_con": "DOMINICA · 136"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "43",
+  "descripcion": "MONTSERRAT (Territorio no autónomo del Reino Unido)",
+  "compatible_con": "MONTSERRAT ISLA · 149"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "44",
+  "descripcion": "MYANMAR (ex Birmania)",
+  "compatible_con": "MYANMAR (BURMA) · 303"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "45",
+  "descripcion": "NIGERIA",
+  "compatible_con": "417"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "46",
+  "descripcion": "NIUE",
+  "compatible_con": "NIUE ISLA · 522"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "47",
+  "descripcion": "PALAU",
+  "compatible_con": "PALAO (BELAU) ISLAS · 509"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "48",
+  "descripcion": "PITCAIRN",
+  "compatible_con": "PITCAIRN, ISLA · 525"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "49",
+  "descripcion": "POLINESIA FRANCESA (Territorio de Ultramar de Francia)",
+  "compatible_con": "FRENCH SOUTHERN TERRITORIES · 260"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "51",
+  "descripcion": "PRINCIPADO DE MÓNACO",
+  "compatible_con": "MONACO · 235"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "53",
+  "descripcion": "REINO DE SWAZILANDIA (Estado independiente)",
+  "compatible_con": "SWAZILANDIA · 450"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "54",
+  "descripcion": "REINO DE TONGA (Estado independiente)",
+  "compatible_con": "TONGA · 508"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "55",
+  "descripcion": "REINO HACHEMITA DE JORDANIA",
+  "compatible_con": "JORDANIA · 315"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "56",
+  "descripcion": "REPÚBLICA COOPERATIVA DE GUYANA (Estado independiente)",
+  "compatible_con": "GUYANA · 132"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "57",
+  "descripcion": "REPÚBLICA DE ALBANIA",
+  "compatible_con": "ALBANIA · 201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "58",
+  "descripcion": "REPÚBLICA DE ANGOLA",
+  "compatible_con": "ANGOLA · 454"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "59",
+  "descripcion": "REPÚBLICA DE CABO VERDE (Estado independiente)",
+  "compatible_con": "CABO VERDE · 456"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "61",
+  "descripcion": "REPÚBLICA DE DJIBOUTI (Estado independiente)",
+  "compatible_con": "DJIBOUTI · 459"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "62",
+  "descripcion": "REPÚBLICA DE LAS ISLAS MARSHALL (Estado independiente)",
+  "compatible_con": "MARSHALL ISLAS · 511"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "63",
+  "descripcion": "REPÚBLICA DE LIBERIA (Estado independiente)",
+  "compatible_con": "LIBERIA · 410"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "64",
+  "descripcion": "REPÚBLICA DE MALDIVAS (Estado independiente)",
+  "compatible_con": "MALDIVAS · 335"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "66",
+  "descripcion": "REPÚBLICA DE MAURICIO",
+  "compatible_con": "MAURICIO · 441"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "67",
+  "descripcion": "REPÚBLICA DE NAURU (Estado independiente)",
+  "compatible_con": "NAURU · 513"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "69",
+  "descripcion": "REPÚBLICA DE SEYCHELLES (Estado independiente)",
+  "compatible_con": "SEYCHELLES · 446"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "70",
+  "descripcion": "REPÚBLICA DE TRINIDAD Y TOBAGO",
+  "compatible_con": "TRINIDAD Y TOBAGO · 124"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "71",
+  "descripcion": "REPÚBLICA DE TÚNEZ",
+  "compatible_con": "TUNEZ · 452"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "72",
+  "descripcion": "REPÚBLICA DE VANUATU",
+  "compatible_con": "VANUATU · 516"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "73",
+  "descripcion": "REPÚBLICA DEL YEMEN",
+  "compatible_con": "YEMEN · 342"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "74",
+  "descripcion": "REPÚBLICA DEMOCRÁTICA SOCIALISTA DE SRI LANKA",
+  "compatible_con": "SRI LANKA (CEILAN) · 339"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "75",
+  "descripcion": "SAMOA AMERICANA (Territorio no autónomo de los EEUU)",
+  "compatible_con": "AMERICAN SAMOA · 016"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "76",
+  "descripcion": "SAMOA OCCIDENTAL",
+  "compatible_con": "504"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "77",
+  "descripcion": "SAN VICENTE Y LAS GRANADINAS (Estado independiente)",
+  "compatible_con": "SAN VICENTE Y LAS GRANAD. · 139"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "78",
+  "descripcion": "SANTA ELENA",
+  "compatible_con": "466"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "79",
+  "descripcion": "SANTA LUCÍA",
+  "compatible_con": "SANTA LUCIA · 138"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "80",
+  "descripcion": "SAN MARTÍN",
+  "compatible_con": "SINT MAARTEN (DUTCH PART) · 534"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "82",
+  "descripcion": "SULTANADO DE OMAN",
+  "compatible_con": "OMAN · 337"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "83",
+  "descripcion": "TOKELAU",
+  "compatible_con": "TOKELAI · 530"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "84",
+  "descripcion": "TRISTAN DA CUNHA (SH Saint Helena)",
+  "compatible_con": "SANTA ELENA · 466"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "85",
+  "descripcion": "TUVALU",
+  "compatible_con": "515"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "87",
+  "descripcion": "GEORGIA",
+  "compatible_con": "246"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "6",
+  "nombre_tabla": "Paraísos Fiscales",
+  "codigo": "88",
+  "descripcion": "REPÚBLICA DE ARMENIA",
+  "compatible_con": "ARMENIA · 356"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de Régimen Fiscal",
+  "codigo": "01",
+  "descripcion": "RÉGIMEN GENERAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de Régimen Fiscal",
+  "codigo": "02",
+  "descripcion": "PARAISO FISCAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de Régimen Fiscal",
+  "codigo": "03",
+  "descripcion": "REGIMEN FISCAL REFERENTE O JURISDICCION DE MENOR IMPOSICION"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "8",
+  "nombre_tabla": "Tipo de declaración",
+  "codigo": "01",
+  "descripcion": "COMPOSICIÓN SOCIETARIA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "8",
+  "nombre_tabla": "Tipo de declaración",
+  "codigo": "02",
+  "descripcion": "BENEFICIARIO FINAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "9",
+  "nombre_tabla": "Tipo sujeto",
+  "codigo": "01",
+  "descripcion": "PERSONA NATURAL"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "9",
+  "nombre_tabla": "Tipo sujeto",
+  "codigo": "02",
+  "descripcion": "PERSONA O ESTRUCTURA JURÍDICA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "110",
+  "descripcion": "ESTADOS UNIDOS",
+  "compatible_con": "SOLE PROPRIETORSHIP · 11001"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "OTRO",
+  "descripcion": "89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "105",
+  "descripcion": "COLOMBIA",
+  "compatible_con": "SOCIEDAD ANONIMA · 10501"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "118",
+  "descripcion": "PANAMÁ",
+  "compatible_con": "SOCIEDAD ANONIMA · 11801"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "209",
+  "descripcion": "ESPAÑA",
+  "compatible_con": "SOCIEDAD ANONIMA · 20901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "213",
+  "descripcion": "REINO UNIDO",
+  "compatible_con": "PUBLIC LIMITED COMPANY · 21301"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "104",
+  "descripcion": "CANADÁ",
+  "compatible_con": "UNLIMITED LIABILITY CORPORATION · 10401"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "108",
+  "descripcion": "CHILE",
+  "compatible_con": "SOCIEDAD ANONIMA · 10801"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "202",
+  "descripcion": "ALEMANIA",
+  "compatible_con": "GESELLSCHAFT BURGERLICHEN RECHTS - GBR (CIVIL LAW PARTNERSHIP) · 20201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "227",
+  "descripcion": "SUIZA",
+  "compatible_con": "EINZELUNTERNEHMEN (SOLE PROPRIETORSHIP) · 22701"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "106",
+  "descripcion": "COSTA RICA",
+  "compatible_con": "SOCIEDAD ANONIMA · 10601"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "146",
+  "descripcion": "ISLAS VIRGENES (BRITANICAS)",
+  "compatible_con": "COMPANY LIMITED BY SHARES · 14601"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "116",
+  "descripcion": "MEXICO",
+  "compatible_con": "SOCIEDAD ANONIMA · 11601"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "331",
+  "descripcion": "CHINA",
+  "compatible_con": "GENERAL PARTNERSHIP · 33101"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "211",
+  "descripcion": "FRANCIA",
+  "compatible_con": "SOCIETE A RESPONSABILITE LIMITEE - SARL (PRIVATE LIMITED COMPANY) · 21101"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "120",
+  "descripcion": "PERÚ",
+  "compatible_con": "SOCIEDAD ANONIMA · 12001"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "220",
+  "descripcion": "LUXEMBURGO",
+  "compatible_con": "SOCIETE ANONYME - SA · 22001"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "074",
+  "descripcion": "BOUVET ISLAND",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "101",
+  "descripcion": "ARGENTINA",
+  "compatible_con": "SOCIEDAD ANONIMA · 10101"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "102",
+  "descripcion": "BOLIVIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "103",
+  "descripcion": "BRASIL",
+  "compatible_con": "SOCIEDADE LIMITADA · 10301"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "107",
+  "descripcion": "CUBA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "111",
+  "descripcion": "GUATEMALA",
+  "compatible_con": "SOCIEDAD ANONIMA · 11101"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "112",
+  "descripcion": "HAITI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "113",
+  "descripcion": "HONDURAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "114",
+  "descripcion": "JAMAICA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "115",
+  "descripcion": "MALVINAS ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "117",
+  "descripcion": "NICARAGUA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "119",
+  "descripcion": "PARAGUAY",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "122",
+  "descripcion": "REPUBLICA DOMINICANA",
+  "compatible_con": "SOCIEDAD ANONIMA · 12201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "123",
+  "descripcion": "EL SALVADOR",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "125",
+  "descripcion": "URUGUAY",
+  "compatible_con": "SOCIEDAD ANONIMA · 12501"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "126",
+  "descripcion": "VENEZUELA",
+  "compatible_con": "SOCIEDAD ANONIMA (SA) · 12601"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "133",
+  "descripcion": "SURINAM",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "140",
+  "descripcion": "ANTILLAS HOLANDESAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "143",
+  "descripcion": "GUADALUPE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "144",
+  "descripcion": "GUYANA FRANCESA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "147",
+  "descripcion": "JOHNSTON ISLA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "148",
+  "descripcion": "MARTINICA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "203",
+  "descripcion": "AUSTRIA",
+  "compatible_con": "GESELLSCHAFT MIT BESCHRANKTER HAFTUNG - GMBH (LIMITED LIABILITY COMPANY) · 20301"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "204",
+  "descripcion": "BELGICA",
+  "compatible_con": "NAAMLOZE VENNOOTSCHAP - NV (PUBLIC LIMITED COMPANY) · 20401"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "205",
+  "descripcion": "BULGARIA",
+  "compatible_con": "AKTSIONERNO DRUJESTVO - AD (PUBLIC LIMITED COMPANY) · 20501"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "207",
+  "descripcion": "ALBORAN Y PEREJIL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "208",
+  "descripcion": "DINAMARCA",
+  "compatible_con": "ANPARTSSELSKAB - APS (PRIVATE LIMITED COMPANY) · 20801"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "212",
+  "descripcion": "FINLANDIA",
+  "compatible_con": "JULKINEN OSAKEYHTIO - OYJ (PUBLIC LIMITED COMPANY) · 21201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "214",
+  "descripcion": "GRECIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "216",
+  "descripcion": "HUNGRIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "217",
+  "descripcion": "IRLANDA",
+  "compatible_con": "PRIVATE COMPANY LIMITED BY SHARES (LTD) · 21701"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "218",
+  "descripcion": "ISLANDIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "219",
+  "descripcion": "ITALIA",
+  "compatible_con": "SOCIETA PER AZIONI - SPA · 21901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "222",
+  "descripcion": "NORUEGA",
+  "compatible_con": "ALLMENNAKSJESELSKAP - ASA (PUBLIC LIMITED COMPANY) · 22201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "223",
+  "descripcion": "POLONIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "224",
+  "descripcion": "PORTUGAL",
+  "compatible_con": "SOCIEDAD ANONIMA - SA · 22401"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "225",
+  "descripcion": "RUMANIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "226",
+  "descripcion": "SUECIA",
+  "compatible_con": "AKTIEBOLAG - AB (PRIVATE LIMITED COMPANY) · 22601"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "228",
+  "descripcion": "CANARIAS ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "229",
+  "descripcion": "UCRANIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "230",
+  "descripcion": "RUSIA",
+  "compatible_con": "OBSCHESTVO S OGRANICHENNOY OTVETSTVENNOSTYU - OOO (LIMITED LIABILITY COMPANY) · 23001"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "231",
+  "descripcion": "YUGOSLAVIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "238",
+  "descripcion": "VATICANO (SANTA SEDE)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "241",
+  "descripcion": "BELARUS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "242",
+  "descripcion": "BOSNIA Y HERZEGOVINA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "243",
+  "descripcion": "CROACIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "244",
+  "descripcion": "ESLOVENIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "245",
+  "descripcion": "ESTONIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "246",
+  "descripcion": "GEORGIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "248",
+  "descripcion": "LETONIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "249",
+  "descripcion": "LITUANIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "250",
+  "descripcion": "MOLDOVA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "251",
+  "descripcion": "MACEDONIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "252",
+  "descripcion": "ESLOVAQUIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "253",
+  "descripcion": "ISLAS FAROE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "260",
+  "descripcion": "FRENCH SOUTHERN TERRITORIES",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "301",
+  "descripcion": "AFGANISTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "302",
+  "descripcion": "ARABIA SAUDITA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "304",
+  "descripcion": "CAMBOYA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "306",
+  "descripcion": "COREA NORTE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "307",
+  "descripcion": "TAIWAN (CHINA)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "308",
+  "descripcion": "FILIPINAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "309",
+  "descripcion": "INDIA",
+  "compatible_con": "PUBLIC LIMITED COMPANY · 30901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "310",
+  "descripcion": "INDONESIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "311",
+  "descripcion": "IRAK",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "312",
+  "descripcion": "IRAN (REPUBLICA ISLAMICA)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "313",
+  "descripcion": "ISRAEL",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 31301"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "314",
+  "descripcion": "JAPON",
+  "compatible_con": "SOCIEDAD ANONIMA (KK) · 31401"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "317",
+  "descripcion": "LAOS, REP. POP. DEMOC.",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "318",
+  "descripcion": "LIBANO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "319",
+  "descripcion": "MALASIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "321",
+  "descripcion": "MONGOLIA (MANCHURIA)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "322",
+  "descripcion": "PAKISTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "323",
+  "descripcion": "SIRIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "325",
+  "descripcion": "TAILANDIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "328",
+  "descripcion": "BANGLADESH",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "329",
+  "descripcion": "BUTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "330",
+  "descripcion": "COREA DEL SUR",
+  "compatible_con": "JUSIK HOESA (PUBLIC LIMITED COMPANY) · 33001"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "334",
+  "descripcion": "QATAR",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "336",
+  "descripcion": "NEPAL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "338",
+  "descripcion": "SINGAPUR",
+  "compatible_con": "PRIVATE COMPANY LIMITED BY SHARES · 33801"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "341",
+  "descripcion": "VIETNAM",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "343",
+  "descripcion": "ISLAS HEARD Y MCDONALD",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "346",
+  "descripcion": "TURQUIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "347",
+  "descripcion": "AZERBAIJAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "348",
+  "descripcion": "KAZAJSTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "349",
+  "descripcion": "KIRGUIZISTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "350",
+  "descripcion": "TAJIKISTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "351",
+  "descripcion": "TURKMENISTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "352",
+  "descripcion": "UZBEKISTAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "353",
+  "descripcion": "PALESTINA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "354",
+  "descripcion": "HONG KONG",
+  "compatible_con": "PRIVATE COMPANY LIMITED · 35401"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "356",
+  "descripcion": "ARMENIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "382",
+  "descripcion": "MONTENEGRO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "402",
+  "descripcion": "BURKINA FASO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "403",
+  "descripcion": "ARGELIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "404",
+  "descripcion": "BURUNDI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "405",
+  "descripcion": "CAMERUN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "406",
+  "descripcion": "CONGO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "407",
+  "descripcion": "ETIOPIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "408",
+  "descripcion": "GAMBIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "409",
+  "descripcion": "GUINEA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "412",
+  "descripcion": "MADAGASCAR",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "413",
+  "descripcion": "MALAWI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "414",
+  "descripcion": "MALI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "415",
+  "descripcion": "MARRUECOS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "416",
+  "descripcion": "MAURITANIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "419",
+  "descripcion": "ZIMBABWE (RHODESIA)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "420",
+  "descripcion": "SENEGAL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "421",
+  "descripcion": "SUDAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "422",
+  "descripcion": "SUDAFRICA (CISKEI)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "423",
+  "descripcion": "SIERRA LEONA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "425",
+  "descripcion": "TANZANIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "426",
+  "descripcion": "UGANDA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "427",
+  "descripcion": "ZAMBIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "428",
+  "descripcion": "ÅLAND ISLANDS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "429",
+  "descripcion": "BENIN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "430",
+  "descripcion": "BOTSWANA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "431",
+  "descripcion": "REPUBLICA CENTROAFRICANA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "432",
+  "descripcion": "COSTA DE MARFIL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "433",
+  "descripcion": "CHAD",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "434",
+  "descripcion": "EGIPTO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "435",
+  "descripcion": "GABON",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "436",
+  "descripcion": "GHANA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "437",
+  "descripcion": "GUINEA-BISSAU",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "438",
+  "descripcion": "GUINEA ECUATORIAL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "439",
+  "descripcion": "KENIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "440",
+  "descripcion": "LESOTHO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "442",
+  "descripcion": "MOZAMBIQUE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "443",
+  "descripcion": "MAYOTTE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "444",
+  "descripcion": "NIGER",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "445",
+  "descripcion": "RWANDA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "447",
+  "descripcion": "SAHARA OCCIDENTAL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "448",
+  "descripcion": "SOMALIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "449",
+  "descripcion": "SANTO TOME Y PRINCIPE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "451",
+  "descripcion": "TOGO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "453",
+  "descripcion": "ZAIRE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "458",
+  "descripcion": "COMORAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "460",
+  "descripcion": "NAMIBIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "463",
+  "descripcion": "ERITREA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "464",
+  "descripcion": "MOROCCO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "465",
+  "descripcion": "REUNION",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "499",
+  "descripcion": "JERSEY",
+  "compatible_con": "PRIVATE LIMITED COMPANY · 49901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "501",
+  "descripcion": "AUSTRALIA",
+  "compatible_con": "LIMITED (LTD) · 50101"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "503",
+  "descripcion": "NUEVA ZELANDA",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 50301"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "506",
+  "descripcion": "FIJI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "507",
+  "descripcion": "PAPUA NUEVA GUINEA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "512",
+  "descripcion": "MICRONESIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "513",
+  "descripcion": "NAURU",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "521",
+  "descripcion": "MIDWAY ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "524",
+  "descripcion": "NUEVA CALEDONIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "529",
+  "descripcion": "TIMOR DEL ESTE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "531",
+  "descripcion": "WAKE ISLA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "532",
+  "descripcion": "WALLIS Y FUTUNA, ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "590",
+  "descripcion": "SAINT BARTHELEMY",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "593",
+  "descripcion": "ECUADOR",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "594",
+  "descripcion": "AGUAS INTERNACIONALES",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "595",
+  "descripcion": "ALTO VOLTA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "596",
+  "descripcion": "BIELORRUSIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "597",
+  "descripcion": "COTE DÍVOIRE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "598",
+  "descripcion": "CYPRUS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "599",
+  "descripcion": "REPUBLICA CHECA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "600",
+  "descripcion": "FALKLAND ISLANDS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "601",
+  "descripcion": "LATVIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "602",
+  "descripcion": "LIBIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "603",
+  "descripcion": "NORTHERN MARIANA ISL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "604",
+  "descripcion": "ST. PIERRE AND MIQUE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "605",
+  "descripcion": "SYRIAN ARAB REPUBLIC",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "606",
+  "descripcion": "TERRITORIO ANTARTICO BRITANICO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "607",
+  "descripcion": "TERRITORIO BRITANICO OCEANO IN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "688",
+  "descripcion": "SERBIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "831",
+  "descripcion": "GUERNSEY",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 83101"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "999",
+  "descripcion": "GENERAL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "109",
+  "descripcion": "ANGUILA",
+  "compatible_con": "INTERNATIONAL BUSINESS COMPANY (IBC) · 10901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "134",
+  "descripcion": "ANTIGUA Y BARBUDA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "141",
+  "descripcion": "ARUBA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "130",
+  "descripcion": "BARBADOS",
+  "compatible_con": "PUBLIC LIMITED COMPANY (PLC) · 13001"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "135",
+  "descripcion": "BELICE",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 13501"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "142",
+  "descripcion": "BERMUDA",
+  "compatible_con": "LIMITED COMPANY · 14201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "344",
+  "descripcion": "BRUNEI DARUSSALAM",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "239",
+  "descripcion": "GIBRALTAR",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "129",
+  "descripcion": "BAHAMAS",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 12901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "127",
+  "descripcion": "CURAZAO",
+  "compatible_con": "PRIVATE LIMITED LIABILITY COMPANY (BV) · 12701"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "131",
+  "descripcion": "GRANADA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "327",
+  "descripcion": "BAHREIN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "316",
+  "descripcion": "KUWAIT",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "121",
+  "descripcion": "PUERTO RICO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "333",
+  "descripcion": "EMIRATOS ARABES UNIDOS",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 33301"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "137",
+  "descripcion": "SAN CRISTOBAL Y NEVIS",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 13701"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "247",
+  "descripcion": "GROENLANDIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "517",
+  "descripcion": "GUAM",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "466",
+  "descripcion": "SANTA ELENA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "145",
+  "descripcion": "ISLAS CAIMAN",
+  "compatible_con": "LIMITED LIABILITY COMPANY · 14501"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "520",
+  "descripcion": "ISLAS NAVIDAD",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "518",
+  "descripcion": "ISLAS COCOS (KEELING)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "519",
+  "descripcion": "ISLAS COOK",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "833",
+  "descripcion": "ISLE OF MAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "523",
+  "descripcion": "NORFOLK ISLA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "514",
+  "descripcion": "SALOMON ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "151",
+  "descripcion": "TURCAS Y CAICOS ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "152",
+  "descripcion": "VIRGENES,ISLAS(NORT.AMER.)",
+  "compatible_con": "CORPORATION · 15201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "510",
+  "descripcion": "KIRIBATI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "355",
+  "descripcion": "MACAO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "136",
+  "descripcion": "DOMINICA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "149",
+  "descripcion": "MONTSERRAT ISLA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "303",
+  "descripcion": "MYANMAR (BURMA)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "417",
+  "descripcion": "NIGERIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "522",
+  "descripcion": "NIUE ISLA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "509",
+  "descripcion": "PALAO (BELAU) ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "525",
+  "descripcion": "PITCAIRN, ISLA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "234",
+  "descripcion": "LIECHTENSTEIN",
+  "compatible_con": "AKTIENGESELLSCHAFT - AG (COMPANY LIMITED BY SHARES) · 23401"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "235",
+  "descripcion": "MONACO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "233",
+  "descripcion": "ANDORRA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "450",
+  "descripcion": "SWAZILANDIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "508",
+  "descripcion": "TONGA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "315",
+  "descripcion": "JORDANIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "132",
+  "descripcion": "GUYANA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "201",
+  "descripcion": "ALBANIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "454",
+  "descripcion": "ANGOLA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "456",
+  "descripcion": "CABO VERDE",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "332",
+  "descripcion": "CHIPRE",
+  "compatible_con": "PRIVATE LIMITED LIABILITY COMPANY · 33201"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "459",
+  "descripcion": "DJIBOUTI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "511",
+  "descripcion": "MARSHALL ISLAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "410",
+  "descripcion": "LIBERIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "335",
+  "descripcion": "MALDIVAS",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "221",
+  "descripcion": "MALTA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "441",
+  "descripcion": "MAURICIO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "446",
+  "descripcion": "SEYCHELLES",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "124",
+  "descripcion": "TRINIDAD Y TOBAGO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "452",
+  "descripcion": "TUNEZ",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "516",
+  "descripcion": "VANUATU",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "342",
+  "descripcion": "YEMEN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "339",
+  "descripcion": "SRI LANKA (CEILAN)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "016",
+  "descripcion": "AMERICAN SAMOA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "504",
+  "descripcion": "SAMOA OCCIDENTAL",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "139",
+  "descripcion": "SAN VICENTE Y LAS GRANAD.",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "138",
+  "descripcion": "SANTA LUCIA",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "534",
+  "descripcion": "SINT MAARTEN (DUTCH PART)",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "237",
+  "descripcion": "SAN MARINO",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "337",
+  "descripcion": "OMAN",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "530",
+  "descripcion": "TOKELAI",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "10",
+  "nombre_tabla": "Figura Jurídica",
+  "codigo": "515",
+  "descripcion": "TUVALU",
+  "compatible_con": "OTRO · 89901"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "11",
+  "nombre_tabla": "beneficiario final",
+  "codigo": "SI",
+  "descripcion": "SI"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "11",
+  "nombre_tabla": "beneficiario final",
+  "codigo": "NO",
+  "descripcion": "NO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "11",
+  "nombre_tabla": "beneficiario final",
+  "codigo": "NA",
+  "descripcion": "NA"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "12",
+  "nombre_tabla": "BENEFICIARIO FINAL POR PROPIEDAD",
+  "codigo": "SI",
+  "descripcion": "SI"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "12",
+  "nombre_tabla": "BENEFICIARIO FINAL POR PROPIEDAD",
+  "codigo": "NO",
+  "descripcion": "NO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "01",
+  "descripcion": "DERECHO A VOTO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "02",
+  "descripcion": "PODER PARA CAMBIAR MIEMBROS DE LA ENTIDAD"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "03",
+  "descripcion": "PODER DE INFLUENCIA O VETO DE DECISIONES"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "04",
+  "descripcion": "APODERADO"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "05",
+  "descripcion": "RESPONSABLE DE TITULOS DE DEUDA DE LA ENTIDAD"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "06",
+  "descripcion": "PODER DE DECISION EN LOS ACUERDOS FINANCIEROS"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "07",
+  "descripcion": "OPERATIVOS Y/O COMERCIALES QUE SE ADOPTEN"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "08",
+  "descripcion": "OTROS RELACIONADO A CONTROL DE LA ENTIDAD"
+ },
+ {
+  "anexo": "rebefics",
+  "tabla": "13",
+  "nombre_tabla": "BENEFICIARIO FINAL POR MOTIVOS DE CONTROL",
+  "codigo": "09",
+  "descripcion": "NO APLICA"
+ }
+]

@@ -96,6 +96,125 @@ class EmpresaServiciosResource extends Resource
                                         ->maxLength(255),
                                 ]),
 
+                            Forms\Components\Section::make('Certificado de RUC')
+                                ->description('Sube el certificado del SRI y el sistema completa la ficha. Los campos quedan editables: el documento precarga, tú confirmas.')
+                                ->collapsed(fn ($record) => (bool) $record?->ruc_pdf_path)
+                                ->schema([
+                                    Forms\Components\FileUpload::make('ruc_pdf_path')
+                                        ->label('Certificado de RUC (PDF)')
+                                        ->directory('ruc')
+                                        ->acceptedFileTypes(['application/pdf'])
+                                        ->maxSize(4096)
+                                        ->downloadable()
+                                        ->columnSpanFull()
+                                        ->helperText(fn ($record) => $record?->ruc_leido_en
+                                            ? 'Leído el ' . $record->ruc_leido_en->format('d/m/Y H:i')
+                                            : 'Aún no se ha leído ningún certificado.'),
+
+                                    Forms\Components\Actions::make([
+                                        Forms\Components\Actions\Action::make('leer_ruc')
+                                            ->label('Leer el certificado y completar la ficha')
+                                            ->icon('heroicon-o-sparkles')
+                                            ->color('primary')
+                                            ->action(function (Forms\Get $get, Forms\Set $set) {
+                                                $ruta = $get('ruc_pdf_path');
+                                                $ruta = is_array($ruta) ? reset($ruta) : $ruta;
+
+                                                // Puede venir recién subido (TemporaryUploadedFile) o ya guardado.
+                                                $absoluta = is_object($ruta) && method_exists($ruta, 'getRealPath')
+                                                    ? $ruta->getRealPath()
+                                                    : \Illuminate\Support\Facades\Storage::disk('public')->path((string) $ruta);
+
+                                                if (! $ruta || ! is_file($absoluta)) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Primero sube el certificado en PDF')->warning()->send();
+                                                    return;
+                                                }
+
+                                                $datos = app(\App\Services\LectorRucPdf::class)->leer($absoluta);
+
+                                                $mapa = [
+                                                    'numero_identificacion'  => $datos['ruc'],
+                                                    'name'                   => $datos['razon_social'],
+                                                    'representante_legal'    => $datos['representante_legal'],
+                                                    'estado_ruc'             => $datos['estado'],
+                                                    'regimen'                => $datos['regimen'],
+                                                    'jurisdiccion'           => $datos['jurisdiccion'],
+                                                    'provincia'              => $datos['provincia'],
+                                                    'canton'                 => $datos['canton'],
+                                                    'parroquia'              => $datos['parroquia'],
+                                                    'direccion'              => $datos['direccion'],
+                                                    'inicio_ejercicio'       => $datos['inicio_actividades'],
+                                                    'actividades_economicas' => $datos['actividades'],
+                                                ];
+
+                                                $leidos = 0;
+                                                foreach ($mapa as $campo => $valor) {
+                                                    if ($valor !== null && $valor !== '' && $valor !== []) {
+                                                        $set($campo, $valor);
+                                                        $leidos++;
+                                                    }
+                                                }
+
+                                                // Los tres del SRI que mandan sobre la contabilidad.
+                                                if ($datos['obligado_contabilidad'] !== null) { $set('obligado_contabilidad', $datos['obligado_contabilidad']); $leidos++; }
+                                                if ($datos['agente_retencion'] !== null) { $set('agente_retencion', $datos['agente_retencion']); $leidos++; }
+                                                if ($datos['contribuyente_especial'] !== null) { $set('contribuyente_especial', $datos['contribuyente_especial']); $leidos++; }
+
+                                                if ($datos['tipo_contribuyente'] === 'SOCIEDADES') {
+                                                    $set('tipo_persona', 'juridica');
+                                                    $set('tipo_identificacion', 'ruc');
+                                                }
+                                                if ($datos['razon_social'] && str_contains($datos['razon_social'], 'S.A.S')) {
+                                                    $set('tipo_compania', 'SAS');
+                                                }
+
+                                                $set('ruc_leido_en', now());
+
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title("Ficha completada con {$leidos} datos del certificado")
+                                                    ->body('Revísalos antes de guardar: el documento manda, pero la última palabra es tuya.')
+                                                    ->success()->send();
+                                            }),
+                                    ])->columnSpanFull(),
+                                ]),
+
+                            Forms\Components\Section::make('Ficha tributaria y societaria')
+                                ->columns(3)
+                                ->schema([
+                                    Forms\Components\TextInput::make('representante_legal')->label('Representante legal')->maxLength(160)->columnSpan(2),
+                                    Forms\Components\Select::make('tipo_compania')->label('Tipo de compañía')
+                                        ->options(['SAS' => 'S.A.S.', 'SA' => 'S.A.', 'LTDA' => 'Cía. Ltda.',
+                                                   'COMANDITA' => 'En comandita por acciones', 'SUCURSAL' => 'Sucursal extranjera'])
+                                        ->helperText('Sale del RUC'),
+                                    Forms\Components\Select::make('regimen')->label('Régimen')
+                                        ->options(['GENERAL' => 'General', 'RIMPE EMPRENDEDOR' => 'RIMPE emprendedor',
+                                                   'RIMPE NEGOCIO POPULAR' => 'RIMPE negocio popular']),
+                                    Forms\Components\Select::make('estado_ruc')->label('Estado del RUC')
+                                        ->options(['ACTIVO' => 'Activo', 'PASIVO' => 'Pasivo', 'SUSPENDIDO' => 'Suspendido']),
+                                    Forms\Components\Select::make('marco_contable')->label('Marco contable')
+                                        ->options(['niif_pymes' => 'NIIF para PYMES', 'niif_completas' => 'NIIF completas'])
+                                        ->default('niif_pymes'),
+                                    Forms\Components\Toggle::make('obligado_contabilidad')->label('Obligado a llevar contabilidad')->default(true),
+                                    Forms\Components\Toggle::make('agente_retencion')->label('Agente de retención')
+                                        ->helperText('Define si cada compra genera comprobante de retención'),
+                                    Forms\Components\Toggle::make('contribuyente_especial')->label('Contribuyente especial'),
+                                    Forms\Components\DatePicker::make('inicio_ejercicio')->label('Inicio de actividades'),
+                                    Forms\Components\TextInput::make('jurisdiccion')->label('Jurisdicción')->maxLength(120),
+                                    Forms\Components\TextInput::make('provincia')->label('Provincia')->maxLength(60),
+                                    Forms\Components\TextInput::make('canton')->label('Cantón')->maxLength(60),
+                                    Forms\Components\TextInput::make('parroquia')->label('Parroquia')->maxLength(60),
+                                    Forms\Components\Repeater::make('actividades_economicas')
+                                        ->label('Actividades económicas')
+                                        ->columnSpanFull()
+                                        ->columns(4)
+                                        ->defaultItems(0)
+                                        ->schema([
+                                            Forms\Components\TextInput::make('codigo')->label('Código CIIU')->maxLength(10),
+                                            Forms\Components\TextInput::make('descripcion')->label('Descripción')->columnSpan(3),
+                                        ]),
+                                ]),
+
                             Forms\Components\Section::make('Identificación y datos legales')
                                 ->columns(2)
                                 ->schema([

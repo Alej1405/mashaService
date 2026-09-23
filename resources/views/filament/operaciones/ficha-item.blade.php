@@ -8,7 +8,7 @@
 <style>
     .fi-op { --op-surface:#fff; --op-surface-2:#f8fafc; --op-surface-3:#f1f5f9;
              --op-border:#e2e8f0; --op-text:#0f172a; --op-text-2:#1e293b;
-             --op-muted:#64748b; --op-muted-2:#94a3b8; --op-warn:#b45309;
+             --op-muted:#64748b; --op-muted-2:#64748b; --op-warn:#b45309;
              --op-warn-soft:#b4530914; --op-warn-border:#b4530938; --op-accent:#4f46e5;
              --op-accent-soft:#4f46e514; --op-r:14px; }
     .fi-op-sub { font-size:14px; color:var(--op-muted); margin-top:2px; }

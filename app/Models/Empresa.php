@@ -44,12 +44,23 @@ class Empresa extends Model implements HasName
         'mailgun_api_key', 'mailgun_domain', 'mailgun_from_email', 'mailgun_from_name',
         'mailing_monthly_limit', 'mailing_billing_day',
         'logo_path',
+        // Ficha del RUC: la precarga el certificado del SRI
+        'ruc_pdf_path', 'ruc_leido_en', 'representante_legal', 'regimen', 'estado_ruc',
+        'obligado_contabilidad', 'contribuyente_especial', 'jurisdiccion',
+        'provincia', 'canton', 'parroquia', 'actividades_economicas',
+        'tipo_compania', 'agente_retencion', 'marco_contable', 'inicio_ejercicio',
         'smtp_host', 'smtp_port', 'smtp_username', 'smtp_password',
         'smtp_encryption', 'smtp_from_email', 'smtp_from_name',
         'features',
     ];
 
     protected $casts = [
+        'actividades_economicas' => 'array',
+        'obligado_contabilidad'  => 'boolean',
+        'contribuyente_especial' => 'boolean',
+        'agente_retencion'       => 'boolean',
+        'ruc_leido_en'           => 'datetime',
+        'inicio_ejercicio'       => 'date',
         'smtp_port'                  => 'integer',
         'servicio_mailing_activo'    => 'boolean',
         'servicio_cms_activo'        => 'boolean',

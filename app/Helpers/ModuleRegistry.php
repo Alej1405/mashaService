@@ -32,8 +32,18 @@ class ModuleRegistry
     {
         return [
             'finanzas' => [
-                'r' => ['AccountPlanResource', 'CostoFijoResource', 'JournalEntryResource'],
+                'r' => [
+                    'AccountPlanResource', 'CostoFijoResource', 'JournalEntryResource',
+                    'App\\Filament\\Contabilidad\\Resources\\PlanDeCuentasResource',
+                    'App\\Filament\\Contabilidad\\Resources\\AsientoResource',
+                    'App\\Filament\\Contabilidad\\Resources\\RetencionResource',
+                    'App\\Filament\\Contabilidad\\Resources\\SocioResource',
+                ],
                 'p' => [
+                    'App\\Filament\\Contabilidad\\Pages\\EstadosFinancieros',
+                    'App\\Filament\\Contabilidad\\Pages\\CierreEjercicio',
+                    'App\\Filament\\Contabilidad\\Pages\\ConfiguracionTributaria',
+                    'App\\Filament\\Contabilidad\\Pages\\Declaraciones',
                     'AccountingMapPage', 'EstadoSituacionFinanciera',
                     'Reports\\BalanceComprobacion', 'Reports\\BalanceGeneral',
                     'Reports\\EstadoResultados', 'Reports\\FlujoCaja',

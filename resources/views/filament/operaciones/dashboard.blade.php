@@ -9,7 +9,7 @@
      panel App y el CSS base de Filament no trae todas las utilidades. --}}
 <style>
     .op { --op-surface:#fff; --op-border:#e2e8f0; --op-border-soft:#f1f5f9;
-          --op-text:#0f172a; --op-muted:#64748b; --op-muted-2:#94a3b8;
+          --op-text:#0f172a; --op-muted:#64748b; --op-muted-2:#64748b;
           --op-accent:#4f46e5; --op-warn:#b45309; --op-warn-soft:#fffbeb;
           --op-ok:#047857; --op-r:14px; display:flex; flex-direction:column; gap:18px; }
 

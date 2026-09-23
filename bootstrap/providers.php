@@ -10,4 +10,5 @@ return [
     App\Providers\Filament\CmsPanelProvider::class,
     App\Providers\Filament\EcommercePanelProvider::class,
     App\Providers\Filament\OperacionesPanelProvider::class,
+    App\Providers\Filament\ContabilidadPanelProvider::class,
 ];

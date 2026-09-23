@@ -1,0 +1,1036 @@
+[
+ {
+  "anexo": "adi",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de identificación",
+  "codigo": "R",
+  "descripcion": "RUC"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de identificación",
+  "codigo": "C",
+  "descripcion": "CÉDULA"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de identificación",
+  "codigo": "E",
+  "descripcion": "IDENTIFICACIÓN TRIBUTARIA DEL EXTERIOR"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "1",
+  "nombre_tabla": "Tipo de identificación",
+  "codigo": "P",
+  "descripcion": "PASAPORTE"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "01",
+  "descripcion": "PERSONA NATURAL RESIDENTE EN ECUADOR",
+  "compatible_con": "R, C, P"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "02",
+  "descripcion": "PERSONA NATURAL NO RESIDENTE EN ECUADOR",
+  "compatible_con": "C, P, E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "03",
+  "descripcion": "ESTABLECIMIENTO PERMANENTE EN EL ECUADOR O BASE FIJA DE PERSONA NATURAL RESIDENTE EN EL EXTERIOR",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "04",
+  "descripcion": "ESTABLECIMIENTO PERMANENTE EN EL ECUADOR DE SOCIEDAD EXTRANJERA NO DOMICILIADA EN ECUADOR",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "05",
+  "descripcion": "SUCURSALES DE SOCIEDADES EXTRANJERAS DOMICILIADAS EN EL ECUADOR",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "06",
+  "descripcion": "SOCIEDAD DOMICILIADA EN ECUADOR",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "07",
+  "descripcion": "SOCIEDAD EXTRANJERA NO DOMICILIADA EN EL ECUADOR SIN ESTABLECIMIENTO PERMANENTE (NO RESIDENTE NI ESTABLECIDA EN PARAÍSO FISCAL, JURISDICCIÓN DE MENOR IMPOSICIÓN O RÉGIMEN FISCAL PREFERENTE)",
+  "compatible_con": "E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "08",
+  "descripcion": "ESTABLECIMIENTOS PERMANENTES EN EL EXTERIOR DE SOCIEDADES DOMICILIADAS EN EL ECUADOR (NO RESIDENTE NI ESTABLECIDA EN PARAÍSO FISCAL, JURISDICCIÓN DE MENOR IMPOSICIÓN O RÉGIMEN FISCAL PREFERENTE)",
+  "compatible_con": "E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "09",
+  "descripcion": "SOCIEDADES RESIDENTES O ESTABLECIDAS EN PARAÍSOS FISCALES O JURISDICCIONES DE MENOR IMPOSICIÓN O RÉGIMEN FISCAL PREFERENTE",
+  "compatible_con": "E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "10",
+  "descripcion": "SUCESIONES INDIVISAS",
+  "compatible_con": "R, E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "11",
+  "descripcion": "SOCIEDAD EXTRANJERA NO DOMICILIADA NI ESTABLECIDA EN EL ECUADOR CON BENEFICIARIO EFECTIVO PERSONA NATURAL RESIDENTE EN EL ECUADOR",
+  "compatible_con": "E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "12",
+  "descripcion": "ESTABLECIMIENTO PERMANENTE O BASE FIJA EN EL EXTERIOR DE PERSONA NATURAL RESIDENTE EN ECUADOR (NO RESIDENTE NI ESTABLECIDA EN PARAÍSO FISCAL, JURISDICCIÓN DE MENOR IMPOSICIÓN O RÉGIMEN FISCAL PREFERENTE)",
+  "compatible_con": "E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "2",
+  "nombre_tabla": "Tipo de beneficiario",
+  "codigo": "13",
+  "descripcion": "*CONTRIBUYENTE BENEFICIARIO DE LA LEY PARA ASOCIACIONES PÚBLICO PRIVADAS",
+  "compatible_con": "R, C, P, E"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "4",
+  "nombre_tabla": "",
+  "codigo": "01",
+  "descripcion": "SI"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "4",
+  "nombre_tabla": "",
+  "codigo": "02",
+  "descripcion": "NO"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "01",
+  "descripcion": "SIN UTILIZACIÓN DEL SISTEMA FINANCIERO",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "02",
+  "descripcion": "CHEQUE PROPIO",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "03",
+  "descripcion": "CHEQUE CERTIFICADO",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "04",
+  "descripcion": "CHEQUE DE GERENCIA",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "05",
+  "descripcion": "CHEQUE DEL EXTERIOR",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "06",
+  "descripcion": "DÉBITO DE CUENTA",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "07",
+  "descripcion": "TRANSFERENCIA PROPIO BANCO",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "08",
+  "descripcion": "TRANSFERENCIA OTRO BANCO NACIONAL",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "09",
+  "descripcion": "TRANSFERENCIA BANCO EXTERIOR",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "10",
+  "descripcion": "GIRO",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "11",
+  "descripcion": "DEPÓSITO EN CUENTA (CORRIENTE/AHORROS)",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "12",
+  "descripcion": "ENDOSO DE INVERSIÓN",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "5",
+  "nombre_tabla": "",
+  "codigo": "13",
+  "descripcion": "COMPENSACIÓN DE DEUDAS",
+  "compatible_con": "2014-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de informante del anexo",
+  "codigo": "01",
+  "descripcion": "SOCIEDAD",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de informante del anexo",
+  "codigo": "02",
+  "descripcion": "PERSONA NATURAL",
+  "compatible_con": "R, C, P"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de informante del anexo",
+  "codigo": "03",
+  "descripcion": "SUCESIÓN INDIVISA",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de informante del anexo",
+  "codigo": "04",
+  "descripcion": "ESTABLECIMIENTO PERMANENTE EN EL ECUADOR O BASE FIJA DE PERSONA NATURAL RESIDENTE EN EL EXTERIOR",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de informante del anexo",
+  "codigo": "05",
+  "descripcion": "ESTABLECIMIENTO PERMANENTE EN EL ECUADOR DE SOCIEDAD EXTRANJERA NO DOMICILIADA EN ECUADOR",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "7",
+  "nombre_tabla": "Tipo de informante del anexo",
+  "codigo": "06",
+  "descripcion": "SUCURSAL DE SOCIEDAD EXTRANJERA DOMICILIADA EN EL ECUADOR",
+  "compatible_con": "R"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "01",
+  "descripcion": "DIVIDENDO GRAVADO A PERSONA NATURAL RESIDENTE EN ECUADOR",
+  "compatible_con": "- · -"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "02",
+  "descripcion": "DIVIDENDO GRAVADO DISTRIBUIDO EN ACCIONES, PARTICIPACIONES Y SIMILARES (reinversión de utilidades sin derecho a reducción tarifa IR)",
+  "compatible_con": "- · 2019-12-31 00:00:00 · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "03",
+  "descripcion": "DIVIDENDO GRAVADO A SOCIEDAD RESIDENTE O ESTABLECIDA EN PARAÍSO FISCAL, RÉGIMEN FISCAL PREFERENTE O JURISDICCIÓN DE MENOR IMPOSICIÓN",
+  "compatible_con": "- · - · 07, 08, 09, 10, 12"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "04",
+  "descripcion": "UTILIDAD GRAVADA A MIEMBROS DE ENTIDADES DE LA ECONOMÍA POPULAR Y SOLIDARIA",
+  "compatible_con": "- · - · 01, 07, 08, 09, 10, 11, 12"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "05",
+  "descripcion": "DIVIDENDO EXENTO A PERSONA NATURAL NO RESIDENTE EN ECUADOR",
+  "compatible_con": "- · 2019-12-31 00:00:00 · 02, 03"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "06",
+  "descripcion": "DIVIDENDO EXENTO DISTRIBUIDO EN ACCIONES, PARTICIPACIONES Y SIMILARES (reinversión de utilidades con derecho a reducción tarifa IR)",
+  "compatible_con": "- · 2019-12-31 00:00:00 · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "07",
+  "descripcion": "DIVIDENDO EXENTO A SOCIEDAD DOMICILIADA EN ECUADOR",
+  "compatible_con": "- · - · 03, 04, 05, 06"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "08",
+  "descripcion": "DIVIDENDO EXENTO A SOCIEDAD DOMICILIADA EN EL EXTERIOR (NO PARAÍSO FISCAL) SIN BENEFICIARIO EFECTIVO",
+  "compatible_con": "- · 2019-12-31 00:00:00 · 07, 08"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "09",
+  "descripcion": "UTILIDAD EXENTA A MIEMBROS DE ENTIDADES DE LA ECONOMÍA POPULAR Y SOLIDARIA",
+  "compatible_con": "- · - · 01, 02, 03, 04, 05, 06, 10"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "10",
+  "descripcion": "DIVIDENDO GRAVADO A SOCIEDAD DOMICILIADA EN EL EXTERIOR (NO PARAÍSO FISCAL) CON BENEFICIARIO EFECTIVO, PERSONA NATURAL RESIDENTE EN EL ECUADOR",
+  "compatible_con": "- · - · 11, 12"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "11",
+  "descripcion": "DIVIDENDO EXENTO DISTRIBUIDO POR SOCIEDAD QUE SE DEDIQUE A LA ACTIVIDAD BANANERA",
+  "compatible_con": "- · 2018-12-31 00:00:00 · 02, 03, 04, 05, 06, 07, 08"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "12",
+  "descripcion": "DIVIDENDO GRAVADO QUE INCREMENTA EL VALOR DE LOS DERECHOS REPRESENTATIVOS DE CAPITAL POR REINVERSIÓN DE UTILIDADES",
+  "compatible_con": "- · 2019-12-31 00:00:00 · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "13",
+  "descripcion": "BENEFICIOS EXENTOS DISTRIBUIDOS POR FIDEICOMISOS, FONDOS DE INVERSIÓN Y FONDOS COMPLEMENTARIOS",
+  "compatible_con": "- · - · 01, 02, 03, 04, 05, 06, 07, 08, 10, 11, 12, 13*"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "14",
+  "descripcion": "DIVIDENDO EXENTO DISTRIBUIDO A CONTRIBUYENTE BENEFICIARIO DE LA LEY PARA ASOCIACIONES PÚBLICO PRIVADAS",
+  "compatible_con": "2016-01-01 00:00:00 · - · 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "15",
+  "descripcion": "DIVIDENDO GRAVADO DISTRIBUIDO A CONTRIBUYENTE BENEFICIARIO DE LA LEY PARA ASOCIACIONES PÚBLICO PRIVADAS",
+  "compatible_con": "2018-01-01 00:00:00 · - · 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "16",
+  "descripcion": "DIVIDENDO EXENTO PROVENIENTE DE FIDEICOMISOS DE TITULARIZACIÓN QUE CUMPLAN CON LOS REQUISITOS DE LA LEY",
+  "compatible_con": "2018-01-01 00:00:00 · - · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "17",
+  "descripcion": "DIVIDENDO GRAVADO POR NO INFORMAR BENEFICIARIO EFECTIVO",
+  "compatible_con": "2018-01-01 00:00:00 · - · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "18",
+  "descripcion": "DIVIDENDO EXENTO A SOCIEDAD DOMICILIADA EN EL EXTERIOR (PARAÍSO FISCAL) SIN BENEFICIARIO EFECTIVO",
+  "compatible_con": "2018-01-01 00:00:00 · 2019-12-31 00:00:00 · 09"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "19",
+  "descripcion": "DIVIDENDO EXENTO A BENEFICIARIOS EFECTIVOS POR REINVERSIÓN DE UTILIDADES CUANDO SE INFORMÓ LA COMPOSICIÓN SOCIETARIA",
+  "compatible_con": "2018-01-01 00:00:00 · 2019-12-31 00:00:00 · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "20",
+  "descripcion": "DIVIDENDO GRAVADO POR ACTIVIDADES SUJETAS A IMPUESTO A LA RENTA ÚNICO",
+  "compatible_con": "2019-01-01 00:00:00 · - · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "21",
+  "descripcion": "DIVIDENDO EXENTO POR ACTIVIDADES SUJETAS A IMPUESTO A LA RENTA ÚNICO",
+  "compatible_con": "2019-01-01 00:00:00 · - · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "22",
+  "descripcion": "DIVIDENDO GRAVADO A PERSONA NATURAL NO RESIDENTE EN ECUADOR",
+  "compatible_con": "2020-01-01 00:00:00 · - · 02, 12"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "23",
+  "descripcion": "DIVIDENDO GRAVADO A SOCIEDAD RESIDENTE O ESTABLECIDA EN EL EXTERIOR (NO PARAÍSO FISCAL) SIN BENEFICIARIO EFECTIVO",
+  "compatible_con": "2020-01-01 00:00:00 · - · 07, 08, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "24",
+  "descripcion": "DIVIDENDO EN ACCIONES NO OBJETO DE IMPUESTO A LA RENTA (CAPITALIZACION DE UTILIDADES)",
+  "compatible_con": "2020-01-01 00:00:00 · - · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "25",
+  "descripcion": "DIVIDENDO EN ACCIONES RETENIDO (CAPITALIZACION DE UTILIDADES)",
+  "compatible_con": "2020-01-01 00:00:00 · - · 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "9",
+  "nombre_tabla": "Tipo de dividendo, beneficio o utilidad distribuido",
+  "codigo": "26",
+  "descripcion": "DIVIDENDO GRAVADO A SOCIEDAD RESIDENTE O ESTABLECIDA EN PARAÍSO FISCAL, RÉGIMEN FISCAL PREFERENTE O JURISDICCIÓN DE MENOR IMPOSICIÓN CON BENEFICIARIO EFECTIVO EN EL ECUADOR",
+  "compatible_con": "2020-01-01 00:00:00 · - · 09, 11, 13"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "10",
+  "nombre_tabla": "",
+  "codigo": "01",
+  "descripcion": "DIVIDENDO DISTRIBUIDO GENERADO POR LA SOCIEDAD INFORMANTE",
+  "compatible_con": "2019-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "10",
+  "nombre_tabla": "",
+  "codigo": "02",
+  "descripcion": "DIVIDENDO DISTRIBUIDO A TRAVÉS DE MAS DE UNA SOCIEDAD",
+  "compatible_con": "2019-12-31 00:00:00"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "016",
+  "descripcion": "AMERICAN SAMOA",
+  "compatible_con": "HUNGRIA · 216 · EMIRATOS ARABES UNIDOS · 333 · SAHARA OCCIDENTAL · 447"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "074",
+  "descripcion": "BOUVET ISLAND",
+  "compatible_con": "IRLANDA · 217 · QATAR · 334 · SOMALIA · 448"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "101",
+  "descripcion": "ARGENTINA",
+  "compatible_con": "ISLANDIA · 218 · MALDIVAS · 335 · SANTO TOME Y PRINCIPE · 449"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "102",
+  "descripcion": "BOLIVIA",
+  "compatible_con": "ITALIA · 219 · NEPAL · 336 · SWAZILANDIA · 450"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "103",
+  "descripcion": "BRASIL",
+  "compatible_con": "LUXEMBURGO · 220 · OMAN · 337 · TOGO · 451"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "104",
+  "descripcion": "CANADA",
+  "compatible_con": "MALTA · 221 · SINGAPUR · 338 · TUNEZ · 452"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "105",
+  "descripcion": "COLOMBIA",
+  "compatible_con": "NORUEGA · 222 · SRI LANKA (CEILAN) · 339 · ZAIRE · 453"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "106",
+  "descripcion": "COSTA RICA",
+  "compatible_con": "POLONIA · 223 · VIETNAM · 341 · ANGOLA · 454"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "107",
+  "descripcion": "CUBA",
+  "compatible_con": "PORTUGAL · 224 · YEMEN · 342 · CABO VERDE · 456"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "108",
+  "descripcion": "CHILE",
+  "compatible_con": "RUMANIA · 225 · ISLAS HEARD Y MCDONALD · 343 · COMORAS · 458"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "109",
+  "descripcion": "ANGUILA",
+  "compatible_con": "SUECIA · 226 · BRUNEI DARUSSALAM · 344 · DJIBOUTI · 459"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "110",
+  "descripcion": "ESTADOS UNIDOS",
+  "compatible_con": "SUIZA · 227 · TURQUIA · 346 · NAMIBIA · 460"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "111",
+  "descripcion": "GUATEMALA",
+  "compatible_con": "CANARIAS ISLAS · 228 · AZERBAIJAN · 347 · ERITREA · 463"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "112",
+  "descripcion": "HAITI",
+  "compatible_con": "UCRANIA · 229 · KAZAJSTAN · 348 · MOROCCO · 464"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "113",
+  "descripcion": "HONDURAS",
+  "compatible_con": "RUSIA · 230 · KIRGUIZISTAN · 349 · REUNION · 465"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "114",
+  "descripcion": "JAMAICA",
+  "compatible_con": "YUGOSLAVIA · 231 · TAJIKISTAN · 350 · SANTA ELENA · 466"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "115",
+  "descripcion": "MALVINAS ISLAS",
+  "compatible_con": "ANDORRA · 233 · TURKMENISTAN · 351 · JERSEY · 499"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "116",
+  "descripcion": "MEXICO",
+  "compatible_con": "LIECHTENSTEIN · 234 · UZBEKISTAN · 352 · AUSTRALIA · 501"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "117",
+  "descripcion": "NICARAGUA",
+  "compatible_con": "MONACO · 235 · PALESTINA · 353 · NUEVA ZELANDA · 503"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "118",
+  "descripcion": "PANAMA",
+  "compatible_con": "SAN MARINO · 237 · HONG KONG · 354 · SAMOA OCCIDENTAL · 504"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "119",
+  "descripcion": "PARAGUAY",
+  "compatible_con": "VATICANO (SANTA SEDE) · 238 · MACAO · 355 · FIJI · 506"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "120",
+  "descripcion": "PERU",
+  "compatible_con": "GIBRALTAR · 239 · ARMENIA · 356 · PAPUA NUEVA GUINEA · 507"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "121",
+  "descripcion": "PUERTO RICO",
+  "compatible_con": "BELARUS · 241 · BURKINA FASO · 402 · TONGA · 508"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "122",
+  "descripcion": "REPUBLICA DOMINICANA",
+  "compatible_con": "BOSNIA Y HERZEGOVINA · 242 · ARGELIA · 403 · PALAO (BELAU) ISLAS · 509"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "123",
+  "descripcion": "EL SALVADOR",
+  "compatible_con": "CROACIA · 243 · BURUNDI · 404 · KIRIBATI · 510"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "124",
+  "descripcion": "TRINIDAD Y TOBAGO",
+  "compatible_con": "ESLOVENIA · 244 · CAMERUN · 405 · MARSHALL ISLAS · 511"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "125",
+  "descripcion": "URUGUAY",
+  "compatible_con": "ESTONIA · 245 · CONGO · 406 · MICRONESIA · 512"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "126",
+  "descripcion": "VENEZUELA",
+  "compatible_con": "GEORGIA · 246 · ETIOPIA · 407 · NAURU · 513"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "127",
+  "descripcion": "CURAZAO",
+  "compatible_con": "GROENLANDIA · 247 · GAMBIA · 408 · SALOMON ISLAS · 514"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "129",
+  "descripcion": "BAHAMAS",
+  "compatible_con": "LETONIA · 248 · GUINEA · 409 · TUVALU · 515"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "130",
+  "descripcion": "BARBADOS",
+  "compatible_con": "LITUANIA · 249 · LIBERIA · 410 · VANUATU · 516"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "131",
+  "descripcion": "GRANADA",
+  "compatible_con": "MOLDOVA · 250 · MADAGASCAR · 412 · GUAM · 517"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "132",
+  "descripcion": "GUYANA",
+  "compatible_con": "MACEDONIA · 251 · MALAWI · 413 · ISLAS COCOS (KEELING) · 518"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "133",
+  "descripcion": "SURINAM",
+  "compatible_con": "ESLOVAQUIA · 252 · MALI · 414 · ISLAS COOK · 519"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "134",
+  "descripcion": "ANTIGUA Y BARBUDA",
+  "compatible_con": "ISLAS FAROE · 253 · MARRUECOS · 415 · ISLAS NAVIDAD · 520"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "135",
+  "descripcion": "BELICE",
+  "compatible_con": "FRENCH SOUTHERN TERRITORIES · 260 · MAURITANIA · 416 · MIDWAY ISLAS · 521"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "136",
+  "descripcion": "DOMINICA",
+  "compatible_con": "AFGANISTAN · 301 · NIGERIA · 417 · NIUE ISLA · 522"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "137",
+  "descripcion": "SAN CRISTOBAL Y NEVIS",
+  "compatible_con": "ARABIA SAUDITA · 302 · ZIMBABWE (RHODESIA) · 419 · NORFOLK ISLA · 523"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "138",
+  "descripcion": "SANTA LUCIA",
+  "compatible_con": "MYANMAR (BURMA) · 303 · SENEGAL · 420 · NUEVA CALEDONIA · 524"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "139",
+  "descripcion": "SAN VICENTE Y LAS GRANAD.",
+  "compatible_con": "CAMBOYA · 304 · SUDAN · 421 · PITCAIRN, ISLA · 525"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "140",
+  "descripcion": "ANTILLAS HOLANDESAS",
+  "compatible_con": "COREA NORTE · 306 · SUDAFRICA (CISKEI) · 422 · POLINESIA FRANCESA · 526"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "141",
+  "descripcion": "ARUBA",
+  "compatible_con": "TAIWAN (CHINA) · 307 · SIERRA LEONA · 423 · TIMOR DEL ESTE · 529"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "142",
+  "descripcion": "BERMUDA",
+  "compatible_con": "FILIPINAS · 308 · TANZANIA · 425 · TOKELAI · 530"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "143",
+  "descripcion": "GUADALUPE",
+  "compatible_con": "INDIA · 309 · UGANDA · 426 · WAKE ISLA · 531"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "144",
+  "descripcion": "GUYANA FRANCESA",
+  "compatible_con": "INDONESIA · 310 · ZAMBIA · 427 · WALLIS Y FUTUNA, ISLAS · 532"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "145",
+  "descripcion": "ISLAS CAIMAN",
+  "compatible_con": "IRAK · 311 · ÅLAND ISLANDS · 428 · ECUADOR · 593"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "146",
+  "descripcion": "ISLAS VIRGENES (BRITANICAS)",
+  "compatible_con": "IRAN (REPUBLICA ISLAMICA) · 312 · BENIN · 429 · AGUAS INTERNACIONALES · 594"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "147",
+  "descripcion": "JOHNSTON ISLA",
+  "compatible_con": "ISRAEL · 313 · BOTSWANA · 430 · ALTO VOLTA · 595"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "148",
+  "descripcion": "MARTINICA",
+  "compatible_con": "JAPON · 314 · REPUBLICA CENTROAFRICANA · 431 · BIELORRUSIA · 596"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "149",
+  "descripcion": "MONTSERRAT ISLA",
+  "compatible_con": "JORDANIA · 315 · COSTA DE MARFIL · 432 · COTE DÍVOIRE · 597"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "151",
+  "descripcion": "TURCAS Y CAICOS ISLAS",
+  "compatible_con": "KUWAIT · 316 · CHAD · 433 · CYPRUS · 598"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "152",
+  "descripcion": "VIRGENES,ISLAS(NORT.AMER.)",
+  "compatible_con": "LAOS, REP. POP. DEMOC. · 317 · EGIPTO · 434 · REPUBLICA CHECA · 599"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "201",
+  "descripcion": "ALBANIA",
+  "compatible_con": "LIBANO · 318 · GABON · 435 · FALKLAND ISLANDS · 600"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "202",
+  "descripcion": "ALEMANIA",
+  "compatible_con": "MALASIA · 319 · GHANA · 436 · LATVIA · 601"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "203",
+  "descripcion": "AUSTRIA",
+  "compatible_con": "MONGOLIA (MANCHURIA) · 321 · GUINEA-BISSAU · 437 · LIBIA · 602"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "204",
+  "descripcion": "BELGICA",
+  "compatible_con": "PAKISTAN · 322 · GUINEA ECUATORIAL · 438 · NORTHERN MARIANA ISL · 603"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "205",
+  "descripcion": "BULGARIA",
+  "compatible_con": "SIRIA · 323 · KENIA · 439 · ST. PIERRE AND MIQUE · 604"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "207",
+  "descripcion": "ALBORAN Y PEREJIL",
+  "compatible_con": "TAILANDIA · 325 · LESOTHO · 440 · SYRIAN ARAB REPUBLIC · 605"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "208",
+  "descripcion": "DINAMARCA",
+  "compatible_con": "BAHREIN · 327 · MAURICIO · 441 · TERRITORIO ANTARTICO BRITANICO · 606"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "209",
+  "descripcion": "ESPAÑA",
+  "compatible_con": "BANGLADESH · 328 · MOZAMBIQUE · 442 · TERRITORIO BRITANICO OCEANO IN · 607"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "211",
+  "descripcion": "FRANCIA",
+  "compatible_con": "BUTAN · 329 · MAYOTTE · 443 · SERBIA · 688"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "212",
+  "descripcion": "FINLANDIA",
+  "compatible_con": "COREA DEL SUR · 330 · NIGER · 444 · GUERNSEY · 831"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "213",
+  "descripcion": "REINO UNIDO",
+  "compatible_con": "CHINA POPULAR · 331 · RWANDA · 445 · ISLE OF MAN · 833"
+ },
+ {
+  "anexo": "adi",
+  "tabla": "3",
+  "nombre_tabla": "PAÍS*",
+  "codigo": "214",
+  "descripcion": "GRECIA",
+  "compatible_con": "CHIPRE · 332 · SEYCHELLES · 446 · GENERAL (persona natural sin residencia en un Estado) · 999"
+ }
+]

@@ -307,3 +307,26 @@ Route::middleware(\App\Http\Middleware\AutenticarEnBodega::class)->group(functio
     Route::get('/inventario/etiquetas/pdf', [\App\Http\Controllers\Inventario\QrController::class, 'etiquetasPdf'])
         ->name('inventario.etiquetas.pdf');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Contabilidad — descarga de una declaración generada
+|--------------------------------------------------------------------------
+| El XML vive en disco privado, no en public: una declaración lleva el RUC, las
+| ventas y los proveedores de la empresa. Se sirve por la sesión del panel y
+| solo a quien pertenece la empresa que la pidió.
+*/
+Route::middleware(['web', 'auth'])->get('/contabilidad/declaracion/{declaracion}', function (int $declaracion) {
+    $modelo = \App\Models\Declaracion::findOrFail($declaracion);
+
+    // La misma puerta que usa el panel para decidir a qué empresa se entra.
+    abort_unless(auth()->user()?->canAccessTenant($modelo->empresa), 403);
+
+    abort_unless($modelo->archivo && \Illuminate\Support\Facades\Storage::disk('local')->exists($modelo->archivo), 404);
+
+    return response()->streamDownload(
+        fn () => print(\Illuminate\Support\Facades\Storage::disk('local')->get($modelo->archivo)),
+        basename($modelo->archivo),
+        ['Content-Type' => 'application/xml'],
+    );
+})->name('contabilidad.declaracion');

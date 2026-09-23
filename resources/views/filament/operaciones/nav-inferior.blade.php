@@ -54,6 +54,12 @@
             .fi-sidebar, .fi-topbar-open-sidebar-btn, .fi-sidebar-close-overlay,
             .fi-sidebar-close-btn, .fi-topbar-close-sidebar-btn { display:none !important; }
 
+            /* Dedos, no punteros: los botones de 36 px suben a 44 */
+            .fi-btn, .fi-ac-btn-action, .fi-ta-actions .fi-icon-btn, .fi-pagination-item {
+                min-height:44px !important;
+            }
+            .fi-btn { padding-top:.6rem !important; padding-bottom:.6rem !important; }
+
             /* Las acciones que ya viven en la barra inferior no se repiten arriba */
             .op-barra .op-btn { display:none !important; }
             .op-barra { gap:0; }

@@ -47,4 +47,17 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Microservicio de declaraciones (SRI)
+    |--------------------------------------------------------------------------
+    | Vive en el VPS de microservicios. Sin URL configurada el ERP funciona
+    | igual: solo no se puede generar el archivo.
+    */
+
+    'sri' => [
+        'url'   => env('SRI_SERVICIO_URL'),
+        'token' => env('SRI_SERVICIO_TOKEN'),
+    ],
+
 ];

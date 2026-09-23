@@ -111,6 +111,9 @@ class PlanHelper
      *
      * Usar en canAccess() de todos los Resources/Pages del panel App.
      */
+    /** Paneles con catálogo de módulos propio, fuera del aislamiento del ERP. */
+    private const PANELES_PROPIOS = ['operaciones', 'contabilidad'];
+
     public static function hasModule(string $module): bool
     {
         try {
@@ -132,8 +135,17 @@ class PlanHelper
             // (StoreProductResource, auto-permitido en su canAccess), dejamos
             // visible el módulo Inventario para gestionar los insumos del
             // producto. Todo lo demás, oculto.
+            //
+            // El aislamiento es del ERP general. Los paneles con catálogo propio
+            // —Operaciones, Contabilidad— ya están acotados por su propia lista
+            // de módulos en la tabla `panels`: si el aislamiento los alcanzara,
+            // responderían 403 en todas sus pantallas.
             if (self::aislarProducto()) {
-                return $module === 'inventario';
+                // En un panel con catálogo propio basta la capa 1: su lista de
+                // módulos ya lo acota. En el ERP general sigue el aislamiento.
+                return in_array($panelKey, self::PANELES_PROPIOS, true)
+                    ? true
+                    : $module === 'inventario';
             }
 
             // Capa 2: ¿el rol del usuario ve este módulo? (null = sin restricción)

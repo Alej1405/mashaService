@@ -73,7 +73,9 @@
             <div class="datos">
                 <div class="marca">
                     {{-- El logo es de la empresa dueña del inventario, no de MashaCorp --}}
-                    @if($logo)
+                    {{-- Solo si el archivo está de verdad: un logo borrado dejaba
+                         un 403 y un icono roto en cada etiqueta impresa. --}}
+                    @if($logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($logo))
                         <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($logo) }}" alt="">
                     @endif
                     <span class="codigo">{{ $item->codigo }}</span>
