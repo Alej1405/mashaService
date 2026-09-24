@@ -47,7 +47,7 @@ class SuperciasService
      * Los saldos de las cuentas hijas suben a sus padres: el catálogo es
      * jerárquico y el portal espera los totales llenos.
      */
-    private function consolidar(array $saldos, Collection $lineas): array
+    public function consolidar(array $saldos, Collection $lineas): array
     {
         $totales = [];
 
@@ -61,6 +61,34 @@ class SuperciasService
         }
 
         return $totales;
+    }
+
+    /**
+     * Un estado financiero completo, como se presenta y como se sube.
+     *
+     * Devuelve las líneas del catálogo con su saldo del ejercicio y el del
+     * anterior. La pantalla y el archivo .txt del portal salen de aquí: si
+     * saliesen de dos sitios, un día dirían cosas distintas.
+     *
+     * @return array<int, array{codigo: string, nombre: string, nivel: int,
+     *                          actual: float, anterior: float, tiene_valor: bool}>
+     */
+    public function estado(int $empresaId, int $anio, string $estado): array
+    {
+        $lineas = CatalogoSupercias::where('estado', $estado)->orderBy('orden')->get();
+
+        $actual   = $this->consolidar($this->saldosPorCodigo($empresaId, $anio), $lineas);
+        $anterior = $this->consolidar($this->saldosPorCodigo($empresaId, $anio - 1), $lineas);
+
+        return $lineas->map(fn ($l) => [
+            'codigo'      => $l->codigo,
+            'nombre'      => $l->nombre,
+            'nivel'       => (int) $l->nivel,
+            'columna'     => $l->columna,
+            'actual'      => round($actual[$l->codigo] ?? 0, 2),
+            'anterior'    => round($anterior[$l->codigo] ?? 0, 2),
+            'tiene_valor' => abs($actual[$l->codigo] ?? 0) > 0.001 || abs($anterior[$l->codigo] ?? 0) > 0.001,
+        ])->all();
     }
 
     /** Contenido del archivo de un estado, listo para guardar como .txt */
@@ -114,7 +142,14 @@ class SuperciasService
         return $resumen;
     }
 
-    /** Cuentas de la empresa que todavía no apuntan al catálogo. */
+    /**
+     * Cuentas que todavía no apuntan al catálogo.
+     *
+     * Con el mapeo automático esto debería ser siempre cero: si no lo es, algo
+     * falló al crear la cuenta. Lo que sí hay que mirar es cuántas están sin
+     * confirmar, y de eso responde `MapeoSuperciasService::porRevisar()`, que
+     * es el único contador de esta idea en todo el sistema.
+     */
     public function cuentasSinCodigo(int $empresaId): int
     {
         return \App\Models\AccountPlan::withoutGlobalScopes()

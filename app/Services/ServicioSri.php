@@ -152,4 +152,42 @@ class ServicioSri
             return ['ok' => false, 'error' => 'Sin respuesta del servicio: ' . str($e->getMessage())->limit(120)];
         }
     }
+
+    /**
+     * Pide al servicio que lea un listado del portal del SRI.
+     *
+     * El lector vive allá, no aquí, porque el mismo parseo lo usará la web
+     * cuando alguien sin ERP suba su archivo para sacar su formulario.
+     *
+     * @return array{ok: bool, tipo?: string, comprobantes?: array, periodos?: array, avisos?: array, error?: string}
+     */
+    public function leerComprobantes(string $contenido, ?string $tipo = null): array
+    {
+        if (! $this->configurado()) {
+            return ['ok' => false, 'error' => 'El microservicio de declaraciones no está configurado.'];
+        }
+
+        try {
+            $r = Http::timeout(120)->acceptJson()
+                ->withToken($this->token ?? config('services.sri.token'))
+                ->post($this->url() . '/comprobantes/leer', array_filter([
+                    'contenido' => $contenido,
+                    'tipo'      => $tipo,
+                ]));
+
+            if ($r->status() === 422) {
+                return ['ok' => false, 'error' => $r->json('detail') ?? 'El archivo no tiene el formato del SRI.'];
+            }
+
+            if (! $r->successful()) {
+                return ['ok' => false, 'error' => 'El servicio respondió ' . $r->status() . '.'];
+            }
+
+            return ['ok' => true] + $r->json();
+        } catch (\Throwable $e) {
+            Log::error('microservicio SRI: no se pudo leer el archivo', ['error' => $e->getMessage()]);
+
+            return ['ok' => false, 'error' => 'Sin respuesta del servicio: ' . str($e->getMessage())->limit(120)];
+        }
+    }
 }

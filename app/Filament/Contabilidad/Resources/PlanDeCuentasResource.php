@@ -31,24 +31,6 @@ class PlanDeCuentasResource extends Resource
     }
 
     /** Las líneas que la Superintendencia espera ver en cada estado. */
-    public const LINEAS = [
-        'Estado de situación financiera' => [
-            'activo_corriente'      => 'Activo corriente',
-            'activo_no_corriente'   => 'Activo no corriente',
-            'pasivo_corriente'      => 'Pasivo corriente',
-            'pasivo_no_corriente'   => 'Pasivo no corriente',
-            'patrimonio'            => 'Patrimonio',
-        ],
-        'Estado de resultados' => [
-            'ingresos_ordinarios'   => 'Ingresos de actividades ordinarias',
-            'otros_ingresos'        => 'Otros ingresos',
-            'costo_ventas'          => 'Costo de ventas',
-            'gastos_operativos'     => 'Gastos operativos',
-            'gastos_financieros'    => 'Gastos financieros',
-            'impuestos'             => 'Impuesto a la renta',
-        ],
-    ];
-
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -69,14 +51,11 @@ class PlanDeCuentasResource extends Resource
                 ->description('Sin esto la cuenta sale en cero en el archivo que se sube al portal.')
                 ->columns(2)
                 ->schema([
-                    Forms\Components\Select::make('estado_financiero')->label('Estado financiero')
-                        ->options(array_combine(array_keys(self::LINEAS), array_keys(self::LINEAS)))
-                        ->live(),
-                    Forms\Components\Select::make('linea_estado')->label('Línea del estado')
-                        ->options(fn (Forms\Get $get) => self::LINEAS[$get('estado_financiero')] ?? [])
-                        ->helperText('Agrupación legible para los informes internos.'),
+                    // Una sola forma de decir a qué línea suma: el código del
+                    // catálogo. Antes había tres campos para lo mismo y dos de
+                    // ellos no casaban con nada.
                     Forms\Components\Select::make('codigo_supercias')
-                        ->label('Código del catálogo de la Superintendencia')
+                        ->label('Línea del estado')
                         ->options(fn () => \App\Models\CatalogoSupercias::query()
                             ->whereNotNull('nombre')
                             ->orderBy('estado')->orderBy('orden')
@@ -85,7 +64,12 @@ class PlanDeCuentasResource extends Resource
                             ->all())
                         ->searchable()
                         ->columnSpanFull()
-                        ->helperText('Es el código que viaja en el archivo .txt: 10101, 1010102…'),
+                        ->helperText('El mismo código que viaja en el archivo del portal. El sistema la '
+                            . 'pone sola al crear la cuenta; cambiarla aquí la deja confirmada.')
+                        ->afterStateUpdated(fn ($state, $record) => $record?->forceFill([
+                            'codigo_supercias_confianza' => 100,
+                            'codigo_supercias_revisado'  => true,
+                        ])->saveQuietly()),
                 ]),
             Forms\Components\Section::make('Uso')->columns(2)->schema([
                 Forms\Components\Toggle::make('accepts_movements')->label('Acepta movimientos')->default(true),
@@ -96,8 +80,6 @@ class PlanDeCuentasResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $lineas = collect(self::LINEAS)->flatMap(fn ($l) => $l)->all();
-
         return $table
             ->defaultSort('code')
             ->columns([
@@ -108,18 +90,30 @@ class PlanDeCuentasResource extends Resource
                 Tables\Columns\TextColumn::make('nature')->label('Naturaleza')->badge()
                     ->formatStateUsing(fn (?string $state) => $state === 'deudora' ? 'Deudora' : 'Acreedora')
                     ->color(fn (?string $state) => $state === 'deudora' ? 'info' : 'warning'),
-                Tables\Columns\TextColumn::make('codigo_supercias')->label('Código SCVS')
+                // Una sola columna para la línea: antes había dos del mismo
+                // campo, una con el código y otra con el nombre.
+                Tables\Columns\TextColumn::make('codigo_supercias')->label('Línea del estado')
                     ->searchable()
-                    ->badge()
-                    ->placeholder('sin asignar')
-                    ->color(fn (?string $state) => $state ? 'success' : 'danger')
-                    ->description(fn ($record) => \App\Models\CatalogoSupercias::where('codigo', $record->codigo_supercias)->value('nombre')),
-                Tables\Columns\TextColumn::make('linea_estado')->label('Línea del estado')
-                    ->formatStateUsing(fn (?string $state) => $lineas[$state] ?? null)
-                    ->description(fn ($record) => $record->estado_financiero)
-                    ->placeholder('sin asignar')
-                    ->badge()
-                    ->color(fn (?string $state) => $state ? 'success' : 'danger'),
+                    ->formatStateUsing(fn (?string $state) => $state
+                        ? \App\Models\CatalogoSupercias::where('codigo', $state)->value('nombre')
+                        : null)
+                    ->description(fn ($record) => match (true) {
+                        (bool) $record->codigo_supercias => $record->codigo_supercias
+                            . ($record->codigo_supercias_revisado ? ' · confirmada' : ' · propuesta del sistema'),
+                        ! $record->accepts_movements => 'agrupa a sus hijas, no suma por sí sola',
+                        default => 'sin línea: avísame, no debería pasar',
+                    })
+                    // Las cuentas de agrupación no llevan código porque el
+                    // catálogo consolida por prefijo: marcarlas en rojo sería
+                    // una alarma falsa.
+                    ->placeholder(fn ($record) => $record->accepts_movements ? 'sin asignar' : '—')
+                    ->color(fn ($record) => match (true) {
+                        ! $record->accepts_movements => 'gray',
+                        (bool) $record->codigo_supercias_revisado => 'success',
+                        (bool) $record->codigo_supercias => 'warning',
+                        default => 'danger',
+                    })
+                    ->wrap(),
                 Tables\Columns\IconColumn::make('accepts_movements')->label('Movimientos')->boolean(),
             ])
             ->filters([
@@ -128,7 +122,7 @@ class PlanDeCuentasResource extends Resource
                     ->query(fn (Builder $q) => $q->whereNull('codigo_supercias')->where('accepts_movements', true)),
                 Tables\Filters\Filter::make('sin_mapear')
                     ->label('Sin línea del estado')
-                    ->query(fn (Builder $q) => $q->whereNull('linea_estado')->where('accepts_movements', true)),
+                    ->query(fn (Builder $q) => $q->whereNull('codigo_supercias')->where('accepts_movements', true)),
                 Tables\Filters\SelectFilter::make('type')->label('Tipo')->options([
                     'activo' => 'Activo', 'pasivo' => 'Pasivo', 'patrimonio' => 'Patrimonio',
                     'ingreso' => 'Ingreso', 'costo' => 'Costo', 'gasto' => 'Gasto',
@@ -157,19 +151,21 @@ class PlanDeCuentasResource extends Resource
                     ->label('Asignar línea del estado')
                     ->icon('heroicon-o-link')
                     ->form([
-                        Forms\Components\Select::make('estado_financiero')->label('Estado financiero')
-                            ->options(array_combine(array_keys(self::LINEAS), array_keys(self::LINEAS)))
-                            ->required()->live(),
-                        Forms\Components\Select::make('linea_estado')->label('Línea')
-                            ->options(fn (Forms\Get $get) => self::LINEAS[$get('estado_financiero')] ?? [])
-                            ->required(),
+                        Forms\Components\Select::make('codigo_supercias')->label('Línea del estado')
+                            ->options(fn () => \App\Models\CatalogoSupercias::query()
+                                ->whereNotNull('nombre')->orderBy('estado')->orderBy('orden')->get()
+                                ->mapWithKeys(fn ($c) => [$c->codigo => $c->codigo . ' · ' . $c->nombre])
+                                ->all())
+                            ->searchable()->required(),
                     ])
                     ->action(function (array $data, $records) {
+                        // Asignada a mano es asignada por una persona: queda confirmada.
                         foreach ($records as $cuenta) {
-                            $cuenta->update([
-                                'estado_financiero' => $data['estado_financiero'],
-                                'linea_estado'      => $data['linea_estado'],
-                            ]);
+                            $cuenta->forceFill([
+                                'codigo_supercias'           => $data['codigo_supercias'],
+                                'codigo_supercias_confianza' => 100,
+                                'codigo_supercias_revisado'  => true,
+                            ])->save();
                         }
                     })
                     ->deselectRecordsAfterCompletion(),

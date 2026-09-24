@@ -7,6 +7,7 @@ use App\Models\Administrador;
 use App\Models\EjercicioContable;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
+use App\Models\PeriodoContable;
 use App\Models\PorcentajeRetencion;
 use App\Models\Retencion;
 use App\Models\RetencionLinea;
@@ -70,16 +71,6 @@ class ContabilidadService
             'gastos'     => $gastos,
             'resultado'  => round($ingresos - $costos - $gastos, 2),
         ];
-    }
-
-    /** Las cuentas que todavía no dicen a qué línea del estado suman. */
-    public function cuentasSinMapear(int $empresaId): int
-    {
-        return AccountPlan::withoutGlobalScopes()
-            ->where('empresa_id', $empresaId)
-            ->where('accepts_movements', true)
-            ->whereNull('linea_estado')
-            ->count();
     }
 
     /**
@@ -211,17 +202,73 @@ class ContabilidadService
     /** Un ejercicio cerrado no admite movimientos nuevos. */
     public function exigirEjercicioAbierto(int $empresaId, string $fecha): void
     {
-        $anio = Carbon::parse($fecha)->year;
+        $momento = Carbon::parse($fecha);
 
         $cerrado = EjercicioContable::withoutGlobalScopes()
             ->where('empresa_id', $empresaId)
-            ->where('anio', $anio)
+            ->where('anio', $momento->year)
             ->whereNotNull('cerrado_en')
             ->exists();
 
         if ($cerrado) {
-            throw new \RuntimeException("El ejercicio {$anio} está cerrado y ya fue presentado: no admite asientos.");
+            throw new \RuntimeException(
+                "El ejercicio {$momento->year} está cerrado y ya fue presentado: no admite asientos."
+            );
         }
+
+        // El mes también cierra, no solo el año: un período cuyo IVA ya se
+        // declaró no puede recibir movimientos nuevos, porque entonces el
+        // sistema dejaría de cuadrar con lo que consta en el SRI.
+        if ($this->mesCerrado($empresaId, $momento->year, $momento->month)) {
+            throw new \RuntimeException(sprintf(
+                'El período %02d/%d está cerrado: su IVA ya fue declarado. Para corregirlo hace '
+                . 'falta una declaración sustitutiva, no un asiento nuevo.',
+                $momento->month, $momento->year,
+            ));
+        }
+    }
+
+    /** ¿El mes está cerrado, por inventario o porque ya se declaró su IVA? */
+    public function mesCerrado(int $empresaId, int $anio, int $mes): bool
+    {
+        return PeriodoContable::where('empresa_id', $empresaId)
+            ->where('anio', $anio)->where('mes', $mes)
+            ->whereNotNull('cerrado_en')
+            ->exists();
+    }
+
+    /**
+     * Cierra el mes al presentar su declaración.
+     *
+     * Se llama desde el momento en que alguien marca el período como
+     * presentado: a partir de ahí lo que consta en el SRI y lo que dice el
+     * sistema tienen que seguir siendo lo mismo.
+     */
+    public function cerrarMes(int $empresaId, int $anio, int $mes, ?int $declaracionId = null, string $motivo = 'iva'): PeriodoContable
+    {
+        $periodo = PeriodoContable::firstOrNew([
+            'empresa_id' => $empresaId, 'anio' => $anio, 'mes' => $mes,
+        ]);
+
+        $periodo->fill([
+            'cerrado_en'     => $periodo->cerrado_en ?? now(),
+            'cerrado_por'    => $periodo->cerrado_por ?? auth()->id(),
+            'declaracion_id' => $declaracionId ?? $periodo->declaracion_id,
+            'motivo'         => $motivo,
+        ])->save();
+
+        return $periodo;
+    }
+
+    /**
+     * Reabre un mes. Solo para corregir un cierre hecho por error: lo que ya se
+     * presentó al SRI se corrige con una sustitutiva, no reabriendo.
+     */
+    public function reabrirMes(int $empresaId, int $anio, int $mes): void
+    {
+        PeriodoContable::where('empresa_id', $empresaId)
+            ->where('anio', $anio)->where('mes', $mes)
+            ->update(['cerrado_en' => null, 'cerrado_por' => null, 'declaracion_id' => null]);
     }
 
     /** Obligaciones societarias del año, con sus plazos. */

@@ -70,6 +70,10 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
+            // El archivo del día lo crea quien escriba primero: php-fpm como
+            // www-data, o un artisan corrido a mano por otro usuario. Sin
+            // permiso de grupo, el segundo se queda sin poder escribir.
+            'permission' => 0664,
             'replace_placeholders' => true,
         ],
 

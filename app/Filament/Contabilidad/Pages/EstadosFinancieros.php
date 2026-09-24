@@ -2,18 +2,22 @@
 
 namespace App\Filament\Contabilidad\Pages;
 
-use App\Filament\Contabilidad\Resources\PlanDeCuentasResource;
-use App\Models\JournalEntryLine;
+use App\Models\CatalogoSupercias;
+use App\Services\SuperciasService;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Los estados financieros que recibe la Superintendencia.
  *
- * Se arman con la línea que cada cuenta declara en el plan, no adivinando por
- * el prefijo del código, y siempre con el comparativo del ejercicio anterior:
- * bajo NIIF la columna del año pasado es parte del estado.
+ * Se arman con **el catálogo de la SCVS**, que es la misma estructura del
+ * archivo que se sube al portal: la pantalla y el .txt salen del mismo sitio,
+ * así que no pueden decir cosas distintas.
+ *
+ * Antes se armaban con una lista de líneas propia del ERP que no casaba con
+ * ningún código del catálogo, y por eso el informe salía entero en cero.
+ *
+ * Marco: skills `supercias-ec` y `contabilidad-ec`.
  */
 class EstadosFinancieros extends Page
 {
@@ -24,7 +28,12 @@ class EstadosFinancieros extends Page
     protected static string  $view            = 'filament.contabilidad.estados-financieros';
 
     public ?int $anio = null;
-    public string $estado = 'Estado de situación financiera';
+
+    /** La clave del catálogo, no un nombre suelto. */
+    public string $estado = 'situacion_financiera';
+
+    /** Mostrar también las líneas en cero, como en el archivo del portal. */
+    public bool $verTodas = false;
 
     public static function canAccess(): bool
     {
@@ -34,62 +43,48 @@ class EstadosFinancieros extends Page
     public function mount(): void
     {
         $this->anio = (int) request()->integer('anio', now()->year);
-        $this->estado = request()->string('estado')->toString() ?: 'Estado de situación financiera';
+
+        $pedido = request()->string('estado')->toString();
+        $this->estado = array_key_exists($pedido, CatalogoSupercias::ESTADOS)
+            ? $pedido
+            : 'situacion_financiera';
     }
 
-    /** Saldo por línea del estado en un ejercicio. */
-    private function porLinea(int $empresaId, int $anio): array
+    public function cambiarEstado(string $estado): void
     {
-        return JournalEntryLine::query()
-            ->join('journal_entries as a', 'a.id', '=', 'journal_entry_lines.journal_entry_id')
-            ->join('account_plans as c', 'c.id', '=', 'journal_entry_lines.account_plan_id')
-            ->where('a.empresa_id', $empresaId)
-            ->where('a.status', 'confirmado')
-            ->whereYear('a.fecha', $anio)
-            ->whereNotNull('c.linea_estado')
-            ->groupBy('c.linea_estado', 'c.nature')
-            ->selectRaw('c.linea_estado, c.nature, sum(journal_entry_lines.debe) as debe, sum(journal_entry_lines.haber) as haber')
-            ->get()
-            ->mapWithKeys(function ($f) {
-                $valor = $f->nature === 'deudora'
-                    ? (float) $f->debe - (float) $f->haber
-                    : (float) $f->haber - (float) $f->debe;
+        if (array_key_exists($estado, CatalogoSupercias::ESTADOS)) {
+            $this->estado = $estado;
+        }
+    }
 
-                return [$f->linea_estado => round($valor, 2)];
-            })
-            ->all();
+    public function cambiarAnio(int $anio): void
+    {
+        $this->anio = $anio;
+    }
+
+    public function alternarVacias(): void
+    {
+        $this->verTodas = ! $this->verTodas;
     }
 
     protected function getViewData(): array
     {
         $empresa = Filament::getTenant();
-        $anio    = $this->anio ?? now()->year;
+        $anio = $this->anio ?? now()->year;
 
-        $actual   = $this->porLinea($empresa->id, $anio);
-        $anterior = $this->porLinea($empresa->id, $anio - 1);
-
-        $estructura = PlanDeCuentasResource::LINEAS[$this->estado] ?? [];
-
-        $filas = [];
-        foreach ($estructura as $clave => $etiqueta) {
-            $filas[] = [
-                'etiqueta' => $etiqueta,
-                'actual'   => $actual[$clave] ?? 0.0,
-                'anterior' => $anterior[$clave] ?? 0.0,
-            ];
-        }
-
-        $sinMapear = app(\App\Services\ContabilidadService::class)->cuentasSinMapear($empresa->id);
+        $lineas = app(SuperciasService::class)->estado($empresa->id, $anio, $this->estado);
+        $conValor = array_filter($lineas, fn ($l) => $l['tiene_valor']);
 
         return [
-            'empresa'    => $empresa,
-            'anio'       => $anio,
-            'estado'     => $this->estado,
-            'estados'    => array_keys(PlanDeCuentasResource::LINEAS),
-            'filas'      => $filas,
-            'totalA'     => array_sum(array_column($filas, 'actual')),
-            'totalB'     => array_sum(array_column($filas, 'anterior')),
-            'sinMapear'  => $sinMapear,
+            'empresa'   => $empresa,
+            'anio'      => $anio,
+            'estado'    => $this->estado,
+            'estados'   => CatalogoSupercias::ESTADOS,
+            'lineas'    => $this->verTodas ? $lineas : array_values($conValor),
+            'conValor'  => count($conValor),
+            'total'     => count($lineas),
+            'verTodas'  => $this->verTodas,
+            'anios'     => range(now()->year, now()->year - 3),
         ];
     }
 }

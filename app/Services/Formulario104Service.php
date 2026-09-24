@@ -28,6 +28,7 @@ class Formulario104Service
     public function __construct(
         private readonly CatalogoSriService $catalogo,
         private readonly ContabilidadService $contabilidad,
+        private readonly ImportadorComprobantesSri $importados,
     ) {
     }
 
@@ -45,6 +46,7 @@ class Formulario104Service
 
         $this->ventas($empresaId, $desde, $hasta, $c);
         $this->compras($empresaId, $desde, $hasta, $c, $avisos);
+        $this->delPortal($empresaId, $anio, $mes, $c, $avisos);
         $this->retencionesEfectuadas($empresaId, $desde, $hasta, $c);
         $this->arrastres($empresaId, $anio, $mes, $c, $avisos);
         $this->liquidar($c);
@@ -163,10 +165,68 @@ class Formulario104Service
         $c['529'] = $c['520'] + $c['521'] + $c['534'] + $c['560'] + $c['522'] + $c['523']
             + $c['524'] + $c['525'] + $c['526'] - $c['527'];
 
-        $sinMapear = $this->contabilidad->cuentasSinMapear($empresaId);
+        // El mapeo es automático, así que sin línea no queda ninguna; lo que
+        // puede quedar es alguna cuya línea el sistema no tuvo clara.
+        $porConfirmar = app(MapeoSuperciasService::class)->porRevisar($empresaId);
 
-        if ($sinMapear > 0) {
-            $avisos[] = "{$sinMapear} cuentas sin línea del estado asignada: revisa que no falte nada en las compras.";
+        if ($porConfirmar > 0) {
+            $avisos[] = "{$porConfirmar} cuentas tienen su línea del estado puesta por el sistema y "
+                . 'sin confirmar. No afecta a este formulario, pero sí al balance de la Superintendencia.';
+        }
+    }
+
+    /**
+     * Lo que se importó del portal del SRI y no casa con ningún documento
+     * del ERP.
+     *
+     * Es el caso de la empresa que empieza a mitad de año: el movimiento de
+     * enero a julio no está registrado, pero el portal lo tiene. Solo entra lo
+     * que quedó sin conciliar, porque lo demás ya se contó arriba.
+     */
+    private function delPortal(int $empresaId, int $anio, int $mes, array &$c, array &$avisos): void
+    {
+        $t = $this->importados->totalesDelPeriodo($empresaId, $anio, $mes);
+
+        if ($t['compras_numero'] === 0 && $t['ventas_numero'] === 0) {
+            return;
+        }
+
+        $c['500'] += $t['compras_gravadas'];
+        $c['510'] += $t['compras_gravadas'];
+        $c['520'] += $t['compras_iva'];
+        $c['507'] += $t['compras_cero'];
+        $c['517'] += $t['compras_cero'];
+        $c['115'] += $t['compras_numero'];
+
+        $c['401'] += $t['ventas_gravadas'];
+        $c['411'] += $t['ventas_gravadas'];
+        $c['421'] += $t['ventas_iva'];
+        $c['405'] += $t['ventas_cero'];
+        $c['415'] += $t['ventas_cero'];
+        $c['111'] += $t['ventas_numero'];
+
+        // Los totales se rehacen: las sumas de arriba corrieron antes de esto.
+        $c['409'] = $c['401'] + $c['402'] + $c['410'] + $c['425'] + $c['403'] + $c['404']
+            + $c['405'] + $c['406'] + $c['407'] + $c['408'];
+        $c['419'] = $c['411'] + $c['412'] + $c['420'] + $c['435'] + $c['413'] + $c['414']
+            + $c['415'] + $c['416'] + $c['417'] + $c['418'];
+        $c['429'] = $c['421'] + $c['422'] + $c['430'] + $c['445'] + $c['423'] - $c['424'];
+        $c['509'] = $c['500'] + $c['501'] + $c['530'] + $c['540'] + $c['502'] + $c['503']
+            + $c['504'] + $c['505'] + $c['506'] + $c['507'] + $c['508'];
+        $c['519'] = $c['510'] + $c['511'] + $c['533'] + $c['550'] + $c['512'] + $c['513']
+            + $c['514'] + $c['515'] + $c['516'] + $c['517'] + $c['518'];
+        $c['529'] = $c['520'] + $c['521'] + $c['534'] + $c['560'] + $c['522'] + $c['523']
+            + $c['524'] + $c['525'] + $c['526'] - $c['527'];
+
+        $detalle = trim(($t['compras_numero'] ? "{$t['compras_numero']} compras " : '')
+            . ($t['ventas_numero'] ? "{$t['ventas_numero']} ventas" : ''));
+
+        $avisos[] = "Se sumaron {$detalle} importadas del portal del SRI que no están registradas "
+            . 'en el ERP. Contablemente no existen: el asiento hay que hacerlo aparte.';
+
+        if ($t['estimados'] > 0) {
+            $avisos[] = "{$t['estimados']} ventas importadas traen la base despejada del total, porque "
+                . 'el archivo del SRI no publica el desglose. Revísalas antes de presentar.';
         }
     }
 
@@ -215,6 +275,15 @@ class Formulario104Service
             ->listas()->latest('generado_en')->first();
 
         if (! $anterior) {
+            $empresa = \App\Models\Empresa::withoutGlobalScopes()->find($empresaId);
+            $inicio = $empresa ? app(GestionSriService::class)->inicioDeGestion($empresa) : null;
+
+            // Antes del inicio de gestión no hay nada que arrastrar: el ERP no
+            // responde por esos meses y avisar de ellos es ruido, no control.
+            if ($inicio && $previo->lessThan($inicio)) {
+                return;
+            }
+
             $avisos[] = 'No hay 104 de ' . $previo->format('m/Y') . ' en el sistema: '
                 . 'los casilleros de arrastre (483, 605, 606, 607, 608) quedaron en cero. '
                 . 'Si ese mes tenía crédito tributario, cárgalo a mano antes de declarar.';
@@ -234,9 +303,23 @@ class Formulario104Service
         $c['484'] = $c['482'] - $c['485'];
         $c['499'] = $c['483'] + $c['484'];
 
-        // Factor de proporcionalidad: qué parte de las ventas da derecho a crédito.
+        /*
+         * Factor de proporcionalidad.
+         *
+         * Existe para las empresas que venden unas cosas gravadas y otras no:
+         * solo esa proporción del IVA de compras es crédito tributario.
+         *
+         * Un mes sin ventas NO es ese caso. El crédito no se pierde: se acumula
+         * y viaja al mes siguiente. Poner el factor en cero cuando no hay
+         * ventas manda todo el IVA al gasto y le cuesta dinero real a la
+         * empresa cada mes que pasa.
+         *
+         * Marco: skill `contabilidad-ec`, crédito tributario del IVA.
+         */
         $conDerecho = $c['411'] + $c['412'] + $c['420'] + $c['435'] + $c['415'] + $c['416'] + $c['417'] + $c['418'];
-        $c['563'] = $c['419'] > 0 ? round($conDerecho / $c['419'], 4) : 0.0;
+        $c['563'] = $c['419'] > 0
+            ? round($conDerecho / $c['419'], 4)
+            : 1.0;   // sin ventas, el crédito es íntegro
 
         $ivaCompras = $c['520'] + $c['521'] + $c['534'] + $c['560'] + $c['523'] + $c['524'] + $c['525'] + $c['526'] - $c['527'];
         $c['564'] = round($ivaCompras * $c['563'], 2);

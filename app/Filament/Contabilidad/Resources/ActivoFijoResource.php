@@ -44,31 +44,39 @@ class ActivoFijoResource extends Resource
             Forms\Components\Section::make('El activo')->columns(3)->schema([
                 Forms\Components\TextInput::make('codigo')->label('Código')->maxLength(30)->placeholder('MAQ-001'),
                 Forms\Components\TextInput::make('nombre')->label('Nombre')->required()->maxLength(160)->columnSpan(2),
-                Forms\Components\Select::make('categoria')->label('Categoría')->required()
+                // No se guarda: solo ayuda a fijar la vida útil. La categoría
+                // real del activo es su cuenta contable, que es la que suma en
+                // el balance.
+                Forms\Components\Select::make('ayuda_categoria')
+                    ->label('Tipo de activo')
+                    ->helperText('Solo para proponer la vida útil')
+                    ->dehydrated(false)
                     ->options(['maquinaria' => 'Maquinaria y equipo', 'vehiculo' => 'Vehículos',
                                'computo' => 'Equipo de cómputo', 'muebles' => 'Muebles y enseres',
                                'inmueble' => 'Inmuebles', 'otro' => 'Otro'])
-                    ->default('maquinaria')->live()
+                    ->live()
                     ->afterStateUpdated(function ($state, Forms\Set $set) {
-                        // Vidas útiles habituales en el reglamento tributario.
+                        // Vidas útiles del reglamento de la LRTI.
                         $set('vida_util_meses', match ($state) {
                             'inmueble' => 240, 'vehiculo' => 60, 'computo' => 36, 'muebles' => 120, default => 120,
                         });
                     }),
-                Forms\Components\TextInput::make('ubicacion')->label('Ubicación')->maxLength(120)->columnSpan(2),
+                Forms\Components\Select::make('ubicacion_almacen_id')->label('Ubicación')
+                    ->relationship('ubicacionAlmacen', 'codigo_ubicacion')->searchable()->preload()->columnSpan(2),
             ]),
             Forms\Components\Section::make('Costo y vida útil')->columns(4)->schema([
                 Forms\Components\DatePicker::make('fecha_compra')->label('Fecha de compra')->required()->default(now()),
-                Forms\Components\TextInput::make('costo')->label('Costo')->numeric()->prefix('$')->required()->live(onBlur: true),
+                Forms\Components\TextInput::make('purchase_price')->label('Costo')->numeric()->prefix('$')
+                    ->required()->live(onBlur: true),
                 Forms\Components\TextInput::make('valor_residual')->label('Valor residual')->numeric()->prefix('$')->default(0),
                 Forms\Components\TextInput::make('vida_util_meses')->label('Vida útil')->numeric()->suffix('meses')
                     ->required()->default(120)->live(onBlur: true)
-                    ->helperText(fn (Forms\Get $get) => $get('costo') && $get('vida_util_meses')
-                        ? 'Cuota mensual: $ ' . number_format(((float) $get('costo') - (float) $get('valor_residual')) / max((int) $get('vida_util_meses'), 1), 2, ',', '.')
+                    ->helperText(fn (Forms\Get $get) => $get('purchase_price') && $get('vida_util_meses')
+                        ? 'Cuota mensual: $ ' . number_format(((float) $get('purchase_price') - (float) $get('valor_residual')) / max((int) $get('vida_util_meses'), 1), 2, ',', '.')
                         : 'Línea recta sobre el costo menos el residual'),
             ]),
             Forms\Components\Section::make('Cuentas')->columns(3)->schema([
-                Forms\Components\Select::make('cuenta_activo_id')->label('Activo')->options($cuentas(['1.2']))->searchable(),
+                Forms\Components\Select::make('account_plan_id')->label('Activo')->options($cuentas(['1.2']))->searchable(),
                 Forms\Components\Select::make('cuenta_depreciacion_id')->label('Depreciación acumulada')->options($cuentas(['1.2']))->searchable(),
                 Forms\Components\Select::make('cuenta_gasto_id')->label('Gasto por depreciación')->options($cuentas(['6', '5']))->searchable(),
             ]),
@@ -83,16 +91,16 @@ class ActivoFijoResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('codigo')->label('Código')->searchable()->placeholder('—'),
                 Tables\Columns\TextColumn::make('nombre')->label('Activo')->searchable()
-                    ->description(fn ($record) => ucfirst($record->categoria) . ($record->ubicacion ? ' · ' . $record->ubicacion : '')),
+                    ->description(fn ($record) => $record->accountPlan?->name ?? 'sin cuenta contable'),
                 Tables\Columns\TextColumn::make('fecha_compra')->label('Compra')->date('m/Y'),
-                Tables\Columns\TextColumn::make('costo')->label('Costo')->alignEnd()->formatStateUsing($money),
+                Tables\Columns\TextColumn::make('purchase_price')->label('Costo')->alignEnd()->formatStateUsing($money),
                 Tables\Columns\TextColumn::make('vida_util_meses')->label('Vida útil')->alignEnd()
                     ->formatStateUsing(fn ($state) => round($state / 12, 1) . ' años'),
                 Tables\Columns\TextColumn::make('cuota')->label('Deprec. mes')->alignEnd()
                     ->getStateUsing(fn ($record) => $money($record->cuota_mensual)),
                 Tables\Columns\TextColumn::make('depreciacion_acumulada')->label('Acumulada')->alignEnd()->formatStateUsing($money),
                 Tables\Columns\TextColumn::make('libros')->label('En libros')->alignEnd()->weight('bold')
-                    ->getStateUsing(fn ($record) => $money($record->valor_libros)),
+                    ->getStateUsing(fn ($record) => $money($record->valor_en_libros)),
             ])
             ->actions([Tables\Actions\EditAction::make()->slideOver()]);
     }

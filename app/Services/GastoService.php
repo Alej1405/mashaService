@@ -202,18 +202,23 @@ class GastoService
         return DB::transaction(function () use ($empresaId, $anio, $mes) {
             $this->contabilidad->exigirEjercicioAbierto($empresaId, sprintf('%04d-%02d-01', $anio, $mes));
 
+            // withoutGlobalScopes quitaría también el filtro por tipo y traería
+            // todo el inventario: el tipo se vuelve a poner a mano.
             $activos = ActivoFijo::withoutGlobalScopes()
-                ->where('empresa_id', $empresaId)->where('activo', true)->get();
+                ->where('type', ActivoFijo::TIPO)
+                ->where('empresa_id', $empresaId)
+                ->where('activo', true)
+                ->get();
 
             $hechas = [];
             $total = 0.0;
 
             foreach ($activos as $activo) {
-                if ($activo->depreciado_completo || $activo->cuota_mensual <= 0) {
+                if (! $activo->depreciable || $activo->cuota_mensual <= 0) {
                     continue;
                 }
 
-                $ya = Depreciacion::where('activo_fijo_id', $activo->id)
+                $ya = Depreciacion::where('inventory_item_id', $activo->id)
                     ->where('anio', $anio)->where('mes', $mes)->exists();
 
                 if ($ya) {
@@ -221,15 +226,21 @@ class GastoService
                 }
 
                 // La última cuota ajusta para no pasarse del valor residual.
-                $cuota = min($activo->cuota_mensual, $activo->valor_libros - (float) $activo->valor_residual);
+                $cuota = min($activo->cuota_mensual, $activo->valor_en_libros - (float) $activo->valor_residual);
                 $cuota = round($cuota, 2);
 
                 if ($cuota <= 0) {
                     continue;
                 }
 
+                // Una depreciación sin asiento no existe para la contabilidad:
+                // el gasto no aparece en resultados y el activo sigue valiendo
+                // lo mismo en el balance. Marco: skill `contabilidad-ec`.
+                $asiento = $this->asientoDeDepreciacion($activo, $anio, $mes, $cuota);
+
                 Depreciacion::create([
-                    'activo_fijo_id' => $activo->id,
+                    'inventory_item_id' => $activo->id,
+                    'journal_entry_id'  => $asiento?->id,
                     'anio' => $anio, 'mes' => $mes, 'valor' => $cuota,
                 ]);
 
@@ -240,5 +251,63 @@ class GastoService
 
             return ['activos' => count($hechas), 'total' => round($total, 2), 'detalle' => $hechas];
         });
+    }
+
+    /**
+     * El asiento del mes: Dr gasto por depreciación · Cr depreciación acumulada.
+     *
+     * La cuenta de gasto la trae el activo; la de depreciación acumulada, si no
+     * está configurada, se busca por el nombre en el plan de cuentas antes de
+     * rendirse: es preferible eso a dejar el asiento sin hacer.
+     */
+    private function asientoDeDepreciacion(ActivoFijo $activo, int $anio, int $mes, float $cuota): ?JournalEntry
+    {
+        $cuentaGasto = $activo->cuenta_gasto_id;
+        $cuentaAcumulada = $activo->cuenta_depreciacion_id ?: $this->cuentaDepreciacionAcumulada($activo->empresa_id);
+
+        if (! $cuentaGasto || ! $cuentaAcumulada) {
+            throw new \RuntimeException(
+                "El activo «{$activo->nombre}» no tiene cuenta de gasto por depreciación o de "
+                . 'depreciación acumulada. Sin ellas el asiento no se puede hacer.'
+            );
+        }
+
+        $asiento = JournalEntry::create([
+            'empresa_id'      => $activo->empresa_id,
+            'fecha'           => Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString(),
+            'descripcion'     => sprintf('Depreciación %02d/%d · %s', $mes, $anio, $activo->nombre),
+            'tipo'            => 'ajuste',
+            'origen'          => 'automatico',
+            'referencia_tipo' => 'depreciacion',
+            'referencia_id'   => $activo->id,
+            'status'          => 'confirmado',
+            'total_debe'      => $cuota,
+            'total_haber'     => $cuota,
+            'esta_cuadrado'   => true,
+            'confirmado_por'  => auth()->id(),
+            'confirmado_at'   => now(),
+        ]);
+
+        JournalEntryLine::create([
+            'journal_entry_id' => $asiento->id, 'account_plan_id' => $cuentaGasto,
+            'descripcion' => 'Depreciación del período', 'debe' => $cuota, 'haber' => 0, 'orden' => 1,
+        ]);
+
+        JournalEntryLine::create([
+            'journal_entry_id' => $asiento->id, 'account_plan_id' => $cuentaAcumulada,
+            'descripcion' => 'Depreciación acumulada', 'debe' => 0, 'haber' => $cuota, 'orden' => 2,
+        ]);
+
+        return $asiento;
+    }
+
+    /** La cuenta correctora del activo, buscada por su nombre en el plan. */
+    private function cuentaDepreciacionAcumulada(int $empresaId): ?int
+    {
+        return \App\Models\AccountPlan::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)
+            ->where('code', 'like', '1.2%')
+            ->where('name', 'ilike', '%depreciaci%acumulada%')
+            ->value('id');
     }
 }

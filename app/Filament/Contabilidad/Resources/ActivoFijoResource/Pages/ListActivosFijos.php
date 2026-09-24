@@ -48,7 +48,7 @@ class ListActivosFijos extends ListRecords
         }
 
         return $activos->count() . ' activos · en libros $ '
-            . number_format($activos->sum(fn ($a) => $a->valor_libros), 2, ',', '.')
+            . number_format($activos->sum(fn ($a) => $a->valor_en_libros), 2, ',', '.')
             . ' · cuota mensual $ ' . number_format($activos->sum(fn ($a) => $a->cuota_mensual), 2, ',', '.');
     }
 }

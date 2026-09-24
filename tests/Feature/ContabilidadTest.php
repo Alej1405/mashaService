@@ -130,10 +130,19 @@ class ContabilidadTest extends TestCase
 
     public function test_la_depreciacion_es_linea_recta_y_no_se_duplica(): void
     {
+        // El activo fijo es un ítem de inventario: no hay tabla aparte.
+        AccountPlan::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'code' => '1.2.09.01',
+            'name' => '(-) Depreciación acumulada PPE', 'type' => 'activo',
+            'nature' => 'acreedora', 'level' => 4,
+            'accepts_movements' => true, 'is_active' => true,
+        ]);
+
         $activo = ActivoFijo::withoutGlobalScopes()->create([
             'empresa_id' => $this->empresa->id, 'nombre' => 'Marmita 200 L',
-            'categoria' => 'maquinaria', 'fecha_compra' => '2026-01-15',
-            'costo' => 4800, 'valor_residual' => 0, 'vida_util_meses' => 120,
+            'codigo' => 'MAQ-' . uniqid(), 'type' => ActivoFijo::TIPO,
+            'fecha_compra' => '2026-01-15', 'purchase_price' => 4800, 'costo_promedio' => 4800,
+            'stock_actual' => 1, 'valor_residual' => 0, 'vida_util_meses' => 120,
             'cuenta_gasto_id' => $this->cuenta('6.2.01.01')->id, 'activo' => true,
         ]);
 

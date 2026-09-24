@@ -55,4 +55,19 @@
                        background:var(--ac); color:#fff; text-decoration:none;
                        transition:filter .15s ease; }
     .ct-btn-descarga:hover { filter:brightness(1.1); }
+
+    /* El resumen de una declaración antes de descargarla */
+    .ct-resumen { display:flex; flex-wrap:wrap; gap:18px; width:100%;
+                  padding:10px 0 2px; border-top:1px dashed var(--b2); margin-top:8px; }
+    .ct-resumen > div { display:flex; flex-direction:column; min-width:92px; }
+    .ct-resumen-n { font-size:15px; font-weight:700; color:var(--t); }
+    .ct-resumen-e { font-size:11px; color:var(--m); }
+
+    /* Barra de pestañas: elegir estado y ejercicio */
+    .ct-barra { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .ct-pestana { padding:7px 14px; border:1px solid var(--b); border-radius:999px;
+                  background:var(--s); color:var(--m); font-size:13px; font-weight:600;
+                  cursor:pointer; transition:all .15s ease; }
+    .ct-pestana:hover { border-color:var(--ac); color:var(--t); }
+    .ct-pestana.es-activa { background:var(--ac); border-color:var(--ac); color:#fff; }
 </style>

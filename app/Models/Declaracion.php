@@ -16,12 +16,22 @@ class Declaracion extends Model
     protected $fillable = [
         'empresa_id', 'seguimiento', 'tipo', 'anio', 'mes', 'estado',
         'datos', 'avisos', 'archivo', 'mensaje', 'solicitado_por', 'generado_en',
+        // Generado no es descargado, y descargado no es presentado: el módulo
+        // de cumplimiento distingue los tres y necesita poder escribirlos.
+        'descargado_en', 'descargado_por', 'presentado_en',
+        'comprobante_presentacion', 'valor_pagado',
+        // Una declaración presentada antes de usar el ERP es una declaración:
+        // vive aquí con su origen y su PDF, no en una tabla de históricos.
+        'origen', 'archivo_pdf', 'sustituye_a',
     ];
 
     protected $casts = [
-        'datos'       => 'array',
-        'avisos'      => 'array',
-        'generado_en' => 'datetime',
+        'datos'         => 'array',
+        'avisos'        => 'array',
+        'generado_en'   => 'datetime',
+        'descargado_en' => 'datetime',
+        'presentado_en' => 'date',
+        'valor_pagado'  => 'decimal:2',
     ];
 
     public const TIPOS = [
@@ -62,5 +72,16 @@ class Declaracion extends Model
     public function scopeListas($q)
     {
         return $q->where('estado', 'listo');
+    }
+
+    /** Las que la empresa presentó antes de usar el ERP. */
+    public function scopeCargadas($q)
+    {
+        return $q->where('origen', 'cargada');
+    }
+
+    public function getEsCargadaAttribute(): bool
+    {
+        return $this->origen === 'cargada';
     }
 }

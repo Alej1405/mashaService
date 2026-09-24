@@ -324,6 +324,12 @@ Route::middleware(['web', 'auth'])->get('/contabilidad/declaracion/{declaracion}
 
     abort_unless($modelo->archivo && \Illuminate\Support\Facades\Storage::disk('local')->exists($modelo->archivo), 404);
 
+    // Generado no es descargado, y descargado no es presentado: el módulo de
+    // cumplimiento distingue los tres, así que aquí queda la huella del segundo.
+    if (! $modelo->descargado_en) {
+        $modelo->forceFill(['descargado_en' => now(), 'descargado_por' => auth()->id()])->save();
+    }
+
     return response()->streamDownload(
         fn () => print(\Illuminate\Support\Facades\Storage::disk('local')->get($modelo->archivo)),
         basename($modelo->archivo),

@@ -9,7 +9,7 @@ class Depreciacion extends Model
 {
     protected $table = 'depreciaciones';
 
-    protected $fillable = ['activo_fijo_id','journal_entry_id','anio','mes','valor'];
+    protected $fillable = ['inventory_item_id','journal_entry_id','anio','mes','valor'];
 
     protected $casts = ['valor' => 'decimal:2'];
 

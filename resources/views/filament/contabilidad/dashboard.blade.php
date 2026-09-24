@@ -67,15 +67,6 @@
 
 <div class="ct">
 
-    @if ($sinMapear > 0)
-        <div class="ct-aviso">
-            <p>
-                {{ $sinMapear }} {{ $sinMapear === 1 ? 'cuenta' : 'cuentas' }} sin línea del estado asignada:
-                no {{ $sinMapear === 1 ? 'aparecerá' : 'aparecerán' }} en el balance que recibe la Superintendencia.
-            </p>
-            <a href="{{ $rutas['cuentas'] }}">Revisar el plan de cuentas</a>
-        </div>
-    @endif
 
     {{-- Lo que se declara este mes --}}
     <p class="ct-tit">Declaraciones de {{ $periodo }}</p>

@@ -50,7 +50,7 @@ class Dashboard extends Page
 
         $saldos        = $conta->saldos($empresa->id);
         $clasificacion = $conta->clasificacion($empresa->id);
-        $sinMapear     = $conta->cuentasSinMapear($empresa->id);
+        $sinMapear     = app(\App\Services\MapeoSuperciasService::class)->porRevisar($empresa->id);
 
         $mes = now()->startOfMonth();
         $asientosDelMes = JournalEntry::withoutGlobalScopes()

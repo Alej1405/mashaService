@@ -41,6 +41,11 @@ class InventoryItem extends Model
     }
 
     protected $fillable = [
+        // Lo que un activo fijo necesita y un insumo no usa. Viven aquí porque
+        // el activo fijo es un ítem de inventario más: dos tablas para lo mismo
+        // dejaban una vacía y la depreciación leyendo la que no era.
+        'fecha_compra', 'valor_residual', 'vida_util_meses',
+        'depreciacion_acumulada', 'cuenta_depreciacion_id', 'cuenta_gasto_id',
         'empresa_id',
         'codigo',
         'nombre',
@@ -67,6 +72,7 @@ class InventoryItem extends Model
     ];
 
     protected $casts = [
+        'fecha_compra' => 'date',
         'conversion_factor' => 'decimal:6',
     ];
 

@@ -20,10 +20,12 @@ class ListPlanDeCuentas extends ListRecords
     public function getSubheading(): ?string
     {
         $empresa = Filament::getTenant();
-        $sinMapear = app(ContabilidadService::class)->cuentasSinMapear($empresa->id);
+        $sinMapear = app(\App\Services\MapeoSuperciasService::class)->porRevisar($empresa->id);
         $sinCodigo = app(\App\Services\SuperciasService::class)->cuentasSinCodigo($empresa->id);
         $total = \App\Models\AccountPlan::withoutGlobalScopes()->where('empresa_id', $empresa->id)->count();
 
-        return "{$total} cuentas · {$sinCodigo} sin código de Supercías · {$sinMapear} sin línea del estado";
+        return $sinMapear > 0
+            ? "{$total} cuentas · {$sinMapear} con la línea del estado sin confirmar"
+            : "{$total} cuentas · todas con su línea del estado confirmada";
     }
 }

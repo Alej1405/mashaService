@@ -15,7 +15,7 @@ class PeriodoContable extends Model
 
     protected $table = 'periodos_contables';
 
-    protected $fillable = ['empresa_id', 'anio', 'mes', 'cerrado_en', 'cerrado_por'];
+    protected $fillable = ['empresa_id', 'anio', 'mes', 'cerrado_en', 'cerrado_por', 'declaracion_id', 'motivo'];
 
     protected $casts = ['anio' => 'integer', 'mes' => 'integer', 'cerrado_en' => 'datetime'];
 

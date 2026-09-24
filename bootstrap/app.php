@@ -33,5 +33,30 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        /*
+         * Livewire no dice qué página reventó.
+         *
+         * Cuando el navegador manda un snapshot que ya no casa con la clase
+         * PHP, el error sale como un TypeError pelado dentro de vendor/ y el
+         * log solo guarda el stack: ni la URL, ni el componente, ni el
+         * usuario. Así no se diagnostica nada. Esto le añade el contexto.
+         */
+        $exceptions->context(function (): array {
+            if (! request()->is('livewire/*')) {
+                return [];
+            }
+
+            $componentes = collect(request()->input('components', []))
+                ->map(fn ($c) => data_get($c, 'snapshot.memo.name'))
+                ->filter()
+                ->values()
+                ->all();
+
+            return [
+                'livewire_componentes' => $componentes,
+                'pagina'    => request()->header('referer'),
+                'usuario'   => auth()->id(),
+                'navegador' => str(request()->userAgent())->limit(120)->value(),
+            ];
+        });
     })->create();
