@@ -13,6 +13,29 @@
         </p>
     </div>
 
+    {{-- El rastro del crédito tributario, que es lo que da el historial --}}
+    @if (($cadena['periodos'] ?? 0) > 0)
+        <div class="ct-aviso"
+             style="background:{{ ($cadena['cadena_cuadra'] ?? true) ? '#ecfdf5' : '#fffbeb' }};
+                    border-color:{{ ($cadena['cadena_cuadra'] ?? true) ? '#a7f3d0' : '#fde68a' }}">
+            <p style="color:{{ ($cadena['cadena_cuadra'] ?? true) ? 'var(--ok)' : 'var(--wa)' }}">
+                <strong>{{ $cadena['periodos'] }} declaraciones en el histórico.</strong>
+                @if ($cadena['cadena_cuadra'] ?? true)
+                    El crédito tributario encadena sin saltos:
+                    <strong>{{ $money($cadena['credito_actual'] ?? 0) }}</strong> a favor
+                    al {{ $cadena['ultimo_periodo'] ?? '—' }}.
+                @else
+                    El crédito no encadena en {{ count($cadena['saltos'] ?? []) }} puntos:
+                    @foreach (array_slice($cadena['saltos'] ?? [], 0, 3) as $s)
+                        de {{ $s['desde'] }} salen {{ $money($s['sale']) }} y en {{ $s['hasta'] }}
+                        entran {{ $money($s['entra']) }}{{ !$loop->last ? ';' : '.' }}
+                    @endforeach
+                    Falta alguna declaración por cargar.
+                @endif
+            </p>
+        </div>
+    @endif
+
     {{-- Lo pedido: se refresca solo mientras haya algo en la cola --}}
     <section class="ct-panel"
              @if ($pedidos->whereIn('estado', ['pendiente', 'procesando'])->isNotEmpty())
@@ -41,7 +64,11 @@
                         {{ \App\Models\Declaracion::TIPOS[$d->tipo] ?? $d->tipo }} · {{ $d->periodo }}
                     </p>
                     <p class="ct-fila-s">
-                        seguimiento {{ \Illuminate\Support\Str::limit($d->seguimiento, 8, '') }}
+                        @if ($d->es_cargada)
+                            cargada del portal · serial {{ $d->comprobante_presentacion ?? '—' }}
+                        @else
+                            seguimiento {{ \Illuminate\Support\Str::limit($d->seguimiento, 8, '') }}
+                        @endif
                         @if ($d->generado_en) · {{ $d->generado_en->diffForHumans() }} @endif
                         @if ($d->estado === 'listo' && $d->casillero('999') > 0)
                             · a pagar {{ $money($d->casillero('999')) }}

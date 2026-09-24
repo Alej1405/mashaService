@@ -190,4 +190,65 @@ class ServicioSri
             return ['ok' => false, 'error' => 'Sin respuesta del servicio: ' . str($e->getMessage())->limit(120)];
         }
     }
+
+    /**
+     * Lee el comprobante en PDF de una declaración ya presentada.
+     *
+     * De aquí sale el historial de una empresa que llega con años de
+     * declaraciones hechas: los 152 casilleros de cada mes, y con ellos el
+     * rastro del crédito tributario.
+     *
+     * @return array{ok: bool, cabecera?: array, casilleros?: array, resumen?: array, avisos?: array, error?: string}
+     */
+    public function leerDeclaracionPdf(string $contenido, string $nombre = ''): array
+    {
+        if (! $this->configurado()) {
+            return ['ok' => false, 'error' => 'El microservicio de declaraciones no está configurado.'];
+        }
+
+        try {
+            $r = Http::timeout(120)->acceptJson()
+                ->withToken($this->token ?? config('services.sri.token'))
+                ->post($this->url() . '/declaracion/leer', [
+                    'archivo_base64' => base64_encode($contenido),
+                    'nombre'         => $nombre,
+                ]);
+
+            if ($r->status() === 422) {
+                return ['ok' => false, 'error' => $r->json('detail') ?? 'No se pudo leer el PDF.'];
+            }
+
+            if (! $r->successful()) {
+                return ['ok' => false, 'error' => 'El servicio respondió ' . $r->status() . '.'];
+            }
+
+            return ['ok' => true] + $r->json();
+        } catch (\Throwable $e) {
+            Log::error('microservicio SRI: no se pudo leer la declaración', ['error' => $e->getMessage()]);
+
+            return ['ok' => false, 'error' => 'Sin respuesta del servicio: ' . str($e->getMessage())->limit(120)];
+        }
+    }
+
+    /**
+     * Comprueba que el crédito tributario encadene de un mes al siguiente.
+     *
+     * @param  array<int, array{anio: int, mes: int, casilleros: array}>  $periodos
+     */
+    public function verificarCadena(array $periodos): array
+    {
+        if (! $this->configurado() || $periodos === []) {
+            return ['cadena_cuadra' => true, 'saltos' => [], 'periodos' => count($periodos)];
+        }
+
+        try {
+            $r = Http::timeout(60)->acceptJson()
+                ->withToken($this->token ?? config('services.sri.token'))
+                ->post($this->url() . '/declaracion/verificar-cadena', ['periodos' => $periodos]);
+
+            return $r->successful() ? $r->json() : ['cadena_cuadra' => true, 'saltos' => []];
+        } catch (\Throwable $e) {
+            return ['cadena_cuadra' => true, 'saltos' => []];
+        }
+    }
 }

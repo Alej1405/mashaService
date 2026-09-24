@@ -21,11 +21,16 @@ class ComprobanteSri extends Model
         'razon_social', 'fecha_emision', 'numero', 'establecimiento', 'punto_emision',
         'secuencial', 'base_gravada', 'base_cero', 'iva', 'total', 'desglose',
         'conciliado_con', 'conciliado_id', 'importado_en',
+        // Qué fue esa factura, que el portal no lo dice
+        'destino', 'tipo_gasto_id', 'inventory_item_id', 'cantidad',
+        'clasificado_en', 'clasificado_por',
     ];
 
     protected $casts = [
         'fecha_emision' => 'date',
-        'importado_en'  => 'datetime',
+        'importado_en'   => 'datetime',
+        'clasificado_en' => 'datetime',
+        'cantidad'       => 'decimal:4',
         'base_gravada'  => 'decimal:2',
         'base_cero'     => 'decimal:2',
         'iva'           => 'decimal:2',
@@ -46,5 +51,32 @@ class ComprobanteSri extends Model
     public function scopeSinConciliar($q)
     {
         return $q->whereNull('conciliado_con');
+    }
+
+    /**
+     * Los que están esperando que alguien diga qué fueron.
+     *
+     * Suman al 104 y no existen en la contabilidad: mientras queden así, el
+     * mes no cuadra y no se puede cerrar.
+     */
+    public function scopeSinClasificar($q)
+    {
+        return $q->whereNull('conciliado_con')->whereNull('destino');
+    }
+
+    public function tipoGasto(): BelongsTo
+    {
+        return $this->belongsTo(TipoGasto::class);
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
+    }
+
+    /** La base sobre la que se registra: gravada más la de tarifa cero. */
+    public function getBaseAttribute(): float
+    {
+        return round((float) $this->base_gravada + (float) $this->base_cero, 2);
     }
 }

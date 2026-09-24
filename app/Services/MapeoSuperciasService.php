@@ -127,6 +127,9 @@ class MapeoSuperciasService
 
     private ?Collection $catalogo = null;
 
+    /** @var array<string, string>|null código del plan → código del catálogo */
+    private ?array $maestra = null;
+
     /**
      * Asigna la línea del catálogo a todas las cuentas que no la tengan.
      *
@@ -183,6 +186,23 @@ class MapeoSuperciasService
      */
     public function proponer(AccountPlan $cuenta): array
     {
+        // 0 · la tabla maestra, que es lo que resuelve el caso normal
+        //
+        // El plan de cuentas del ERP es el mismo para todas las empresas, así
+        // que su correspondencia con el catálogo es fija: "Caja general" es
+        // 1010101 aquí y en cualquier otra empresa. Adivinar por parecido de
+        // nombres solo tiene sentido para las cuentas que cada empresa inventa.
+        $delMaestro = $this->maestra()[$cuenta->code] ?? null;
+
+        if ($delMaestro) {
+            $linea = $this->catalogo()->firstWhere('codigo', $delMaestro);
+
+            if ($linea) {
+                return ['codigo' => $linea['codigo'], 'linea' => $linea['nombre'],
+                        'confianza' => 100, 'via' => 'maestra'];
+            }
+        }
+
         $catalogo = $this->catalogo();
         $raices = self::RAIZ[substr((string) $cuenta->code, 0, 1)] ?? [];
         $candidatas = $catalogo->filter(
@@ -451,6 +471,32 @@ class MapeoSuperciasService
         }
 
         return null;
+    }
+
+    /**
+     * La tabla maestra del plan estándar.
+     *
+     * Vive en un JSON y no en el código para que se pueda revisar y ampliar sin
+     * tocar la clase. Cada línea está verificada contra `catalogo_supercias`.
+     *
+     * @return array<string, string>
+     */
+    private function maestra(): array
+    {
+        if ($this->maestra !== null) {
+            return $this->maestra;
+        }
+
+        $archivo = database_path('data/mapa_plan_supercias.json');
+
+        if (! file_exists($archivo)) {
+            return $this->maestra = [];
+        }
+
+        $mapa = json_decode(file_get_contents($archivo), true) ?: [];
+        unset($mapa['_nota']);
+
+        return $this->maestra = $mapa;
     }
 
     /** @return Collection<int, array{codigo: string, nombre: string, normal: string, nivel: int}> */

@@ -91,6 +91,78 @@ class SuperciasService
         ])->all();
     }
 
+    /**
+     * El estado de cambios en el patrimonio, como la matriz que es.
+     *
+     * Sus líneas son 20 conceptos patrimoniales × 16 movimientos. Consolidar
+     * por prefijo como en los demás estados daría el mismo número en las
+     * dieciséis celdas de cada concepto, que es lo que pasaba.
+     *
+     * De los dieciséis movimientos, el sistema sabe calcular tres sin ayuda:
+     * el saldo al cierre del año anterior, el resultado del ejercicio y el
+     * saldo final. Los demás —aumentos de capital, dividendos, transferencias
+     * entre cuentas patrimoniales— son decisiones societarias que no se
+     * deducen del libro diario: salen en cero y así se dice.
+     *
+     * @return array{conceptos: array, columnas: array, celdas: array, derivadas: array}
+     */
+    public function cambiosEnPatrimonio(int $empresaId, int $anio): array
+    {
+        $lineas = CatalogoSupercias::where('estado', 'cambios_patrimonio')->orderBy('orden')->get();
+
+        $conceptos = $lineas->unique('codigo')
+            ->map(fn ($l) => ['codigo' => $l->codigo, 'nombre' => $l->nombre])
+            ->values()->all();
+
+        $columnas = $lineas->unique('columna')
+            ->map(fn ($l) => ['codigo' => $l->columna, 'nombre' => $l->nombre_columna ?: $l->columna])
+            ->values()->all();
+
+        // Los tres movimientos que salen del libro diario.
+        $saldoFinal   = $this->saldosDeConceptos($empresaId, $anio, $conceptos);
+        $saldoInicial = $this->saldosDeConceptos($empresaId, $anio - 1, $conceptos);
+        $resultado    = app(ContabilidadService::class)->saldos($empresaId, "{$anio}-12-31", $anio)['resultado'];
+
+        $derivadas = ['99', '9901', '990101', '990210'];
+        $celdas = [];
+
+        foreach ($conceptos as $c) {
+            foreach ($columnas as $col) {
+                $celdas[$col['codigo']][$c['codigo']] = match ($col['codigo']) {
+                    '99'      => $saldoFinal[$c['codigo']] ?? 0.0,
+                    '9901', '990101' => $saldoInicial[$c['codigo']] ?? 0.0,
+                    // El resultado del año va a la línea de ganancias acumuladas.
+                    '990210'  => in_array($c['codigo'], ['30601', '30602'], true) ? round($resultado, 2) : 0.0,
+                    default   => 0.0,
+                };
+            }
+        }
+
+        return ['conceptos' => $conceptos, 'columnas' => $columnas,
+                'celdas' => $celdas, 'derivadas' => $derivadas];
+    }
+
+    /** Saldo de cada concepto patrimonial en un ejercicio. */
+    private function saldosDeConceptos(int $empresaId, int $anio, array $conceptos): array
+    {
+        $saldos = $this->saldosPorCodigo($empresaId, $anio);
+        $totales = [];
+
+        foreach ($conceptos as $c) {
+            $suma = 0.0;
+
+            foreach ($saldos as $codigo => $valor) {
+                if (str_starts_with((string) $codigo, $c['codigo'])) {
+                    $suma += $valor;
+                }
+            }
+
+            $totales[$c['codigo']] = round($suma, 2);
+        }
+
+        return $totales;
+    }
+
     /** Contenido del archivo de un estado, listo para guardar como .txt */
     public function archivo(int $empresaId, int $anio, string $estado): string
     {

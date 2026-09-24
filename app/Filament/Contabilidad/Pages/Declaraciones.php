@@ -135,9 +135,90 @@ class Declaraciones extends Page
                     );
                 }),
 
+            $this->accionCargarPresentadas(),
             $this->accionPedir('f104', 'Pedir el 104 del mes', 'heroicon-o-calculator'),
             $this->accionPedir('ats', 'Pedir el anexo transaccional', 'heroicon-o-document-duplicate'),
         ];
+    }
+
+    /**
+     * Sube los comprobantes en PDF de las declaraciones ya presentadas.
+     *
+     * Es lo primero que hace un contador que llega con historial: sube los
+     * PDF de dos años y el sistema saca de cada uno sus 152 casilleros, con
+     * lo que queda rastreado el crédito tributario mes a mes.
+     *
+     * No cierra ningún período: eso solo lo hace una declaración generada
+     * aquí, que tiene los asientos detrás.
+     */
+    private function accionCargarPresentadas(): Action
+    {
+        return Action::make('cargar_presentadas')
+            ->label('Cargar declaraciones presentadas')
+            ->icon('heroicon-o-document-arrow-up')
+            ->color('gray')
+            ->modalHeading('Subir los comprobantes del portal')
+            ->modalDescription('Sube de golpe todos los PDF que te descargues del SRI. De cada uno '
+                . 'se leen sus casilleros, y con ellos el crédito tributario que va de un mes al '
+                . 'siguiente. Los de otra empresa o de otro formulario se rechazan solos.')
+            ->modalSubmitActionLabel('Subir y leer')
+            ->form([
+                \Filament\Forms\Components\FileUpload::make('archivos')
+                    ->label('Comprobantes en PDF')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->multiple()
+                    ->maxFiles(36)
+                    ->maxSize(5120)
+                    ->disk('local')
+                    ->directory('declaraciones/entrantes')
+                    ->required()
+                    ->helperText('Hasta 36 de una vez, que son tres años de declaraciones mensuales.'),
+            ])
+            ->action(function (array $data) {
+                $empresa = Filament::getTenant();
+                $archivos = [];
+
+                foreach ((array) $data['archivos'] as $ruta) {
+                    $completa = storage_path('app/private/' . $ruta);
+
+                    if (! file_exists($completa)) {
+                        $completa = storage_path('app/' . $ruta);
+                    }
+
+                    if (file_exists($completa)) {
+                        $archivos[] = ['contenido' => file_get_contents($completa), 'nombre' => basename($ruta)];
+                        @unlink($completa);
+                    }
+                }
+
+                $r = app(\App\Services\ImportadorDeclaracionesPdf::class)
+                    ->importar($empresa->id, $archivos, auth()->id());
+
+                $cadena = $r['cadena'] ?? [];
+                $cuerpo = "{$r['cargadas']} cargadas"
+                    . ($r['repetidas'] ? " · {$r['repetidas']} ya estaban" : '')
+                    . (count($r['rechazadas']) ? ' · ' . count($r['rechazadas']) . ' rechazadas' : '');
+
+                foreach ($r['rechazadas'] as $x) {
+                    $cuerpo .= " — {$x['archivo']}: {$x['motivo']}";
+                }
+
+                if (($cadena['cadena_cuadra'] ?? true) && ($cadena['periodos'] ?? 0) > 1) {
+                    $cuerpo .= '. El crédito tributario encadena sin saltos: $ '
+                        . number_format($cadena['credito_actual'] ?? 0, 2, ',', '.')
+                        . ' a favor al ' . ($cadena['ultimo_periodo'] ?? '—') . '.';
+                } elseif (! ($cadena['cadena_cuadra'] ?? true)) {
+                    $cuerpo .= '. Ojo: el crédito tributario no encadena en '
+                        . count($cadena['saltos'] ?? []) . ' puntos. Falta alguna declaración por cargar.';
+                }
+
+                Notification::make()
+                    ->title($r['cargadas'] ? 'Declaraciones cargadas al histórico' : 'No se cargó ninguna')
+                    ->body($cuerpo)
+                    ->{$r['cargadas'] ? 'success' : 'warning'}()
+                    ->persistent()
+                    ->send();
+            });
     }
 
     /**
@@ -250,6 +331,8 @@ class Declaraciones extends Page
             'conceptos'  => $this->conceptos101($anio),
             'pedidos'    => Declaracion::where('empresa_id', $empresa->id)
                 ->latest('id')->limit(12)->get(),
+            'cadena'     => app(\App\Services\ImportadorDeclaracionesPdf::class)
+                ->verificarCadena($empresa->id),
         ];
     }
 }

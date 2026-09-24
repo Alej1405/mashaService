@@ -72,10 +72,30 @@ class EstadosFinancieros extends Page
         $empresa = Filament::getTenant();
         $anio = $this->anio ?? now()->year;
 
-        $lineas = app(SuperciasService::class)->estado($empresa->id, $anio, $this->estado);
+        $servicio = app(SuperciasService::class);
+
+        // El de cambios en el patrimonio no es una lista: es una matriz de
+        // conceptos por movimientos, y se pinta distinto.
+        if ($this->estado === 'cambios_patrimonio') {
+            return [
+                'empresa'  => $empresa,
+                'anio'     => $anio,
+                'estado'   => $this->estado,
+                'estados'  => CatalogoSupercias::ESTADOS,
+                'anios'    => range(now()->year, now()->year - 3),
+                'matriz'   => $servicio->cambiosEnPatrimonio($empresa->id, $anio),
+                'lineas'   => [],
+                'conValor' => 0,
+                'total'    => 0,
+                'verTodas' => $this->verTodas,
+            ];
+        }
+
+        $lineas = $servicio->estado($empresa->id, $anio, $this->estado);
         $conValor = array_filter($lineas, fn ($l) => $l['tiene_valor']);
 
         return [
+            'matriz'    => null,
             'empresa'   => $empresa,
             'anio'      => $anio,
             'estado'    => $this->estado,

@@ -22,6 +22,57 @@
         @endforeach
     </div>
 
+    @if ($matriz)
+        {{-- Este estado es una matriz: conceptos en filas, movimientos en columnas --}}
+        <section class="ct-panel">
+            <header>
+                <h2 class="ct-tit">{{ $estados[$estado] }} · {{ $anio }}</h2>
+                <span class="ct-pie2">
+                    {{ count($matriz['conceptos']) }} conceptos × {{ count($matriz['columnas']) }} movimientos
+                </span>
+            </header>
+
+            <div class="ct-matriz-envoltura">
+                <table class="ct-matriz">
+                    <thead>
+                        <tr>
+                            <th class="ct-matriz-fija">Concepto patrimonial</th>
+                            @foreach ($matriz['columnas'] as $col)
+                                <th class="{{ in_array($col['codigo'], $matriz['derivadas'], true) ? '' : 'es-vacia' }}">
+                                    {{ \Illuminate\Support\Str::limit($col['nombre'], 34) }}
+                                    <span>{{ $col['codigo'] }}</span>
+                                </th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($matriz['conceptos'] as $c)
+                            <tr>
+                                <td class="ct-matriz-fija">
+                                    {{ \Illuminate\Support\Str::limit($c['nombre'], 44) }}
+                                    <span>{{ $c['codigo'] }}</span>
+                                </td>
+                                @foreach ($matriz['columnas'] as $col)
+                                    @php $valor = $matriz['celdas'][$col['codigo']][$c['codigo']] ?? 0; @endphp
+                                    <td class="{{ $valor != 0 ? 'es-valor' : '' }}">
+                                        {{ number_format($valor, 2, ',', '.') }}
+                                    </td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="ct-fila" style="background:var(--s2)">
+                <span class="ct-fila-s">
+                    Las columnas en gris no se deducen del libro diario: aumentos de capital,
+                    dividendos y transferencias entre cuentas patrimoniales son decisiones de junta.
+                    Se llenan a mano antes de presentar.
+                </span>
+            </div>
+        </section>
+    @else
     <section class="ct-panel">
         <header>
             <h2 class="ct-tit">{{ $estados[$estado] }} · {{ $anio }}</h2>
@@ -70,5 +121,6 @@
             </span>
         </div>
     </section>
+    @endif
 </div>
 </x-filament-panels::page>

@@ -1,0 +1,18 @@
+{
+ "99": "SALDO AL FINAL DEL PERIODO",
+ "9901": "SALDO REEXPRESADO DEL PERIODO INMEDIATO ANTERIOR",
+ "990101": "SALDO DEL PERÍODO INMEDIATO ANTERIOR",
+ "990102": "CAMBIOS EN POLITICAS CONTABLES:",
+ "990103": "CORRECCIÓN DE ERRORES",
+ "9902": "CAMBIOS DEL AÑO EN EL PATRIMONIO:",
+ "990201": "Aumento (disminución) de capital social",
+ "990202": "Aportes para futuras capitalizaciones",
+ "990203": "Prima por emisión primaria de acciones",
+ "990204": "Dividendos",
+ "990205": "Transferencia de Resultados a otras cuentas patrimoniales",
+ "990206": "Realización de la Reserva por Valuación de Activos Financieros Disponibles para la venta",
+ "990207": "Realización de la Reserva por Valuación de Propiedades, planta y equipo",
+ "990208": "Realización de la Reserva por Valuación de Activos Intangibles",
+ "990209": "Otros cambios (detallar)",
+ "990210": "Resultado Integral Total del Año (Ganancia o pérdida del ejercicio)"
+}

@@ -88,7 +88,10 @@ class Posicion extends Page
                     ->helperText('Se archiva como respaldo. Es lo que se enseña si lo piden.'),
 
                 Placeholder::make('cierra')->label('')
-                    ->content('Al guardarla, el período queda cerrado: no admitirá asientos nuevos.'),
+                    ->content('El período NO se cierra al cargarla. Una declaración presentada antes '
+                        . 'del ERP da historial y rastro del crédito tributario, pero el sistema no '
+                        . 'tiene los movimientos que la sustentan: cerrar exige una declaración '
+                        . 'generada aquí, con sus asientos detrás.'),
             ])
             ->action(function (array $data) {
                 $empresa = Filament::getTenant();
@@ -128,13 +131,15 @@ class Posicion extends Page
                         . 'de detalle no están, solo el total de ventas y lo pagado.'],
                 ]);
 
-                app(\App\Services\ContabilidadService::class)
-                    ->cerrarMes($empresa->id, $declaracion->anio, $declaracion->mes, $declaracion->id);
-
+                // Una declaración cargada NO cierra el mes: da trazabilidad del
+                // crédito tributario, pero el sistema no tiene los movimientos
+                // que la respaldan y no puede afirmar que cuadren.
                 Notification::make()
-                    ->title('Declaración cargada y período cerrado')
-                    ->body("{$declaracion->periodo} queda en el histórico y ya no admite asientos.")
-                    ->success()->send();
+                    ->title('Declaración cargada al histórico')
+                    ->body("{$declaracion->periodo} entra en la posición de la empresa. El período "
+                        . 'sigue abierto: solo lo cierra una declaración generada por el sistema, '
+                        . 'que es la que tiene los asientos detrás.')
+                    ->success()->persistent()->send();
             });
     }
 

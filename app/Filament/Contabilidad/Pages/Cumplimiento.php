@@ -191,14 +191,52 @@ class Cumplimiento extends Page
 
         $declaracion->update(['presentado_en' => now()]);
 
+        // Solo cierra el mes lo que salió del sistema: una declaración cargada
+        // del portal no tiene asientos detrás que respalden el cierre.
+        if ($declaracion->es_cargada) {
+            Notification::make()
+                ->title('Marcado como presentado')
+                ->body("{$declaracion->periodo} consta en el histórico, pero el período sigue abierto: "
+                    . 'esa declaración se cargó del portal y el ERP no tiene los movimientos que la sustentan.')
+                ->warning()->persistent()->send();
+
+            return;
+        }
+
+        $revision = app(\App\Services\AuditoriaPeriodoService::class)
+            ->revisar($declaracion->empresa_id, $declaracion->anio, $declaracion->mes);
+
+        if (! $revision['puede_cerrar']) {
+            $lista = collect($revision['hallazgos'])
+                ->where('nivel', \App\Services\AuditoriaPeriodoService::BLOQUEA)
+                ->map(fn ($h) => '· ' . $h['titulo'])->join(' ');
+
+            Notification::make()
+                ->title('Presentado, pero el período no se cerró')
+                ->body("Hay {$revision['bloqueantes']} hallazgos que hay que solventar antes: {$lista}")
+                ->danger()->persistent()->send();
+
+            return;
+        }
+
         app(\App\Services\ContabilidadService::class)->cerrarMes(
             $declaracion->empresa_id, $declaracion->anio, $declaracion->mes, $declaracion->id,
         );
 
+        $porRevisar = count($revision['hallazgos']);
+
         Notification::make()
             ->title('Presentado y período cerrado')
-            ->body("{$declaracion->periodo} ya no admite asientos. Para corregirlo hace falta una sustitutiva.")
-            ->success()->send();
+            ->body("{$declaracion->periodo} ya no admite asientos. Para corregirlo hace falta una sustitutiva."
+                . ($porRevisar ? " Quedan {$porRevisar} hallazgos por mirar, ninguno bloqueante." : ''))
+            ->success()->persistent()->send();
+    }
+
+    /** Los hallazgos de un período, para verlos antes de cerrarlo. */
+    public function hallazgosDe(int $anio, int $mes): array
+    {
+        return app(\App\Services\AuditoriaPeriodoService::class)
+            ->revisar(Filament::getTenant()->id, $anio, $mes);
     }
 
     /**

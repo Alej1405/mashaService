@@ -21,17 +21,19 @@
             </div>
             <p class="ct-val">{{ $porRevisar }}</p>
             <p class="ct-pie2">
-                ya suman al balance con la línea que propuso el sistema;
-                confirmarlas es decir que esa es la correcta
+                @if ($porRevisar === 0)
+                    nada que revisar: la correspondencia sale de la tabla maestra del plan estándar
+                @else
+                    cuentas propias de esta empresa que no están en el plan estándar
+                @endif
             </p>
         </div>
         <div class="ct-card">
-            <span class="ct-tit">Qué significa esto</span>
+            <span class="ct-tit">Cómo se asigna</span>
             <p class="ct-pie" style="margin-top:8px">
-                <strong>Ninguna cuenta se queda fuera del balance.</strong>
-                El sistema le pone su línea a cada una al crearla. Lo que ves abajo son
-                aquellas en las que no estuvo seguro: el balance ya las incluye, y al
-                confirmarlas pasan a ser decisión tuya.
+                El plan de cuentas del ERP es el mismo para todas las empresas, así que su
+                correspondencia con el catálogo es <strong>fija</strong>, no se adivina.
+                Solo aparecen aquí las cuentas que esta empresa añadió por su cuenta.
             </p>
         </div>
     </div>
@@ -104,16 +106,16 @@
     </section>
 
     <section class="ct-panel">
-        <header><h2 class="ct-tit">De dónde sale cada propuesta</h2></header>
+        <header><h2 class="ct-tit">De dónde sale cada correspondencia</h2></header>
         @foreach ([
-            ['Por el nombre de la cuenta', 'se compara con las líneas del catálogo, palabra por palabra', 'ok'],
-            ['Por el grupo al que pertenece', 'cuando el nombre no dice nada, manda su cuenta padre', 'wa'],
-            ['Por la estructura del código', '1.1 es activo corriente, 6 son gastos: nunca falla, pero es gruesa', 'da'],
+            ['Tabla maestra del plan estándar', 'las 121 cuentas del plan que trae el ERP, verificadas una a una contra el catálogo', 'ok'],
+            ['Por el nombre de la cuenta', 'solo para las que la empresa añadió: se compara palabra por palabra', 'wa'],
+            ['Por el grupo o la estructura del código', 'último recurso, para que ninguna se quede sin línea', 'da'],
         ] as [$titulo, $detalle, $tono])
             <div class="ct-fila">
                 <div><p class="ct-fila-t">{{ $titulo }}</p><p class="ct-fila-s">{{ $detalle }}</p></div>
                 <span class="ct-chip ct-chip-{{ $tono }}">
-                    {{ $tono === 'ok' ? 'fiable' : ($tono === 'wa' ? 'revisar' : 'revisar siempre') }}
+                    {{ $tono === 'ok' ? 'segura' : ($tono === 'wa' ? 'revisar' : 'revisar siempre') }}
                 </span>
             </div>
         @endforeach

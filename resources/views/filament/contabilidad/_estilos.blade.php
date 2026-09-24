@@ -70,4 +70,30 @@
                   cursor:pointer; transition:all .15s ease; }
     .ct-pestana:hover { border-color:var(--ac); color:var(--t); }
     .ct-pestana.es-activa { background:var(--ac); border-color:var(--ac); color:#fff; }
+
+    /* Tabla de doble entrada: el estado de cambios en el patrimonio */
+    .ct-matriz-envoltura { overflow-x:auto; }
+    .ct-matriz { width:100%; border-collapse:collapse; font-size:12px; }
+    .ct-matriz th, .ct-matriz td { padding:8px 10px; border-bottom:1px solid var(--b2);
+                                   text-align:right; white-space:nowrap; }
+    .ct-matriz th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px;
+                    color:var(--m); vertical-align:bottom; background:var(--s2);
+                    position:sticky; top:0; }
+    .ct-matriz th.es-vacia { color:var(--m2); font-weight:500; }
+    .ct-matriz th span, .ct-matriz td span { display:block; font-size:10px; font-weight:500; color:var(--m2); }
+    .ct-matriz .ct-matriz-fija { position:sticky; left:0; text-align:left; background:var(--s);
+                                 font-weight:600; color:var(--t); min-width:220px; z-index:1; }
+    .ct-matriz thead .ct-matriz-fija { background:var(--s2); z-index:2; }
+    .ct-matriz td { color:var(--m2); }
+    .ct-matriz td.es-valor { color:var(--t); font-weight:700; }
+
+    /* Desplegables e inputs dentro de las filas */
+    /* La flecha la pinta el CSS base de Filament como imagen de fondo. Sin
+       no-repeat se dibuja una por cada ancho del select: el desplegable
+       aparecía con diez flechas encima del texto. */
+    .ct-select { min-width:0; padding:8px 30px 8px 10px; border:1px solid var(--b); border-radius:10px;
+                 font-size:13px; color:var(--t); font-family:inherit;
+                 background-color:var(--s); background-repeat:no-repeat;
+                 background-position:right 8px center; background-size:1.1em 1.1em; }
+    .ct-select:focus { outline:none; border-color:var(--ac); box-shadow:0 0 0 3px #4f46e51f; }
 </style>
