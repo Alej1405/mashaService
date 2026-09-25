@@ -25,6 +25,7 @@ class RetencionResource extends Resource
     protected static ?string $slug = 'retenciones';
     protected static ?string $navigationIcon  = 'heroicon-o-receipt-percent';
     protected static ?string $navigationLabel = 'Retenciones';
+    protected static ?string $navigationGroup = 'Día a día';
     protected static ?string $modelLabel = 'retención';
     protected static ?string $pluralModelLabel = 'Retenciones';
     protected static ?int    $navigationSort = 3;

@@ -25,6 +25,7 @@ class Posicion extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-presentation-chart-line';
     protected static ?string $navigationLabel = 'Posición de la empresa';
+    protected static ?string $navigationGroup = 'Informes y cierre';
     protected static ?string $title           = 'Posición de la empresa';
     protected static ?int    $navigationSort  = 2;
     protected static string  $view            = 'filament.contabilidad.posicion';

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\App\Pages;
+namespace App\Filament\Operaciones\Pages;
 
 use App\Models\Empresa;
 use App\Models\InventoryItem;
@@ -27,10 +27,10 @@ class ProduccionPage extends Page
     protected static ?string $navigationIcon  = 'heroicon-o-cog-6-tooth';
     protected static ?string $navigationLabel = 'Producción';
     protected static ?string $title           = 'Producción';
-    protected static ?string $navigationGroup = 'Planificación y Producción';
-    protected static ?int    $navigationSort  = 2;
+    protected static ?string $navigationGroup = 'Producto';
+    protected static ?int    $navigationSort  = 6;
 
-    protected static string $view = 'filament.app.pages.produccion';
+    protected static string $view = 'filament.operaciones.produccion';
 
     public static function canAccess(): bool
     {
@@ -355,7 +355,7 @@ class ProduccionPage extends Page
                         $item = $line->inventoryItem;
                         if (!$item) continue;
                         $cantNec = $this->cantNecesariaStock($line, $cantEtapa, $lote, $item);
-                        [$costoTotal] = \App\Filament\App\Resources\ProductDesignResource::costoLinea(
+                        [$costoTotal] = \App\Filament\Operaciones\Resources\ProductDesignResource::costoLinea(
                             $item, $cantNec, $item->measurement_unit_id
                         );
                         $costoU = $cantNec > 0 ? $costoTotal / $cantNec : 0;

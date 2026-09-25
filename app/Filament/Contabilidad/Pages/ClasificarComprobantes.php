@@ -27,8 +27,9 @@ class ClasificarComprobantes extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-inbox-stack';
     protected static ?string $navigationLabel = 'Clasificar comprobantes';
+    protected static ?string $navigationGroup = 'Día a día';
     protected static ?string $title           = 'Clasificar comprobantes del portal';
-    protected static ?int    $navigationSort  = 6;
+    protected static ?int    $navigationSort  = 1;
     protected static string  $view            = 'filament.contabilidad.clasificar-comprobantes';
 
     /**

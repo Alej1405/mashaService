@@ -29,8 +29,9 @@ class Declaraciones extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'Declaraciones';
+    protected static ?string $navigationGroup = 'Impuestos';
     protected static ?string $title           = 'Declaraciones';
-    protected static ?int    $navigationSort  = 8;
+    protected static ?int    $navigationSort  = 2;
     protected static string  $view            = 'filament.contabilidad.declaraciones';
 
     public static function canAccess(): bool
@@ -169,8 +170,11 @@ class Declaraciones extends Page
                     ->multiple()
                     ->maxFiles(36)
                     ->maxSize(5120)
-                    ->disk('local')
-                    ->directory('declaraciones/entrantes')
+                    // El PDF no se guarda: de él solo salen los casilleros, que
+                    // van a la base. Persistirlo obligaba a crear una carpeta
+                    // en el storage y bastaba con que sus permisos no fueran de
+                    // www-data para que la subida entera devolviera un 500.
+                    ->storeFiles(false)
                     ->required()
                     ->helperText('Hasta 36 de una vez, que son tres años de declaraciones mensuales.'),
             ])
@@ -178,15 +182,24 @@ class Declaraciones extends Page
                 $empresa = Filament::getTenant();
                 $archivos = [];
 
-                foreach ((array) $data['archivos'] as $ruta) {
-                    $completa = storage_path('app/private/' . $ruta);
+                foreach ((array) $data['archivos'] as $archivo) {
+                    // Llegan como archivo temporal de Livewire: se lee en
+                    // memoria y se descarta.
+                    if ($archivo instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+                        $archivos[] = [
+                            'contenido' => $archivo->get(),
+                            'nombre'    => $archivo->getClientOriginalName(),
+                        ];
+                        $archivo->delete();
 
-                    if (! file_exists($completa)) {
-                        $completa = storage_path('app/' . $ruta);
+                        continue;
                     }
 
+                    // Por si alguno quedó en disco de una subida anterior.
+                    $completa = storage_path('app/private/' . $archivo);
+
                     if (file_exists($completa)) {
-                        $archivos[] = ['contenido' => file_get_contents($completa), 'nombre' => basename($ruta)];
+                        $archivos[] = ['contenido' => file_get_contents($completa), 'nombre' => basename($archivo)];
                         @unlink($completa);
                     }
                 }
@@ -203,7 +216,11 @@ class Declaraciones extends Page
                     $cuerpo .= " — {$x['archivo']}: {$x['motivo']}";
                 }
 
-                if (($cadena['cadena_cuadra'] ?? true) && ($cadena['periodos'] ?? 0) > 1) {
+                if ($faltan = ($cadena['faltantes'] ?? [])) {
+                    $cuerpo .= '. Faltan meses en el histórico: ' . implode(', ', $faltan)
+                        . '. Sin ellos no se puede verificar de dónde viene el crédito tributario '
+                        . 'de los meses siguientes.';
+                } elseif (($cadena['cadena_cuadra'] ?? false) && ($cadena['periodos'] ?? 0) > 1) {
                     $cuerpo .= '. El crédito tributario encadena sin saltos: $ '
                         . number_format($cadena['credito_actual'] ?? 0, 2, ',', '.')
                         . ' a favor al ' . ($cadena['ultimo_periodo'] ?? '—') . '.';

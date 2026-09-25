@@ -394,6 +394,9 @@ class AccountingService
 
                 $tipoItemMapa = match($tipoItem) {
                     'producto_terminado'     => 'producto_terminado',
+                    // Un macerado se produce y se consume: tiene sus propias
+                    // cuentas, no las del producto que se vende.
+                    'materia_prima_procesada' => 'materia_prima_procesada',
                     'materia_prima'          => 'materia_prima',
                     'insumo'                 => 'insumo',
                     'servicio'               => 'servicio',

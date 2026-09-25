@@ -22,8 +22,9 @@ class FirmaElectronica extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-finger-print';
     protected static ?string $navigationLabel = 'Firma electrónica';
+    protected static ?string $navigationGroup = 'Configuración';
     protected static ?string $title           = 'Firma electrónica';
-    protected static ?int    $navigationSort  = 9;
+    protected static ?int    $navigationSort  = 5;
     protected static string  $view            = 'filament.contabilidad.firma-electronica';
 
     public static function canAccess(): bool

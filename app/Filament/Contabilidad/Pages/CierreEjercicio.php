@@ -21,6 +21,7 @@ class CierreEjercicio extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-lock-closed';
     protected static ?string $navigationLabel = 'Cierre de ejercicio';
+    protected static ?string $navigationGroup = 'Informes y cierre';
     protected static ?string $title           = 'Cierre de ejercicio';
     protected static ?int    $navigationSort  = 5;
     protected static string  $view            = 'filament.contabilidad.cierre-ejercicio';

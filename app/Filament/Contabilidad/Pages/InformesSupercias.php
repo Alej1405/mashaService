@@ -18,8 +18,9 @@ class InformesSupercias extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-arrow-down-tray';
     protected static ?string $navigationLabel = 'Informes Supercías';
+    protected static ?string $navigationGroup = 'Informes y cierre';
     protected static ?string $title           = 'Informes para la Superintendencia';
-    protected static ?int    $navigationSort  = 6;
+    protected static ?int    $navigationSort  = 3;
     protected static string  $view            = 'filament.contabilidad.informes-supercias';
 
     public int $anio;

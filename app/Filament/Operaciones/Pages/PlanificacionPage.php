@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\App\Pages;
+namespace App\Filament\Operaciones\Pages;
 
 use App\Mail\NuevaPlanificacionMail;
 use App\Models\Empresa;
@@ -19,10 +19,10 @@ class PlanificacionPage extends Page
     protected static ?string $navigationIcon  = 'heroicon-o-calendar-days';
     protected static ?string $navigationLabel = 'Planificación';
     protected static ?string $title           = 'Planificación de Producción';
-    protected static ?string $navigationGroup = 'Planificación y Producción';
-    protected static ?int    $navigationSort  = 1;
+    protected static ?string $navigationGroup = 'Producto';
+    protected static ?int    $navigationSort  = 7;
 
-    protected static string $view = 'filament.app.pages.planificacion';
+    protected static string $view = 'filament.operaciones.planificacion';
 
     public static function canAccess(): bool
     {

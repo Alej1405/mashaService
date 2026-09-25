@@ -79,6 +79,11 @@ class OperacionesPanelProvider extends PanelProvider
             ->homeUrl(fn (): ?string => ($empresa = Filament::getTenant())
                 ? route('filament.operaciones.pages.dashboard', ['tenant' => $empresa])
                 : null)
+            // Todo lo del producto en un grupo: qué existe, con qué receta,
+            // cuánto cuesta y cómo se produce.
+            ->navigationGroups([
+                'Producto',
+            ])
             ->discoverResources(
                 in: app_path('Filament/Operaciones/Resources'),
                 for: 'App\\Filament\\Operaciones\\Resources'

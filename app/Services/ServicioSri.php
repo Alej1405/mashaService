@@ -238,7 +238,7 @@ class ServicioSri
     public function verificarCadena(array $periodos): array
     {
         if (! $this->configurado() || $periodos === []) {
-            return ['cadena_cuadra' => true, 'saltos' => [], 'periodos' => count($periodos)];
+            return ['verificado' => false, 'saltos' => [], 'faltantes' => [], 'periodos' => count($periodos)];
         }
 
         try {
@@ -246,9 +246,13 @@ class ServicioSri
                 ->withToken($this->token ?? config('services.sri.token'))
                 ->post($this->url() . '/declaracion/verificar-cadena', ['periodos' => $periodos]);
 
-            return $r->successful() ? $r->json() : ['cadena_cuadra' => true, 'saltos' => []];
+            // Si el microservicio no responde, la cadena queda sin verificar.
+            // Decir que cuadra sería afirmar algo que nadie comprobó.
+            return $r->successful()
+                ? $r->json() + ['verificado' => true]
+                : ['verificado' => false, 'saltos' => [], 'faltantes' => []];
         } catch (\Throwable $e) {
-            return ['cadena_cuadra' => true, 'saltos' => []];
+            return ['verificado' => false, 'saltos' => [], 'faltantes' => []];
         }
     }
 }

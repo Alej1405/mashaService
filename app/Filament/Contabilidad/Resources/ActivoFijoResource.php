@@ -20,9 +20,10 @@ class ActivoFijoResource extends Resource
     protected static ?string $slug = 'activos-fijos';
     protected static ?string $navigationIcon  = 'heroicon-o-wrench-screwdriver';
     protected static ?string $navigationLabel = 'Activos fijos';
+    protected static ?string $navigationGroup = 'Configuración';
     protected static ?string $modelLabel = 'activo fijo';
     protected static ?string $pluralModelLabel = 'Activos fijos';
-    protected static ?int    $navigationSort = 9;
+    protected static ?int    $navigationSort = 2;
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
     public static function canAccess(): bool

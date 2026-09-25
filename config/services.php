@@ -60,4 +60,11 @@ return [
         'token' => env('SRI_SERVICIO_TOKEN'),
     ],
 
+    // Normaliza unidades y calcula el costo de una receta. El ERP guarda; el
+    // servicio procesa.
+    'formulacion' => [
+        'url'   => env('FORMULACION_SERVICIO_URL'),
+        'token' => env('FORMULACION_SERVICIO_TOKEN'),
+    ],
+
 ];

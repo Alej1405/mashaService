@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\App\Resources;
+namespace App\Filament\Operaciones\Resources;
 
-use App\Filament\App\Resources\ProductDesignResource\Pages;
+use App\Filament\Operaciones\Resources\ProductDesignResource\Pages;
 use App\Models\InventoryItem;
 use App\Models\MeasurementUnit;
 use App\Models\ProductDesign;
@@ -33,18 +33,19 @@ class ProductDesignResource extends Resource
     protected static ?string $tenantRelationshipName = 'productDesigns';
 
     protected static ?string $navigationIcon  = 'heroicon-o-beaker';
-    protected static ?string $navigationLabel = 'Productos';
+    protected static ?string $navigationLabel = 'Diseño de producto';
     protected static ?string $navigationGroup = 'Producto';
-    protected static ?int    $navigationSort  = 1;
+    protected static ?int    $navigationSort  = 3;
     protected static ?string $modelLabel      = 'Producto';
-    protected static ?string $pluralModelLabel = 'Productos';
+    protected static ?string $pluralModelLabel = 'Diseños de producto';
 
-    // REEMPLAZADO: el módulo Producto ahora vive en StoreProductResource sobre la
-    // tabla única store_products. Este recurso (sobre product_designs/costos) queda
-    // OCULTO. El archivo se conserva solo porque ProduccionPage usa costoLinea().
+    // Vuelve a estar visible: el diseño de producto es el camino de quien
+    // costea con fórmula —insumos, mano de obra, merma— frente al catálogo de
+    // quien solo pone costo y precio. Son dos perfiles distintos de empresa,
+    // no dos versiones de lo mismo.
     public static function canAccess(): bool
     {
-        return false;
+        return \App\Helpers\PlanHelper::hasModule('produccion');
     }
 
     public static function shouldRegisterNavigation(): bool

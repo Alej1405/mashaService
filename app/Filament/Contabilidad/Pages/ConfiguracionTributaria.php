@@ -18,8 +18,9 @@ class ConfiguracionTributaria extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-adjustments-horizontal';
     protected static ?string $navigationLabel = 'Configuración tributaria';
+    protected static ?string $navigationGroup = 'Configuración';
     protected static ?string $title           = 'Configuración tributaria';
-    protected static ?int    $navigationSort  = 7;
+    protected static ?int    $navigationSort  = 4;
     protected static string  $view            = 'filament.contabilidad.configuracion-tributaria';
 
     public static function canAccess(): bool

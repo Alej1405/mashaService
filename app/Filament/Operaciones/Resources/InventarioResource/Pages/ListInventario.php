@@ -58,6 +58,7 @@ class ListInventario extends ListRecords
             'materia_prima'      => 'Materia prima',
             'insumo'             => 'Insumos',
             'producto_terminado' => 'Producto terminado',
+            'materia_prima_procesada' => 'Materia prima procesada',
             'activo_fijo'        => 'Activos fijos',
             'servicio'           => 'Servicios',
         ];

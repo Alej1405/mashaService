@@ -60,7 +60,8 @@ class ContabilidadPanelProvider extends PanelProvider
                 'panels::head.end',
                 fn (): \Illuminate\Support\HtmlString => new \Illuminate\Support\HtmlString(
                     '<style>.fi-main{padding-top:2rem;padding-bottom:2.5rem}'
-                    . '@media(max-width:640px){.fi-main{padding-top:1.25rem;padding-bottom:1.75rem}}</style>'
+                    . '@media(max-width:640px){.fi-main{padding-top:1.25rem;padding-bottom:1.75rem}}'
+                    . '</style>'
                 ),
             )
             // En celular y tablet la navegación va abajo: es una app, no una web.
@@ -73,6 +74,15 @@ class ContabilidadPanelProvider extends PanelProvider
             ->homeUrl(fn (): ?string => ($empresa = Filament::getTenant())
                 ? route('filament.contabilidad.pages.dashboard', ['tenant' => $empresa])
                 : null)
+            // El orden del menú es el del trabajo del contador: primero lo que
+            // se captura cada día, luego lo que se declara, después lo que se
+            // presenta, y al final lo que casi nunca se toca.
+            ->navigationGroups([
+                'Día a día',
+                'Impuestos',
+                'Informes y cierre',
+                'Configuración',
+            ])
             ->discoverResources(
                 in: app_path('Filament/Contabilidad/Resources'),
                 for: 'App\\Filament\\Contabilidad\\Resources'

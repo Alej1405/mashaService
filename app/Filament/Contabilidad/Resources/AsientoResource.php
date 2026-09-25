@@ -17,9 +17,10 @@ class AsientoResource extends Resource
     protected static ?string $slug = 'asientos';
     protected static ?string $navigationIcon  = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'Libro diario';
+    protected static ?string $navigationGroup = 'Día a día';
     protected static ?string $modelLabel = 'asiento';
     protected static ?string $pluralModelLabel = 'Libro diario';
-    protected static ?int    $navigationSort = 1;
+    protected static ?int    $navigationSort = 5;
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
     public static function canAccess(): bool

@@ -53,6 +53,7 @@ class InventoryItem extends Model
         'foto_path',
         'ubicacion_almacen_id',
         'type',
+        'product_presentation_id',
         'measurement_unit_id',
         'purchase_unit_id',
         'conversion_factor',

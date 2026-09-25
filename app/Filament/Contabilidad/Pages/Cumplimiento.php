@@ -28,8 +28,9 @@ class Cumplimiento extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationLabel = 'Cumplimiento';
+    protected static ?string $navigationGroup = 'Impuestos';
     protected static ?string $title           = 'Cumplimiento tributario';
-    protected static ?int    $navigationSort  = 7;
+    protected static ?int    $navigationSort  = 1;
     protected static string  $view            = 'filament.contabilidad.cumplimiento';
 
     public static function canAccess(): bool

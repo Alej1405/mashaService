@@ -320,6 +320,13 @@ Route::middleware(['web', 'auth'])->get('/contabilidad/declaracion/{declaracion}
     $modelo = \App\Models\Declaracion::findOrFail($declaracion);
 
     // La misma puerta que usa el panel para decidir a qué empresa se entra.
+    //
+    // Esta ruta vive fuera de Filament, así que hay que decirle a qué panel
+    // pertenece: canAccessTenant resuelve el plan a partir del panel actual y,
+    // sin panel, no hay plan que abra nada y devolvía 403 a todo el mundo,
+    // incluido el super_admin.
+    \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('contabilidad'));
+
     abort_unless(auth()->user()?->canAccessTenant($modelo->empresa), 403);
 
     abort_unless($modelo->archivo && \Illuminate\Support\Facades\Storage::disk('local')->exists($modelo->archivo), 404);

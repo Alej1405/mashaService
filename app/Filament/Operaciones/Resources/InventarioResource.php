@@ -21,7 +21,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class InventarioResource extends Resource
 {
-    protected static ?string $navigationLabel = 'Productos';
+    protected static ?string $navigationLabel = 'Inventario';
+    protected static ?string $navigationGroup = 'Producto';
     protected static ?string $model = InventoryItem::class;
     protected static ?string $tenantRelationshipName = 'inventoryItems';
 
@@ -89,6 +90,7 @@ class InventarioResource extends Resource
                                         'insumo' => 'Insumo',
                                         'materia_prima' => 'Materia Prima',
                                         'producto_terminado' => 'Producto Terminado',
+                                        'materia_prima_procesada' => 'Materia prima procesada',
                                         'activo_fijo' => 'Activo Fijo',
                                         'servicio' => 'Servicio',
                                     ])
@@ -345,6 +347,7 @@ class InventarioResource extends Resource
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'materia_prima'      => 'Materia prima',
                         'producto_terminado' => 'Producto terminado',
+                        'materia_prima_procesada' => 'Materia prima procesada',
                         'activo_fijo'        => 'Activo fijo',
                         'insumo'             => 'Insumo',
                         'servicio'           => 'Servicio',
@@ -353,6 +356,7 @@ class InventarioResource extends Resource
                     ->color(fn (?string $state): string => match ($state) {
                         'materia_prima'      => 'info',
                         'producto_terminado' => 'success',
+                        'materia_prima_procesada' => 'info',
                         'activo_fijo'        => 'warning',
                         default              => 'gray',
                     }),
@@ -422,6 +426,7 @@ class InventarioResource extends Resource
                         'insumo' => 'Insumo',
                         'materia_prima' => 'Materia Prima',
                         'producto_terminado' => 'Producto Terminado',
+                        'materia_prima_procesada' => 'Materia prima procesada',
                         'activo_fijo' => 'Activo Fijo',
                         'servicio' => 'Servicio',
                     ]),
@@ -501,6 +506,7 @@ class InventarioResource extends Resource
                     'insumo' => 'Insumo',
                     'materia_prima' => 'Materia Prima',
                     'producto_terminado' => 'Producto Terminado',
+                    'materia_prima_procesada' => 'Materia prima procesada',
                     'activo_fijo' => 'Activo Fijo',
                     'servicio' => 'Servicio',
                 ])

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\App\Resources;
+namespace App\Filament\Operaciones\Resources;
 
-use App\Filament\App\Resources\ProductionOrderResource\Pages;
+use App\Filament\Operaciones\Resources\ProductionOrderResource\Pages;
 use App\Models\ProductDesign;
 use App\Models\ProductPresentation;
 use App\Models\ProductionOrder;
@@ -32,7 +32,9 @@ class ProductionOrderResource extends Resource
     protected static ?string $tenantRelationshipName = 'productionOrders';
 
     protected static ?string $navigationIcon  = 'heroicon-o-cog';
-    protected static ?string $navigationGroup = 'Producción';
+    protected static ?string $navigationLabel = 'Producción';
+    protected static ?string $navigationGroup = 'Producto';
+    protected static ?int    $navigationSort  = 5;
     protected static ?string $modelLabel      = 'Orden de Producción';
     protected static ?string $pluralModelLabel = 'Órdenes de Producción';
 

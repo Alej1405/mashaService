@@ -27,6 +27,7 @@ class GastoResource extends Resource
     protected static ?string $slug = 'gastos';
     protected static ?string $navigationIcon  = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'Gastos';
+    protected static ?string $navigationGroup = 'Día a día';
     protected static ?string $modelLabel = 'gasto';
     protected static ?string $pluralModelLabel = 'Gastos';
     protected static ?int    $navigationSort = 2;

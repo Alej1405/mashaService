@@ -23,8 +23,9 @@ class EstadosFinancieros extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-document-chart-bar';
     protected static ?string $navigationLabel = 'Estados financieros';
+    protected static ?string $navigationGroup = 'Informes y cierre';
     protected static ?string $title           = 'Estados financieros';
-    protected static ?int    $navigationSort  = 4;
+    protected static ?int    $navigationSort  = 1;
     protected static string  $view            = 'filament.contabilidad.estados-financieros';
 
     public ?int $anio = null;

@@ -19,7 +19,8 @@ class MeasurementUnitResource extends Resource
     protected static ?string $tenantRelationshipName = 'measurementUnits';
 
     protected static ?string $navigationLabel = 'Unidades de medida';
-    protected static ?int    $navigationSort  = 4;
+    protected static ?string $navigationGroup = 'Producto';
+    protected static ?int    $navigationSort  = 6;
     protected static ?string $navigationIcon = 'heroicon-o-scale';
     protected static ?string $modelLabel = 'Unidad de Medida';
     protected static ?string $pluralModelLabel = 'Unidades de Medida';

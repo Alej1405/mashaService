@@ -17,9 +17,10 @@ class SocioResource extends Resource
     protected static ?string $slug = 'socios';
     protected static ?string $navigationIcon  = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Socios';
+    protected static ?string $navigationGroup = 'Configuración';
     protected static ?string $modelLabel = 'socio';
     protected static ?string $pluralModelLabel = 'Socios y accionistas';
-    protected static ?int    $navigationSort = 6;
+    protected static ?int    $navigationSort = 3;
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
     public static function canAccess(): bool

@@ -4,7 +4,7 @@ namespace App\Filament\App\Pages;
 
 use App\Filament\App\Resources\CustomerResource;
 use App\Filament\Operaciones\Resources\InventarioResource;
-use App\Filament\App\Resources\StoreProductResource;
+use App\Filament\Operaciones\Resources\StoreProductResource;
 use App\Models\Customer;
 use App\Models\InventoryItem;
 use App\Models\StoreProduct;

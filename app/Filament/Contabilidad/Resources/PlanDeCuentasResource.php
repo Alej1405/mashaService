@@ -20,9 +20,10 @@ class PlanDeCuentasResource extends Resource
     protected static ?string $model = AccountPlan::class;
     protected static ?string $navigationIcon  = 'heroicon-o-list-bullet';
     protected static ?string $navigationLabel = 'Plan de cuentas';
+    protected static ?string $navigationGroup = 'Configuración';
     protected static ?string $modelLabel = 'cuenta';
     protected static ?string $pluralModelLabel = 'Plan de cuentas';
-    protected static ?int    $navigationSort = 2;
+    protected static ?int    $navigationSort = 1;
     protected static ?string $tenantOwnershipRelationshipName = 'empresa';
 
     public static function canAccess(): bool

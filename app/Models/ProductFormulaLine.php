@@ -12,6 +12,7 @@ class ProductFormulaLine extends Model
         'inventory_item_id',
         'item_request_id',
         'cantidad',
+        'merma_porcentaje',
         'measurement_unit_id',
         'es_subproducto_manufacturado',
         'notas',
@@ -20,6 +21,7 @@ class ProductFormulaLine extends Model
 
     protected $casts = [
         'cantidad'                    => 'decimal:6',
+        'merma_porcentaje'            => 'decimal:2',
         'costo_estimado'              => 'decimal:4',
         'es_subproducto_manufacturado' => 'boolean',
     ];

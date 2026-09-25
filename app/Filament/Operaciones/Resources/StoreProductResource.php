@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\App\Resources;
+namespace App\Filament\Operaciones\Resources;
 
-use App\Filament\App\Resources\StoreProductResource\Pages;
+use App\Filament\Operaciones\Resources\StoreProductResource\Pages;
 use App\Models\InventoryItem;
 use App\Models\MeasurementUnit;
 use App\Models\StoreProduct;
@@ -45,11 +45,11 @@ class StoreProductResource extends Resource
     protected static ?string $tenantRelationshipName = 'storeProducts';
 
     protected static ?string $navigationIcon   = 'heroicon-o-cube';
-    protected static ?string $navigationLabel  = 'Productos';
+    protected static ?string $navigationLabel  = 'Catálogo de tienda';
     protected static ?string $navigationGroup  = 'Producto';
     protected static ?string $modelLabel       = 'Producto';
     protected static ?string $pluralModelLabel = 'Productos';
-    protected static ?int    $navigationSort   = 1;
+    protected static ?int    $navigationSort   = 4;
 
     public static function canAccess(): bool
     {

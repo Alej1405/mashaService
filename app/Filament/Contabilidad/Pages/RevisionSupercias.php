@@ -21,8 +21,9 @@ class RevisionSupercias extends Page
 {
     protected static ?string $navigationIcon  = 'heroicon-o-check-badge';
     protected static ?string $navigationLabel = 'Revisar mapeo SCVS';
+    protected static ?string $navigationGroup = 'Informes y cierre';
     protected static ?string $title           = 'Revisión del mapeo a la Superintendencia';
-    protected static ?int    $navigationSort  = 10;
+    protected static ?int    $navigationSort  = 4;
     protected static string  $view            = 'filament.contabilidad.revision-supercias';
 
     /** cuenta_id => código elegido */

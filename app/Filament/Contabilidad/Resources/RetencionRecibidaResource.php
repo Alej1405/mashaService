@@ -23,6 +23,7 @@ class RetencionRecibidaResource extends Resource
     protected static ?string $slug = 'retenciones-recibidas';
     protected static ?string $navigationIcon  = 'heroicon-o-inbox-arrow-down';
     protected static ?string $navigationLabel = 'Retenciones recibidas';
+    protected static ?string $navigationGroup = 'Día a día';
     protected static ?string $modelLabel = 'retención recibida';
     protected static ?string $pluralModelLabel = 'Retenciones recibidas';
     protected static ?int    $navigationSort = 4;

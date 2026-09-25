@@ -16,6 +16,8 @@ class ProductPresentation extends Model
         'cantidad_minima_produccion',
         'margen_objetivo',
         'pvp_estimado',
+        'costo_estandar',
+        'costo_calculado_en',
     ];
 
     protected $casts = [
@@ -23,6 +25,8 @@ class ProductPresentation extends Model
         'cantidad_minima_produccion' => 'decimal:4',
         'margen_objetivo'           => 'decimal:2',
         'pvp_estimado'              => 'decimal:4',
+        'costo_estandar'            => 'decimal:4',
+        'costo_calculado_en'        => 'datetime',
     ];
 
     public function productDesign(): BelongsTo
