@@ -29,7 +29,9 @@ class ServicioFormulacion
 
     private function url(): string
     {
-        return rtrim($this->base ?? config('services.formulacion.url', ''), '/');
+        // config() devuelve null cuando la variable no está en el .env, y el
+        // segundo argumento no lo cubre: rtrim(null) es un deprecated en 8.4.
+        return rtrim((string) ($this->base ?? config('services.formulacion.url')), '/');
     }
 
     public function configurado(): bool

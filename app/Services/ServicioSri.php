@@ -21,7 +21,7 @@ class ServicioSri
 
     private function url(): string
     {
-        return rtrim($this->base ?? config('services.sri.url', ''), '/');
+        return rtrim((string) ($this->base ?? config('services.sri.url')), '/');
     }
 
     public function configurado(): bool
