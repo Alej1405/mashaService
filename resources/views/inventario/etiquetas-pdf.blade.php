@@ -32,7 +32,7 @@
     <div class="etiqueta">
         <table class="marco">
             <tr>
-                <td class="qr">{!! $item->qrSvg(66) !!}</td>
+                <td class="qr"><img src="{{ $item->qrPng(66) }}" alt="" style="width:17mm;height:17mm"></td>
                 <td class="datos">
                     <div class="codigo">{{ $item->codigo }}</div>
                     @if($ubicacion)

@@ -63,7 +63,19 @@ class FirmaElectronica extends Page
                     FileUpload::make('archivo')
                         ->label('Archivo .p12 o .pfx')
                         ->helperText('El que te entregó Security Data, Uanataca, el Banco Central o Anfac.')
-                        ->acceptedFileTypes(['application/x-pkcs12', 'application/octet-stream'])
+                        // Un .p12 llega con un tipo distinto según el navegador y el sistema:
+                        // Chrome en macOS manda application/x-pkcs12, Safari
+                        // application/pkcs12 y Windows a veces nada. Con la lista
+                        // corta, el archivo se rechazaba antes de subir y sin dejar
+                        // rastro en el log del servidor.
+                        ->acceptedFileTypes([
+                            'application/x-pkcs12',
+                            'application/pkcs12',
+                            'application/octet-stream',
+                            'application/x-pkcs12-certificates',
+                            '.p12',
+                            '.pfx',
+                        ])
                         ->maxSize(2048)
                         ->disk('local')
                         ->directory('firmas/temporal')

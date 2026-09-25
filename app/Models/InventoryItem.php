@@ -144,6 +144,56 @@ class InventoryItem extends Model
     }
 
     /** QR en SVG, listo para imprimir en la etiqueta de la gaveta. */
+    /**
+     * El mismo QR, pero como imagen incrustada para el PDF.
+     *
+     * Dompdf no dibuja SVG en línea: la etiqueta salía con el hueco vacío. El
+     * servidor no tiene Imagick, así que el PNG se arma con GD a partir de la
+     * matriz del código, que es lo único que hace falta.
+     */
+    public function qrPng(int $tamano = 150): string
+    {
+        $matriz = (new \BaconQrCode\Writer(
+            new \BaconQrCode\Renderer\PlainTextRenderer(),
+        ));
+
+        $codigo = (new \BaconQrCode\Encoder\Encoder())::encode(
+            $this->urlQr(),
+            \BaconQrCode\Common\ErrorCorrectionLevel::M(),
+        )->getMatrix();
+
+        $lado = $codigo->getWidth();
+        $escala = max(1, (int) floor($tamano / $lado));
+        $borde = $escala * 2;
+        $px = $lado * $escala + $borde * 2;
+
+        $imagen = imagecreatetruecolor($px, $px);
+        $blanco = imagecolorallocate($imagen, 255, 255, 255);
+        $negro = imagecolorallocate($imagen, 0, 0, 0);
+        imagefilledrectangle($imagen, 0, 0, $px, $px, $blanco);
+
+        for ($y = 0; $y < $lado; $y++) {
+            for ($x = 0; $x < $lado; $x++) {
+                if ($codigo->get($x, $y) === 1) {
+                    imagefilledrectangle(
+                        $imagen,
+                        $borde + $x * $escala,
+                        $borde + $y * $escala,
+                        $borde + ($x + 1) * $escala - 1,
+                        $borde + ($y + 1) * $escala - 1,
+                        $negro,
+                    );
+                }
+            }
+        }
+
+        ob_start();
+        imagepng($imagen);
+        $bytes = ob_get_clean();
+
+        return 'data:image/png;base64,' . base64_encode($bytes);
+    }
+
     public function qrSvg(int $tamano = 150): string
     {
         return \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')

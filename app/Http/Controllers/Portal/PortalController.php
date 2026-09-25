@@ -277,7 +277,8 @@ class PortalController extends Controller
         $contracts = ServiceContract::withoutGlobalScopes()
             ->with('serviceDesign')
             ->where('customer_id', $customer->id)
-            ->orderByRaw("FIELD(estado, 'activo', 'pausado', 'finalizado')")
+            // Mismo caso que en producción: FIELD() no existe en Postgres.
+            ->orderByRaw("CASE estado WHEN 'activo' THEN 1 WHEN 'pausado' THEN 2 WHEN 'finalizado' THEN 3 ELSE 4 END")
             ->latest()
             ->paginate(10);
 

@@ -426,7 +426,8 @@ class ProduccionPage extends Page
         $planes = ProductionPlan::where('empresa_id', $empresa->id)
             ->with(['simulation.productDesign', 'productionOrders'])
             ->whereNotNull('product_simulation_id')
-            ->orderByRaw("FIELD(estado,'en_proceso','sin_stock','en_proyecto','finalizado','despachado')")
+            // FIELD() es de MySQL. En Postgres el orden a medida se escribe con CASE.
+            ->orderByRaw("CASE estado WHEN 'en_proceso' THEN 1 WHEN 'sin_stock' THEN 2 WHEN 'en_proyecto' THEN 3 WHEN 'finalizado' THEN 4 WHEN 'despachado' THEN 5 ELSE 6 END")
             ->orderBy('fecha_inicio')
             ->get();
 
