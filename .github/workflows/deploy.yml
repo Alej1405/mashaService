@@ -49,7 +49,12 @@ jobs:
             git pull origin main
 
             composer install --no-dev --optimize-autoloader
-            npm ci
+
+            # npm ci borra node_modules y baja todo otra vez: es el paso que
+            # más depende de la red y el que más veces se ha caído solo. Un
+            # segundo intento cuesta un minuto; un despliegue caído cuesta
+            # revisar logs y volver a empujar.
+            npm ci || { echo "npm ci falló, reintentando una vez"; sleep 10; npm ci; }
             npm run build
 
             PENDING=$(php artisan migrate:status --no-ansi 2>/dev/null | grep -c 'Pending' || true)
