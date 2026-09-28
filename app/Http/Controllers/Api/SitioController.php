@@ -125,7 +125,21 @@ class SitioController extends Controller
                     'descripcion' => $registro->descripcion,
                     'imagen'      => ImagenPublica::url($registro->imagen),
                     'cuerpo'      => $registro->cuerpo,
-                    'bloques'     => $registro->bloques ?? [],
+                    // Cada bloque sale con su imagen ya resuelta a URL. Antes
+                    // viajaba la ruta cruda del disco y el sitio no podía
+                    // pintarla: la imagen existía y no se veía en ningún lado.
+                    'bloques'     => collect($registro->bloques ?? [])
+                        ->map(fn (array $bloque): array => [
+                            'tipo'   => $bloque['tipo']   ?? 'tarjeta',
+                            'titulo' => $bloque['titulo'] ?? null,
+                            'texto'  => $bloque['texto']  ?? null,
+                            'apoyo'  => $bloque['apoyo']  ?? null,
+                            'icono'  => $bloque['icono']  ?? null,
+                            'imagen' => ImagenPublica::url($bloque['imagen'] ?? null),
+                            'enlace' => $bloque['enlace'] ?? null,
+                        ])
+                        ->values()
+                        ->all(),
                 ],
                 'casos'     => $esServicio ? $this->casos($empresa, servicio: $pagina, limite: 24, conGaleria: true) : [],
                 'planes'    => $this->planes($empresa, $pagina),
@@ -296,7 +310,11 @@ class SitioController extends Controller
             'telefono'  => $contacto->telefono,
             'email'     => $contacto->email,
             'whatsapp'  => $contacto->whatsapp,
-            'redes'     => array_filter([
+            // (object) a propósito: array_filter con todo en nulo devuelve []
+            // y json_encode lo escribe como array vacío, no como objeto. Quien
+            // consume esto espera siempre un objeto, y un [] le rompe la
+            // validación de toda la respuesta.
+            'redes'     => (object) array_filter([
                 'facebook'  => $contacto->facebook,
                 'instagram' => $contacto->instagram,
                 'linkedin'  => $contacto->linkedin,
@@ -357,6 +375,9 @@ class SitioController extends Controller
             'resultado' => $caso->resultado,
             'metricas'  => $caso->metricas ?? [],
             'enlace'    => $caso->enlace_sitio,
+            // Para quien contrata desarrollo, el repositorio dice más que
+            // cualquier captura: es cómo se trabaja, no cómo quedó.
+            'repo'      => $caso->enlace_repo,
             'destacado' => $caso->destacado,
             'portada'   => $caso->imagen_portada ? [
                 'url'   => ImagenPublica::url($caso->imagen_portada),

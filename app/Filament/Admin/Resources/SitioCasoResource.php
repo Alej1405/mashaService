@@ -48,7 +48,20 @@ class SitioCasoResource extends Resource
                     Forms\Components\Textarea::make('resumen')
                         ->label('Resumen')->rows(2)->maxLength(400)->columnSpanFull(),
                     Forms\Components\TextInput::make('enlace_sitio')
-                        ->label('Enlace al sitio del cliente')->url()->columnSpanFull(),
+                        ->label('Enlace al sitio del cliente')
+                        ->url()
+                        ->prefixIcon('heroicon-o-globe-alt')
+                        ->placeholder('https://…'),
+
+                    // El repositorio es lo que convence a quien contrata
+                    // desarrollo: enseña cómo se trabaja, no solo cómo quedó.
+                    // Queda vacío cuando el código es del cliente y es privado.
+                    Forms\Components\TextInput::make('enlace_repo')
+                        ->label('Repositorio del proyecto')
+                        ->helperText('Se muestra en la página de desarrollo. Déjalo vacío si el código es privado.')
+                        ->url()
+                        ->prefixIcon('heroicon-o-code-bracket')
+                        ->placeholder('https://github.com/…'),
                 ]),
 
             Forms\Components\Section::make('Qué pasó')
@@ -73,8 +86,12 @@ class SitioCasoResource extends Resource
             Forms\Components\Section::make('Imágenes')
                 ->schema([
                     Forms\Components\FileUpload::make('imagen_portada')
-                        ->label('Portada')->image()->disk('public')->directory('sitio/casos')
-                        ->imagePreviewHeight('120')->columnSpanFull(),
+                        ->label('Portada')
+                        ->helperText('Se ve en la portada del sitio y al compartir el enlace.')
+                        ->image()->disk('public')->directory('sitio/casos')
+                        ->imagePreviewHeight('160')
+                        ->openable()
+                        ->downloadable()->columnSpanFull(),
                     Forms\Components\Repeater::make('imagenes')
                         ->label('Galería')
                         ->relationship()

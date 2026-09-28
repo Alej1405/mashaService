@@ -25,7 +25,7 @@ return [
     'max_age' => (int) env('SITIO_MAX_AGE', 60),
 
     // Paginas que el front resuelve como secciones autonomas con URL propia.
-    'paginas' => ['inicio', 'desarrollo', 'fotografia', 'laboratorio', 'proceso'],
+    'paginas' => ['inicio', 'desarrollo', 'fotografia', 'laboratorio', 'erp', 'proceso'],
 
     // Servicios a los que puede pertenecer un caso del portafolio.
     'servicios' => ['desarrollo', 'fotografia'],

@@ -49,8 +49,14 @@ class SitioPaginaResource extends Resource
                     Forms\Components\Textarea::make('descripcion')
                         ->label('Descripción')->rows(3)->maxLength(600)->columnSpanFull(),
                     Forms\Components\FileUpload::make('imagen')
-                        ->label('Imagen')->image()->disk('public')->directory('sitio/paginas')
-                        ->imagePreviewHeight('80'),
+                        ->label('Imagen')
+                        ->helperText('La que se ve en el sitio. Si está vacío, la sección sale sin imagen.')
+                        ->image()->disk('public')->directory('sitio/paginas')
+                        // 80 px no alcanza para reconocer una foto: se ve una
+                        // mancha y hay que abrirla para saber cuál es.
+                        ->imagePreviewHeight('160')
+                        ->openable()
+                        ->downloadable(),
                     Forms\Components\Toggle::make('activo')->label('Visible')->default(true),
                 ]),
 
@@ -61,15 +67,49 @@ class SitioPaginaResource extends Resource
                     Forms\Components\Repeater::make('bloques')
                         ->label('Bloques de contenido')
                         ->schema([
-                            Forms\Components\TextInput::make('titulo')->label('Título')->maxLength(150),
-                            Forms\Components\TextInput::make('icono')->label('Ícono (emoji o heroicon)')->maxLength(60),
-                            Forms\Components\Textarea::make('texto')->label('Texto')->rows(3)->columnSpanFull(),
+                            // El tipo decide dónde cae el bloque en la página.
+                            // Sin esto, el sitio no sabía distinguir una foto de
+                            // la galería de una tarjeta de servicio, y todo
+                            // terminaba escrito a mano en el código.
+                            Forms\Components\Select::make('tipo')
+                                ->label('Qué es este bloque')
+                                ->options([
+                                    'galeria' => 'Foto de la galería',
+                                    'tarjeta' => 'Tarjeta (título, texto y apoyo)',
+                                    'nota'    => 'Nota destacada (fondo oscuro)',
+                                    'enlace'  => 'Enlace a otra parte',
+                                    'texto'   => 'Solo texto',
+                                ])
+                                ->default('tarjeta')
+                                ->required()
+                                ->live(),
+                            Forms\Components\TextInput::make('titulo')
+                                ->label('Título')->maxLength(150),
+                            Forms\Components\Textarea::make('texto')
+                                ->label('Texto')->rows(3)->columnSpanFull(),
+                            Forms\Components\TextInput::make('apoyo')
+                                ->label('Línea de apoyo')
+                                ->helperText('La frase chica de abajo. Ej: «Para tiendas en línea».')
+                                ->maxLength(160),
+                            Forms\Components\TextInput::make('enlace')
+                                ->label('Enlace')
+                                ->url()
+                                ->maxLength(300)
+                                ->visible(fn (Forms\Get $get): bool => $get('tipo') === 'enlace'),
+                            Forms\Components\TextInput::make('icono')
+                                ->label('Ícono (emoji o heroicon)')->maxLength(60)
+                                ->visible(fn (Forms\Get $get): bool => $get('tipo') !== 'galeria'),
                             Forms\Components\FileUpload::make('imagen')
-                                ->label('Imagen')->image()->disk('public')->directory('sitio/bloques')
+                                ->label('Imagen')
+                                ->helperText('Obligatoria en las fotos de la galería.')
+                                ->image()->disk('public')->directory('sitio/bloques')
+                                ->imagePreviewHeight('160')
+                                ->openable()
+                                ->downloadable()
                                 ->columnSpanFull(),
                         ])
                         ->columns(2)
-                        ->itemLabel(fn (array $state): ?string => $state['titulo'] ?? null)
+                        ->itemLabel(fn (array $state): ?string => trim(($state['tipo'] ?? '') . ' · ' . ($state['titulo'] ?? 'sin título'), ' ·'))
                         ->addActionLabel('Agregar bloque')
                         ->defaultItems(0)
                         ->collapsible()
@@ -91,6 +131,14 @@ class SitioPaginaResource extends Resource
             ->reorderable('sort_order')
             ->defaultSort('sort_order')
             ->columns([
+                // La miniatura primero: de un vistazo se ve qué secciones
+                // tienen imagen y cuáles no, sin entrar a cada una.
+                Tables\Columns\ImageColumn::make('imagen')
+                    ->label('')
+                    ->disk('public')
+                    ->height(40)
+                    ->defaultImageUrl(null)
+                    ->tooltip(fn ($record) => $record->imagen ? 'Con imagen' : 'Sin imagen'),
                 Tables\Columns\TextColumn::make('slug')->label('Sección')->badge()->searchable(),
                 Tables\Columns\TextColumn::make('titulo')->label('Título')->weight('semibold')->searchable(),
                 Tables\Columns\TextColumn::make('subtitulo')->label('Subtítulo')->limit(50)->color('gray'),

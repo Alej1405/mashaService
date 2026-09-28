@@ -17,7 +17,7 @@ class SitioCaso extends Model
     protected $fillable = [
         'empresa_id', 'slug', 'titulo', 'cliente', 'sector', 'servicio',
         'resumen', 'problema', 'solucion', 'resultado', 'metricas',
-        'enlace_sitio', 'imagen_portada', 'portada_ancho', 'portada_alto',
+        'enlace_sitio', 'enlace_repo', 'imagen_portada', 'portada_ancho', 'portada_alto',
         'publicable', 'destacado', 'sort_order', 'activo',
     ];
 
