@@ -243,6 +243,12 @@ Route::prefix('sitio/{slug}')
         Route::get('articulos',             [SitioController::class, 'articulos']);
         Route::get('articulos/{articulo}',  [SitioController::class, 'articulo']);
 
+        // Salida a internet para el servicio de puntaje del VPS, que no
+        // alcanza el cPanel donde viven los sitios de los clientes. Limitada
+        // por minuto: descarga páginas ajenas y no puede quedar abierta.
+        Route::post('descargar', \App\Http\Controllers\Api\DescargaController::class)
+            ->middleware('throttle:20,1');
+
         // Escritura: limitada por IP para que un robot no llene la bandeja.
         Route::post('mensajes', [SitioController::class, 'mensaje'])
             ->middleware('throttle:6,1');
