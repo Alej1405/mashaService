@@ -141,36 +141,57 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
             || $this->empresa()->where('activo', true)->whereIn('plan', $planKeys)->exists();
     }
 
+    /**
+     * El tenant por defecto sale siempre de los que este panel permite.
+     *
+     * Antes devolvía `users.empresa_id` sin comprobar que el usuario tuviera
+     * acceso a esa empresa. Tener una empresa primaria no es tener acceso: el
+     * acceso vive en `empresa_user_access`. Cuando las dos no coincidían
+     * —empresa_id apuntando a una empresa y el acceso a otra—, Filament
+     * redirigía a un tenant que canAccessTenant rechaza, y la respuesta era un
+     * 404 en todos los paneles, sin nada en el log que lo explicara.
+     *
+     * Ahora la empresa primaria solo se prefiere si está entre las permitidas;
+     * si no, se entra por la primera a la que sí se tiene acceso.
+     */
     public function getDefaultTenant(Panel $panel): ?Model
     {
-        $panelId = $panel->getId();
+        $permitidas = $this->getTenants($panel);
 
-        // Paneles basados en roles
-        if (isset(self::ROLE_BASED_PANELS[$panelId])) {
-            if ($this->hasRole('super_admin')) {
-                return $this->empresa ?? Empresa::where('activo', true)->first();
+        if ($this->empresa_id) {
+            $primaria = $permitidas->firstWhere('id', $this->empresa_id);
+
+            if ($primaria) {
+                return $primaria;
             }
-            return $this->empresa?->activo ? $this->empresa
-                : $this->empresasAcceso()->where('activo', true)->first();
         }
 
-        // Paneles por plan: preferir la empresa primaria si su plan abre el panel.
-        $planKeys = $this->plansThatOpenPanel($panelId);
-
-        if ($this->empresa && $this->empresa->activo && in_array($this->empresa->plan, $planKeys, true)) {
-            return $this->empresa;
-        }
-
-        if ($this->hasRole('super_admin')) {
-            return Empresa::where('activo', true)->whereIn('plan', $planKeys)->first();
-        }
-
-        return $this->empresasAcceso()->where('activo', true)->whereIn('plan', $planKeys)->first();
+        return $permitidas->first();
     }
 
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
+    }
+
+    /**
+     * Da acceso a la empresa primaria en `empresa_user_access`.
+     *
+     * El formulario de usuarios de /admin solo guardaba `empresa_id` y el rol.
+     * canAccessPanel dejaba entrar por `empresa_id`, pero getTenants lee solo
+     * el pivot: el usuario quedaba con cero empresas y Filament respondía 404.
+     */
+    public function asegurarAccesoEmpresaPrimaria(): void
+    {
+        if (! $this->empresa_id) {
+            return;
+        }
+
+        $rol = $this->getRoleNames()->reject(fn ($r) => $r === 'super_admin')->first() ?? 'admin_empresa';
+
+        $this->empresasAcceso()->syncWithoutDetaching([
+            $this->empresa_id => ['rol' => $rol],
+        ]);
     }
 
     public function empresasAcceso(): BelongsToMany
