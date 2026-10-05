@@ -30,6 +30,12 @@ class EditEmpresaProfile extends EditTenantProfile
         return true;
     }
 
+    /** Al guardar vuelve al inicio del panel, desde donde se abre esta pantalla. */
+    protected function getRedirectUrl(): ?string
+    {
+        return Filament::getUrl($this->tenant);
+    }
+
     protected function getHeaderActions(): array
     {
         return [
