@@ -210,6 +210,8 @@ class User extends Authenticatable implements FilamentUser, HasTenants, HasDefau
         'empresa_id',
         'name',
         'email',
+        'telefono',
+        'telegram_chat_id',
         'password',
         'last_login_at',
     ];

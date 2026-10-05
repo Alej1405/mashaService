@@ -96,6 +96,8 @@ HTML
         \App\Models\Purchase::observe(\App\Observers\PurchaseObserver::class);
         \App\Models\InventoryMovement::observe(\App\Observers\InventoryMovementObserver::class);
         \App\Models\Sale::observe(\App\Observers\SaleObserver::class);
+        \App\Models\SupportTicket::observe(\App\Observers\SupportTicketObserver::class);
+        \App\Models\SupportTicketMensaje::observe(\App\Observers\SupportTicketMensajeObserver::class);
         \App\Models\ProductionOrder::observe(\App\Observers\ProductionOrderObserver::class);
         // Una cuenta nueva nace con su línea del catálogo de la Superintendencia.
         \App\Models\AccountPlan::observe(\App\Observers\AccountPlanObserver::class);

@@ -4,9 +4,12 @@ namespace App\Filament\App\Resources;
 
 use App\Filament\App\Resources\SupportTicketResource\Pages;
 use App\Models\SupportTicket;
+use App\Models\SupportTicketMensaje;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -83,6 +86,40 @@ class SupportTicketResource extends Resource
                     ->required()
                     ->visible($isAdmin),
             ])->columns(2),
+        ]);
+    }
+
+    /** Vista del ticket: la solicitud y su conversación, en orden. */
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist->schema([
+            Infolists\Components\Section::make('Solicitud')->schema([
+                Infolists\Components\TextEntry::make('asunto')->label('Asunto')->columnSpanFull(),
+                Infolists\Components\TextEntry::make('descripcion')->label('Descripción')->columnSpanFull(),
+                Infolists\Components\TextEntry::make('prioridad')->label('Prioridad')->badge()
+                    ->formatStateUsing(fn (SupportTicket $record) => $record->prioridadLabel())
+                    ->color(fn (SupportTicket $record) => $record->prioridadColor()),
+                Infolists\Components\TextEntry::make('status')->label('Estado')->badge()
+                    ->formatStateUsing(fn (SupportTicket $record) => $record->statusLabel())
+                    ->color(fn (SupportTicket $record) => $record->statusColor()),
+            ])->columns(2),
+
+            Infolists\Components\Section::make('Conversación')->schema([
+                Infolists\Components\RepeatableEntry::make('mensajes')
+                    ->hiddenLabel()
+                    ->state(fn (SupportTicket $record) => $record->mensajes()->with('user:id,name')->orderBy('created_at')->get())
+                    ->placeholder('Todavía no hay respuestas. Usa "Responder" para escribir.')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('remitente')->hiddenLabel()->badge()
+                            ->formatStateUsing(fn (SupportTicketMensaje $record) => ($record->remitente === 'soporte' ? 'Soporte' : 'Empresa').' · '.($record->user?->name ?? '—').' · '.$record->created_at?->format('d/m/Y H:i').($record->canal === 'telegram' ? ' · Telegram' : ''))
+                            ->color(fn (SupportTicketMensaje $record) => $record->remitente === 'soporte' ? 'info' : 'gray'),
+                        Infolists\Components\TextEntry::make('mensaje')->hiddenLabel()->placeholder('(solo adjunto)'),
+                        Infolists\Components\TextEntry::make('adjunto_nombre')->hiddenLabel()
+                            ->icon('heroicon-o-paper-clip')
+                            ->url(fn (SupportTicketMensaje $record) => $record->adjuntoUrl(), shouldOpenInNewTab: true)
+                            ->visible(fn (SupportTicketMensaje $record) => filled($record->adjunto_path)),
+                    ]),
+            ]),
         ]);
     }
 

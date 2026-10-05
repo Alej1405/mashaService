@@ -14,4 +14,9 @@ class CreateUser extends CreateRecord
     {
         $this->record->asegurarAccesoEmpresaPrimaria();
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

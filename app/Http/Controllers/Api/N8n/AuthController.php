@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Empresa;
 use App\Models\TelegramSession;
 use App\Modules\N8n\Actions\IniciarSesionTelegram;
+use App\Modules\N8n\Actions\LigarTelegram;
 use App\Modules\N8n\Queries\ModulosGestionablesDelUsuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,23 @@ class AuthController extends Controller
         $resultado = $iniciarSesion->handle($data['email'], $data['password'], $data['chat_id']);
 
         return response()->json($resultado, $resultado['ok'] ? 200 : 401);
+    }
+
+    /**
+     * El usuario compartió su contacto en el bot: liga el chat al usuario con ese
+     * teléfono para que reciba avisos. No abre sesión; para gestionar se inicia sesión.
+     * n8n solo llama aquí si el contacto compartido es el del propio remitente.
+     */
+    public function ligarTelefono(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'telefono' => ['required', 'string', 'max:20'],
+            'chat_id'  => ['required', 'string', 'max:64'],
+        ]);
+
+        $resultado = app(LigarTelegram::class)->porTelefono($data['telefono'], $data['chat_id']);
+
+        return response()->json($resultado, $resultado['ok'] ? 200 : 404);
     }
 
     /** Contexto de la sesión activa (usuario + empresa + módulos permitidos). */

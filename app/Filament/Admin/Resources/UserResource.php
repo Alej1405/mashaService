@@ -40,6 +40,17 @@ class UserResource extends Resource
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(255),
+                Forms\Components\TextInput::make('telefono')
+                    ->label('Teléfono (Telegram)')
+                    ->tel()
+                    ->placeholder('+593979000505')
+                    ->unique(ignoreRecord: true)
+                    ->regex('/^\+[1-9]\d{7,14}$/')
+                    ->validationMessages(['regex' => 'Usa el formato internacional: + código de país y número, sin espacios. Ej.: +593979000505'])
+                    ->dehydrateStateUsing(fn (?string $state) => filled($state) ? '+'.preg_replace('/\D/', '', $state) : null)
+                    ->helperText(fn (?User $record) => $record?->telegram_chat_id
+                        ? 'Ligado a Telegram. Recibe los avisos de soporte de todas sus empresas.'
+                        : 'Formato internacional, como lo pide Telegram. En el bot, el usuario toca "Compartir mi número" para ligarlo.'),
                 Forms\Components\Select::make('empresa_id')
                     ->label('Empresa')
                     ->relationship('empresa', 'name')
@@ -69,6 +80,13 @@ class UserResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Correo Electrónico')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('telefono')
+                    ->label('Teléfono')
+                    ->placeholder('—')
+                    ->icon(fn (User $record) => $record->telegram_chat_id ? 'heroicon-o-check-badge' : null)
+                    ->iconColor('success')
+                    ->tooltip(fn (User $record) => $record->telegram_chat_id ? 'Ligado a Telegram' : null)
                     ->searchable(),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->label('Roles')

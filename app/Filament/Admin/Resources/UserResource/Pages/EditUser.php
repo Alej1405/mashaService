@@ -21,4 +21,9 @@ class EditUser extends EditRecord
     {
         $this->record->asegurarAccesoEmpresaPrimaria();
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

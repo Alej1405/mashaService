@@ -67,4 +67,9 @@ return [
         'token' => env('FORMULACION_SERVICIO_TOKEN'),
     ],
 
+    // Avisos del ERP hacia n8n. Default en código: no depende del .env del VPS.
+    'n8n' => [
+        'webhook_soporte' => env('N8N_WEBHOOK_SOPORTE', 'https://n8n.mashaec.net/webhook/masha-soporte'),
+    ],
+
 ];

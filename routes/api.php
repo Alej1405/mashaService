@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\N8n\AuthController as N8nAuthController;
 use App\Http\Controllers\Api\N8n\CmsController as N8nCmsController;
 use App\Http\Controllers\Api\N8n\N8nRecursoController;
 use App\Http\Controllers\Api\N8n\StoreController as N8nStoreController;
+use App\Http\Controllers\Api\N8n\SoporteController as N8nSoporteController;
 use App\Http\Middleware\EnsureStoreCustomer;
 use App\Http\Middleware\N8nAuthenticate;
 use App\Http\Middleware\N8nGate;
@@ -154,6 +155,8 @@ Route::prefix('n8n/v1')
 
         // Login: único endpoint sin token de sesión (sí exige secreto + gate).
         Route::post('auth/login', [N8nAuthController::class, 'login']);
+        // Compartir contacto en el bot: liga el chat al usuario por su teléfono (sin sesión).
+        Route::post('auth/telefono', [N8nAuthController::class, 'ligarTelefono']);
 
         // Resto: exige token de sesión de Telegram.
         Route::middleware(N8nAuthenticate::class)->group(function () {
@@ -172,6 +175,17 @@ Route::prefix('n8n/v1')
                 Route::put('{recurso}/{id}',           [N8nRecursoController::class, 'update'])->defaults('modulo', 'cms')->whereNumber('id');
                 Route::delete('{recurso}/{id}',        [N8nRecursoController::class, 'destroy'])->defaults('modulo', 'cms')->whereNumber('id');
                 Route::post('{recurso}/{id}/imagen',   [N8nRecursoController::class, 'imagen'])->defaults('modulo', 'cms')->whereNumber('id');
+            });
+
+            // Módulo Soporte: abierto a todo usuario con sesión (no depende del plan).
+            // Tickets, su hilo y adjuntos (imágenes o archivos) de ida y vuelta.
+            Route::prefix('soporte')->group(function () {
+                Route::get('empresas',                 [N8nSoporteController::class, 'empresas']);
+                Route::get('tickets',                  [N8nSoporteController::class, 'index']);
+                Route::post('tickets',                 [N8nSoporteController::class, 'store']);
+                Route::get('tickets/{id}',             [N8nSoporteController::class, 'show'])->whereNumber('id');
+                Route::post('tickets/{id}/mensajes',   [N8nSoporteController::class, 'mensaje'])->whereNumber('id');
+                Route::put('tickets/{id}/estado',      [N8nSoporteController::class, 'estado'])->whereNumber('id');
             });
 
             // Módulo Tienda (requiere 'tienda'). CRUD completo + imágenes/galería

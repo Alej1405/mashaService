@@ -57,6 +57,9 @@ final class IniciarSesionTelegram
 
         $empresaSeleccionada = $empresas->count() === 1 ? $empresas->first() : null;
 
+        // Iniciar sesión también liga el chat: desde aquí recibe avisos aunque la sesión venza.
+        app(LigarTelegram::class)->ligar($user, $chatId);
+
         // Token propio: el texto plano solo viaja a n8n una vez; se guarda hasheado.
         $token = Str::random(64);
         $expiresAt = now()->addMinutes((int) config('n8n.session_ttl', 720));
