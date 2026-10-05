@@ -14,6 +14,7 @@ use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Tenancy\EditTenantProfile;
 use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 
 class EditEmpresaProfile extends EditTenantProfile
@@ -21,6 +22,12 @@ class EditEmpresaProfile extends EditTenantProfile
     public static function getLabel(): string
     {
         return 'Configuración de la Empresa';
+    }
+
+    /** Cualquier usuario que entra a la empresa puede configurarla; el acceso ya lo valida canAccessTenant. */
+    public static function canView(Model $tenant): bool
+    {
+        return true;
     }
 
     protected function getHeaderActions(): array
