@@ -13,6 +13,14 @@ class SupportTicket extends Model
 
     protected $table = 'support_tickets';
 
+    public const ABIERTO = 'abierto';
+    public const EN_PROCESO = 'en_proceso';
+    public const CERRADO = 'cerrado';
+    public const ESTADOS = [self::ABIERTO, self::EN_PROCESO, self::CERRADO];
+
+    /** Tope de cada adjunto en KB: Telegram no deja descargar más de 20 MB. */
+    public const MAX_ADJUNTO_KB = 20480;
+
     protected $fillable = [
         'empresa_id', 'user_id', 'asunto', 'descripcion', 'prioridad', 'status',
     ];
@@ -25,6 +33,12 @@ class SupportTicket extends Model
     public function mensajes(): HasMany
     {
         return $this->hasMany(SupportTicketMensaje::class);
+    }
+
+    /** Un ticket cerrado ya no recibe mensajes, ni desde el panel ni desde Telegram. */
+    public function admiteMensajes(): bool
+    {
+        return $this->status !== self::CERRADO;
     }
 
     public function prioridadLabel(): string
@@ -50,20 +64,20 @@ class SupportTicket extends Model
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'abierto'    => 'Abierto',
-            'en_proceso' => 'En proceso',
-            'cerrado'    => 'Cerrado',
-            default      => ucfirst($this->status),
+            self::ABIERTO    => 'Abierto',
+            self::EN_PROCESO => 'En proceso',
+            self::CERRADO    => 'Cerrado',
+            default          => ucfirst($this->status),
         };
     }
 
     public function statusColor(): string
     {
         return match ($this->status) {
-            'abierto'    => 'info',
-            'en_proceso' => 'warning',
-            'cerrado'    => 'gray',
-            default      => 'gray',
+            self::ABIERTO    => 'info',
+            self::EN_PROCESO => 'warning',
+            self::CERRADO    => 'gray',
+            default          => 'gray',
         };
     }
 }

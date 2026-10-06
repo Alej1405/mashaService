@@ -3,6 +3,8 @@
 namespace App\Filament\App\Resources\SupportTicketResource\Pages;
 
 use App\Filament\App\Resources\SupportTicketResource;
+use App\Models\SupportTicketMensaje;
+use App\Modules\Soporte\Actions\AbrirTicket;
 use Filament\Facades\Filament;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -18,9 +20,8 @@ class CreateSupportTicket extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        $data['user_id']    = auth()->id();
-        $data['empresa_id'] = Filament::getTenant()->id;
-
-        return static::getModel()::create($data);
+        return app(AbrirTicket::class)->handle(
+            auth()->user(), Filament::getTenant()->id, $data['asunto'], $data['descripcion'], $data['prioridad'], SupportTicketMensaje::PANEL, $data['adjuntos'] ?? [],
+        );
     }
 }

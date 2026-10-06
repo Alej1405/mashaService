@@ -65,6 +65,17 @@ class SupportTicketResource extends Resource
                     ->placeholder('Explica con detalle el problema o lo que necesitas...')
                     ->columnSpanFull(),
 
+                // Solo al crear: luego se adjunta desde "Responder" en la vista del ticket.
+                Forms\Components\FileUpload::make('adjuntos')
+                    ->label('Fotos o documentos (opcional)')
+                    ->multiple()
+                    ->maxFiles(5)
+                    ->maxSize(SupportTicket::MAX_ADJUNTO_KB)
+                    ->storeFiles(false)
+                    ->helperText('Hasta 5 archivos de 20 MB: capturas, PDF, Excel…')
+                    ->visibleOn('create')
+                    ->columnSpanFull(),
+
                 Forms\Components\Select::make('prioridad')
                     ->label('Prioridad')
                     ->options([
@@ -78,11 +89,11 @@ class SupportTicketResource extends Resource
                 Forms\Components\Select::make('status')
                     ->label('Estado')
                     ->options([
-                        'abierto'    => 'Abierto',
-                        'en_proceso' => 'En proceso',
-                        'cerrado'    => 'Cerrado',
+                        SupportTicket::ABIERTO    => 'Abierto',
+                        SupportTicket::EN_PROCESO => 'En proceso',
+                        SupportTicket::CERRADO    => 'Cerrado',
                     ])
-                    ->default('abierto')
+                    ->default(SupportTicket::ABIERTO)
                     ->required()
                     ->visible($isAdmin),
             ])->columns(2),
@@ -108,11 +119,13 @@ class SupportTicketResource extends Resource
                 Infolists\Components\RepeatableEntry::make('mensajes')
                     ->hiddenLabel()
                     ->state(fn (SupportTicket $record) => $record->mensajes()->with('user:id,name')->orderBy('created_at')->get())
-                    ->placeholder('Todavía no hay respuestas. Usa "Responder" para escribir.')
+                    ->placeholder(fn (SupportTicket $record) => $record->admiteMensajes()
+                        ? 'Todavía no hay respuestas. Usa "Responder" para escribir.'
+                        : 'Este ticket se cerró sin respuestas.')
                     ->schema([
                         Infolists\Components\TextEntry::make('remitente')->hiddenLabel()->badge()
-                            ->formatStateUsing(fn (SupportTicketMensaje $record) => ($record->remitente === 'soporte' ? 'Soporte' : 'Empresa').' · '.($record->user?->name ?? '—').' · '.$record->created_at?->format('d/m/Y H:i').($record->canal === 'telegram' ? ' · Telegram' : ''))
-                            ->color(fn (SupportTicketMensaje $record) => $record->remitente === 'soporte' ? 'info' : 'gray'),
+                            ->formatStateUsing(fn (SupportTicketMensaje $record) => $record->encabezado())
+                            ->color(fn (SupportTicketMensaje $record) => $record->esDeSoporte() ? 'info' : 'gray'),
                         Infolists\Components\TextEntry::make('mensaje')->hiddenLabel()->placeholder('(solo adjunto)'),
                         Infolists\Components\TextEntry::make('adjunto_nombre')->hiddenLabel()
                             ->icon('heroicon-o-paper-clip')
@@ -162,7 +175,7 @@ class SupportTicketResource extends Resource
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
                     ->visible(fn (SupportTicket $r) =>
-                        $isAdmin || ($r->user_id === auth()->id() && $r->status === 'abierto')
+                        $isAdmin || ($r->user_id === auth()->id() && $r->status === SupportTicket::ABIERTO)
                     ),
             ])
             ->bulkActions([

@@ -8,7 +8,9 @@ use App\Models\Scopes\EmpresaScope;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketMensaje;
 use App\Models\User;
+use App\Modules\Soporte\Actions\AbrirTicket;
 use App\Modules\Soporte\Actions\RegistrarMensajeTicket;
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +29,7 @@ class SoporteController extends Controller
         $query = $this->visibles($request)->with('empresa:id,name')->withCount('mensajes');
 
         if ($request->query('estado', 'pendientes') === 'pendientes') {
-            $query->where('status', '!=', 'cerrado');
+            $query->where('status', '!=', SupportTicket::CERRADO);
         }
 
         $items = $query->latest()->limit(20)->get()->map(fn (SupportTicket $t) => [
@@ -67,11 +69,7 @@ class SoporteController extends Controller
                 'autor'     => $m->user?->name,
                 'texto'     => $m->mensaje,
                 'fecha'     => $m->created_at?->format('d/m H:i'),
-                'adjunto'   => $m->adjunto_path ? [
-                    'url'       => $m->adjuntoUrl(),
-                    'nombre'    => $m->adjunto_nombre,
-                    'es_imagen' => $m->esImagen(),
-                ] : null,
+                'adjunto'   => $m->adjuntoPayload(),
             ]),
         ]]);
     }
@@ -99,15 +97,9 @@ class SoporteController extends Controller
             return response()->json(['ok' => false, 'error' => 'empresa_invalida', 'mensaje' => 'No puedes abrir tickets en esa empresa.'], 422);
         }
 
-        $ticket = new SupportTicket;
-        $ticket->forceFill([
-            'empresa_id'  => $empresaId,
-            'user_id'     => $this->user($request)->id,
-            'asunto'      => $data['asunto'],
-            'descripcion' => $data['descripcion'],
-            'prioridad'   => $data['prioridad'] ?? 'media',
-            'status'      => 'abierto',
-        ])->save();
+        $ticket = app(AbrirTicket::class)->handle(
+            $this->user($request), (int) $empresaId, $data['asunto'], $data['descripcion'], $data['prioridad'] ?? 'media', SupportTicketMensaje::TELEGRAM,
+        );
 
         return response()->json(['ok' => true, 'mensaje' => 'Ticket #'.$ticket->id.' creado en '.rtrim((string) $ticket->empresa?->name, '.').'.', 'item' => ['id' => $ticket->id]], 201);
     }
@@ -119,13 +111,18 @@ class SoporteController extends Controller
             return $this->noEncontrado();
         }
 
-        // Telegram deja descargar hasta 20 MB; ese es el techo real del adjunto.
         $data = $request->validate([
             'mensaje' => ['nullable', 'string', 'required_without:archivo'],
-            'archivo' => ['nullable', 'file', 'max:20480'],
+            'archivo' => ['nullable', 'file', 'max:'.SupportTicket::MAX_ADJUNTO_KB],
         ]);
 
-        app(RegistrarMensajeTicket::class)->handle($ticket, $this->user($request), 'telegram', $data['mensaje'] ?? null, $request->file('archivo'));
+        try {
+            app(RegistrarMensajeTicket::class)->handle(
+                $ticket, $this->user($request), SupportTicketMensaje::TELEGRAM, $data['mensaje'] ?? null, $request->file('archivo'),
+            );
+        } catch (DomainException $e) {
+            return response()->json(['ok' => false, 'error' => 'ticket_cerrado', 'mensaje' => $e->getMessage().' Ábrelo con /abrir si hace falta.'], 422);
+        }
 
         return response()->json(['ok' => true, 'mensaje' => 'Mensaje agregado al ticket #'.$ticket->id.'.'], 201);
     }
@@ -140,7 +137,7 @@ class SoporteController extends Controller
             return response()->json(['ok' => false, 'error' => 'sin_permiso', 'mensaje' => 'Solo un administrador cambia el estado.'], 403);
         }
 
-        $data = $request->validate(['status' => ['required', 'in:abierto,en_proceso,cerrado']]);
+        $data = $request->validate(['status' => ['required', 'in:'.implode(',', SupportTicket::ESTADOS)]]);
         $ticket->update($data);
 
         return response()->json(['ok' => true, 'mensaje' => 'Ticket #'.$ticket->id.': '.$ticket->statusLabel().'.']);

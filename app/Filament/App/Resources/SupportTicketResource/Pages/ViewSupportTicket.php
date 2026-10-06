@@ -3,6 +3,8 @@
 namespace App\Filament\App\Resources\SupportTicketResource\Pages;
 
 use App\Filament\App\Resources\SupportTicketResource;
+use App\Models\SupportTicket;
+use App\Models\SupportTicketMensaje;
 use App\Modules\Soporte\Actions\RegistrarMensajeTicket;
 use Filament\Actions;
 use Filament\Forms;
@@ -21,7 +23,7 @@ class ViewSupportTicket extends ViewRecord
                 ->icon('heroicon-o-chat-bubble-left-right')
                 ->modalHeading('Responder al ticket')
                 ->modalSubmitActionLabel('Enviar')
-                ->visible(fn () => $this->record->status !== 'cerrado')
+                ->visible(fn () => $this->record->admiteMensajes())
                 ->form([
                     Forms\Components\Textarea::make('mensaje')
                         ->label('Mensaje')
@@ -29,7 +31,7 @@ class ViewSupportTicket extends ViewRecord
                         ->requiredWithout('archivo'),
                     Forms\Components\FileUpload::make('archivo')
                         ->label('Imagen o archivo (opcional)')
-                        ->maxSize(20480)
+                        ->maxSize(SupportTicket::MAX_ADJUNTO_KB)
                         ->storeFiles(false)
                         ->helperText('Hasta 20 MB. Llega también por Telegram.'),
                 ])
@@ -37,7 +39,7 @@ class ViewSupportTicket extends ViewRecord
                     app(RegistrarMensajeTicket::class)->handle(
                         $this->record,
                         auth()->user(),
-                        'panel',
+                        SupportTicketMensaje::PANEL,
                         $data['mensaje'] ?? null,
                         $data['archivo'] ?? null,
                     );

@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * Avisa a n8n de un evento de soporte; n8n lo reparte por Telegram.
  * Lo que dice la empresa va a soporte; lo que dice soporte va a la empresa.
- * El ERP decide los destinatarios; n8n solo entrega. Si n8n no responde, el
+ * El ERP decide los destinatarios; n8n solo entrega. El envío sale después de
+ * responder al usuario: si n8n tarda o está caído, la pantalla no espera y el
  * ticket se guarda igual (solo queda el aviso en el log).
  */
 #[Documentado(
@@ -32,7 +33,7 @@ final class NotificarSoporte
     public function mensaje(SupportTicketMensaje $mensaje): void
     {
         $ticket = $mensaje->ticket;
-        $chats = $mensaje->remitente === 'soporte'
+        $chats = $mensaje->esDeSoporte()
             ? $this->destinatarios->empresa($ticket->empresa_id)
             : $this->destinatarios->soporte();
 
@@ -60,36 +61,35 @@ final class NotificarSoporte
 
         $ticket->loadMissing('empresa', 'user');
 
-        try {
-            Http::timeout(5)
-                ->withHeaders(['X-N8N-Secret' => (string) config('n8n.secret')])
-                ->post($url, [
-                    'evento'        => $evento,
-                    'destinatarios' => $chats,
-                    'ticket'        => [
-                        'id'          => $ticket->id,
-                        'asunto'      => $ticket->asunto,
-                        'descripcion' => $ticket->descripcion,
-                        'prioridad'   => $ticket->prioridadLabel(),
-                        'estado'      => $ticket->statusLabel(),
-                        'empresa'     => $ticket->empresa?->name,
-                        'autor'       => $ticket->user?->name,
-                    ],
-                    'mensaje' => $mensaje ? [
-                        'texto'     => $mensaje->mensaje,
-                        'remitente' => $mensaje->remitente,
-                        'autor'     => $mensaje->user?->name,
-                        'adjunto'   => $mensaje->adjunto_path ? [
-                            'url'       => $mensaje->adjuntoUrl(),
-                            'nombre'    => $mensaje->adjunto_nombre,
-                            'es_imagen' => $mensaje->esImagen(),
-                        ] : null,
-                    ] : null,
+        $payload = [
+            'evento'        => $evento,
+            'destinatarios' => $chats,
+            'ticket'        => [
+                'id'          => $ticket->id,
+                'asunto'      => $ticket->asunto,
+                'descripcion' => $ticket->descripcion,
+                'prioridad'   => $ticket->prioridadLabel(),
+                'estado'      => $ticket->statusLabel(),
+                'empresa'     => $ticket->empresa?->name,
+                'autor'       => $ticket->user?->name,
+            ],
+            'mensaje' => $mensaje ? [
+                'texto'     => $mensaje->mensaje,
+                'remitente' => $mensaje->remitente,
+                'autor'     => $mensaje->user?->name,
+                'adjunto'   => $mensaje->adjuntoPayload(),
+            ] : null,
+        ];
+        $secreto = (string) config('n8n.secret');
+
+        dispatch(function () use ($url, $secreto, $payload) {
+            try {
+                Http::timeout(5)->withHeaders(['X-N8N-Secret' => $secreto])->post($url, $payload);
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo avisar a n8n de un evento de soporte', [
+                    'evento' => $payload['evento'], 'ticket_id' => $payload['ticket']['id'], 'error' => $e->getMessage(),
                 ]);
-        } catch (\Throwable $e) {
-            Log::warning('No se pudo avisar a n8n de un evento de soporte', [
-                'evento' => $evento, 'ticket_id' => $ticket->id, 'error' => $e->getMessage(),
-            ]);
-        }
+            }
+        })->afterResponse();
     }
 }

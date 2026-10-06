@@ -77,7 +77,9 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Fija, no por .env: el ERP opera en Ecuador y toda hora que ve el usuario
+    // (panel, Telegram, documentos) es la de Guayaquil.
+    'timezone' => 'America/Guayaquil',
 
     /*
     |--------------------------------------------------------------------------

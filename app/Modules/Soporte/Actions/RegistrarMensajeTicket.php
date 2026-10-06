@@ -6,12 +6,13 @@ use App\Models\SupportTicket;
 use App\Models\SupportTicketMensaje;
 use App\Models\User;
 use App\Shared\Attributes\Documentado;
+use DomainException;
 use Illuminate\Http\UploadedFile;
 
 /**
  * Agrega un mensaje al hilo de un ticket, con su adjunto si lo trae.
  * El remitente sale del rol: super_admin responde como soporte; el resto, como empresa.
- * La usan el panel y la API de n8n (Telegram).
+ * La usan el panel y la API de n8n (Telegram). Un ticket cerrado no admite mensajes.
  */
 #[Documentado(
     grupo: 'Soporte',
@@ -20,8 +21,13 @@ use Illuminate\Http\UploadedFile;
 )]
 final class RegistrarMensajeTicket
 {
+    /** @throws DomainException si el ticket está cerrado */
     public function handle(SupportTicket $ticket, User $user, string $canal, ?string $mensaje, ?UploadedFile $archivo = null): SupportTicketMensaje
     {
+        if (! $ticket->admiteMensajes()) {
+            throw new DomainException('El ticket #'.$ticket->id.' está cerrado: ya no recibe mensajes.');
+        }
+
         $adjunto = [];
         if ($archivo) {
             $adjunto = [
@@ -39,9 +45,10 @@ final class RegistrarMensajeTicket
             'mensaje'           => filled($mensaje) ? trim($mensaje) : null,
         ] + $adjunto);
 
-        // Si responde soporte, el ticket pasa a "en proceso".
-        if ($nuevo->remitente === 'soporte' && $ticket->status === 'abierto') {
-            $ticket->update(['status' => 'en_proceso']);
+        // Si responde soporte, el ticket pasa a "en proceso". En silencio: el aviso
+        // del mensaje ya le llega a la empresa, un segundo aviso por el estado sobra.
+        if ($nuevo->esDeSoporte() && $ticket->status === SupportTicket::ABIERTO) {
+            $ticket->forceFill(['status' => SupportTicket::EN_PROCESO])->saveQuietly();
         }
 
         return $nuevo;
@@ -49,6 +56,6 @@ final class RegistrarMensajeTicket
 
     public static function remitente(User $user): string
     {
-        return $user->hasRole('super_admin') ? 'soporte' : 'empresa';
+        return $user->hasRole('super_admin') ? SupportTicketMensaje::SOPORTE : SupportTicketMensaje::EMPRESA;
     }
 }

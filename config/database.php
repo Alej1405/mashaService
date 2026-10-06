@@ -97,6 +97,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // La sesión de Postgres en la misma zona que la app: así las columnas
+            // timestamptz guardan el instante correcto sin depender del servidor.
+            'timezone' => 'America/Guayaquil',
         ],
 
         'sqlsrv' => [
