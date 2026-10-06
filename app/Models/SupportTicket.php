@@ -35,6 +35,16 @@ class SupportTicket extends Model
         return $this->hasMany(SupportTicketMensaje::class);
     }
 
+    /** @return array<string,string> estado => etiqueta, para selectores y filtros */
+    public static function opcionesEstado(): array
+    {
+        return [
+            self::ABIERTO    => 'Abierto',
+            self::EN_PROCESO => 'En proceso',
+            self::CERRADO    => 'Cerrado',
+        ];
+    }
+
     /** Un ticket cerrado ya no recibe mensajes, ni desde el panel ni desde Telegram. */
     public function admiteMensajes(): bool
     {
@@ -63,12 +73,7 @@ class SupportTicket extends Model
 
     public function statusLabel(): string
     {
-        return match ($this->status) {
-            self::ABIERTO    => 'Abierto',
-            self::EN_PROCESO => 'En proceso',
-            self::CERRADO    => 'Cerrado',
-            default          => ucfirst($this->status),
-        };
+        return self::opcionesEstado()[$this->status] ?? ucfirst($this->status);
     }
 
     public function statusColor(): string

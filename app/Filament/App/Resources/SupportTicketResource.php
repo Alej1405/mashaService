@@ -5,6 +5,7 @@ namespace App\Filament\App\Resources;
 use App\Filament\App\Resources\SupportTicketResource\Pages;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketMensaje;
+use App\Modules\Soporte\Actions\RegistrarMensajeTicket;
 use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -88,16 +89,45 @@ class SupportTicketResource extends Resource
 
                 Forms\Components\Select::make('status')
                     ->label('Estado')
-                    ->options([
-                        SupportTicket::ABIERTO    => 'Abierto',
-                        SupportTicket::EN_PROCESO => 'En proceso',
-                        SupportTicket::CERRADO    => 'Cerrado',
-                    ])
+                    ->options(SupportTicket::opcionesEstado())
                     ->default(SupportTicket::ABIERTO)
                     ->required()
                     ->visible($isAdmin),
             ])->columns(2),
         ]);
+    }
+
+    /**
+     * "Responder": texto y/o archivo al hilo del ticket. La usan el panel de la
+     * empresa y el panel admin; al enviar vuelve al listado de quien responde.
+     */
+    public static function accionResponder(string $volverA): \Filament\Actions\Action
+    {
+        return \Filament\Actions\Action::make('responder')
+            ->label('Responder')
+            ->icon('heroicon-o-chat-bubble-left-right')
+            ->modalHeading('Responder al ticket')
+            ->modalSubmitActionLabel('Enviar')
+            ->visible(fn (SupportTicket $record) => $record->admiteMensajes())
+            ->form([
+                Forms\Components\Textarea::make('mensaje')
+                    ->label('Mensaje')
+                    ->rows(4)
+                    ->requiredWithout('archivo'),
+                Forms\Components\FileUpload::make('archivo')
+                    ->label('Imagen o archivo (opcional)')
+                    ->maxSize(SupportTicket::MAX_ADJUNTO_KB)
+                    ->storeFiles(false)
+                    ->helperText('Hasta 20 MB.'),
+            ])
+            ->action(function (SupportTicket $record, array $data, $livewire) use ($volverA) {
+                app(RegistrarMensajeTicket::class)->handle(
+                    $record, auth()->user(), SupportTicketMensaje::PANEL, $data['mensaje'] ?? null, $data['archivo'] ?? null,
+                );
+
+                \Filament\Notifications\Notification::make()->title('Respuesta enviada')->success()->send();
+                $livewire->redirect($volverA);
+            });
     }
 
     /** Vista del ticket: la solicitud y su conversación, en orden. */
