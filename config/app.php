@@ -81,6 +81,13 @@ return [
     // (panel, Telegram, documentos) es la de Guayaquil.
     'timezone' => 'America/Guayaquil',
 
+    // Marca de MashaCorp en el ERP (archivos copiados de webMasha/web_front/static).
+    // El logo horizontal "fondo-claro" es el oscuro, para la barra y el login claros.
+    'marca' => [
+        'logo'    => 'marca/logo-horizontal-fondo-claro.svg',
+        'favicon' => 'favicon.svg',
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

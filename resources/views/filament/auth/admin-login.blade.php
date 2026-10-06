@@ -134,7 +134,7 @@
         <div class="al-ov-line"></div>
 
         <div class="al-ov-logo">
-            <img src="{{ asset('logo.png') }}" alt="Masha Corp"
+            <img src="{{ asset(config('app.marca.logo')) }}" alt="Masha Corp"
                     style="height:38px; width:auto;" onerror="this.style.display='none'">
         </div>
 
@@ -157,7 +157,7 @@
     <main class="al-card">
 
         <div class="al-logo">
-            <img src="{{ asset('logo.png') }}" alt="Masha Corp" onerror="this.style.display='none'">
+            <img src="{{ asset(config('app.marca.logo')) }}" alt="Masha Corp" onerror="this.style.display='none'">
         </div>
 
         <h1 class="al-heading">Bienvenido de vuelta</h1>

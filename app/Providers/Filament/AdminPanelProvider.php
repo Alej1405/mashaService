@@ -222,9 +222,10 @@ document.addEventListener("alpine:initialized", function () {
 });
 </script>
 '))
-            ->brandLogo(asset('logo.png'))
+            ->brandLogo(asset(config('app.marca.logo')))
+            ->brandLogoHeight('2rem')
             ->brandName('Masha Corp S.A.S.')
-            ->favicon(asset('logo.png'))
+            ->favicon(asset(config('app.marca.favicon')))
             ->broadcasting()
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
