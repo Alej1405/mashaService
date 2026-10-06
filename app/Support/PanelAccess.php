@@ -33,7 +33,6 @@ class PanelAccess
         'basic'      => ['label' => 'Inicio',            'icon' => 'heroicon-o-home',             'path' => 'app'],
         'pro'        => ['label' => 'Panel Pro (ERP)',   'icon' => 'heroicon-o-building-office-2', 'path' => 'pro'],
         'enterprise' => ['label' => 'Panel Enterprise',  'icon' => 'heroicon-o-star',             'path' => 'enterprise'],
-        'logistics'  => ['label' => 'Panel Logística',   'icon' => 'heroicon-o-truck',            'path' => 'logistics'],
         'cms'        => ['label' => 'Panel CMS',         'icon' => 'heroicon-o-globe-alt',        'path' => 'cms'],
         'ecommerce'  => ['label' => 'Panel Tienda',      'icon' => 'heroicon-o-shopping-bag',     'path' => 'store'],
         'operaciones'=> ['label' => 'Panel Operaciones', 'icon' => 'heroicon-o-cube',             'path' => 'operaciones'],

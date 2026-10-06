@@ -59,7 +59,7 @@ final class SchemaInspector
      */
     private const MODULE_ORDER = [
         'Tienda', 'CMS', 'Ventas', 'Compras', 'Inventario', 'Producción',
-        'Contabilidad', 'Tesorería', 'Logística', 'Servicios', 'Mailing',
+        'Contabilidad', 'Tesorería', 'Servicios', 'Mailing',
         'Soporte', 'Sistema', 'Otros',
     ];
 
@@ -95,7 +95,6 @@ final class SchemaInspector
         $prefixes = [
             'store_'       => 'Tienda',
             'cms_'         => 'CMS',
-            'logistics_'   => 'Logística',
             'service_'     => 'Servicios',
             'production_'  => 'Producción',
             'product_'     => 'Producción',

@@ -31,7 +31,6 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
         Route::post('/mi-web',  [\App\Http\Controllers\Portal\PortalController::class, 'webUpdate'])->name('web.update');
 
         Route::get('/customers',                    [\App\Http\Controllers\Portal\PortalController::class, 'customers'])->name('customers');
-        Route::post('/payments',                    [\App\Http\Controllers\Portal\PortalController::class, 'submitPayment'])->name('payments.store');
         Route::get('/companies',                    [\App\Http\Controllers\Portal\PortalController::class, 'companies'])->name('companies');
         Route::get('/companies/create',             [\App\Http\Controllers\Portal\PortalController::class, 'companiesCreate'])->name('companies.create');
         Route::post('/companies',                   [\App\Http\Controllers\Portal\PortalController::class, 'companiesStore'])->name('companies.store');
@@ -39,10 +38,6 @@ Route::prefix('tienda/{slug}')->name('portal.')->group(function () {
         Route::put('/companies/{company}',          [\App\Http\Controllers\Portal\PortalController::class, 'companiesUpdate'])->name('companies.update');
         Route::delete('/companies/{company}',       [\App\Http\Controllers\Portal\PortalController::class, 'companiesDestroy'])->name('companies.destroy');
     });
-
-    // Aceptación de nota de venta — accesible sin sesión (link del correo)
-    Route::get('/billing/{token}',  [\App\Http\Controllers\Portal\PortalController::class, 'billingAccept'])->name('billing.accept');
-    Route::post('/billing/{token}', [\App\Http\Controllers\Portal\PortalController::class, 'billingConfirm'])->name('billing.confirm');
 });
 
 // ── Portal Móvil ──────────────────────────────────────────────────────────
@@ -171,15 +166,6 @@ Route::prefix('mobile')->name('mobile.')->group(function () {
         // Tienda — Clientes
         Route::get('/tienda/clientes',                     [\App\Http\Controllers\MobileController::class, 'listTiendaClientes'])->name('tienda.clientes.index');
 
-        // ── Logística ──────────────────────────────────────────────────────
-        Route::get('/logistica',                                [\App\Http\Controllers\MobileController::class, 'showLogistica'])->name('logistica.index');
-        Route::get('/logistica/cargas',                         [\App\Http\Controllers\MobileController::class, 'listCargas'])->name('logistica.cargas.lista');
-        Route::get('/logistica/carga/nueva',                    [\App\Http\Controllers\MobileController::class, 'showCargaNueva'])->name('logistica.carga.nueva');
-        Route::post('/logistica/carga/guardar',                 [\App\Http\Controllers\MobileController::class, 'guardarCarga'])->name('logistica.carga.guardar');
-        Route::post('/logistica/carga/{packageId}/estado',      [\App\Http\Controllers\MobileController::class, 'actualizarEstadoCarga'])->name('logistica.carga.estado');
-        Route::get('/logistica/embarques',                      [\App\Http\Controllers\MobileController::class, 'listEmbarques'])->name('logistica.embarques.lista');
-        Route::get('/logistica/embarque/nuevo',                 [\App\Http\Controllers\MobileController::class, 'showEmbarqueNuevo'])->name('logistica.embarque.nuevo');
-        Route::post('/logistica/embarque/guardar',              [\App\Http\Controllers\MobileController::class, 'guardarEmbarque'])->name('logistica.embarque.guardar');
     });
 });
 

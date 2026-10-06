@@ -22,7 +22,7 @@ class PanelResource extends Resource
     protected static ?string $pluralModelLabel = 'Paneles';
 
     /** Paneles base del sistema: su clave y ruta no se editan (cablean providers Filament). */
-    public const PANELES_BASE = ['basic', 'pro', 'enterprise', 'logistics', 'cms', 'ecommerce'];
+    public const PANELES_BASE = ['basic', 'pro', 'enterprise', 'cms', 'ecommerce'];
 
     public static function canViewAny(): bool
     {

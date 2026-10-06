@@ -3,11 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
-use App\Models\BankAccount;
 use App\Models\Empresa;
-use App\Models\LogisticsBillingRequest;
-use App\Models\LogisticsPackage;
-use App\Models\LogisticsPaymentClaim;
 use App\Models\StoreProduct;
 use App\Models\ServiceContract;
 use App\Models\ServiceDesign;
@@ -62,38 +58,6 @@ class PortalController extends Controller
         $totalOrders    = StoreOrder::withoutGlobalScopes()->where('customer_id', $customer->id)->count();
         $totalContracts = ServiceContract::withoutGlobalScopes()->where('customer_id', $customer->id)->where('estado', 'activo')->count();
 
-        $pendingPackages = LogisticsPackage::withoutGlobalScopes()
-            ->where('customer_id', $customer->id)
-            ->where('empresa_id', $empresa->id)
-            ->where(function ($q) {
-                // Finalizado en aduana (en espera de pago)
-                $q->where('estado', 'finalizado_aduana')
-                  // O marcado explícitamente como pago pendiente
-                  ->orWhere('estado_secundario', 'pago_pendiente');
-            })
-            ->latest()
-            ->get();
-
-        $totalPendingPago = $pendingPackages->sum('monto_cobro');
-
-        $totalPackages = LogisticsPackage::withoutGlobalScopes()
-            ->where('customer_id', $customer->id)
-            ->where('empresa_id', $empresa->id)
-            ->count();
-
-        $recentPackages = LogisticsPackage::withoutGlobalScopes()
-            ->where('customer_id', $customer->id)
-            ->where('empresa_id', $empresa->id)
-            ->latest()
-            ->limit(5)
-            ->get();
-
-        $cuentasBancarias = BankAccount::withoutGlobalScopes()
-            ->where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->with('bank')
-            ->get();
-
         $catalogoProductos = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
@@ -109,9 +73,6 @@ class PortalController extends Controller
             'empresa', 'customer',
             'recentOrders', 'activeContracts',
             'totalOrders', 'totalContracts',
-            'pendingPackages', 'totalPendingPago',
-            'totalPackages', 'recentPackages',
-            'cuentasBancarias',
             'catalogoProductos', 'tieneServicios',
         ));
     }
@@ -331,53 +292,6 @@ class PortalController extends Controller
         return back()->with('success', 'Contraseña actualizada correctamente.');
     }
 
-    public function submitPayment(Request $request, string $slug)
-    {
-        $empresa  = $this->empresa($slug);
-        $customer = $this->customer($request);
-
-        $request->validate([
-            'package_ids'    => 'required|array|min:1',
-            'package_ids.*'  => 'integer',
-            'monto_manual'   => 'required|numeric|min:0.01',
-            'comprobante'    => 'nullable|file|mimes:jpeg,jpg,png,gif,pdf|max:10240',
-            'notas_cliente'  => 'nullable|string|max:500',
-        ]);
-
-        // Verificar que los paquetes pertenecen al cliente
-        $packageIds = LogisticsPackage::withoutGlobalScopes()
-            ->whereIn('id', $request->package_ids)
-            ->where('customer_id', $customer->id)
-            ->where('empresa_id', $empresa->id)
-            ->pluck('id');
-
-        if ($packageIds->isEmpty()) {
-            return back()->withErrors(['package_ids' => 'Selecciona al menos un paquete válido.']);
-        }
-
-        $monto = (float) $request->monto_manual;
-
-        $comprobantePath = null;
-        if ($request->hasFile('comprobante')) {
-            $comprobantePath = $request->file('comprobante')
-                ->store('comprobantes/' . $empresa->id, 'public');
-        }
-
-        LogisticsPaymentClaim::create([
-            'empresa_id'       => $empresa->id,
-            'customer_id' => $customer->id,
-            'package_ids'      => $packageIds->toArray(),
-            'monto_declarado'  => $monto,
-            'comprobante_path' => $comprobantePath,
-            'notas_cliente'    => $request->notas_cliente,
-            'estado'           => 'pendiente',
-        ]);
-
-        return back()->with('payment_sent', '¡Pago registrado! Verificaremos tu transferencia a la brevedad.');
-    }
-
-    // ── Empresas ──────────────────────────────────────────────────────────────
-
     public function companies(Request $request, string $slug)
     {
         $empresa  = $this->empresa($slug);
@@ -471,70 +385,6 @@ class PortalController extends Controller
         return redirect()
             ->route('portal.companies', $slug)
             ->with('success', 'Empresa eliminada.');
-    }
-
-    // ── Aceptación de nota de venta (link del correo o portal) ───────────────
-
-    public function billingAccept(Request $request, string $slug, string $token)
-    {
-        $empresa = $this->empresa($slug);
-
-        $billing = LogisticsBillingRequest::where('token', $token)
-            ->where('empresa_id', $empresa->id)
-            ->with(['package', 'storeCustomer'])
-            ->firstOrFail();
-
-        if ($billing->estado === 'aceptado') {
-            return view('portal.billing-accepted', compact('empresa', 'billing'));
-        }
-
-        if ($billing->estado !== 'pendiente') {
-            abort(410, 'Esta solicitud ya no está disponible.');
-        }
-
-        $customer = $billing->storeCustomer;
-
-        // Listar empresas del cliente
-        $companies = StoreCustomerCompany::where('customer_id', $customer->id)
-            ->where('empresa_id', $empresa->id)
-            ->get();
-
-        return view('portal.billing-accept', compact('empresa', 'billing', 'customer', 'companies'));
-    }
-
-    public function billingConfirm(Request $request, string $slug, string $token)
-    {
-        $empresa = $this->empresa($slug);
-
-        $billing = LogisticsBillingRequest::where('token', $token)
-            ->where('empresa_id', $empresa->id)
-            ->with('storeCustomer')
-            ->firstOrFail();
-
-        if ($billing->estado !== 'pendiente') {
-            return redirect()->back()->withErrors(['error' => 'Esta solicitud ya no está disponible.']);
-        }
-
-        $request->validate([
-            'billing_type'       => 'required|in:customer,company',
-            'billing_company_id' => 'required_if:billing_type,company|nullable|integer',
-        ]);
-
-        $billingType = $request->billing_type;
-        $company     = null;
-
-        if ($billingType === 'company') {
-            $company = StoreCustomerCompany::where('id', $request->billing_company_id)
-                ->where('customer_id', $billing->customer_id)
-                ->where('empresa_id', $empresa->id)
-                ->firstOrFail();
-        }
-
-        $billing->aceptar('email', $billingType, $company, $billing->storeCustomer);
-
-        return redirect()
-            ->route('portal.billing.accept', [$slug, $token])
-            ->with('accepted', true);
     }
 
     public function customers(Request $request, string $slug)

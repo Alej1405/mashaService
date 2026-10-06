@@ -60,7 +60,6 @@ class PlanHelper
                 'Producción',
                 'Inventario',
                 'Contabilidad',
-                'Logística',
                 'Informes',
                 'Configuración',
             ]
@@ -81,7 +80,6 @@ class PlanHelper
                 'Producción',
                 'Inventario',
                 'Contabilidad',
-                'Logística',
                 'Producto',
                 'Informes',
                 'Configuración',

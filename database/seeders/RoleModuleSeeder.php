@@ -17,7 +17,7 @@ class RoleModuleSeeder extends Seeder
 {
     private const TODOS = [
         'finanzas', 'tesoreria', 'compras', 'inventario',
-        'ventas', 'produccion', 'marketing', 'tienda', 'logistica', 'clientes',
+        'ventas', 'produccion', 'marketing', 'tienda', 'clientes',
     ];
 
     private const MAPEO = [

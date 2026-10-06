@@ -39,7 +39,6 @@ class ServicePlanSeeder extends Seeder
                     'Contabilidad: plan de cuentas, asientos automáticos y mapeos',
                     'Manufactura: órdenes de producción y consumo de materiales',
                     'Tesorería: caja, bancos, tarjetas de crédito y movimientos',
-                    'Módulo de Logística',
                     'Informes financieros con exportación para Supercias',
                     'Numeración automática de documentos (VEN, COM)',
                     'Soporte prioritario',

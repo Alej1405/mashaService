@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Logística salió del ERP (2026-10-06): en una instalación nueva sus modelos ya no existen.
+        if (! class_exists(LogisticsBillingRequest::class)) {
+            return;
+        }
+
         LogisticsBillingRequest::whereIn('estado', ['pendiente', 'aceptado'])->each(function (LogisticsBillingRequest $billing) {
             $package = LogisticsPackage::find($billing->package_id);
             if (! $package) {

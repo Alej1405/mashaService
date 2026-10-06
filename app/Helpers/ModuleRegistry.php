@@ -102,13 +102,6 @@ class ModuleRegistry
                 ],
                 'p' => [],
             ],
-            'logistica' => [
-                'r' => [
-                    'LogisticsBillingRequestResource', 'LogisticsPaymentClaimResource',
-                    'LogisticsShipmentBillResource',
-                ],
-                'p' => [],
-            ],
             '_core' => [
                 'r' => ['EmpresaUserResource', 'SupportTicketResource'],
                 'p' => ['Dashboard', 'Settings', 'MiChatSoportePage'],

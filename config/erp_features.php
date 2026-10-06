@@ -236,15 +236,15 @@ return [
         ],
     ],
 
+    // El módulo de logística (paquetes, embarques, cobros) salió del ERP el 2026-10-06
+    // (código en webMasha/logistica). Queda la marca contable: activa las cuentas de
+    // fletes, bodegaje y comercio exterior del plan de cuentas.
     'logistica' => [
-        'label'       => 'Logística',
-        'icon'        => 'heroicon-o-truck',
+        'label'       => 'Comercio exterior',
+        'icon'        => 'heroicon-o-globe-americas',
         'color'       => 'slate',
-        'descripcion' => 'Facturación, cobros y comercio exterior',
+        'descripcion' => 'Cuentas de fletes, bodegaje y comercio exterior en el plan contable',
         'features' => [
-            'facturas_pagar'    => 'Facturas por Pagar',
-            'ordenes_cobrar'    => 'Órdenes por Cobrar',
-            'verificar_cobros'  => 'Verificación de Cobros',
             'comercio_exterior' => 'Comercio Exterior',
         ],
     ],

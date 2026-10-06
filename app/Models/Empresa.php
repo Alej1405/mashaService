@@ -428,47 +428,19 @@ class Empresa extends Model implements HasName
         return $this->hasMany(\App\Models\ServiceContract::class, 'empresa_id');
     }
 
-    // ── Logística ─────────────────────────────────────────────────────────────
+    // ── Empresas de clientes (razón social para facturar) ────────────────────
 
-    public function logisticsBodegas(): HasMany
-    {
-        return $this->hasMany(\App\Models\LogisticsBodega::class, 'empresa_id');
-    }
 
-    public function logisticsConsignatarios(): HasMany
-    {
-        return $this->hasMany(\App\Models\LogisticsConsignatario::class, 'empresa_id');
-    }
 
     public function storeCustomerCompanies(): HasMany
     {
         return $this->hasMany(\App\Models\StoreCustomerCompany::class, 'empresa_id');
     }
 
-    public function logisticsBillingRequests(): HasMany
-    {
-        return $this->hasMany(\App\Models\LogisticsBillingRequest::class, 'empresa_id');
-    }
 
-    public function logisticsPackages(): HasMany
-    {
-        return $this->hasMany(\App\Models\LogisticsPackage::class, 'empresa_id');
-    }
 
-    public function logisticsShipments(): HasMany
-    {
-        return $this->hasMany(\App\Models\LogisticsShipment::class, 'empresa_id');
-    }
 
-    public function logisticsDocuments(): HasMany
-    {
-        return $this->hasMany(\App\Models\LogisticsDocument::class, 'empresa_id');
-    }
 
-    public function logisticsShipmentBills(): HasMany
-    {
-        return $this->hasMany(\App\Models\LogisticsShipmentBill::class, 'empresa_id');
-    }
 
     public function supportChats(): HasMany
     {

@@ -106,8 +106,6 @@ HTML
         \App\Models\DebtPayment::observe(\App\Observers\DebtPaymentObserver::class);
         \App\Models\Customer::observe(\App\Observers\CustomerPortalObserver::class);
         \App\Models\CustomerWeb::observe(\App\Observers\CustomerWebObserver::class);
-        \App\Models\LogisticsShipment::observe(\App\Observers\LogisticsShipmentObserver::class);
-        \App\Models\LogisticsShipmentBill::observe(\App\Observers\LogisticsShipmentBillObserver::class);
         \App\Models\ProductDesign::observe(\App\Observers\ProductDesignObserver::class);
         \App\Models\ServiceDesign::observe(\App\Observers\ServiceDesignObserver::class);
         \App\Models\StoreOrder::observe(\App\Observers\StoreOrderObserver::class);

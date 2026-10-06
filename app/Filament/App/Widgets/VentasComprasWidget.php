@@ -2,8 +2,6 @@
 
 namespace App\Filament\App\Widgets;
 
-use App\Models\LogisticsBillingRequest;
-use App\Models\LogisticsShipmentBill;
 use App\Models\Sale;
 use App\Models\Purchase;
 use Carbon\Carbon;
@@ -37,7 +35,7 @@ class VentasComprasWidget extends Widget
         $desdeStr = $desde->toDateString();
         $hastaStr = $hasta->toDateString();
 
-        // 4 queries totales en lugar de 4 × 6 meses = 24
+        // 2 queries totales en lugar de 2 × 6 meses = 12
         $ventas = Sale::where('empresa_id', $tenantId)
             ->where('estado', 'confirmado')
             ->whereBetween('fecha', [$desdeStr, $hastaStr])
@@ -45,14 +43,6 @@ class VentasComprasWidget extends Widget
             ->groupBy(fn($r) => Carbon::parse($r->fecha)->format('Y-m'))
             ->map(fn($rows) => $rows->sum('total'));
 
-        $logisticsIn = LogisticsBillingRequest::withoutGlobalScopes()
-            ->where('empresa_id', $tenantId)
-            ->whereIn('estado', ['facturado', 'cobrado'])
-            ->whereNull('sale_id')
-            ->whereBetween('updated_at', [$desdeStr . ' 00:00:00', $hastaStr . ' 23:59:59'])
-            ->get(['updated_at', 'total'])
-            ->groupBy(fn($r) => Carbon::parse($r->updated_at)->format('Y-m'))
-            ->map(fn($rows) => $rows->sum('total'));
 
         $compras = Purchase::where('empresa_id', $tenantId)
             ->where('status', 'confirmado')
@@ -61,13 +51,6 @@ class VentasComprasWidget extends Widget
             ->groupBy(fn($r) => Carbon::parse($r->date)->format('Y-m'))
             ->map(fn($rows) => $rows->sum('total'));
 
-        $logisticsOut = LogisticsShipmentBill::withoutGlobalScopes()
-            ->where('empresa_id', $tenantId)
-            ->where('estado', 'pagada')
-            ->whereBetween('fecha_pago', [$desdeStr, $hastaStr])
-            ->get(['fecha_pago', 'total'])
-            ->groupBy(fn($r) => Carbon::parse($r->fecha_pago)->format('Y-m'))
-            ->map(fn($rows) => $rows->sum('total'));
 
         $meses = $ventasData = $comprasData = [];
 
@@ -75,8 +58,8 @@ class VentasComprasWidget extends Widget
             $fecha  = now()->subMonths($i);
             $key    = $fecha->format('Y-m');
             $meses[]       = ucfirst($fecha->translatedFormat('M'));
-            $ventasData[]  = (float) (($ventas[$key] ?? 0) + ($logisticsIn[$key] ?? 0));
-            $comprasData[] = (float) (($compras[$key] ?? 0) + ($logisticsOut[$key] ?? 0));
+            $ventasData[]  = (float) ($ventas[$key] ?? 0);
+            $comprasData[] = (float) ($compras[$key] ?? 0);
         }
 
         return [

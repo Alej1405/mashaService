@@ -49,7 +49,7 @@ class SystemEventResource extends Resource
 
                 Forms\Components\TextInput::make('modulo')
                     ->label('Módulo')
-                    ->placeholder('ej. contabilidad, logistica, mailing'),
+                    ->placeholder('ej. contabilidad, inventario, mailing'),
 
                 Forms\Components\TextInput::make('titulo')
                     ->label('Título')
