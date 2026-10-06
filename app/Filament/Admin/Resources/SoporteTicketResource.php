@@ -39,12 +39,12 @@ class SoporteTicketResource extends Resource
         return parent::getEloquentQuery()->withoutGlobalScope(EmpresaScope::class);
     }
 
-    /** Tickets sin revisar: los que nadie de soporte ha respondido todavía. */
+    /** Tickets por responder: abiertos o con la última palabra de la empresa. */
     public static function getNavigationBadge(): ?string
     {
-        $abiertos = static::getEloquentQuery()->where('status', SupportTicket::ABIERTO)->count();
+        $porResponder = static::getEloquentQuery()->esperandoSoporte()->count();
 
-        return $abiertos ? (string) $abiertos : null;
+        return $porResponder ? (string) $porResponder : null;
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -54,7 +54,7 @@ class SoporteTicketResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'Tickets sin revisar';
+        return 'Tickets por responder';
     }
 
     public static function infolist(Infolist $infolist): Infolist
@@ -65,11 +65,21 @@ class SoporteTicketResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            // Lo que hay que atender va arriba: abiertos, luego en proceso, al final cerrados.
+            // Lo que espera respuesta va arriba; al final lo cerrado.
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['empresa:id,name', 'user:id,name'])->withCount('mensajes')
-                ->orderByRaw('CASE status WHEN ? THEN 0 WHEN ? THEN 1 ELSE 2 END', [SupportTicket::ABIERTO, SupportTicket::EN_PROCESO]))
+                ->conUltimoRemitente()->ordenPorAtencion())
             ->defaultSort('created_at', 'desc')
             ->columns([
+                Tables\Columns\IconColumn::make('por_responder')
+                    ->label('Por responder')
+                    ->state(fn (SupportTicket $record) => $record->esperandoSoporte())
+                    ->boolean()
+                    ->trueIcon('heroicon-s-bell-alert')
+                    ->trueColor('danger')
+                    ->falseIcon('heroicon-o-check')
+                    ->falseColor('gray')
+                    ->tooltip(fn (SupportTicket $record) => $record->esperandoSoporte() ? 'Espera tu respuesta' : 'Respondido o cerrado')
+                    ->alignCenter(),
                 Tables\Columns\TextColumn::make('empresa.name')
                     ->label('Empresa')
                     ->searchable(),
@@ -98,6 +108,9 @@ class SoporteTicketResource extends Resource
                     ->color('gray'),
             ])
             ->filters([
+                Tables\Filters\Filter::make('por_responder')
+                    ->label('Solo los que esperan respuesta')
+                    ->query(fn (Builder $query) => $query->esperandoSoporte()),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Estado')
                     ->options(SupportTicket::opcionesEstado()),

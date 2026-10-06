@@ -27,6 +27,9 @@ class BasicPanelProvider extends PanelProvider
         return $panel
             ->id('basic')
             ->path('app')
+            // La campana: avisos de soporte (tickets y respuestas) y de procesos en cola.
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->login(\App\Filament\Auth\LoginUsuarios::class)
             ->tenant(Empresa::class, slugAttribute: 'slug')
             ->tenantProfile(\App\Filament\Pages\Tenancy\EditEmpresaProfile::class)

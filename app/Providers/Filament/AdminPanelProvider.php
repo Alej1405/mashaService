@@ -26,6 +26,9 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            // La campana: avisos de soporte (tickets y respuestas) y de procesos en cola.
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->login(\App\Filament\Auth\Login::class)
             ->colors([
                 'primary' => Color::Amber,
