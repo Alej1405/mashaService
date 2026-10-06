@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ServiceInvoice extends Model
 {
+    public const PENDIENTE = 'pendiente';
+    public const VENCIDO = 'vencido';
+
     protected $fillable = [
         'empresa_id',
         'numero',

@@ -2,8 +2,8 @@
 
 namespace App\Modules\N8n\Actions;
 
-use App\Models\Empresa;
 use App\Models\User;
+use App\Modules\N8n\Queries\ResumenTelegramDelUsuario;
 use App\Shared\Attributes\Documentado;
 
 /**
@@ -19,7 +19,9 @@ use App\Shared\Attributes\Documentado;
 )]
 final class LigarTelegram
 {
-    /** @return array{ok:bool,error?:string,mensaje?:string,user?:array,empresas?:array} */
+    public function __construct(private readonly ResumenTelegramDelUsuario $resumen) {}
+
+    /** @return array{ok:bool,error?:string,mensaje?:string,user?:array,avisos?:array,empresas?:array} */
     public function porTelefono(string $telefono, string $chatId): array
     {
         $user = User::where('telefono', self::normalizar($telefono))->first();
@@ -34,16 +36,10 @@ final class LigarTelegram
 
         $this->ligar($user, $chatId);
 
-        $empresas = $user->hasRole('super_admin')
-            ? collect([['id' => 0, 'name' => 'Todas (soporte)']])
-            : $user->empresasAcceso()->where('activo', true)->get(['empresas.id', 'name'])
-                ->map(fn (Empresa $e) => ['id' => $e->id, 'name' => $e->name]);
-
         return [
             'ok' => true,
-            'user' => ['id' => $user->id, 'name' => $user->name],
-            'empresas' => $empresas->values()->all(),
-        ];
+            'user' => ['id' => $user->id, 'name' => $user->name, 'es_soporte' => $user->hasRole('super_admin')],
+        ] + $this->resumen->handle($user);
     }
 
     public function ligar(User $user, string $chatId): void
