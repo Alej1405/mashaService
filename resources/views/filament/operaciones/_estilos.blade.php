@@ -52,6 +52,9 @@
     .op-val { font-size:26px; font-weight:700; letter-spacing:-.8px; line-height:1.05; color:var(--op-text); }
     .op-lbl { font-size:11px; font-weight:700; letter-spacing:.7px; text-transform:uppercase;
               color:var(--op-muted); margin-top:7px; }
+    .op-select { min-height:44px; padding:9px 12px; font-size:14px; border:1px solid var(--op-border);
+                 border-radius:12px; background:var(--op-surface); color:var(--op-text); min-width:0; }
+    .op-select:focus { outline:none; border-color:var(--op-accent); box-shadow:0 0 0 3px #4f46e51f; }
     .op-hint { font-size:12px; color:var(--op-muted-2); margin-top:2px; }
 
     .op-visor { position:fixed; inset:0; z-index:50; display:flex; flex-direction:column;

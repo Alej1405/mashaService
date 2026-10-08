@@ -9,6 +9,7 @@ use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\TipoGasto;
+use App\Modules\Compras\Actions\ProveedorPorIdentificacion;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -231,29 +232,7 @@ class ClasificadorComprobantesService
             return null;
         }
 
-        $existente = Supplier::withoutGlobalScopes()
-            ->where('empresa_id', $c->empresa_id)
-            ->where('numero_identificacion', $c->identificacion)
-            ->first();
-
-        if ($existente) {
-            return $existente;
-        }
-
-        // El portal solo da nombre y RUC; el resto son obligatorios en la tabla
-        // y quedan marcados para que alguien los complete cuando haga falta.
-        return Supplier::withoutGlobalScopes()->create([
-            'empresa_id'            => $c->empresa_id,
-            'nombre'                => $c->razon_social ?: $c->identificacion,
-            'tipo_persona'          => strlen($c->identificacion) === 13 ? 'juridica' : 'natural',
-            'tipo_identificacion'   => strlen($c->identificacion) === 13 ? 'ruc' : 'cedula',
-            'numero_identificacion' => $c->identificacion,
-            'tipo_proveedor'        => 'bienes',
-            'contacto_principal'    => 'Por completar',
-            'telefono_principal'    => 'Por completar',
-            'correo_principal'      => 'porcompletar@' . \Illuminate\Support\Str::slug($c->razon_social ?: 'proveedor') . '.ec',
-            'activo'                => true,
-        ]);
+        return app(ProveedorPorIdentificacion::class)->obtener($c->empresa_id, $c->identificacion, $c->razon_social);
     }
 
     /**

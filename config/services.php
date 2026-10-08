@@ -70,6 +70,13 @@ return [
     // Avisos del ERP hacia n8n. Default en código: no depende del .env del VPS.
     'n8n' => [
         'webhook_soporte' => env('N8N_WEBHOOK_SOPORTE', 'https://n8n.mashaec.net/webhook/masha-soporte'),
+        'webhook_compras' => env('N8N_WEBHOOK_COMPRAS', 'https://n8n.mashaec.net/webhook/masha-compras'),
+        // API pública de n8n: el ERP crea el flujo de cada buzón de facturas.
+        'api_url'            => env('N8N_API_URL', 'https://n8n.mashaec.net/api/v1'),
+        'api_key'            => env('N8N_API_KEY'),
+        'credencial_secreto' => env('N8N_CREDENCIAL_SECRETO', '2P2Wn6zPHFQ10NpD'),
+        // Adónde entrega n8n los XML: siempre el ERP público, también si se configura desde local.
+        'erp_url'            => env('N8N_ERP_URL', 'https://erp.mashaec.net'),
     ],
 
 ];

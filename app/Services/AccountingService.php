@@ -102,7 +102,7 @@ class AccountingService
     public function generarAsientoCompra(Purchase $purchase): JournalEntry
     {
         $purchase->refresh();
-        $purchase->load(['items.inventoryItem', 'supplier', 'cashRegister', 'bankAccount', 'creditCard']);
+        $purchase->load(['items.inventoryItem', 'items.productoProveedor.tipoGasto', 'supplier', 'cashRegister', 'bankAccount', 'creditCard']);
 
         return DB::transaction(function () use ($purchase) {
             $journalEntry = JournalEntry::create([
@@ -135,8 +135,17 @@ class AccountingService
                 $tipoItem = $item->inventoryItem?->type ?? 'global';
                 $descItem = $item->inventoryItem?->nombre ?? ($item->descripcion ?? 'Gasto');
 
-                // 1. Línea de Gasto/Inventario (Debe)
-                $cuentaItem = self::getMapeo($purchase->empresa_id, $tipoItem, $tipoMovimiento);
+                // 1. Línea de Gasto/Inventario (Debe). Un producto de proveedor
+                //    configurado como gasto va a la cuenta de su tipo de gasto:
+                //    el mapeo global de compra es la cuenta de pago (Bancos).
+                $tipoGasto  = $item->inventoryItem ? null : $item->productoProveedor?->tipoGasto;
+                $cuentaGasto = $tipoGasto?->cuentaEn($purchase->empresa_id);
+                if ($tipoGasto && ! $cuentaGasto) {
+                    throw new Exception("El tipo de gasto «{$tipoGasto->nombre}» no tiene cuenta en el plan de esta empresa ({$tipoGasto->codigo_cuenta}).");
+                }
+                $cuentaItem = $cuentaGasto
+                    ? AccountPlan::findOrFail($cuentaGasto)
+                    : self::getMapeo($purchase->empresa_id, $tipoItem, $tipoMovimiento);
 
                 JournalEntryLine::create([
                     'journal_entry_id' => $journalEntry->id,
@@ -159,7 +168,7 @@ class AccountingService
                     JournalEntryLine::create([
                         'journal_entry_id' => $journalEntry->id,
                         'account_plan_id'  => $cuentaIva->id,
-                        'descripcion'      => 'IVA 15% - ' . $descItem,
+                        'descripcion'      => 'IVA - ' . $descItem,
                         'debe'             => $item->iva_monto,
                         'haber'            => 0,
                         'orden'            => $orden++,

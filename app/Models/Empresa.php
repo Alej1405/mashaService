@@ -174,6 +174,12 @@ class Empresa extends Model implements HasName
         return $this->servicePlan?->panelKeys() ?? [];
     }
 
+    /** El correo donde llegan sus facturas de compra; n8n lo lee. */
+    public function buzonFacturas(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(BuzonFacturas::class);
+    }
+
     public function usuariosAcceso(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'empresa_user_access', 'empresa_id', 'user_id')

@@ -22,6 +22,8 @@ return new class extends Migration
         // la migración pgloader (MariaDB→PostgreSQL) lo dejó como
         // `idx_19131_store_orders_numero_unique`. Se dropean ambos de forma
         // idempotente antes de crear el compuesto correcto (empresa_id, numero).
+        // En una instalación nueva Laravel lo dejó como CONSTRAINT, que no cae con DROP INDEX.
+        DB::statement('ALTER TABLE store_orders DROP CONSTRAINT IF EXISTS store_orders_numero_unique');
         DB::statement('DROP INDEX IF EXISTS store_orders_numero_unique');
         DB::statement('DROP INDEX IF EXISTS idx_19131_store_orders_numero_unique');
 

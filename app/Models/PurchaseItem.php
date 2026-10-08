@@ -16,7 +16,11 @@ class PurchaseItem extends Model
         'subtotal',
         'iva_monto',
         'total_item',
+        'descripcion',
+        'codigo_proveedor',
+        'producto_proveedor_id',
     ];
+
 
     protected $casts = [
         'quantity' => 'decimal:4',
@@ -32,12 +36,22 @@ class PurchaseItem extends Model
         parent::boot();
 
         static::creating(function ($model) {
+            // Las líneas de un comprobante electrónico conservan el subtotal (con
+            // descuento) y el IVA del XML: la tarifa no siempre es 15 %.
+            if ($model->producto_proveedor_id) {
+                return;
+            }
             $model->subtotal = $model->quantity * $model->unit_price;
             $model->iva_monto = $model->aplica_iva ? $model->subtotal * 0.15 : 0;
             $model->total_item = $model->subtotal + $model->iva_monto;
         });
 
         static::updating(function ($model) {
+            // Las líneas de un comprobante electrónico conservan el subtotal (con
+            // descuento) y el IVA del XML: la tarifa no siempre es 15 %.
+            if ($model->producto_proveedor_id) {
+                return;
+            }
             $model->subtotal = $model->quantity * $model->unit_price;
             $model->iva_monto = $model->aplica_iva ? $model->subtotal * 0.15 : 0;
             $model->total_item = $model->subtotal + $model->iva_monto;
@@ -52,5 +66,10 @@ class PurchaseItem extends Model
     public function inventoryItem(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class);
+    }
+
+    public function productoProveedor(): BelongsTo
+    {
+        return $this->belongsTo(ProductoProveedor::class);
     }
 }

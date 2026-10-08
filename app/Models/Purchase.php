@@ -33,7 +33,19 @@ class Purchase extends Model
         'forma_pago',
         'confirmado_por',
         'confirmado_at',
+        'origen',
+        'clave_acceso',
+        'xml_path',
+        'forma_pago_sri',
+        'plazo_dias',
+        'requiere_forma_pago',
     ];
+
+    public const ORIGEN_MANUAL = 'manual';
+    public const ORIGEN_CORREO = 'correo';
+    public const ORIGEN_TELEGRAM = 'telegram';
+    public const BORRADOR = 'borrador';
+    public const CONFIRMADO = 'confirmado';
 
     protected $casts = [
         'date' => 'date',
@@ -42,6 +54,7 @@ class Purchase extends Model
         'iva' => 'decimal:4',
         'total' => 'decimal:4',
         'confirmado_at' => 'datetime',
+        'requiere_forma_pago' => 'boolean',
     ];
 
     protected static function boot()
@@ -70,6 +83,22 @@ class Purchase extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseItem::class, 'purchase_id');
+    }
+
+    /** Líneas que todavía no se sabe qué son: ni ítem de inventario ni tipo de gasto. */
+    public function itemsPorConfigurar(): HasMany
+    {
+        return $this->items()->whereNull('inventory_item_id')
+            ->where(fn ($q) => $q->whereNull('producto_proveedor_id')
+                ->orWhereHas('productoProveedor', fn ($p) => $p->whereNull('tipo_gasto_id')));
+    }
+
+    /** Lista para confirmar: sabe cómo se pagó y qué es cada línea. */
+    public function listaParaConfirmar(): bool
+    {
+        return $this->status === self::BORRADOR
+            && ! $this->requiere_forma_pago
+            && ! $this->itemsPorConfigurar()->exists();
     }
 
     public function journalEntry(): BelongsTo

@@ -7,6 +7,7 @@ use App\Models\Empresa;
 use App\Models\TelegramSession;
 use App\Modules\N8n\Actions\IniciarSesionTelegram;
 use App\Modules\N8n\Actions\LigarTelegram;
+use App\Modules\N8n\Actions\VerificarAccesoEmpresa;
 use App\Modules\N8n\Queries\ModulosGestionablesDelUsuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,29 @@ class AuthController extends Controller
         $resultado = $iniciarSesion->handle($data['email'], $data['password'], $data['chat_id']);
 
         return response()->json($resultado, $resultado['ok'] ? 200 : 401);
+    }
+
+    /**
+     * Verifica credenciales y acceso a una empresa, sin abrir sesión de Telegram.
+     * Lo usa n8n para el panel de administración de las herramientas de Link Cargo.
+     */
+    public function verificar(Request $request, VerificarAccesoEmpresa $verificar): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'password' => ['required', 'string'],
+            'empresa' => ['required', 'string', 'max:120'],
+        ]);
+
+        $resultado = $verificar->handle($data['email'], $data['password'], $data['empresa']);
+
+        $status = match ($resultado['error'] ?? null) {
+            null => 200,
+            'sin_acceso' => 403,
+            default => 401,
+        };
+
+        return response()->json($resultado, $status);
     }
 
     /**

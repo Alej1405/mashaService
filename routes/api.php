@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Store\StorePaymentController;
 use App\Http\Controllers\Api\Store\StoreProductController;
 use App\Http\Controllers\Api\N8n\AuthController as N8nAuthController;
 use App\Http\Controllers\Api\N8n\CmsController as N8nCmsController;
+use App\Http\Controllers\Api\N8n\ComprasController as N8nComprasController;
 use App\Http\Controllers\Api\N8n\N8nRecursoController;
 use App\Http\Controllers\Api\N8n\StoreController as N8nStoreController;
 use App\Http\Controllers\Api\N8n\SoporteController as N8nSoporteController;
@@ -155,8 +156,16 @@ Route::prefix('n8n/v1')
 
         // Login: único endpoint sin token de sesión (sí exige secreto + gate).
         Route::post('auth/login', [N8nAuthController::class, 'login']);
+        // Paneles externos (herramientas de Link Cargo): verifica usuario y acceso a una
+        // empresa sin crear sesión ni ligar Telegram.
+        Route::post('auth/verificar', [N8nAuthController::class, 'verificar']);
         // Compartir contacto en el bot: liga el chat al usuario por su teléfono (sin sesión).
         Route::post('auth/telefono', [N8nAuthController::class, 'ligarTelefono']);
+
+        // Compras por correo: sin sesión. El flujo de cada buzón entrega el XML,
+        // y el botón "¿cómo se pagó?" responde con el chat de quien lo pulsó.
+        Route::post('compras/recibir',    [N8nComprasController::class, 'recibir']);
+        Route::post('compras/forma-pago', [N8nComprasController::class, 'formaPago']);
 
         // Resto: exige token de sesión de Telegram.
         Route::middleware(N8nAuthenticate::class)->group(function () {

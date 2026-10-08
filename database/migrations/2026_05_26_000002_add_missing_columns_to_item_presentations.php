@@ -23,6 +23,20 @@ return new class extends Migration
                     ->after('measurement_unit_id')
                     ->comment('Cantidad de unidades que contiene la presentación');
             }
+
+            // Columnas que producción tiene desde la migración de MariaDB y que ninguna
+            // migración creaba: sin ellas una instalación nueva no corre las siguientes.
+            if (! Schema::hasColumn('item_presentations', 'inventory_item_id')) {
+                $table->foreignId('inventory_item_id')->nullable()->constrained('inventory_items')->nullOnDelete();
+            }
+
+            if (! Schema::hasColumn('item_presentations', 'factor_conversion')) {
+                $table->decimal('factor_conversion', 15, 6)->default(1);
+            }
+
+            if (! Schema::hasColumn('item_presentations', 'es_unidad_base')) {
+                $table->boolean('es_unidad_base')->default(false);
+            }
         });
     }
 

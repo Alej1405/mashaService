@@ -255,4 +255,50 @@ class ServicioSri
             return ['verificado' => false, 'saltos' => [], 'faltantes' => []];
         }
     }
+
+    /**
+     * Lee el XML de un comprobante electrónico (el adjunto de un correo).
+     * Va en base64 porque el SRI y los proveedores lo emiten en ISO-8859-1.
+     *
+     * @return array{ok: bool, estado?: string, comprobante?: array, error?: string}
+     */
+    public function leerXmlComprobante(string $xml): array
+    {
+        return $this->comprobante('post', '/comprobantes/xml', ['xml' => base64_encode($xml), 'base64' => true]);
+    }
+
+    /**
+     * Pide al SRI el comprobante autorizado por su clave de acceso (foto del RIDE,
+     * o un correo que trae solo el PDF).
+     *
+     * @return array{ok: bool, estado?: string, comprobante?: array, error?: string}
+     */
+    public function autorizacionComprobante(string $clave): array
+    {
+        return $this->comprobante('get', '/comprobantes/autorizacion/' . $clave);
+    }
+
+    private function comprobante(string $metodo, string $ruta, array $datos = []): array
+    {
+        if (! $this->configurado()) {
+            return ['ok' => false, 'error' => 'El microservicio del SRI no está configurado.'];
+        }
+
+        try {
+            $r = $this->peticion()->timeout(40)->{$metodo}($this->url() . $ruta, $datos);
+
+            if (in_array($r->status(), [422, 502], true)) {
+                return ['ok' => false, 'error' => (string) ($r->json('detail') ?? 'El comprobante no se pudo leer.')];
+            }
+            if (! $r->successful()) {
+                return ['ok' => false, 'error' => 'El servicio respondió ' . $r->status() . '.'];
+            }
+
+            return ['ok' => true] + $r->json();
+        } catch (\Throwable $e) {
+            Log::error('microservicio SRI: comprobante electrónico', ['ruta' => $ruta, 'error' => $e->getMessage()]);
+
+            return ['ok' => false, 'error' => 'Sin respuesta del servicio: ' . str($e->getMessage())->limit(120)];
+        }
+    }
 }

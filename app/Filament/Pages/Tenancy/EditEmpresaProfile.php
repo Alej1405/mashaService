@@ -4,18 +4,21 @@ namespace App\Filament\Pages\Tenancy;
 
 use App\Helpers\PlanHelper;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Pages\Tenancy\EditTenantProfile;
 use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
+use App\Modules\Compras\Actions\SincronizarBuzonN8n;
 
 class EditEmpresaProfile extends EditTenantProfile
 {
@@ -34,6 +37,23 @@ class EditEmpresaProfile extends EditTenantProfile
     protected function getRedirectUrl(): ?string
     {
         return Filament::getUrl($this->tenant);
+    }
+
+    /** Cada vez que se guarda, n8n queda con la credencial y el flujo del buzón al día. */
+    protected function afterSave(): void
+    {
+        $buzon = $this->tenant->buzonFacturas()->first();
+        if (! $buzon) {
+            return;
+        }
+
+        $r = app(SincronizarBuzonN8n::class)->sincronizar($buzon);
+
+        $r['ok']
+            ? Notification::make()->title($buzon->activo ? 'Buzón de facturas conectado' : 'Buzón de facturas pausado')
+                ->body($buzon->activo ? 'Las facturas que lleguen desde ahora se registran solas como compras.' : 'n8n dejó de leerlo.')
+                ->success()->send()
+            : Notification::make()->title('El buzón se guardó, pero n8n no lo tomó')->body($r['error'])->danger()->persistent()->send();
     }
 
     protected function getHeaderActions(): array
@@ -172,6 +192,82 @@ class EditEmpresaProfile extends EditTenantProfile
                         Placeholder::make('mailing_estado')
                             ->label('Estado')
                             ->content(new HtmlString($mailingHtml)),
+                    ]),
+
+                // ── Correo de facturas (compras) ───────────────────────────
+                Section::make('Correo de facturas')
+                    ->description('El correo que tienes registrado en el SRI, donde te llegan las facturas electrónicas de tus proveedores. '
+                        . 'Cada XML que llegue se registra como compra: proveedor, productos, IVA y, si se puede, la forma de pago.')
+                    ->icon('heroicon-o-inbox-arrow-down')
+                    ->collapsible()
+                    // Sin usuario no se crea nada: la sección vacía no deja un buzón a medias.
+                    ->relationship('buzonFacturas', condition: fn (?array $state): bool => filled($state['usuario'] ?? null))
+                    ->schema([
+                        Placeholder::make('buzon_estado')
+                            ->label('Estado')
+                            ->content(fn ($record) => new HtmlString(match (true) {
+                                ! $record                 => '<span style="color:#64748b">Sin configurar</span>',
+                                (bool) $record->ultimo_error => '<span style="color:#b91c1c;font-weight:600">No conectado</span> — ' . e($record->ultimo_error),
+                                ! $record->activo         => '<span style="color:#b45309;font-weight:600">Pausado</span>',
+                                default                   => '<span style="color:#047857;font-weight:600">Leyendo facturas</span> · desde el '
+                                    . e($record->sincronizado_en?->format('d/m/Y H:i')),
+                            })),
+
+                        Grid::make(2)->schema([
+                            TextInput::make('usuario')
+                                ->label('Correo')
+                                ->email()
+                                ->maxLength(255)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                    // El servidor de los proveedores comunes, para no tener que buscarlo.
+                                    if (! $get('host') && str_ends_with(strtolower((string) $state), '@gmail.com')) {
+                                        $set('host', 'imap.gmail.com');
+                                    }
+                                }),
+
+                            TextInput::make('password')
+                                ->label('Contraseña de aplicación')
+                                ->password()
+                                ->revealable()
+                                ->maxLength(255)
+                                ->dehydrated(fn ($state) => filled($state))
+                                ->required(fn ($record, callable $get) => ! $record && filled($get('usuario')))
+                                ->helperText('En Gmail: activa la verificación en dos pasos y crea una "contraseña de aplicación". Se guarda cifrada.'),
+                        ]),
+
+                        Grid::make(3)->schema([
+                            TextInput::make('host')
+                                ->label('Servidor IMAP')
+                                ->placeholder('imap.gmail.com')
+                                ->required(fn (callable $get) => filled($get('usuario')))
+                                ->maxLength(255)
+                                ->columnSpan(2),
+
+                            TextInput::make('puerto')
+                                ->label('Puerto')
+                                ->numeric()
+                                ->default(993)
+                                ->maxValue(65535),
+                        ]),
+
+                        Toggle::make('activo')
+                            ->label('Leer facturas de este correo')
+                            ->default(true),
+
+                        Checkbox::make('autorizo')
+                            ->label('Autorizo que el sistema lea este correo solo para registrar facturas y avisos del SRI, sin modificar ni borrar mensajes.')
+                            ->accepted(fn (callable $get, $record) => filled($get('usuario')) && ! $record?->autorizado_en)
+                            ->visible(fn ($record) => ! $record?->autorizado_en)
+                            ->dehydrated(false),
+
+                        Placeholder::make('buzon_aviso')
+                            ->hiddenLabel()
+                            ->content('Microsoft 365 y Outlook ya no permiten entrar con contraseña: para esos correos crea una regla que reenvíe las facturas a un Gmail o a un correo de tu hosting.'),
+                    ])
+                    ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => $data + [
+                        'autorizado_por' => auth()->id(),
+                        'autorizado_en'  => now(),
                     ]),
 
                 // ── SMTP personalizado ─────────────────────────────────────
