@@ -45,6 +45,10 @@ return new class extends Migration
             ->where('empresa_id', $empresaId)
             ->whereNull('email')
             ->update(['email' => 'alejandro@mashacorp.com', 'updated_at' => now()]);
+
+        // Lo escrito aquí no pasa por los observers: se renueva el sello a mano.
+        // Sin publicar desde aquí: la migración corre dentro de una transacción.
+        \App\Support\SitioPropio::renovarSello(config('sitio.empresa_slug'), publicar: false);
     }
 
     public function down(): void

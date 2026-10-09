@@ -21,6 +21,9 @@ class SitioPlanResource extends Resource
     protected static ?string $navigationIcon         = 'heroicon-o-currency-dollar';
     protected static ?string $navigationLabel        = 'Precios';
     protected static ?string $navigationGroup        = 'Sitio MashaCorp';
+
+    // Ya no se edita aquí: la web no lo usa o vive dentro de Páginas.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int    $navigationSort         = 3;
     protected static ?string $modelLabel             = 'Precio';
     protected static ?string $pluralModelLabel       = 'Precios';

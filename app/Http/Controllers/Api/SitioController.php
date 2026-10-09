@@ -8,7 +8,6 @@ use App\Http\Responses\RespuestaSitio;
 use App\Models\CmsClientLogo;
 use App\Models\CmsContact;
 use App\Models\CmsFaq;
-use App\Models\CmsHero;
 use App\Models\CmsPost;
 use App\Models\CmsTestimonial;
 use App\Models\Empresa;
@@ -68,10 +67,14 @@ class SitioController extends Controller
     public function inicio(Request $request, string $slug): JsonResponse
     {
         return $this->responder($request, $slug, 'inicio', function (Empresa $empresa) {
-            $hero = CmsHero::withoutGlobalScopes()
+                        // El hero es la página «inicio»: titular, texto e imagen se editan
+            // en Páginas, igual que el resto del sitio.
+            $portada = SitioPagina::withoutGlobalScopes()
                 ->where('empresa_id', $empresa->id)
+                ->where('slug', 'inicio')
                 ->where('activo', true)
                 ->first();
+
 
             $fuerzas = SitioPagina::withoutGlobalScopes()
                 ->where('empresa_id', $empresa->id)
@@ -83,13 +86,13 @@ class SitioController extends Controller
                 ->all();
 
             return [
-                'hero' => $hero ? [
-                    'titulo'      => $hero->titulo,
-                    'subtitulo'   => $hero->subtitulo,
-                    'descripcion' => $hero->descripcion,
-                    'imagen'      => ImagenPublica::url($hero->imagen),
-                    'cta_texto'   => $hero->cta_texto,
-                    'cta_url'     => $hero->cta_url,
+                                'hero' => $portada ? [
+                    'titulo'      => $portada->titulo,
+                    'subtitulo'   => null,
+                    'descripcion' => $portada->descripcion,
+                    'imagen'      => ImagenPublica::url($portada->imagen),
+                    'cta_texto'   => null,
+                    'cta_url'     => null,
                 ] : null,
                 'fuerzas' => $fuerzas,
                 // Completos y con galeria: en el inicio el caso se expande
@@ -98,7 +101,7 @@ class SitioController extends Controller
                 'logos'        => $this->logos($empresa),
                 'testimonios'  => $this->testimonios($empresa),
                 'faq'          => $this->faq($empresa),
-                'seo'          => $this->seo($empresa, '/'),
+                                'seo'          => $this->seo($empresa, '/', $portada),
             ];
         });
     }
@@ -149,7 +152,7 @@ class SitioController extends Controller
                 'casos'     => $esServicio ? $this->casos($empresa, servicio: $pagina, limite: 24, conGaleria: true) : [],
                 'planes'    => $this->planes($empresa, $pagina),
                 'articulos' => $pagina === 'laboratorio' ? $this->articulosResumen($empresa) : [],
-                'seo'       => $this->seo($empresa, '/' . $pagina),
+                                'seo'       => $this->seo($empresa, '/' . $pagina, $registro),
             ];
         });
     }
@@ -488,7 +491,11 @@ class SitioController extends Controller
             ->all();
     }
 
-    private function seo(Empresa $empresa, string $ruta): array
+        /**
+     * Cómo se comparte una ruta. Si es una página, manda lo que dice la
+     * página (Cómo se comparte + su imagen); lo viejo de SEO queda de respaldo.
+     */
+    private function seo(Empresa $empresa, string $ruta, ?SitioPagina $pagina = null): array
     {
         $seo = SitioSeo::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
@@ -496,9 +503,11 @@ class SitioController extends Controller
             ->first();
 
         return [
-            'titulo'      => $seo?->titulo_meta ?? $empresa->name,
-            'descripcion' => $seo?->descripcion_meta,
-            'og_imagen'   => ImagenPublica::url($seo?->og_imagen) ?? ImagenPublica::url($empresa->logo_path),
+            'titulo'      => $pagina?->seo_titulo ?: ($seo?->titulo_meta ?? $pagina?->titulo ?? $empresa->name),
+            'descripcion' => $pagina?->seo_descripcion ?: ($seo?->descripcion_meta ?? $pagina?->descripcion),
+            'og_imagen'   => ImagenPublica::url($pagina?->imagen)
+                ?? ImagenPublica::url($seo?->og_imagen)
+                ?? ImagenPublica::url($empresa->logo_path),
             'robots'      => $seo?->robots ?? 'index,follow',
             'json_ld'     => $seo?->json_ld,
         ];

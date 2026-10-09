@@ -21,6 +21,9 @@ class SitioSeoResource extends Resource
     protected static ?string $navigationIcon         = 'heroicon-o-magnifying-glass';
     protected static ?string $navigationLabel        = 'SEO';
     protected static ?string $navigationGroup        = 'Sitio MashaCorp';
+
+    // Ya no se edita aquí: la web no lo usa o vive dentro de Páginas.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int    $navigationSort         = 5;
     protected static ?string $modelLabel             = 'Metadato';
     protected static ?string $pluralModelLabel       = 'SEO por ruta';

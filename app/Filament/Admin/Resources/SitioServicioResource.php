@@ -18,6 +18,9 @@ class SitioServicioResource extends CmsServiceResource
     protected static ?string $navigationIcon         = 'heroicon-o-briefcase';
     protected static ?string $navigationLabel        = 'Servicios';
     protected static ?string $navigationGroup        = 'Sitio MashaCorp';
+
+    // Ya no se edita aquí: la web no lo usa o vive dentro de Páginas.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int    $navigationSort         = 17;
     protected static ?string $modelLabel             = 'Servicio';
     protected static ?string $pluralModelLabel       = 'Servicios';

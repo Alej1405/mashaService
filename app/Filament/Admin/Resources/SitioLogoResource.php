@@ -18,6 +18,9 @@ class SitioLogoResource extends CmsClientLogoResource
     protected static ?string $navigationIcon         = 'heroicon-o-building-office-2';
     protected static ?string $navigationLabel        = 'Logos';
     protected static ?string $navigationGroup        = 'Sitio MashaCorp';
+
+    // Ya no se edita aquí: la web no lo usa o vive dentro de Páginas.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int    $navigationSort         = 12;
     protected static ?string $modelLabel             = 'Logo';
     protected static ?string $pluralModelLabel       = 'Logos de clientes';

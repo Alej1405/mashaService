@@ -18,6 +18,9 @@ class SitioNosotrosResource extends CmsAboutResource
     protected static ?string $navigationIcon         = 'heroicon-o-identification';
     protected static ?string $navigationLabel        = 'Nosotros';
     protected static ?string $navigationGroup        = 'Sitio MashaCorp';
+
+    // Ya no se edita aquí: la web no lo usa o vive dentro de Páginas.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int    $navigationSort         = 16;
     protected static ?string $modelLabel             = 'Nosotros';
     protected static ?string $pluralModelLabel       = 'Nosotros';

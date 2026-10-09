@@ -18,6 +18,9 @@ class SitioHeroResource extends CmsHeroResource
     protected static ?string $navigationIcon         = 'heroicon-o-photo';
     protected static ?string $navigationLabel        = 'Hero del inicio';
     protected static ?string $navigationGroup        = 'Sitio MashaCorp';
+
+    // Ya no se edita aquí: la web no lo usa o vive dentro de Páginas.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int    $navigationSort         = 10;
     protected static ?string $modelLabel             = 'Hero';
     protected static ?string $pluralModelLabel       = 'Hero del inicio';

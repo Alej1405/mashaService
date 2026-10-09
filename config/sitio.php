@@ -25,7 +25,7 @@ return [
     'max_age' => (int) env('SITIO_MAX_AGE', 60),
 
     // Paginas que el front resuelve como secciones autonomas con URL propia.
-    'paginas' => ['inicio', 'desarrollo', 'fotografia', 'laboratorio', 'erp', 'erp-modulos', 'herramientas', 'microservicios', 'proceso'],
+    'paginas' => ['inicio', 'desarrollo', 'fotografia', 'laboratorio', 'erp', 'erp-modulos', 'herramientas', 'microservicios'],
 
     /*
     | Secciones de cada pagina. Un bloque que dice su seccion reemplaza el
@@ -34,7 +34,7 @@ return [
     */
     'secciones' => [
         'inicio' => [
-            'apertura'    => 'Portada (botón secundario y nota)',
+            'apertura'    => 'Botones del hero (encabezado = principal; tarjeta = secundario)',
             'desarrollo'  => '01 · Desarrollo',
             'fotografia'  => '02 · Fotografía (pies de foto)',
             'laboratorio' => '03 · Laboratorio (enlaces de salida)',
@@ -58,7 +58,7 @@ return [
             'cierre'  => 'Cierre',
         ],
         'erp' => [
-            'portada' => 'Botones bajo el título',
+            'portada' => 'Botones bajo el título (encabezado = principal; tarjeta = secundario)',
             'modulos' => 'Índice de módulos',
             'demo'    => 'Panel de prueba',
             'planes'  => 'Qué plan te toca',

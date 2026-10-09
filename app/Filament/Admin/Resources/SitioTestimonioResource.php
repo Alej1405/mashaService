@@ -18,6 +18,9 @@ class SitioTestimonioResource extends CmsTestimonialResource
     protected static ?string $navigationIcon         = 'heroicon-o-chat-bubble-left';
     protected static ?string $navigationLabel        = 'Testimonios';
     protected static ?string $navigationGroup        = 'Sitio MashaCorp';
+
+    // Ya no se edita aquí: la web no lo usa o vive dentro de Páginas.
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int    $navigationSort         = 13;
     protected static ?string $modelLabel             = 'Testimonio';
     protected static ?string $pluralModelLabel       = 'Testimonios';

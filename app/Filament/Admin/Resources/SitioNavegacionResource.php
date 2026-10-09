@@ -40,14 +40,14 @@ class SitioNavegacionResource extends Resource
                         'accion'   => 'Botón destacado del menú',
                     ])
                     ->default('superior')
+                    ->live()
                     ->required()
                     ->native(false),
-                Forms\Components\Select::make('dispositivo')
-                    ->label('Se muestra en')
-                    ->options(['ambos' => 'Ambos', 'movil' => 'Solo móvil', 'escritorio' => 'Solo escritorio'])
-                    ->default('ambos')
-                    ->native(false),
+                                // La ubicación ya dice en qué pantalla se ve: la barra inferior es
+                // la del móvil y el menú superior el de escritorio.
+                Forms\Components\Hidden::make('dispositivo')->default('ambos'),
                 Forms\Components\TextInput::make('icono')
+                    ->visible(fn (Forms\Get $get): bool => $get('ubicacion') === 'inferior')
                     ->label('Ícono')
                     ->helperText('Necesario en la barra inferior del móvil.')
                     ->maxLength(60),
