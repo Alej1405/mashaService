@@ -150,6 +150,18 @@ class AdminPanelProvider extends PanelProvider
                     }
                 }
             </style>'))
+            // Instalable como app en el celular (PWA): manifiesto, íconos y un
+            // service worker que no guarda nada del panel.
+            ->renderHook('panels::head.end', fn (): HtmlString => new HtmlString(
+                '<link rel="manifest" href="/admin.webmanifest">'
+                . '<meta name="theme-color" content="#ffffff">'
+                . '<meta name="mobile-web-app-capable" content="yes">'
+                . '<meta name="apple-mobile-web-app-capable" content="yes">'
+                . '<meta name="apple-mobile-web-app-status-bar-style" content="default">'
+                . '<meta name="apple-mobile-web-app-title" content="Masha Panel">'
+                . '<link rel="apple-touch-icon" href="/pwa/icono-192.png">'
+                . '<script>if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/admin-sw.js", { scope: "/admin" }); }</script>'
+            ))
             ->renderHook('panels::body.end', fn (): HtmlString => new HtmlString('
 <script>
 document.addEventListener("alpine:initialized", function () {

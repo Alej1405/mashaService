@@ -71,6 +71,11 @@ jobs:
             php artisan filament:assets
             php artisan queue:restart
 
+            # Si hubo migraciones, la web se vuelve a compilar con los datos nuevos.
+            if [ "$PENDING" -gt 0 ]; then
+              php artisan sitio:publicar
+            fi
+
             php artisan up
 
       - name: Rollback si falla
