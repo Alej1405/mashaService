@@ -153,7 +153,7 @@ class AdminPanelProvider extends PanelProvider
             // Instalable como app en el celular (PWA): manifiesto, íconos y un
             // service worker que no guarda nada del panel.
             ->renderHook('panels::head.end', fn (): HtmlString => new HtmlString(
-                '<link rel="manifest" href="/admin.webmanifest">'
+                '<link rel="manifest" href="/admin-manifest.json">'
                 . '<meta name="theme-color" content="#ffffff">'
                 . '<meta name="mobile-web-app-capable" content="yes">'
                 . '<meta name="apple-mobile-web-app-capable" content="yes">'
@@ -162,6 +162,10 @@ class AdminPanelProvider extends PanelProvider
                 . '<link rel="apple-touch-icon" href="/pwa/icono-192.png">'
                 . '<script>if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/admin-sw.js", { scope: "/admin" }); }</script>'
             ))
+            // Botón «Instalar app» en el celular. Safari en iPhone no ofrece instalar
+            // por su cuenta: ahí el botón explica los dos pasos. En Android abre el
+            // instalador de Chrome. No aparece si ya está instalada.
+            ->renderHook('panels::body.end', fn (): HtmlString => new HtmlString(view('filament.admin.instalar-app')->render()))
             ->renderHook('panels::body.end', fn (): HtmlString => new HtmlString('
 <script>
 document.addEventListener("alpine:initialized", function () {
