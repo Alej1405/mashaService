@@ -153,6 +153,7 @@ class SitioController extends Controller
                 'planes'    => $this->planes($empresa, $pagina),
                                 'articulos' => $pagina === 'laboratorio' ? $this->articulosResumen($empresa) : [],
                 'categorias' => $pagina === 'fotografia' ? $this->fotografia($empresa) : [],
+                'investigaciones' => $pagina === 'laboratorio' ? $this->investigaciones($empresa) : [],
                                 'seo'       => $this->seo($empresa, '/' . $pagina, $registro),
             ];
         });
@@ -492,7 +493,36 @@ class SitioController extends Controller
             ->all();
     }
 
-            /**
+                /**
+     * El catálogo del laboratorio, completo: la web arma con esto la lista y
+     * la página de cada investigación.
+     */
+    private function investigaciones(Empresa $empresa): array
+    {
+        return \App\Models\SitioInvestigacion::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn ($i) => [
+                'slug'            => $i->slug,
+                'titulo'          => $i->titulo,
+                'resumen'         => $i->resumen,
+                'para_quien'      => $i->para_quien,
+                'cuerpo'          => $i->cuerpo,
+                'stack'           => $i->stack ?? [],
+                'estado'          => $i->estado,
+                'herramienta'     => $i->herramienta,
+                'servicio_url'    => $i->servicio_url,
+                'imagen'          => ImagenPublica::url($i->imagen),
+                'seo_titulo'      => $i->seo_titulo,
+                'seo_descripcion' => $i->seo_descripcion,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Las categorías de fotografía con sus álbumes y las fotos de cada uno,
      * en el orden del panel. Con esto la web arma «Qué fotografiamos», el
      * portafolio y la página de cada álbum.
