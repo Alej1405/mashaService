@@ -276,3 +276,10 @@ Route::prefix('sitio/{slug}')
         Route::post('mensajes', [SitioController::class, 'mensaje'])
             ->middleware('throttle:6,1');
     });
+
+// El formulario de mashaec.net escribe desde el navegador: el sitio es estático
+// y no puede llevar el token. Solo para el sitio propio, limitado por IP y con
+// la trampa para robots de GuardarMensajeRequest.
+Route::post('sitio/{slug}/contacto', [SitioController::class, 'mensaje'])
+    ->where('slug', config('sitio.empresa_slug'))
+    ->middleware('throttle:6,1');

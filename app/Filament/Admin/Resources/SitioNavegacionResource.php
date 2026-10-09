@@ -37,6 +37,7 @@ class SitioNavegacionResource extends Resource
                         'superior' => 'Menú superior',
                         'inferior' => 'Barra inferior (móvil)',
                         'pie'      => 'Pie de página',
+                        'accion'   => 'Botón destacado del menú',
                     ])
                     ->default('superior')
                     ->required()
@@ -74,6 +75,7 @@ class SitioNavegacionResource extends Resource
                     'superior' => 'Menú superior',
                     'inferior' => 'Barra inferior (móvil)',
                     'pie'      => 'Pie de página',
+                    'accion'   => 'Botón destacado del menú',
                 ]),
             ])
             ->actions([Tables\Actions\EditAction::make(), Tables\Actions\DeleteAction::make()])

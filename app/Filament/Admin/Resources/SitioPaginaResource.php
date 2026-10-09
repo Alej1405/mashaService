@@ -35,6 +35,7 @@ class SitioPaginaResource extends Resource
                     Forms\Components\Select::make('slug')
                         ->label('Sección')
                         ->options(fn (): array => array_combine(config('sitio.paginas'), config('sitio.paginas')))
+                        ->live()
                         ->required()
                         ->native(false),
                     Forms\Components\TextInput::make('sort_order')
@@ -71,14 +72,25 @@ class SitioPaginaResource extends Resource
                             // Sin esto, el sitio no sabía distinguir una foto de
                             // la galería de una tarjeta de servicio, y todo
                             // terminaba escrito a mano en el código.
+                            // La sección dice qué parte de la web reemplaza este
+                            // bloque. Sin sección, el bloque se pinta al final de
+                            // la página tal cual: nada de lo que se agrega se pierde.
+                            Forms\Components\Select::make('seccion')
+                                ->label('Dónde va')
+                                ->options(fn (Forms\Get $get): array => config('sitio.secciones.' . $get('../../slug'), []))
+                                ->placeholder('Al final de la página')
+                                ->helperText('Si eliges una sección, sus bloques reemplazan el contenido por defecto de esa parte.')
+                                ->native(false),
                             Forms\Components\Select::make('tipo')
                                 ->label('Qué es este bloque')
                                 ->options([
-                                    'galeria' => 'Foto de la galería',
-                                    'tarjeta' => 'Tarjeta (título, texto y apoyo)',
-                                    'nota'    => 'Nota destacada (fondo oscuro)',
-                                    'enlace'  => 'Enlace a otra parte',
-                                    'texto'   => 'Solo texto',
+                                    'encabezado' => 'Encabezado de la sección (título, entrada, nota y botón)',
+                                    'tarjeta'    => 'Tarjeta (título, texto y apoyo)',
+                                    'grupo'      => 'Título de grupo (agrupa los bloques que siguen)',
+                                    'nota'       => 'Nota destacada (fondo oscuro)',
+                                    'enlace'     => 'Enlace a otra parte',
+                                    'texto'      => 'Solo texto',
+                                    'galeria'    => 'Foto de la galería',
                                 ])
                                 ->default('tarjeta')
                                 ->required()
@@ -91,11 +103,21 @@ class SitioPaginaResource extends Resource
                                 ->label('Línea de apoyo')
                                 ->helperText('La frase chica de abajo. Ej: «Para tiendas en línea».')
                                 ->maxLength(160),
+                            Forms\Components\TextInput::make('accion')
+                                ->label('Texto del botón')
+                                ->maxLength(80)
+                                ->visible(fn (Forms\Get $get): bool => in_array($get('tipo'), ['encabezado', 'tarjeta', 'nota', 'enlace'], true)),
                             Forms\Components\TextInput::make('enlace')
                                 ->label('Enlace')
-                                ->url()
+                                ->helperText('Una ruta del sitio (/erp, /#contacto) o una dirección completa.')
                                 ->maxLength(300)
-                                ->visible(fn (Forms\Get $get): bool => $get('tipo') === 'enlace'),
+                                ->visible(fn (Forms\Get $get): bool => $get('tipo') !== 'galeria'),
+                            Forms\Components\TagsInput::make('lista')
+                                ->label('Lista de puntos')
+                                ->helperText('Escribe un punto y presiona Enter.')
+                                ->reorderable()
+                                ->columnSpanFull()
+                                ->visible(fn (Forms\Get $get): bool => in_array($get('tipo'), ['tarjeta', 'grupo', 'texto'], true)),
                             Forms\Components\TextInput::make('icono')
                                 ->label('Ícono (emoji o heroicon)')->maxLength(60)
                                 ->visible(fn (Forms\Get $get): bool => $get('tipo') !== 'galeria'),
@@ -109,7 +131,8 @@ class SitioPaginaResource extends Resource
                                 ->columnSpanFull(),
                         ])
                         ->columns(2)
-                        ->itemLabel(fn (array $state): ?string => trim(($state['tipo'] ?? '') . ' · ' . ($state['titulo'] ?? 'sin título'), ' ·'))
+                        ->itemLabel(fn (array $state): ?string => trim(($state['seccion'] ?? 'al final') . ' · ' . ($state['tipo'] ?? '') . ' · ' . ($state['titulo'] ?? 'sin título'), ' ·'))
+                        ->reorderableWithButtons()
                         ->addActionLabel('Agregar bloque')
                         ->defaultItems(0)
                         ->collapsible()

@@ -61,5 +61,10 @@ class SitioPropio
     public static function renovarSello(string $slug): void
     {
         Cache::forever(sprintf(self::CLAVE_SELLO, $slug), (string) now()->getTimestampMs());
+
+        // Solo el sitio propio se publica desde aquí; los de clientes tienen su despliegue.
+        if ($slug === self::slug()) {
+            \App\Jobs\PublicarSitio::dispatch()->delay(now()->addSeconds(config('sitio.github.espera')));
+        }
     }
 }

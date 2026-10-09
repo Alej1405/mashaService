@@ -56,6 +56,8 @@ class SitioController extends Controller
                     'superior' => $this->itemsNavegacion($navegacion, 'superior'),
                     'inferior' => $this->itemsNavegacion($navegacion, 'inferior'),
                     'pie'      => $this->itemsNavegacion($navegacion, 'pie'),
+                    // El botón destacado del menú superior.
+                    'accion'   => $this->itemsNavegacion($navegacion, 'accion'),
                 ],
                 'contacto'   => $this->contacto($empresa),
             ];
@@ -130,6 +132,7 @@ class SitioController extends Controller
                     // pintarla: la imagen existía y no se veía en ningún lado.
                     'bloques'     => collect($registro->bloques ?? [])
                         ->map(fn (array $bloque): array => [
+                            'seccion' => $bloque['seccion'] ?? null,
                             'tipo'   => $bloque['tipo']   ?? 'tarjeta',
                             'titulo' => $bloque['titulo'] ?? null,
                             'texto'  => $bloque['texto']  ?? null,
@@ -137,6 +140,8 @@ class SitioController extends Controller
                             'icono'  => $bloque['icono']  ?? null,
                             'imagen' => ImagenPublica::url($bloque['imagen'] ?? null),
                             'enlace' => $bloque['enlace'] ?? null,
+                            'accion' => $bloque['accion'] ?? null,
+                            'lista'  => array_values($bloque['lista'] ?? []),
                         ])
                         ->values()
                         ->all(),
