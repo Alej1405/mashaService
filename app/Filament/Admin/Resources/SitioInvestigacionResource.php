@@ -34,6 +34,7 @@ class SitioInvestigacionResource extends Resource
     public const HERRAMIENTAS = [
         'arana'       => 'Araña de búsqueda',
         'formulacion' => 'Formulación y costeo',
+        'clasificador' => 'Clasificador arancelario',
         'ninguna'     => 'Ninguna (solo texto)',
     ];
 
