@@ -28,7 +28,17 @@
             }
         }
         activa = zona;
-        $nextTick(() => $root.querySelector('[data-mn=\'' + zona + '\']')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+                // Solo se mueve el recuadro de la miniatura. scrollIntoView movía
+        // también la ventana y el formulario saltaba arriba al enfocar un campo.
+        $nextTick(() => {
+            const caja = $root.querySelector('.mn-pagina');
+            const zonaEl = $root.querySelector('[data-mn=\'' + zona + '\']');
+            if (! caja || ! zonaEl || ! caja.contains(zonaEl)) return;
+            const arriba = zonaEl.offsetTop - 8;
+            if (arriba < caja.scrollTop || arriba + zonaEl.offsetHeight > caja.scrollTop + caja.clientHeight) {
+                caja.scrollTo({ top: arriba, behavior: 'smooth' });
+            }
+        });
     "
 >
     <div class="mn-barra">
@@ -114,7 +124,7 @@
     .mn-puntos { display: flex; gap: 4px; }
     .mn-puntos i { width: 7px; height: 7px; border-radius: 50%; background: rgb(127 127 127 / .35); }
     .mn-url { opacity: .65; }
-    .mn-pagina { max-height: 62vh; overflow-y: auto; padding: 10px; display: grid; gap: 8px; }
+    .mn-pagina { position: relative; max-height: 62vh; overflow-y: auto; padding: 10px; display: grid; gap: 8px; }
     .mn-zona { border: 1.5px solid rgb(127 127 127 / .2); border-radius: 8px; padding: 10px; transition: border-color .15s, box-shadow .15s; }
     .mn-activa { border-color: rgb(var(--primary-500)); box-shadow: 0 0 0 3px rgb(var(--primary-500) / .18); }
     .mn-oscura { background: #0d1010; color: #fff; }

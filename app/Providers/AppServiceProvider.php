@@ -130,7 +130,9 @@ HTML
         \App\Models\SitioCasoImagen::observe($sitioObserver);
         \App\Models\SitioPlan::observe($sitioObserver);
         \App\Models\SitioSeo::observe($sitioObserver);
-        \App\Models\SitioNavegacion::observe($sitioObserver);
+                \App\Models\SitioNavegacion::observe($sitioObserver);
+        \App\Models\SitioFotoCategoria::observe($sitioObserver);
+        \App\Models\SitioFotoAlbum::observe($sitioObserver);
 
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
             return $user->hasRole('super_admin') ? true : null;

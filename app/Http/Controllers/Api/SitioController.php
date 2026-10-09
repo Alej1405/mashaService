@@ -151,7 +151,8 @@ class SitioController extends Controller
                 ],
                 'casos'     => $esServicio ? $this->casos($empresa, servicio: $pagina, limite: 24, conGaleria: true) : [],
                 'planes'    => $this->planes($empresa, $pagina),
-                'articulos' => $pagina === 'laboratorio' ? $this->articulosResumen($empresa) : [],
+                                'articulos' => $pagina === 'laboratorio' ? $this->articulosResumen($empresa) : [],
+                'categorias' => $pagina === 'fotografia' ? $this->fotografia($empresa) : [],
                                 'seo'       => $this->seo($empresa, '/' . $pagina, $registro),
             ];
         });
@@ -491,7 +492,38 @@ class SitioController extends Controller
             ->all();
     }
 
-        /**
+            /**
+     * Las categorías de fotografía con sus álbumes y las fotos de cada uno,
+     * en el orden del panel. Con esto la web arma «Qué fotografiamos», el
+     * portafolio y la página de cada álbum.
+     */
+    private function fotografia(Empresa $empresa): array
+    {
+        return \App\Models\SitioFotoCategoria::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->where('activo', true)
+            ->orderBy('sort_order')
+            ->with(['albumes' => fn ($q) => $q->withoutGlobalScopes()->where('activo', true)])
+            ->get()
+            ->map(fn ($c) => [
+                'slug'        => $c->slug,
+                'nombre'      => $c->nombre,
+                'descripcion' => $c->descripcion,
+                'para'        => $c->para,
+                'albumes'     => $c->albumes->map(fn ($a) => [
+                    'slug'        => $a->slug,
+                    'titulo'      => $a->titulo,
+                    'descripcion' => $a->descripcion,
+                    'fecha'       => $a->fecha?->toDateString(),
+                    'portada'     => ImagenPublica::url($a->portada ?: ($a->fotos[0] ?? null)),
+                    'fotos'       => collect($a->fotos ?? [])->map(fn ($f) => ImagenPublica::url($f))->filter()->values()->all(),
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Cómo se comparte una ruta. Si es una página, manda lo que dice la
      * página (Cómo se comparte + su imagen); lo viejo de SEO queda de respaldo.
      */

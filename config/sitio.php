@@ -51,7 +51,8 @@ return [
         ],
         'fotografia' => [
             'galeria' => 'Galería (pie de la galería)',
-            'tipos'   => 'Qué fotografiamos',
+            'tipos'      => 'Qué fotografiamos (título; las tarjetas salen de Fotografía · Categorías)',
+            'portafolio' => 'Portafolio (título y entrada; los álbumes salen de Fotografía · Álbumes)',
             'limite'  => 'Lo que no hacemos',
             'enlaces' => 'Dónde ver más',
             'precios' => 'Qué cuesta',
