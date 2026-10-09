@@ -25,8 +25,10 @@ class RedirectMobileToPortal
      *   inventario/etiquetas las etiquetas para imprimir
      *   mobile/…             el portal móvil
      *   tienda/…             el portal de clientes, ya responsive
+     *   admin/…              el panel de MashaCorp, instalable como app en el
+     *                        celular; solo entra super_admin (canAccessPanel)
      */
-    private const PERMITIDO_EN_MOVIL = ['operaciones', 'i/', 'inventario/etiquetas', 'mobile', 'tienda/'];
+    private const PERMITIDO_EN_MOVIL = ['operaciones', 'i/', 'inventario/etiquetas', 'mobile', 'tienda/', 'admin'];
 
     /**
      * A dónde va quien entra desde un celular o una tablet.
