@@ -34,7 +34,7 @@ class SitioSeoResource extends Resource
             Forms\Components\Section::make()->columns(2)->schema([
                 Forms\Components\TextInput::make('ruta')
                     ->label('Ruta')
-                    ->helperText('Tal como aparece en el sitio: /, /desarrollo, /laboratorio/mi-articulo')
+                    ->helperText('Tal como aparece en el sitio: /, /desarrollo, /laboratorio/investigaciones/arana')
                     ->required()->maxLength(160)->columnSpanFull(),
                 Forms\Components\TextInput::make('titulo_meta')
                     ->label('Título')->maxLength(70)

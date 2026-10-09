@@ -8,7 +8,6 @@ use App\Http\Responses\RespuestaSitio;
 use App\Models\CmsClientLogo;
 use App\Models\CmsContact;
 use App\Models\CmsFaq;
-use App\Models\CmsPost;
 use App\Models\CmsTestimonial;
 use App\Models\Empresa;
 use App\Models\SitioCaso;
@@ -151,8 +150,7 @@ class SitioController extends Controller
                 ],
                 'casos'     => $esServicio ? $this->casos($empresa, servicio: $pagina, limite: 24, conGaleria: true) : [],
                 'planes'    => $this->planes($empresa, $pagina),
-                                'articulos' => $pagina === 'laboratorio' ? $this->articulosResumen($empresa) : [],
-                'categorias' => $pagina === 'fotografia' ? $this->fotografia($empresa) : [],
+                                'categorias' => $pagina === 'fotografia' ? $this->fotografia($empresa) : [],
                 'investigaciones' => $pagina === 'laboratorio' ? $this->investigaciones($empresa) : [],
                                 'seo'       => $this->seo($empresa, '/' . $pagina, $registro),
             ];
@@ -178,49 +176,6 @@ class SitioController extends Controller
             return [
                 'caso' => $this->casoCompleto($registro, conGaleria: true),
                 'seo'  => $this->seo($empresa, '/casos/' . $caso),
-            ];
-        });
-    }
-
-    /** Indice del Laboratorio. */
-    public function articulos(Request $request, string $slug): JsonResponse
-    {
-        return $this->responder($request, $slug, 'articulos', function (Empresa $empresa) {
-            return [
-                'articulos' => $this->articulosResumen($empresa),
-                'seo'       => $this->seo($empresa, '/laboratorio'),
-            ];
-        });
-    }
-
-    /** Un articulo completo. */
-    public function articulo(Request $request, string $slug, string $articulo): JsonResponse
-    {
-        return $this->responder($request, $slug, "articulo:{$articulo}", function (Empresa $empresa) use ($articulo) {
-            $post = CmsPost::withoutGlobalScopes()
-                ->where('empresa_id', $empresa->id)
-                ->where('slug', $articulo)
-                ->where('activo', true)
-                ->whereNotNull('publicado_en')
-                ->where('publicado_en', '<=', now())
-                ->first();
-
-            if (! $post) {
-                return null;
-            }
-
-            return [
-                'articulo' => [
-                    'titulo'          => $post->titulo,
-                    'slug'            => $post->slug,
-                    'resumen'         => $post->resumen,
-                    'serie'           => $post->serie,
-                    'minutos_lectura' => $post->minutos_lectura,
-                    'contenido'       => $post->contenido,
-                    'imagen'          => ImagenPublica::url($post->imagen),
-                    'publicado_en'    => $post->publicado_en?->toISOString(),
-                ],
-                'seo' => $this->seo($empresa, '/laboratorio/' . $articulo),
             ];
         });
     }
@@ -422,29 +377,6 @@ class SitioController extends Controller
                 'incluye'      => $p->incluye ?? [],
                 'nota'         => $p->nota,
                 'destacado'    => $p->destacado,
-            ])
-            ->all();
-    }
-
-    private function articulosResumen(Empresa $empresa): array
-    {
-        return CmsPost::withoutGlobalScopes()
-            ->where('empresa_id', $empresa->id)
-            ->where('activo', true)
-            ->whereNotNull('publicado_en')
-            ->where('publicado_en', '<=', now())
-            ->orderByDesc('destacado')
-            ->orderByDesc('publicado_en')
-            ->get()
-            ->map(fn (CmsPost $p) => [
-                'titulo'          => $p->titulo,
-                'slug'            => $p->slug,
-                'resumen'         => $p->resumen ?: mb_substr(strip_tags($p->contenido), 0, 200),
-                'serie'           => $p->serie,
-                'minutos_lectura' => $p->minutos_lectura,
-                'destacado'       => $p->destacado,
-                'imagen'          => ImagenPublica::url($p->imagen),
-                'publicado_en'    => $p->publicado_en?->toISOString(),
             ])
             ->all();
     }

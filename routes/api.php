@@ -248,8 +248,6 @@ Route::prefix('n8n/v1')
 |   GET  inicio                 → hero, fuerzas, casos, prueba social, FAQ, SEO
 |   GET  paginas/{pagina}       → sección autónoma + casos + planes + SEO
 |   GET  casos/{caso}           → un caso del portafolio
-|   GET  articulos              → índice del Laboratorio
-|   GET  articulos/{articulo}   → artículo completo
 |   POST mensajes               → formulario de un solo campo (única escritura)
 |
 | Toda respuesta GET trae ETag y Cache-Control: si nadie editó en el panel,
@@ -263,8 +261,6 @@ Route::prefix('sitio/{slug}')
         Route::get('inicio',                [SitioController::class, 'inicio']);
         Route::get('paginas/{pagina}',      [SitioController::class, 'pagina']);
         Route::get('casos/{caso}',          [SitioController::class, 'caso']);
-        Route::get('articulos',             [SitioController::class, 'articulos']);
-        Route::get('articulos/{articulo}',  [SitioController::class, 'articulo']);
 
         // Salida a internet para el servicio de puntaje del VPS, que no
         // alcanza el cPanel donde viven los sitios de los clientes. Limitada

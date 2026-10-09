@@ -25,7 +25,7 @@ return [
     'max_age' => (int) env('SITIO_MAX_AGE', 60),
 
     // Paginas que el front resuelve como secciones autonomas con URL propia.
-    'paginas' => ['inicio', 'desarrollo', 'fotografia', 'laboratorio', 'erp', 'erp-modulos', 'herramientas', 'microservicios'],
+    'paginas' => ['inicio', 'desarrollo', 'fotografia', 'laboratorio', 'erp', 'erp-modulos'],
 
     /*
     | Secciones de cada pagina. Un bloque que dice su seccion reemplaza el
@@ -77,15 +77,8 @@ return [
             'equipos'     => 'Equipos de marketing',
             'planes'      => 'Planes',
         ],
-        'laboratorio' => [
-            'accesos'     => 'Herramientas y microservicios',
-            'suscripcion' => 'Suscripción',
-        ],
-        'herramientas'   => [],
-        'microservicios' => [
-            'servicios' => 'Servicios',
-            'pruebas'   => 'Llámalos tú mismo',
-        ],
+        // El laboratorio se arma con Laboratorio · Investigaciones.
+        'laboratorio' => [],
     ],
 
     /*
