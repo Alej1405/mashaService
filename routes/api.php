@@ -173,6 +173,10 @@ Route::prefix('n8n/v1')
             Route::post('auth/select-empresa', [N8nAuthController::class, 'selectEmpresa']);
             Route::post('auth/logout',         [N8nAuthController::class, 'logout']);
 
+            // Compras por Telegram: la foto (o la clave) de una factura en la empresa activa.
+            Route::post('compras/foto', [N8nComprasController::class, 'foto'])
+                ->middleware(N8nRequireModule::class . ':compras');
+
             // Módulo CMS (requiere 'marketing'). CRUD completo + imágenes,
             // dirigido por RecursoRegistry (recursos: hero, about, contacto,
             // terminos, posts, services, faq, testimonios, equipo, logos).

@@ -278,6 +278,36 @@ class ServicioSri
         return $this->comprobante('get', '/comprobantes/autorizacion/' . $clave);
     }
 
+    /**
+     * Saca la clave de acceso de la foto de un RIDE (código de barras, o los dígitos
+     * impresos si el código no se lee). Lo hace el microservicio; aquí solo se pide.
+     *
+     * @return array{ok: bool, clave?: string, metodo?: string, error?: string}
+     */
+    public function claveDesdeFoto(string $imagen): array
+    {
+        if (! $this->configurado()) {
+            return ['ok' => false, 'error' => 'El microservicio del SRI no está configurado.'];
+        }
+
+        try {
+            $r = $this->peticion()->timeout(90)->post($this->url() . '/comprobantes/foto', ['imagen' => base64_encode($imagen)]);
+            if (in_array($r->status(), [413, 422], true)) {
+                return ['ok' => false, 'error' => (string) ($r->json('detail') ?? 'La foto no se pudo leer.')];
+            }
+            if (! $r->successful()) {
+                return ['ok' => false, 'error' => 'El servicio respondió ' . $r->status() . '.'];
+            }
+
+            // El servicio responde ok=false cuando la foto se abrió pero no tenía clave.
+            return (array) $r->json();
+        } catch (\Throwable $e) {
+            Log::error('microservicio SRI: clave desde foto', ['error' => $e->getMessage()]);
+
+            return ['ok' => false, 'error' => 'No se pudo hablar con el microservicio del SRI.'];
+        }
+    }
+
     private function comprobante(string $metodo, string $ruta, array $datos = []): array
     {
         if (! $this->configurado()) {

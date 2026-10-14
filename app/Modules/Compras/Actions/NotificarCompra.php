@@ -35,7 +35,7 @@ final class NotificarCompra
         private readonly ResolverFormaPago $formas,
     ) {}
 
-    public function recibida(Purchase $compra): void
+    public function recibida(Purchase $compra, ?string $sinAvisarA = null): void
     {
         $compra->loadMissing('empresa', 'supplier', 'items.productoProveedor');
         $usuarios = $this->destinatarios->empresa($compra->empresa_id);
@@ -44,7 +44,8 @@ final class NotificarCompra
         }
 
         $this->campana($compra, $usuarios);
-        $this->telegram($compra, $this->destinatarios->chats($usuarios));
+        $chats = array_values(array_filter($this->destinatarios->chats($usuarios), fn ($c) => (string) $c !== (string) $sinAvisarA));
+        $this->telegram($compra, $chats);
     }
 
     /** El mensaje de Telegram, que también devuelve la API a n8n. */

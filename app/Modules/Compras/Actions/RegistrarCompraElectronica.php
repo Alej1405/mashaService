@@ -70,13 +70,16 @@ final class RegistrarCompraElectronica
         return $this->registrar($empresa, $lectura, $origen, $xml);
     }
 
-    /** Para la foto del RIDE: con la clave se pide al SRI el XML original. */
-    public function desdeClave(Empresa $empresa, string $clave, string $origen = Purchase::ORIGEN_TELEGRAM): array
+    /**
+     * Para la foto del RIDE: con la clave se pide al SRI el XML original.
+     * $chatQueEnvio: el chat de Telegram que mandó la foto; recibe la respuesta directa y no el aviso.
+     */
+    public function desdeClave(Empresa $empresa, string $clave, string $origen = Purchase::ORIGEN_TELEGRAM, ?string $chatQueEnvio = null): array
     {
-        return $this->registrar($empresa, $this->sri->autorizacionComprobante($clave), $origen, null);
+        return $this->registrar($empresa, $this->sri->autorizacionComprobante($clave), $origen, null, $chatQueEnvio);
     }
 
-    private function registrar(Empresa $empresa, array $lectura, string $origen, ?string $xml): array
+    private function registrar(Empresa $empresa, array $lectura, string $origen, ?string $xml, ?string $chatQueEnvio = null): array
     {
         if (! ($lectura['ok'] ?? false)) {
             return $this->rechazo($lectura['error'] ?? 'El SRI no devolvió el comprobante.');
@@ -107,7 +110,7 @@ final class RegistrarCompraElectronica
         $this->confirmar->intentar($compra);
         $compra->refresh();
 
-        $this->notificar->recibida($compra);
+        $this->notificar->recibida($compra, $chatQueEnvio);
 
         return [
             'ok'        => true,

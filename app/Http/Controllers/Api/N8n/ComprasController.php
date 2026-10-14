@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
 use App\Modules\Compras\Actions\NotificarCompra;
 use App\Modules\Compras\Actions\RegistrarCompraElectronica;
+use App\Services\ServicioSri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -68,6 +69,44 @@ class ComprasController extends Controller
         }
 
         return response()->json(['ok' => true, 'mensaje' => $notificar->resumen($compra->refresh())]);
+    }
+
+    /**
+     * Telegram: la foto de la factura (o su clave de acceso escrita) registra la compra en
+     * la empresa activa de la sesión. Con la clave, el ERP pide al SRI el comprobante y
+     * sigue el mismo camino que una factura por correo: proveedor, líneas, kardex y asiento.
+     * Si falta la forma de pago, la respuesta trae los botones para elegirla.
+     */
+    public function foto(Request $request, ServicioSri $sri, RegistrarCompraElectronica $registrar, NotificarCompra $notificar): JsonResponse
+    {
+        $datos = $request->validate([
+            'archivo' => ['nullable', 'required_without:clave', 'file', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+            'clave'   => ['nullable', 'required_without:archivo', 'string', 'max:80'],
+            'chat_id' => ['nullable'],
+        ]);
+        $empresa = $request->attributes->get('n8n_empresa');
+
+        $clave = preg_replace('/\D/', '', (string) ($datos['clave'] ?? ''));
+        if ($clave === '') {
+            $lectura = $sri->claveDesdeFoto((string) file_get_contents($request->file('archivo')->getRealPath()));
+            if (! ($lectura['ok'] ?? false)) {
+                return response()->json(['ok' => false, 'estado' => 'sin_clave', 'botones' => [],
+                    'mensaje' => '📷 ' . ($lectura['error'] ?? 'No pude leer la clave de acceso en la foto.')]);
+            }
+            $clave = (string) $lectura['clave'];
+        } elseif (strlen($clave) !== 49) {
+            return response()->json(['ok' => false, 'estado' => 'sin_clave', 'botones' => [],
+                'mensaje' => 'La clave de acceso tiene 49 dígitos y llegaron ' . strlen($clave) . '.']);
+        }
+
+        $r = $registrar->desdeClave($empresa, $clave, Purchase::ORIGEN_TELEGRAM,
+            isset($datos['chat_id']) ? (string) $datos['chat_id'] : null);
+
+        $compra = isset($r['compra_id']) ? Purchase::withoutGlobalScopes()->find($r['compra_id']) : null;
+        $botones = $compra && ($r['estado'] ?? '') === 'pendiente' && $compra->requiere_forma_pago
+            ? $notificar->opcionesDePago($compra) : [];
+
+        return response()->json($r + ['botones' => $botones]);
     }
 
     private function puedeResponder(string $chatId, Purchase $compra): bool
