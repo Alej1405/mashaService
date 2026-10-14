@@ -79,16 +79,26 @@ class ComprasController extends Controller
      */
     public function foto(Request $request, ServicioSri $sri, RegistrarCompraElectronica $registrar, NotificarCompra $notificar): JsonResponse
     {
+        // La foto llega en base64 dentro del JSON ("imagen"): el envío multipart de n8n
+        // se quedaba colgado. "archivo" (multipart) se acepta igual para otros clientes.
         $datos = $request->validate([
-            'archivo' => ['nullable', 'required_without:clave', 'file', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
-            'clave'   => ['nullable', 'required_without:archivo', 'string', 'max:80'],
+            'imagen'  => ['nullable', 'required_without_all:archivo,clave', 'string', 'max:28000000'],
+            'archivo' => ['nullable', 'required_without_all:imagen,clave', 'file', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+            'clave'   => ['nullable', 'required_without_all:imagen,archivo', 'string', 'max:80'],
             'chat_id' => ['nullable'],
         ]);
         $empresa = $request->attributes->get('n8n_empresa');
 
         $clave = preg_replace('/\D/', '', (string) ($datos['clave'] ?? ''));
         if ($clave === '') {
-            $lectura = $sri->claveDesdeFoto((string) file_get_contents($request->file('archivo')->getRealPath()));
+            $foto = isset($datos['imagen'])
+                ? base64_decode($datos['imagen'], true)
+                : file_get_contents($request->file('archivo')->getRealPath());
+            if ($foto === false || $foto === '') {
+                return response()->json(['ok' => false, 'estado' => 'sin_clave', 'botones' => [],
+                    'mensaje' => 'La foto llegó dañada. Mándala otra vez.']);
+            }
+            $lectura = $sri->claveDesdeFoto($foto);
             if (! ($lectura['ok'] ?? false)) {
                 return response()->json(['ok' => false, 'estado' => 'sin_clave', 'botones' => [],
                     'mensaje' => '📷 ' . ($lectura['error'] ?? 'No pude leer la clave de acceso en la foto.')]);
