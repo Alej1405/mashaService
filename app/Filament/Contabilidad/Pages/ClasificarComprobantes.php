@@ -206,6 +206,100 @@ class ClasificarComprobantes extends Page
             ->info()->send();
     }
 
+    /**
+     * Subir el XML de facturas que el SRI ya no devuelve por clave: uno, varios o
+     * un .zip. Cada uno se casa con su factura del listado del portal por la clave.
+     */
+    private function accionSubirXml(): Action
+    {
+        return Action::make('subirXml')
+            ->label('Subir XML')
+            ->icon('heroicon-o-document-arrow-up')
+            ->color('gray')
+            ->modalDescription('Para las facturas viejas que el SRI ya no entrega por su clave. Sube el XML de cada '
+                . 'una (del portal del SRI o del correo del proveedor), varios a la vez o un .zip. Se registran con '
+                . 'su detalle y se casan solas con su factura del listado.')
+            ->form([
+                \Filament\Forms\Components\FileUpload::make('archivos')
+                    ->label('XML o .zip')
+                    ->multiple()
+                    ->maxFiles(60)
+                    ->acceptedFileTypes(['text/xml', 'application/xml', 'application/zip', 'application/x-zip-compressed', 'application/octet-stream'])
+                    ->maxSize(20480)
+                    ->disk('local')
+                    ->directory('sri/xml-temporal')
+                    ->required(),
+                \Filament\Forms\Components\Select::make('pago')
+                    ->label('Cómo se pagaron')
+                    ->options(fn () => MedioPago::opciones(Filament::getTenant()->id))
+                    ->default('credito')
+                    ->required(),
+            ])
+            ->action(function (array $data) {
+                $empresaId = Filament::getTenant()->id;
+                $servicio = app(ClasificadorComprobantesService::class);
+                $hechas = 0;
+                $fallos = [];
+
+                // Cada XML es una lectura en el servicio del SRI: por tanda, hasta 80 (la web corta a los 30 s).
+                $xmls = $this->xmlsDe($data['archivos']);
+                $resto = max(count($xmls) - 80, 0);
+
+                foreach (array_slice($xmls, 0, 80, true) as $nombre => $xml) {
+                    $r = $servicio->registrarDesdeXml($empresaId, $xml, $data['pago'], auth()->id());
+                    if ($r['ok'] ?? false) {
+                        $hechas++;
+                    } else {
+                        $fallos[] = ($r['numero'] ?? $nombre) . ': ' . $r['error'];
+                    }
+                }
+
+                $this->cargar();
+
+                Notification::make()
+                    ->title("{$hechas} facturas registradas con su XML")
+                    ->body(trim(($fallos ? 'No se pudo con ' . count($fallos) . ': ' . implode(' · ', array_slice($fallos, 0, 3)) : 'Todas quedaron con su detalle.')
+                        . ($resto ? " Quedaron {$resto} sin procesar: súbelas en otra tanda." : '')))
+                    ->{$fallos ? 'warning' : 'success'}()->persistent()->send();
+            });
+    }
+
+    /**
+     * Los XML de lo subido: los sueltos tal cual y los que vienen dentro de un .zip.
+     *
+     * @return array<string, string> nombre => contenido
+     */
+    private function xmlsDe(array $rutas): array
+    {
+        $xmls = [];
+
+        foreach ($rutas as $relativa) {
+            $ruta = storage_path('app/private/' . $relativa);
+            if (! file_exists($ruta)) {
+                $ruta = storage_path('app/' . $relativa);
+            }
+
+            if (str_ends_with(strtolower($relativa), '.zip')) {
+                $zip = new \ZipArchive;
+                if ($zip->open($ruta) === true) {
+                    for ($i = 0; $i < min($zip->numFiles, 500); $i++) {
+                        $nombre = $zip->getNameIndex($i);
+                        if (str_ends_with(strtolower($nombre), '.xml')) {
+                            $xmls[basename($nombre)] = $zip->getFromIndex($i);
+                        }
+                    }
+                    $zip->close();
+                }
+            } else {
+                $xmls[basename($relativa)] = file_get_contents($ruta);
+            }
+
+            @unlink($ruta);
+        }
+
+        return $xmls;
+    }
+
     /** Dice qué es un producto de un proveedor: vale para esta factura y las que vengan. */
     public function configurarProducto(int $id): void
     {
@@ -274,6 +368,7 @@ class ClasificarComprobantes extends Page
     {
         return [
             ImportarDelPortal::make(fn () => $this->cargar()),
+            $this->accionSubirXml(),
 
             Action::make('ayuda')
                 ->label('Qué es esto')

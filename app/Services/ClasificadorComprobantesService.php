@@ -163,12 +163,65 @@ class ClasificadorComprobantesService
         return $resultado;
     }
 
+    /**
+     * Registra una factura con su XML subido a mano: la que el SRI ya no devuelve
+     * por clave (más de unas semanas), bajada del portal o del correo del proveedor.
+     *
+     * Un XML sin el sobre de autorización no dice si el SRI lo autorizó. Si su
+     * clave está en el listado que se bajó del portal, sí lo está: ese listado
+     * solo trae comprobantes autorizados. Si no está, no se registra.
+     *
+     * @return array{ok: bool, numero?: string, estado?: string, detalle?: string, error?: string}
+     */
+    public function registrarDesdeXml(int $empresaId, string $xml, ?string $pago, ?int $usuarioId = null): array
+    {
+        $lectura = app(ServicioSri::class)->leerXmlComprobante($xml);
+
+        if (! ($lectura['ok'] ?? false) || empty($lectura['comprobante']['clave_acceso'])) {
+            return ['ok' => false, 'error' => $lectura['error'] ?? 'No es un XML de comprobante del SRI.'];
+        }
+
+        $clave = (string) $lectura['comprobante']['clave_acceso'];
+        $c = ComprobanteSri::where('empresa_id', $empresaId)->where('clave_acceso', $clave)->first();
+
+        if (! $c) {
+            return ['ok' => false, 'error' => "La factura {$lectura['comprobante']['numero']} no está en el listado del "
+                . 'portal: sube primero el .txt del mes, que es lo que prueba que el SRI la autorizó.'];
+        }
+
+        if ($c->conciliado_con) {
+            return ['ok' => false, 'numero' => $c->numero, 'error' => "La factura {$c->numero} ya estaba registrada."];
+        }
+
+        // Está en el listado del portal: autorizada.
+        $lectura['estado'] = 'AUTORIZADO';
+
+        try {
+            app(ContabilidadService::class)->exigirEjercicioAbierto($c->empresa_id, $c->fecha_emision->toDateString());
+            $resultado = $c->origen === 'emitido'
+                ? $this->ventaConDetalle($c, $lectura['comprobante'], $pago)
+                : $this->compraConDetalle($c, $lectura, $pago, $xml);
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'numero' => $c->numero, 'error' => $e->getMessage()];
+        }
+
+        if ($resultado['ok'] ?? false) {
+            $c->refresh();
+            $c->update(['pago' => $pago ?? 'credito', 'clasificado_en' => now(), 'clasificado_por' => $usuarioId,
+                        'desglose' => 'xml'] + ($c->conciliado_con ? [] : [
+                            'conciliado_con' => $resultado['documento'], 'conciliado_id' => $resultado['id']]));
+        }
+
+        return ['numero' => $c->numero] + $resultado;
+    }
+
     /** La compra entra por el mismo camino que una factura que llega por correo. */
-    private function compraConDetalle(ComprobanteSri $c, array $lectura, ?string $pago): array
+    private function compraConDetalle(ComprobanteSri $c, array $lectura, ?string $pago, ?string $xml = null): array
     {
         try {
+            // Con el XML a mano, se guarda junto a la compra como respaldo.
             $r = app(RegistrarCompraElectronica::class)->desdeAutorizacion(
-                Empresa::findOrFail($c->empresa_id), $lectura, Purchase::ORIGEN_PORTAL, $pago,
+                Empresa::findOrFail($c->empresa_id), $lectura, Purchase::ORIGEN_PORTAL, $pago, $xml,
             );
         } catch (ValidationException $e) {
             return ['ok' => false, 'error' => collect($e->errors())->flatten()->first()];

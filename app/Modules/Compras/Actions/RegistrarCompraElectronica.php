@@ -79,9 +79,9 @@ final class RegistrarCompraElectronica
     }
 
     /** Con la respuesta del SRI ya en mano (la bandeja del portal la pide una sola vez). */
-    public function desdeAutorizacion(Empresa $empresa, array $lectura, string $origen, ?string $pago = null): array
+    public function desdeAutorizacion(Empresa $empresa, array $lectura, string $origen, ?string $pago = null, ?string $xml = null): array
     {
-        return $this->registrar($empresa, $lectura, $origen, null, null, $pago);
+        return $this->registrar($empresa, $lectura, $origen, $xml, null, $pago);
     }
 
     /**

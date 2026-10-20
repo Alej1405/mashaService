@@ -245,4 +245,44 @@ class PortalAContabilidadTest extends TestCase
         $this->assertSame(1, $avance['total']);
         $this->assertSame(1, $avance['manuales'], 'lo que el SRI ya no devuelve queda para decirlo a mano');
     }
+
+    public function test_una_factura_vieja_se_registra_con_su_xml_si_esta_en_el_listado(): void
+    {
+        \App\Models\AccountingMap::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'tipo_item' => 'global', 'tipo_movimiento' => 'iva_compras',
+            'account_plan_id' => AccountPlan::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
+                ->where('code', '1.1.02.05')->value('id'),
+        ]);
+
+        // El XML suelto, sin el sobre de autorización: el lector no sabe si se autorizó.
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('leerXmlComprobante')->andReturn([
+            'ok' => true, 'estado' => 'SIN_AUTORIZACION_ADJUNTA',
+            'comprobante' => [
+                'tipo' => 'factura', 'clave_acceso' => self::CLAVE, 'numero' => '001-001-000000123',
+                'fecha_emision' => '10/09/2026', 'importe_total' => '135.00',
+                'emisor' => ['ruc' => '1790012345001', 'razon_social' => 'Insumos del Valle S.A.'],
+                'comprador' => ['identificacion' => '1793229485001'],
+                'detalles' => [['codigo' => 'LIMP-01', 'descripcion' => 'Desinfectante galón', 'cantidad' => '2',
+                    'precio_unitario' => '50.00', 'subtotal' => '100.00',
+                    'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '100.00', 'valor' => '15.00']]]],
+                'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '100.00', 'valor' => '15.00']],
+                'pagos' => [],
+            ],
+        ]));
+
+        $servicio = app(ClasificadorComprobantesService::class);
+
+        // Sin el listado del portal no hay prueba de que el SRI la autorizó.
+        $sinListado = $servicio->registrarDesdeXml($this->empresa->id, '<factura/>', 'credito');
+        $this->assertFalse($sinListado['ok']);
+
+        $c = $this->comprobante();
+        $r = $servicio->registrarDesdeXml($this->empresa->id, '<factura/>', 'credito');
+
+        $this->assertTrue($r['ok'], $r['error'] ?? '');
+        $compra = Purchase::withoutGlobalScopes()->with('items')->findOrFail($r['id']);
+        $this->assertCount(1, $compra->items, 'el detalle sale del XML');
+        $this->assertSame(self::CLAVE, $compra->clave_acceso);
+        $this->assertNotNull($c->fresh()->conciliado_con, 'se casó con su factura del listado');
+    }
 }
