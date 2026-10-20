@@ -167,6 +167,13 @@ class ServicioSri
             return ['ok' => false, 'error' => 'El microservicio de declaraciones no está configurado.'];
         }
 
+        // El portal entrega el listado de emitidos en ISO-8859-1 (USHIÑA sale como
+        // USHI\xD1A): sin pasarlo a UTF-8, json_encode rechaza el archivo entero.
+        if (! mb_check_encoding($contenido, 'UTF-8')) {
+            $contenido = mb_convert_encoding($contenido, 'UTF-8', 'Windows-1252');
+        }
+        $contenido = preg_replace('/^\xEF\xBB\xBF/', '', $contenido);
+
         try {
             $r = Http::timeout(120)->acceptJson()
                 ->withToken($this->token ?? config('services.sri.token'))
