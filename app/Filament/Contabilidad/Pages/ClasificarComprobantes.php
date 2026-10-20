@@ -12,6 +12,8 @@ use App\Models\ProductoProveedor;
 use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
 use App\Modules\Compras\Queries\ComprasElectronicasPendientes;
 use Illuminate\Validation\ValidationException;
+use App\Jobs\RegistrarComprobantesDelPortal;
+use Illuminate\Support\Facades\Cache;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -180,40 +182,28 @@ class ClasificarComprobantes extends Page
         Notification::make()->title('Registrada')->body(ucfirst($r['detalle']))->success()->send();
     }
 
-    /** Todas las pendientes con su detalle, cada una con el pago elegido en su fila. */
+    /**
+     * Todas las pendientes con su detalle, cada una con el pago elegido en su fila.
+     * Va a la cola: un año son cientos de consultas al SRI y la web corta a los 30 s.
+     */
     public function registrarTodas(): void
     {
-        $servicio = app(ClasificadorComprobantesService::class);
-        $cuenta = ['registrada' => 0, 'pendiente' => 0, 'manual' => 0, 'error' => 0];
-        $errores = [];
+        $empresaId = Filament::getTenant()->id;
 
-        foreach ($this->pendientes()->concat($this->ventasPendientes()) as $c) {
-            if (in_array($c->desglose, ClasificadorComprobantesService::SIN_DETALLE, true)) {
-                continue;
-            }
+        if ((Cache::get(RegistrarComprobantesDelPortal::claveAvance($empresaId))['corriendo'] ?? false)) {
+            Notification::make()->title('Ya se está registrando')->body('Mira el avance aquí arriba.')->info()->send();
 
-            $r = $servicio->registrarConDetalle($c, $this->eleccion[$c->id]['pago'] ?? 'credito', auth()->id());
-
-            if ($r['ok'] ?? false) {
-                $cuenta[($r['estado'] ?? '') === 'pendiente' ? 'pendiente' : 'registrada']++;
-            } elseif ($r['manual'] ?? false) {
-                $cuenta['manual']++;
-            } else {
-                $cuenta['error']++;
-                $errores[] = "{$c->numero}: {$r['error']}";
-            }
+            return;
         }
 
-        $this->cargar();
+        $pagos = collect($this->eleccion)->map(fn ($e) => $e['pago'] ?? null)->filter()->all();
+        Cache::put(RegistrarComprobantesDelPortal::claveAvance($empresaId),
+            ['corriendo' => true, 'total' => 0, 'hechos' => 0], now()->addHours(6));
+        RegistrarComprobantesDelPortal::dispatch($empresaId, auth()->id(), $pagos);
 
-        Notification::make()
-            ->title("{$cuenta['registrada']} registradas con su detalle")
-            ->body(collect([
-                $cuenta['pendiente'] ? "{$cuenta['pendiente']} esperan que digas qué son sus productos nuevos (abajo)" : null,
-                $cuenta['manual'] ? "{$cuenta['manual']} ya no las devuelve el SRI: quedaron para decirlas a mano" : null,
-                $errores ? 'No se pudo con: ' . implode(' · ', array_slice($errores, 0, 3)) : null,
-            ])->filter()->implode('. ') ?: 'Todo quedó con su asiento.')
-            ->{$cuenta['error'] ? 'warning' : 'success'}()->persistent()->send();
+        Notification::make()->title('Registrando en segundo plano')
+            ->body('Cada factura se consulta en el SRI. Puedes seguir trabajando: te aviso en la campana al terminar.')
+            ->info()->send();
     }
 
     /** Dice qué es un producto de un proveedor: vale para esta factura y las que vengan. */
@@ -317,6 +307,7 @@ class ClasificarComprobantes extends Page
             'meses'      => $this->meses($empresa->id),
             'urlDeclaraciones' => Declaraciones::getUrl(),
             'sinDetalle' => ClasificadorComprobantesService::SIN_DETALLE,
+            'avance'     => Cache::get(RegistrarComprobantesDelPortal::claveAvance($empresa->id)),
             // Productos de proveedor que aparecieron en una factura y nadie ha dicho qué son.
             'productosNuevos' => app(ComprasElectronicasPendientes::class)->productos($empresa->id)
                 ->with('supplier:id,nombre')->orderBy('supplier_id')->limit(80)->get(),

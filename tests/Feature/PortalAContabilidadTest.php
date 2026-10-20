@@ -227,4 +227,19 @@ class PortalAContabilidadTest extends TestCase
         $this->assertTrue($r['manual']);
         $this->assertSame('sin_xml', $c->fresh()->desglose);
     }
+
+    public function test_registrar_todas_corre_en_la_cola_y_deja_el_avance(): void
+    {
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')
+            ->andReturn(['ok' => false, 'estado' => 'NO_ENCONTRADO']));
+        $this->comprobante();
+
+        \App\Jobs\RegistrarComprobantesDelPortal::dispatchSync($this->empresa->id, null);
+
+        $avance = \Illuminate\Support\Facades\Cache::get(
+            \App\Jobs\RegistrarComprobantesDelPortal::claveAvance($this->empresa->id));
+        $this->assertFalse($avance['corriendo']);
+        $this->assertSame(1, $avance['total']);
+        $this->assertSame(1, $avance['manuales'], 'lo que el SRI ya no devuelve queda para decirlo a mano');
+    }
 }

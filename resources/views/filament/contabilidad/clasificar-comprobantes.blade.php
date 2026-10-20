@@ -14,18 +14,29 @@
         </section>
     @endif
 
+    @if ($avance['corriendo'] ?? false)
+        {{-- Se refresca solo mientras corre el registro en segundo plano. --}}
+        <div class="ct-aviso" wire:poll.5s>
+            <p><strong>Registrando en segundo plano: {{ $avance['hechos'] ?? 0 }} de {{ $avance['total'] ?? '…' }}.</strong>
+                Cada factura se consulta en el SRI. Te aviso en la campana al terminar.</p>
+        </div>
+    @elseif (! empty($avance['falla']))
+        <div class="ct-aviso"><p><strong>El registro se detuvo:</strong> {{ $avance['falla'] }}. Lo registrado quedó; vuelve a tocar «Registrar todas».</p></div>
+    @endif
+
     @if ($total > 0)
         <div class="ct-aviso" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
             <p style="flex:1 1 320px">
-                <strong>{{ $total }} facturas del portal sin registrar.</strong>
+                <strong>{{ $total }} facturas del portal sin registrar</strong> (se muestran las primeras 120).
                 Cada una se registra con el detalle que trae del SRI: sus productos, cantidades, precios e IVA.
                 Solo elige cómo se pagó.
             </p>
-            <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
-                    wire:click="registrarTodas" wire:loading.attr="disabled" wire:target="registrarTodas">
-                <span wire:loading.remove wire:target="registrarTodas">Registrar todas con su detalle</span>
-                <span wire:loading wire:target="registrarTodas">Consultando al SRI…</span>
-            </button>
+            @unless ($avance['corriendo'] ?? false)
+                <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+                        wire:click="registrarTodas" wire:loading.attr="disabled" wire:target="registrarTodas">
+                    Registrar todas con su detalle
+                </button>
+            @endunless
         </div>
 
         <section class="ct-panel">
