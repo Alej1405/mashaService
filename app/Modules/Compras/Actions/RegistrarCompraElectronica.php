@@ -37,8 +37,7 @@ use Illuminate\Support\Str;
 )]
 final class RegistrarCompraElectronica
 {
-    /** Tabla 17 del SRI: códigos de IVA sin tarifa (0 %, no objeto, exento). */
-    private const IVA_SIN_TARIFA = ['0', '6', '7'];
+    private const IVA_SIN_TARIFA = ComprobanteSri::IVA_SIN_TARIFA;
 
     public function __construct(
         private readonly ServicioSri $sri,
@@ -291,20 +290,7 @@ final class RegistrarCompraElectronica
      */
     private function registrarComprobante(int $empresaId, array $c, string $clave, Purchase $compra): void
     {
-        $baseGravada = 0.0;
-        $baseCero = 0.0;
-        $iva = 0.0;
-        foreach ($c['impuestos'] ?? [] as $imp) {
-            if (($imp['codigo'] ?? '') !== '2') {
-                continue;
-            }
-            if (in_array($imp['codigo_porcentaje'] ?? '', self::IVA_SIN_TARIFA, true)) {
-                $baseCero += (float) $imp['base_imponible'];
-            } else {
-                $baseGravada += (float) $imp['base_imponible'];
-                $iva += (float) $imp['valor'];
-            }
-        }
+        $bases = ComprobanteSri::basesDesdeXml($c['impuestos'] ?? []);
 
         [$establecimiento, $punto, $secuencial] = array_pad(explode('-', $c['numero']), 3, null);
 
@@ -320,9 +306,9 @@ final class RegistrarCompraElectronica
                 'establecimiento'  => $establecimiento,
                 'punto_emision'    => $punto,
                 'secuencial'       => $secuencial,
-                'base_gravada'     => round($baseGravada, 2),
-                'base_cero'        => round($baseCero, 2),
-                'iva'              => round($iva, 2),
+                'base_gravada'     => $bases['base_gravada'],
+                'base_cero'        => $bases['base_cero'],
+                'iva'              => $bases['iva'],
                 'total'            => round((float) $c['importe_total'], 2),
                 'desglose'         => 'xml',
                 'conciliado_con'   => 'purchase',

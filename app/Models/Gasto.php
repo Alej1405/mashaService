@@ -21,6 +21,8 @@ class Gasto extends Model
     protected $fillable = [
         'empresa_id','supplier_id','journal_entry_id','retencion_id','numero_documento','autorizacion',
         'tipo_documento','fecha','descripcion','forma_pago','subtotal','iva','total','retenido','no_deducible','estado',
+        // Con qué se pagó, si no fue a crédito
+        'bank_account_id','cash_register_id','credit_card_id',
     ];
 
     protected $casts = [
@@ -31,6 +33,9 @@ class Gasto extends Model
 
     public function lineas(): HasMany { return $this->hasMany(GastoLinea::class); }
     public function supplier(): BelongsTo { return $this->belongsTo(Supplier::class); }
+    public function bankAccount(): BelongsTo { return $this->belongsTo(BankAccount::class); }
+    public function cashRegister(): BelongsTo { return $this->belongsTo(CashRegister::class); }
+    public function creditCard(): BelongsTo { return $this->belongsTo(CreditCard::class); }
     public function retencion(): BelongsTo { return $this->belongsTo(Retencion::class); }
     public function journalEntry(): BelongsTo { return $this->belongsTo(JournalEntry::class); }
 

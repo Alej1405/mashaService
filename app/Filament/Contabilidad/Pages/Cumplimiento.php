@@ -5,11 +5,9 @@ namespace App\Filament\Contabilidad\Pages;
 use App\Jobs\GenerarDeclaracion;
 use App\Models\Declaracion;
 use App\Services\GestionSriService;
-use App\Services\ImportadorComprobantesSri;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -60,7 +58,7 @@ class Cumplimiento extends Page
     {
         return [
             $this->accionInicioDeGestion(),
-            $this->accionImportar(),
+            \App\Filament\Contabilidad\Acciones\ImportarDelPortal::make(),
         ];
     }
 
@@ -105,58 +103,6 @@ class Cumplimiento extends Page
                 ]);
 
                 Notification::make()->title('Inicio de gestión guardado')->success()->send();
-            });
-    }
-
-    /** Los listados que la empresa baja del portal del SRI. */
-    private function accionImportar(): Action
-    {
-        return Action::make('importar')
-            ->label('Importar del portal del SRI')
-            ->icon('heroicon-o-arrow-up-tray')
-            ->color('primary')
-            ->form([
-                Placeholder::make('ayuda')
-                    ->label('')
-                    ->content('Sirve para los meses que no están registrados en el sistema. '
-                        . 'Sube el listado de comprobantes recibidos o el de emitidos, tal como '
-                        . 'los descarga el portal. Lo que ya esté en el ERP no se cuenta dos veces.'),
-
-                FileUpload::make('archivo')
-                    ->label('Archivo .txt del SRI')
-                    ->acceptedFileTypes(['text/plain', 'application/octet-stream'])
-                    ->maxSize(10240)
-                    ->disk('local')
-                    ->directory('sri/temporal')
-                    ->required(),
-            ])
-            ->action(function (array $data) {
-                $ruta = storage_path('app/private/' . $data['archivo']);
-
-                if (! file_exists($ruta)) {
-                    $ruta = storage_path('app/' . $data['archivo']);
-                }
-
-                $r = app(ImportadorComprobantesSri::class)
-                    ->importar(Filament::getTenant()->id, file_get_contents($ruta));
-
-                @unlink($ruta);
-
-                if (! ($r['ok'] ?? false)) {
-                    Notification::make()->title('No se pudo importar')
-                        ->body($r['error'])->danger()->persistent()->send();
-
-                    return;
-                }
-
-                $periodos = implode(', ', array_keys($r['periodos'] ?? []));
-
-                Notification::make()
-                    ->title("{$r['importados']} comprobantes importados")
-                    ->body(trim("{$r['tipo']} · {$r['repetidos']} ya estaban · {$r['conciliados']} casan con el ERP"
-                        . ($periodos ? " · períodos: {$periodos}" : '')
-                        . ' ' . implode(' ', $r['avisos'] ?? [])))
-                    ->success()->persistent()->send();
             });
     }
 

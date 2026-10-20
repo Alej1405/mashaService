@@ -43,7 +43,8 @@ class AtsService
 
         return [
             'cabecera' => [
-                'IdInformante'    => $this->soloDigitos($empresa->ruc ?? ''),
+                // En `empresas` el RUC vive en numero_identificacion: no hay columna `ruc`.
+                'IdInformante'    => $this->soloDigitos($empresa->numero_identificacion ?? ''),
                 'razonSocial'     => $empresa->name ?? '',
                 'anio'            => (string) $anio,
                 'mes'             => sprintf('%02d', $mes),
@@ -72,14 +73,20 @@ class AtsService
     {
         $registros = [];
 
+        // La base se separa por tarifa leyendo las líneas, no la cabecera: una
+        // factura puede traer productos al 15 % y al 0 % a la vez.
         $documentos = DB::table('purchases as p')
             ->leftJoin('suppliers as s', 's.id', '=', 'p.supplier_id')
             ->where('p.empresa_id', $empresaId)
             ->where('p.status', 'confirmado')
             ->whereBetween('p.date', [$desde, $hasta])
-            ->select('p.id', 'p.numero_factura', 'p.date as fecha', 'p.forma_pago',
+            ->select('p.id', 'p.numero_factura', 'p.date as fecha', 'p.forma_pago', 'p.clave_acceso as autorizacion',
                 's.tipo_identificacion', 's.numero_identificacion', 's.nombre', 's.tipo_persona')
-            ->selectRaw("'compra' as origen, 'factura' as tipo_documento, p.subtotal, p.iva, p.total")
+            ->selectRaw("'compra' as origen, 'factura' as tipo_documento, p.subtotal, p.iva, p.total, 0 as no_deducible")
+            ->selectRaw('(select coalesce(sum(i.subtotal), 0) from purchase_items i where i.purchase_id = p.id and i.aplica_iva) as base_grav')
+            ->selectRaw('(select coalesce(sum(i.subtotal), 0) from purchase_items i where i.purchase_id = p.id and not i.aplica_iva) as base_cero')
+            ->selectRaw("exists(select 1 from purchase_items i join inventory_items ii on ii.id = i.inventory_item_id
+                         where i.purchase_id = p.id and ii.type = 'activo_fijo') as es_activo")
             ->get();
 
         $gastos = DB::table('gastos as g')
@@ -87,10 +94,23 @@ class AtsService
             ->where('g.empresa_id', $empresaId)
             ->where('g.estado', 'confirmado')
             ->whereBetween('g.fecha', [$desde, $hasta])
-            ->select('g.id', 'g.numero_documento as numero_factura', 'g.fecha', 'g.forma_pago',
+            ->select('g.id', 'g.numero_documento as numero_factura', 'g.fecha', 'g.forma_pago', 'g.autorizacion',
                 's.tipo_identificacion', 's.numero_identificacion', 's.nombre', 's.tipo_persona')
-            ->selectRaw("'gasto' as origen, g.tipo_documento, g.subtotal, g.iva, g.total")
+            ->selectRaw("'gasto' as origen, g.tipo_documento, g.subtotal, g.iva, g.total, g.no_deducible")
+            ->selectRaw('(select coalesce(sum(l.base), 0) from gasto_lineas l where l.gasto_id = g.id and l.iva > 0) as base_grav')
+            ->selectRaw('(select coalesce(sum(l.base), 0) from gasto_lineas l where l.gasto_id = g.id and l.iva = 0) as base_cero')
+            ->selectRaw('false as es_activo')
             ->get();
+
+        // Lo que llegó del portal y nadie registró no existe en la contabilidad, y
+        // por eso tampoco está aquí. Se avisa: el 104 sí lo suma.
+        $sinRegistrar = DB::table('comprobantes_sri')->where('empresa_id', $empresaId)
+            ->where('origen', 'recibido')->whereNull('conciliado_con')
+            ->whereBetween('fecha_emision', [$desde, $hasta])->count();
+        if ($sinRegistrar > 0) {
+            $avisos[] = "{$sinRegistrar} facturas del portal de este mes no están registradas: no entran al ATS "
+                . 'hasta clasificarlas en «Clasificar comprobantes», y el ATS no cuadraría con el 104.';
+        }
 
         foreach ($documentos->concat($gastos) as $d) {
             if (! $d->numero_identificacion) {
@@ -110,9 +130,21 @@ class AtsService
                 'forma_pago', $d->forma_pago ?? 'efectivo', 'ats', '13', $empresaId,
             ) ?? '01';
 
-            // El sustento depende de a qué va el gasto, no del documento: una
-            // compra de inventario sustenta crédito de IVA por inventario (06).
-            $sustento = $d->origen === 'compra' ? '06' : '01';
+            // El sustento depende de a qué va, no del documento (tabla 5 del ATS):
+            //   06 inventario con crédito de IVA · 03 activo fijo con crédito de IVA
+            //   01 crédito tributario (bienes y servicios) · 02 costo o gasto sin crédito
+            $sustento = match (true) {
+                $d->origen === 'compra' && (bool) $d->es_activo => '03',
+                $d->origen === 'compra'                          => '06',
+                (float) $d->iva <= 0 || (float) $d->no_deducible > 0 => '02',
+                default                                          => '01',
+            };
+
+            $autorizacion = $this->soloDigitos((string) ($d->autorizacion ?? ''));
+            if ($autorizacion === '') {
+                $avisos[] = "El documento {$d->numero_factura} no tiene número de autorización: el SRI lo rechaza. "
+                    . 'Regístralo desde su clave de acceso.';
+            }
 
             if (! $this->catalogo->admite('ats', '4', $tipoComprobante, $sustento, $d->fecha)) {
                 $avisos[] = "El comprobante {$d->numero_factura} (tipo {$tipoComprobante}) "
@@ -132,9 +164,13 @@ class AtsService
                 'puntoEmision'  => $numero['punto'],
                 'secuencial'    => $numero['secuencial'],
                 'fechaEmision'  => Carbon::parse($d->fecha)->format('d/m/Y'),
+                'autorizacion'  => $autorizacion,
                 'baseNoGraIva'  => '0.00',
-                'baseImponible' => $this->monto((float) $d->iva > 0 ? 0 : $d->subtotal),
-                'baseImpGrav'   => $this->monto((float) $d->iva > 0 ? $d->subtotal : 0),
+                // Si las líneas no suman nada (documento viejo), se reparte por la cabecera.
+                'baseImponible' => $this->monto(((float) $d->base_grav + (float) $d->base_cero) > 0
+                    ? $d->base_cero : ((float) $d->iva > 0 ? 0 : $d->subtotal)),
+                'baseImpGrav'   => $this->monto(((float) $d->base_grav + (float) $d->base_cero) > 0
+                    ? $d->base_grav : ((float) $d->iva > 0 ? $d->subtotal : 0)),
                 'montoIce'      => '0.00',
                 'montoIva'      => $this->monto($d->iva),
                 'valRetBien10'  => '0.00',

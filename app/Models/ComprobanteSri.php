@@ -24,6 +24,8 @@ class ComprobanteSri extends Model
         // Qué fue esa factura, que el portal no lo dice
         'destino', 'tipo_gasto_id', 'inventory_item_id', 'cantidad',
         'clasificado_en', 'clasificado_por',
+        // Cómo se pagó (ver MedioPago): se propone igual para el mismo proveedor
+        'pago',
     ];
 
     protected $casts = [
@@ -72,6 +74,36 @@ class ComprobanteSri extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class, 'inventory_item_id');
+    }
+
+    /** Tabla 17 del SRI: códigos de IVA sin tarifa (0 %, no objeto, exento). */
+    public const IVA_SIN_TARIFA = ['0', '6', '7'];
+
+    /**
+     * Base gravada, base cero e IVA desde los impuestos del XML autorizado.
+     *
+     * @param  array<int, array{codigo?: string, codigo_porcentaje?: string, base_imponible?: string|float, valor?: string|float}>  $impuestos
+     * @return array{base_gravada: float, base_cero: float, iva: float}
+     */
+    public static function basesDesdeXml(array $impuestos): array
+    {
+        $gravada = 0.0;
+        $cero = 0.0;
+        $iva = 0.0;
+
+        foreach ($impuestos as $imp) {
+            if (($imp['codigo'] ?? '') !== '2') {
+                continue; // solo IVA; el ICE y el IRBPNR no son base del 104
+            }
+            if (in_array($imp['codigo_porcentaje'] ?? '', self::IVA_SIN_TARIFA, true)) {
+                $cero += (float) $imp['base_imponible'];
+            } else {
+                $gravada += (float) $imp['base_imponible'];
+                $iva += (float) $imp['valor'];
+            }
+        }
+
+        return ['base_gravada' => round($gravada, 2), 'base_cero' => round($cero, 2), 'iva' => round($iva, 2)];
     }
 
     /** La base sobre la que se registra: gravada más la de tarifa cero. */

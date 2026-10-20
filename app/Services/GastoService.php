@@ -156,11 +156,21 @@ class GastoService
 
         $porPagar = round($debe - $retenido, 2);
 
-        if ($cuentaPago = $this->cuenta($gasto->empresa_id, '2.1.01.01') ?? $this->cuenta($gasto->empresa_id, '2.1.01')) {
+        // Pagado al contado: contra la caja, el banco o la tarjeta con que se pagó.
+        // A crédito (o sin medio elegido): queda en cuentas por pagar.
+        $medio = match ($gasto->forma_pago) {
+            'efectivo'      => $gasto->cashRegister?->accountPlan,
+            'transferencia', 'cheque' => $gasto->bankAccount?->accountPlan,
+            'tarjeta'       => $gasto->creditCard?->accountPlan,
+            default         => null,
+        };
+
+        if ($cuentaPago = $medio ?? $this->cuenta($gasto->empresa_id, '2.1.01.01') ?? $this->cuenta($gasto->empresa_id, '2.1.01')) {
             JournalEntryLine::create([
                 'journal_entry_id' => $asiento->id,
                 'account_plan_id'  => $cuentaPago->id,
-                'descripcion'      => 'Cuentas por pagar · ' . ($gasto->supplier?->nombre ?? 'proveedor'),
+                'descripcion'      => ($medio ? 'Pago ' . $gasto->forma_pago . ' · ' : 'Cuentas por pagar · ')
+                                        . ($gasto->supplier?->nombre ?? 'proveedor'),
                 'debe'             => 0,
                 'haber'            => $porPagar,
                 'orden'            => $orden++,
