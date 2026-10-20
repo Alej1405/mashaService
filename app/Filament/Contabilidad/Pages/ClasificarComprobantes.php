@@ -8,6 +8,10 @@ use App\Models\TipoGasto;
 use App\Filament\Contabilidad\Acciones\ImportarDelPortal;
 use App\Services\ClasificadorComprobantesService;
 use App\Services\MedioPago;
+use App\Models\ProductoProveedor;
+use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
+use App\Modules\Compras\Queries\ComprasElectronicasPendientes;
+use Illuminate\Validation\ValidationException;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -47,6 +51,9 @@ class ClasificarComprobantes extends Page
      * está registrado en ninguna parte: los gastos.
      */
     public array $eleccion = [];
+
+    /** producto_proveedor_id => 'item:12' | 'gasto:5' — se dice una vez por producto, no por factura. */
+    public array $productos = [];
 
     public static function canAccess(): bool
     {
@@ -150,7 +157,87 @@ class ClasificarComprobantes extends Page
         return [];
     }
 
-    /** Clasifica una factura. */
+    /**
+     * Registra una factura con su detalle: el XML del SRI trae cada producto con
+     * su cantidad, precio e IVA. Solo se pide algo a mano si el SRI ya no la
+     * devuelve, o si en una venta no se reconoce el producto.
+     */
+    public function registrar(int $id): void
+    {
+        $c = ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->findOrFail($id);
+        $r = app(ClasificadorComprobantesService::class)
+            ->registrarConDetalle($c, $this->eleccion[$id]['pago'] ?? 'credito', auth()->id());
+
+        $this->cargar();
+
+        if (! ($r['ok'] ?? false)) {
+            Notification::make()->title(($r['manual'] ?? false) ? 'Hay que decirlo a mano' : 'No se pudo registrar')
+                ->body($r['error'])->{($r['manual'] ?? false) ? 'warning' : 'danger'}()->send();
+
+            return;
+        }
+
+        Notification::make()->title('Registrada')->body(ucfirst($r['detalle']))->success()->send();
+    }
+
+    /** Todas las pendientes con su detalle, cada una con el pago elegido en su fila. */
+    public function registrarTodas(): void
+    {
+        $servicio = app(ClasificadorComprobantesService::class);
+        $cuenta = ['registrada' => 0, 'pendiente' => 0, 'manual' => 0, 'error' => 0];
+        $errores = [];
+
+        foreach ($this->pendientes()->concat($this->ventasPendientes()) as $c) {
+            if (in_array($c->desglose, ClasificadorComprobantesService::SIN_DETALLE, true)) {
+                continue;
+            }
+
+            $r = $servicio->registrarConDetalle($c, $this->eleccion[$c->id]['pago'] ?? 'credito', auth()->id());
+
+            if ($r['ok'] ?? false) {
+                $cuenta[($r['estado'] ?? '') === 'pendiente' ? 'pendiente' : 'registrada']++;
+            } elseif ($r['manual'] ?? false) {
+                $cuenta['manual']++;
+            } else {
+                $cuenta['error']++;
+                $errores[] = "{$c->numero}: {$r['error']}";
+            }
+        }
+
+        $this->cargar();
+
+        Notification::make()
+            ->title("{$cuenta['registrada']} registradas con su detalle")
+            ->body(collect([
+                $cuenta['pendiente'] ? "{$cuenta['pendiente']} esperan que digas qué son sus productos nuevos (abajo)" : null,
+                $cuenta['manual'] ? "{$cuenta['manual']} ya no las devuelve el SRI: quedaron para decirlas a mano" : null,
+                $errores ? 'No se pudo con: ' . implode(' · ', array_slice($errores, 0, 3)) : null,
+            ])->filter()->implode('. ') ?: 'Todo quedó con su asiento.')
+            ->{$cuenta['error'] ? 'warning' : 'success'}()->persistent()->send();
+    }
+
+    /** Dice qué es un producto de un proveedor: vale para esta factura y las que vengan. */
+    public function configurarProducto(int $id): void
+    {
+        $producto = app(ComprasElectronicasPendientes::class)->productos(Filament::getTenant()->id)->findOrFail($id);
+        [$tipo, $valor] = array_pad(explode(':', (string) ($this->productos[$id] ?? '')), 2, null);
+
+        try {
+            $confirmadas = app(ConfirmarCompraElectronica::class)->producto(
+                $producto, $tipo === 'item' ? (int) $valor : null, $tipo === 'gasto' ? (int) $valor : null, auth()->id(),
+            );
+        } catch (ValidationException $e) {
+            Notification::make()->title('Falta elegir')->body(collect($e->errors())->flatten()->first())->warning()->send();
+
+            return;
+        }
+
+        Notification::make()->title('Producto guardado')
+            ->body($confirmadas ? "{$confirmadas} compras quedaron registradas con su asiento." : 'Se usará en las próximas facturas de ese proveedor.')
+            ->success()->send();
+    }
+
+    /** Clasifica a mano una factura que el SRI ya no devuelve. */
     public function clasificar(int $id): void
     {
         $c = ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->findOrFail($id);
@@ -229,6 +316,10 @@ class ClasificarComprobantes extends Page
             'mediosVenta' => MedioPago::opciones($empresa->id, true),
             'meses'      => $this->meses($empresa->id),
             'urlDeclaraciones' => Declaraciones::getUrl(),
+            'sinDetalle' => ClasificadorComprobantesService::SIN_DETALLE,
+            // Productos de proveedor que aparecieron en una factura y nadie ha dicho qué son.
+            'productosNuevos' => app(ComprasElectronicasPendientes::class)->productos($empresa->id)
+                ->with('supplier:id,nombre')->orderBy('supplier_id')->limit(80)->get(),
             'porProveedor' => $pendientes->groupBy('identificacion')->map->count(),
             'destinos'   => ClasificadorComprobantesService::DESTINOS,
             'tiposGasto' => TipoGasto::where('activo', true)
@@ -252,9 +343,14 @@ class ClasificarComprobantes extends Page
      */
     private function meses(int $empresaId)
     {
-        return ComprobanteSri::where('empresa_id', $empresaId)
-            ->selectRaw("to_char(fecha_emision, 'YYYY-MM') as mes, count(*) as total, "
-                . 'sum(case when conciliado_con is null and destino is null then 1 else 0 end) as pendientes')
-            ->groupBy('mes')->orderByDesc('mes')->limit(6)->get();
+        // Pendiente: sin registrar, o registrada como compra que espera que se diga
+        // qué es un producto nuevo (en borrador no tiene asiento ni entra al ATS).
+        return ComprobanteSri::where('comprobantes_sri.empresa_id', $empresaId)
+            ->leftJoin('purchases as p', fn ($j) => $j->on('p.id', '=', 'comprobantes_sri.conciliado_id')
+                ->where('comprobantes_sri.conciliado_con', '=', 'purchase'))
+            ->selectRaw("to_char(comprobantes_sri.fecha_emision, 'YYYY-MM') as mes, count(*) as total, "
+                . "sum(case when (comprobantes_sri.conciliado_con is null and comprobantes_sri.destino is null) "
+                . "or p.status = 'borrador' then 1 else 0 end) as pendientes")
+            ->groupBy('mes')->orderByDesc('mes')->limit(12)->get();
     }
 }

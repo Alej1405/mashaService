@@ -44,6 +44,8 @@ class Purchase extends Model
     public const ORIGEN_MANUAL = 'manual';
     public const ORIGEN_CORREO = 'correo';
     public const ORIGEN_TELEGRAM = 'telegram';
+    /** Desde la bandeja del portal del SRI: quien registra está frente a la pantalla. */
+    public const ORIGEN_PORTAL = 'portal';
     public const BORRADOR = 'borrador';
     public const CONFIRMADO = 'confirmado';
 

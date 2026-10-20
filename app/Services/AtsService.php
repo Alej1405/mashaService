@@ -107,6 +107,9 @@ class AtsService
         $sinRegistrar = DB::table('comprobantes_sri')->where('empresa_id', $empresaId)
             ->where('origen', 'recibido')->whereNull('conciliado_con')
             ->whereBetween('fecha_emision', [$desde, $hasta])->count();
+        $sinRegistrar += DB::table('purchases')->where('empresa_id', $empresaId)
+            ->where('status', 'borrador')->where('origen', '!=', 'manual')
+            ->whereBetween('date', [$desde, $hasta])->count();
         if ($sinRegistrar > 0) {
             $avisos[] = "{$sinRegistrar} facturas del portal de este mes no están registradas: no entran al ATS "
                 . 'hasta clasificarlas en «Clasificar comprobantes», y el ATS no cuadraría con el 104.';

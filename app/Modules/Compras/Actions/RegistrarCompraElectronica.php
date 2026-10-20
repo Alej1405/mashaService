@@ -73,12 +73,23 @@ final class RegistrarCompraElectronica
      * Para la foto del RIDE: con la clave se pide al SRI el XML original.
      * $chatQueEnvio: el chat de Telegram que mandó la foto; recibe la respuesta directa y no el aviso.
      */
-    public function desdeClave(Empresa $empresa, string $clave, string $origen = Purchase::ORIGEN_TELEGRAM, ?string $chatQueEnvio = null): array
+    public function desdeClave(Empresa $empresa, string $clave, string $origen = Purchase::ORIGEN_TELEGRAM, ?string $chatQueEnvio = null, ?string $pago = null): array
     {
-        return $this->registrar($empresa, $this->sri->autorizacionComprobante($clave), $origen, null, $chatQueEnvio);
+        return $this->registrar($empresa, $this->sri->autorizacionComprobante($clave), $origen, null, $chatQueEnvio, $pago);
     }
 
-    private function registrar(Empresa $empresa, array $lectura, string $origen, ?string $xml, ?string $chatQueEnvio = null): array
+    /** Con la respuesta del SRI ya en mano (la bandeja del portal la pide una sola vez). */
+    public function desdeAutorizacion(Empresa $empresa, array $lectura, string $origen, ?string $pago = null): array
+    {
+        return $this->registrar($empresa, $lectura, $origen, null, null, $pago);
+    }
+
+    /**
+     * $pago: cómo se pagó, si ya lo dijo quien registra (formato de MedioPago:
+     * credito | efectivo:<caja> | transferencia:<cuenta> | tarjeta:<tarjeta>).
+     * Manda sobre lo que se deduce del XML, que no sabe de qué cuenta salió el dinero.
+     */
+    private function registrar(Empresa $empresa, array $lectura, string $origen, ?string $xml, ?string $chatQueEnvio = null, ?string $pago = null): array
     {
         if (! ($lectura['ok'] ?? false)) {
             return $this->rechazo($lectura['error'] ?? 'El SRI no devolvió el comprobante.');
@@ -104,12 +115,16 @@ final class RegistrarCompraElectronica
                     'mensaje' => "La factura {$c['numero']} ya estaba registrada."];
         }
 
-        $compra = DB::transaction(fn () => $this->crear($empresa, $c, $clave, $origen, $xml));
+        $compra = DB::transaction(fn () => $this->crear($empresa, $c, $clave, $origen, $xml, $pago));
 
         $this->confirmar->intentar($compra);
         $compra->refresh();
 
-        $this->notificar->recibida($compra, $chatQueEnvio);
+        // Desde la bandeja del portal se registran decenas de golpe con alguien
+        // mirando: avisar cada una por Telegram sería ruido.
+        if ($origen !== Purchase::ORIGEN_PORTAL) {
+            $this->notificar->recibida($compra, $chatQueEnvio);
+        }
 
         return [
             'ok'        => true,
@@ -142,7 +157,7 @@ final class RegistrarCompraElectronica
             ->whereNotNull('conciliado_con')->exists();
     }
 
-    private function crear(Empresa $empresa, array $c, string $clave, string $origen, ?string $xml): Purchase
+    private function crear(Empresa $empresa, array $c, string $clave, string $origen, ?string $xml, ?string $pagoElegido = null): Purchase
     {
         $emisor = $c['emisor'];
         $proveedor = $this->proveedores->obtener($empresa->id, $emisor['ruc'], $emisor['razon_social'], [
@@ -183,8 +198,16 @@ final class RegistrarCompraElectronica
             $notas .= " · El XML dice {$importe} y las líneas suman {$total}.";
         }
 
-        $compra->update(['subtotal' => $subtotal, 'iva' => $iva, 'total' => $total, 'notas' => $notas]
-            + app(ResolverFormaPago::class)->desdeXml($compra, $pago));
+        $formas = app(ResolverFormaPago::class);
+        if ($pagoElegido) {
+            [$forma, $medio] = array_pad(explode(':', $pagoElegido, 2), 2, null);
+            $formaPago = $formas->elegida($compra, $forma, $medio ? (int) $medio : null, (int) ($pago['plazo'] ?? 0) ?: null)
+                + ['requiere_forma_pago' => false];
+        } else {
+            $formaPago = $formas->desdeXml($compra, $pago);
+        }
+
+        $compra->update(['subtotal' => $subtotal, 'iva' => $iva, 'total' => $total, 'notas' => $notas] + $formaPago);
 
         $this->registrarComprobante($empresa->id, $c, $clave, $compra);
 

@@ -8,6 +8,9 @@ use App\Models\ComprobanteSri;
 use App\Models\Empresa;
 use App\Models\Gasto;
 use App\Models\JournalEntryLine;
+use App\Models\ProductoProveedor;
+use App\Models\Purchase;
+use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
 use App\Models\TipoGasto;
 use App\Services\AtsService;
 use App\Services\ClasificadorComprobantesService;
@@ -141,5 +144,87 @@ class PortalAContabilidadTest extends TestCase
 
         $this->assertNotEmpty(array_filter($ats['avisos'], fn ($a) => str_contains($a, 'no están registradas')),
             'lo que suma al 104 y no está en el ATS se dice, no se calla');
+    }
+
+    public function test_la_factura_se_registra_con_su_detalle_y_cada_producto_se_dice_una_sola_vez(): void
+    {
+        $caja = CashRegister::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'nombre' => 'Caja detalle', 'tipo' => 'principal',
+            'saldo_actual' => 0, 'activo' => true,
+        ]);
+        $tipo = TipoGasto::create([
+            'nombre' => 'Limpieza', 'account_plan_id' => $this->cuenta('6.1.01.02', 'Limpieza', 'gasto')->id,
+            'deducible' => true, 'activo' => true,
+        ]);
+
+        // El mapeo del IVA en compras, que toda empresa trae de su configuración contable.
+        \App\Models\AccountingMap::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'tipo_item' => 'global', 'tipo_movimiento' => 'iva_compras',
+            'account_plan_id' => AccountPlan::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
+                ->where('code', '1.1.02.05')->value('id'),
+        ]);
+
+        // El XML autorizado: dos productos, uno al 15 % y otro a tarifa cero.
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')->andReturn([
+            'ok' => true, 'estado' => 'AUTORIZADO',
+            'comprobante' => [
+                'tipo' => 'factura', 'clave_acceso' => self::CLAVE, 'numero' => '001-001-000000123',
+                'fecha_emision' => '10/09/2026', 'importe_total' => '135.00',
+                'emisor' => ['ruc' => '1790012345001', 'razon_social' => 'Insumos del Valle S.A.'],
+                'comprador' => ['identificacion' => '1793229485001', 'razon_social' => 'Rivet'],
+                'detalles' => [
+                    ['codigo' => 'LIMP-01', 'descripcion' => 'Desinfectante galón', 'cantidad' => '2',
+                     'precio_unitario' => '50.00', 'subtotal' => '100.00',
+                     'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '100.00', 'valor' => '15.00']]],
+                    ['codigo' => 'FUN-02', 'descripcion' => 'Fundas de basura', 'cantidad' => '4',
+                     'precio_unitario' => '5.00', 'subtotal' => '20.00',
+                     'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '0', 'base_imponible' => '20.00', 'valor' => '0.00']]],
+                ],
+                'impuestos' => [
+                    ['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '100.00', 'valor' => '15.00'],
+                    ['codigo' => '2', 'codigo_porcentaje' => '0', 'base_imponible' => '20.00', 'valor' => '0.00'],
+                ],
+                'pagos' => [['codigo' => '20', 'total' => '135.00']],
+            ],
+        ]));
+
+        $c = $this->comprobante();
+        $r = app(ClasificadorComprobantesService::class)->registrarConDetalle($c, "efectivo:{$caja->id}");
+
+        $this->assertTrue($r['ok'], $r['error'] ?? '');
+        $this->assertSame('pendiente', $r['estado'], 'productos nuevos: esperan a que se diga qué son');
+
+        $compra = Purchase::withoutGlobalScopes()->with('items')->findOrFail($r['id']);
+        $this->assertCount(2, $compra->items, 'las líneas salen de la factura, no de un select');
+        $this->assertSame(self::CLAVE, $compra->clave_acceso);
+        $this->assertSame('efectivo', $compra->forma_pago, 'manda el pago que eligió quien registra');
+
+        // Se dice una vez qué es cada producto y la compra se registra sola.
+        foreach (ProductoProveedor::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)->get() as $producto) {
+            app(ConfirmarCompraElectronica::class)->producto($producto, null, $tipo->id, null);
+        }
+
+        $compra->refresh();
+        $this->assertSame('confirmado', $compra->status, (string) $compra->error_contable_msg);
+        $this->assertNotNull($compra->journal_entry_id);
+
+        $ats = app(AtsService::class)->datos($this->empresa->id, 2026, 9);
+        $registro = collect($ats['compras'])->firstWhere('secuencial', '000000123');
+        $this->assertSame(self::CLAVE, $registro['autorizacion']);
+        $this->assertSame('100.00', $registro['baseImpGrav']);
+        $this->assertSame('20.00', $registro['baseImponible']);
+    }
+
+    public function test_si_el_sri_ya_no_la_devuelve_se_pide_a_mano(): void
+    {
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')
+            ->andReturn(['ok' => false, 'estado' => 'NO_ENCONTRADO']));
+
+        $c = $this->comprobante();
+        $r = app(ClasificadorComprobantesService::class)->registrarConDetalle($c, 'credito');
+
+        $this->assertFalse($r['ok']);
+        $this->assertTrue($r['manual']);
+        $this->assertSame('sin_xml', $c->fresh()->desglose);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ComprobanteSri;
+use App\Models\Empresa;
 use App\Models\Gasto;
 use App\Models\GastoLinea;
 use App\Models\InventoryItem;
@@ -12,6 +13,8 @@ use App\Models\SaleItem;
 use App\Models\Supplier;
 use App\Models\TipoGasto;
 use App\Modules\Compras\Actions\ProveedorPorIdentificacion;
+use App\Modules\Compras\Actions\RegistrarCompraElectronica;
+use Illuminate\Validation\ValidationException;
 use App\Modules\Ventas\Actions\ClientePorIdentificacion;
 use Illuminate\Support\Facades\DB;
 
@@ -34,9 +37,13 @@ use Illuminate\Support\Facades\DB;
  * Una factura emitida que no está en el ERP entra igual, como venta: con su
  * cliente, su ingreso, su IVA y la descarga del costo del producto vendido.
  *
- * Antes de registrar se pide al SRI el XML por la clave de acceso: el listado
- * del portal no separa la base gravada de la de tarifa cero, el XML sí. Y la
- * clave queda guardada en el documento, que es la autorización que pide el ATS.
+ * El camino normal es registrar con el detalle de la factura (registrarConDetalle):
+ * se pide al SRI el XML por la clave de acceso, que trae cada producto con su
+ * cantidad, precio e IVA, y la compra entra igual que una que llega por correo.
+ * Cada producto del proveedor se recuerda: la primera vez se dice qué es y las
+ * siguientes facturas entran solas. Solo si el SRI ya no devuelve el comprobante
+ * (guarda unas semanas) se cae a la elección manual de abajo (clasificar).
+ * En los dos casos la clave queda como autorización, que es lo que pide el ATS.
  * Cómo se pagó (caja, banco, tarjeta o a crédito) lo dice quien registra: el
  * SRI no lo sabe (ver MedioPago).
  *
@@ -105,6 +112,167 @@ class ClasificadorComprobantesService
             ]);
 
             return $resultado;
+        });
+    }
+
+    /** El desglose que marca que el SRI ya no devuelve ese comprobante, o que su detalle no se reconoce. */
+    public const SIN_DETALLE = ['sin_xml', 'sin_detalle'];
+
+    /**
+     * Registra con el detalle de la factura.
+     *
+     * @return array{ok: bool, estado?: string, detalle?: string, error?: string, manual?: bool}
+     *   manual = true: hay que decir a mano qué fue (el SRI no lo devolvió o no se reconoce el producto vendido)
+     */
+    public function registrarConDetalle(ComprobanteSri $c, ?string $pago, ?int $usuarioId = null): array
+    {
+        if ($c->conciliado_con) {
+            return ['ok' => false, 'error' => 'Ese comprobante ya está registrado en el ERP.'];
+        }
+
+        try {
+            app(ContabilidadService::class)->exigirEjercicioAbierto($c->empresa_id, $c->fecha_emision->toDateString());
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => $e->getMessage()];
+        }
+
+        $lectura = $c->clave_acceso ? app(ServicioSri::class)->autorizacionComprobante($c->clave_acceso) : [];
+
+        if (! ($lectura['ok'] ?? false) || ($lectura['estado'] ?? '') !== 'AUTORIZADO') {
+            $c->update(['desglose' => 'sin_xml']);
+
+            return ['ok' => false, 'manual' => true,
+                    'error' => 'El SRI ya no devuelve esa factura: di a mano qué fue.'];
+        }
+
+        try {
+            $resultado = $c->origen === 'emitido'
+                ? $this->ventaConDetalle($c, $lectura['comprobante'], $pago)
+                : $this->compraConDetalle($c, $lectura, $pago);
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => $e->getMessage()];
+        }
+
+        if ($resultado['ok'] ?? false) {
+            $c->refresh();
+            $c->update(['pago' => $pago ?? 'credito', 'clasificado_en' => now(), 'clasificado_por' => $usuarioId,
+                        'desglose' => 'xml'] + ($c->conciliado_con ? [] : [
+                            'conciliado_con' => $resultado['documento'], 'conciliado_id' => $resultado['id']]));
+        }
+
+        return $resultado;
+    }
+
+    /** La compra entra por el mismo camino que una factura que llega por correo. */
+    private function compraConDetalle(ComprobanteSri $c, array $lectura, ?string $pago): array
+    {
+        try {
+            $r = app(RegistrarCompraElectronica::class)->desdeAutorizacion(
+                Empresa::findOrFail($c->empresa_id), $lectura, Purchase::ORIGEN_PORTAL, $pago,
+            );
+        } catch (ValidationException $e) {
+            return ['ok' => false, 'error' => collect($e->errors())->flatten()->first()];
+        }
+
+        if (! ($r['ok'] ?? false)) {
+            return ['ok' => false, 'error' => $r['mensaje'] ?? 'No se pudo registrar.'];
+        }
+
+        $compra = isset($r['compra_id']) ? Purchase::withoutGlobalScopes()->find($r['compra_id']) : null;
+
+        return [
+            'ok'        => true,
+            'documento' => 'purchase',
+            'id'        => $compra?->id,
+            'estado'    => $r['estado'],
+            // pendiente: tiene productos nuevos de ese proveedor; se dicen una vez abajo.
+            'detalle'   => $r['estado'] === 'pendiente'
+                ? "compra {$c->numero}: tiene productos nuevos, dilos abajo y se registra sola"
+                : "compra {$c->numero} con el detalle de la factura",
+        ];
+    }
+
+    /**
+     * La venta con el detalle de la factura emitida: cada línea se reconoce en
+     * el inventario por su código o por su nombre. Si alguna no se reconoce, no
+     * se adivina: se pide a mano.
+     */
+    private function ventaConDetalle(ComprobanteSri $c, array $xml, ?string $pago): array
+    {
+        $lineas = [];
+        $sinReconocer = [];
+
+        foreach ($xml['detalles'] ?? [] as $d) {
+            $codigo = trim((string) ($d['codigo'] ?? ''));
+            $item = InventoryItem::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)
+                ->where(fn ($q) => $q->when($codigo !== '', fn ($q) => $q->where('codigo', $codigo))
+                    ->orWhereRaw('lower(nombre) = ?', [mb_strtolower(trim((string) $d['descripcion']))]))
+                ->first();
+
+            if (! $item) {
+                $sinReconocer[] = $d['descripcion'];
+
+                continue;
+            }
+
+            $iva = collect($d['impuestos'] ?? [])->where('codigo', '2')
+                ->reject(fn ($i) => in_array($i['codigo_porcentaje'] ?? '', ComprobanteSri::IVA_SIN_TARIFA, true))
+                ->sum(fn ($i) => (float) $i['valor']);
+            $cantidad = (float) $d['cantidad'] ?: 1.0;
+            $lineas[] = [$item, $cantidad, round((float) $d['subtotal'] / $cantidad, 4), $iva > 0];
+        }
+
+        if ($sinReconocer || ! $lineas) {
+            $c->update(['desglose' => 'sin_detalle']);
+
+            return ['ok' => false, 'manual' => true, 'error' => 'No reconozco en el inventario: '
+                . implode(', ', array_slice($sinReconocer, 0, 3)) . '. Di a mano qué se vendió.'];
+        }
+
+        $comprador = $xml['comprador'] ?? [];
+        $cliente = app(ClientePorIdentificacion::class)->obtener(
+            $c->empresa_id,
+            (string) ($comprador['identificacion'] ?? $c->identificacion ?: ClientePorIdentificacion::CONSUMIDOR_FINAL),
+            $comprador['razon_social'] ?? $c->razon_social,
+        );
+        $medio = MedioPago::atributos($pago);
+
+        return DB::transaction(function () use ($c, $cliente, $medio, $lineas) {
+            $venta = Sale::withoutGlobalScopes()->create([
+                'empresa_id'     => $c->empresa_id,
+                'referencia'     => $c->numero,
+                'fecha'          => $c->fecha_emision,
+                'customer_id'    => $cliente->id,
+                'tipo_venta'     => $medio['forma_pago'] === 'credito' ? 'credito' : 'contado',
+                'tipo_operacion' => 'productos',
+                'subtotal'       => 0, 'iva' => 0, 'total' => 0,
+                'estado'         => 'borrador',
+                'clave_acceso'   => $c->clave_acceso,
+                'notas'          => 'Del portal del SRI, con el detalle de la factura',
+            ] + $medio);
+
+            foreach ($lineas as [$item, $cantidad, $precio, $conIva]) {
+                SaleItem::create([
+                    'sale_id' => $venta->id, 'inventory_item_id' => $item->id, 'tipo_item' => 'producto',
+                    'cantidad' => $cantidad, 'precio_unitario' => $precio, 'aplica_iva' => $conIva,
+                ]);
+            }
+
+            $venta->refresh();
+            if (abs((float) $venta->iva - (float) $c->iva) > 0.01) {
+                $venta->update(['notas' => $venta->notas . " · El comprobante dice IVA {$c->iva} y la venta calculó {$venta->iva} (ICE u otra tarifa)."]);
+            }
+
+            $venta->update(['estado' => 'confirmado']);
+            $venta->refresh();
+
+            if (! $venta->journal_entry_id) {
+                throw new \RuntimeException('La venta no generó asiento: '
+                    . ($venta->error_contable_msg ?: 'revisa el mapeo contable del producto.'));
+            }
+
+            return ['ok' => true, 'documento' => 'sale', 'id' => $venta->id,
+                    'detalle' => "venta {$c->numero} con el detalle de la factura"];
         });
     }
 
@@ -329,7 +497,7 @@ class ClasificadorComprobantesService
      */
     public function exacto(ComprobanteSri $c): void
     {
-        if (! $c->clave_acceso || $c->desglose === 'xml') {
+        if (! $c->clave_acceso || in_array($c->desglose, ['xml', ...self::SIN_DETALLE], true)) {
             return;
         }
 
