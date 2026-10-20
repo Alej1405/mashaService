@@ -374,4 +374,45 @@ class PortalAContabilidadTest extends TestCase
         $this->assertEquals(135, (float) $gasto->total);
         $this->assertSame(self::CLAVE, $gasto->autorizacion);
     }
+
+    public function test_en_un_solo_bloque_se_dice_que_es_el_producto_nuevo_y_se_registra(): void
+    {
+        $usuario = \App\Models\User::factory()->create(['empresa_id' => $this->empresa->id]);
+        $this->actingAs($usuario);
+        \Filament\Facades\Filament::setCurrentPanel(\Filament\Facades\Filament::getPanel('contabilidad'));
+        \Filament\Facades\Filament::setTenant($this->empresa);
+
+        \App\Models\AccountingMap::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'tipo_item' => 'global', 'tipo_movimiento' => 'iva_compras',
+            'account_plan_id' => AccountPlan::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
+                ->where('code', '1.1.02.05')->value('id'),
+        ]);
+        \App\Models\AccountingMap::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'tipo_item' => 'global', 'tipo_movimiento' => 'compra_credito_local',
+            'account_plan_id' => AccountPlan::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
+                ->where('code', '2.1.01.01')->value('id'),
+        ]);
+        $tipo = TipoGasto::create([
+            'nombre' => 'Limpieza bloque', 'account_plan_id' => $this->cuenta('6.1.01.09', 'Limpieza', 'gasto')->id,
+            'deducible' => true, 'activo' => true,
+        ]);
+
+        // Sube el XML: el producto es nuevo, la factura queda por completar.
+        $this->xmlConDetalle();
+        $this->comprobante();
+        $r = app(ClasificadorComprobantesService::class)->registrarDesdeXml($this->empresa->id, '<factura/>', 'credito');
+        $this->assertSame('pendiente', $r['estado'] ?? null, $r['error'] ?? '');
+
+        // En el mismo bloque: se dice qué es cada producto nuevo y un botón la registra.
+        $componente = \Livewire\Livewire::test(\App\Livewire\CompletarFacturas::class)
+            ->assertSee('Facturas por completar')
+            ->assertSee('Botella 750 ml');
+        foreach (ProductoProveedor::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)->pluck('id') as $id) {
+            $componente->set("producto.{$id}", "gasto:{$tipo->id}");
+        }
+        $componente->call('registrar', $r['id']);
+        $this->assertSame([], $componente->errors()->all(), implode(' ', $componente->errors()->all()));
+
+        $this->assertSame('confirmado', Purchase::withoutGlobalScopes()->find($r['id'])->status);
+    }
 }

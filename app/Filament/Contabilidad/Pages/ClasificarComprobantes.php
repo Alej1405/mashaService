@@ -9,9 +9,6 @@ use App\Filament\Contabilidad\Acciones\ImportarDelPortal;
 use App\Services\ClasificadorComprobantesService;
 use App\Services\MedioPago;
 use App\Models\ProductoProveedor;
-use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
-use App\Modules\Compras\Queries\ComprasElectronicasPendientes;
-use Illuminate\Validation\ValidationException;
 use App\Jobs\RegistrarComprobantesDelPortal;
 use Illuminate\Support\Facades\Cache;
 use Filament\Actions\Action;
@@ -69,9 +66,6 @@ class ClasificarComprobantes extends Page
     public string $vista = 'por_registrar';
 
     public const VISTAS = ['por_registrar', 'sin_detalle', 'esperan', 'registradas'];
-
-    /** producto_proveedor_id => 'item:12' | 'gasto:5' — se dice una vez por producto, no por factura. */
-    public array $productos = [];
 
     public static function canAccess(): bool
     {
@@ -152,16 +146,14 @@ class ClasificarComprobantes extends Page
     }
 
     /**
-     * Las registradas (o esperando) con lo que se registró de cada una.
+     * Las registradas con lo que se registró de cada una.
      *
      * @return array{0: \Illuminate\Support\Collection, 1: array<int, array{tipo: string, con_detalle: bool, lineas: array}>}
      */
-    private function registradas(int $empresaId, bool $soloEsperan): array
+    private function registradas(int $empresaId): array
     {
-        $comprobantes = ($soloEsperan
-            ? $this->esperanQuery($empresaId)
-            : $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId)->whereNotNull('conciliado_con'))
-                ->whereNotIn('id', $this->esperanQuery($empresaId)->select('id')))
+        $comprobantes = $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId)->whereNotNull('conciliado_con'))
+            ->whereNotIn('id', $this->esperanQuery($empresaId)->select('id'))
             ->orderByDesc('fecha_emision')->limit(120)->get();
 
         $ids = fn (string $tipo) => $comprobantes->where('conciliado_con', $tipo)->pluck('conciliado_id')->filter()->all();
@@ -333,121 +325,6 @@ class ClasificarComprobantes extends Page
             ->info()->send();
     }
 
-    /**
-     * Subir el XML de facturas que el SRI ya no devuelve por clave: uno, varios o
-     * un .zip. Cada uno se casa con su factura del listado del portal por la clave.
-     */
-    private function accionSubirXml(): Action
-    {
-        return Action::make('subirXml')
-            ->label('Subir XML')
-            ->icon('heroicon-o-document-arrow-up')
-            ->color('gray')
-            ->modalDescription('Para las facturas viejas que el SRI ya no entrega por su clave. Sube el XML de cada '
-                . 'una (del portal del SRI o del correo del proveedor), varios a la vez o un .zip. Se registran con '
-                . 'su detalle y se casan solas con su factura del listado.')
-            ->form([
-                \Filament\Forms\Components\FileUpload::make('archivos')
-                    ->label('XML o .zip')
-                    ->multiple()
-                    ->maxFiles(60)
-                    ->acceptedFileTypes(['text/xml', 'application/xml', 'application/zip', 'application/x-zip-compressed', 'application/octet-stream'])
-                    ->maxSize(20480)
-                    ->disk('local')
-                    ->directory('sri/xml-temporal')
-                    ->required(),
-                \Filament\Forms\Components\Select::make('pago')
-                    ->label('Cómo se pagaron')
-                    ->options(fn () => MedioPago::opciones(Filament::getTenant()->id))
-                    ->default('credito')
-                    ->required(),
-            ])
-            ->action(function (array $data) {
-                $empresaId = Filament::getTenant()->id;
-                $servicio = app(ClasificadorComprobantesService::class);
-                $hechas = 0;
-                $fallos = [];
-
-                // Cada XML es una lectura en el servicio del SRI: por tanda, hasta 80 (la web corta a los 30 s).
-                $xmls = $this->xmlsDe($data['archivos']);
-                $resto = max(count($xmls) - 80, 0);
-
-                foreach (array_slice($xmls, 0, 80, true) as $nombre => $xml) {
-                    $r = $servicio->registrarDesdeXml($empresaId, $xml, $data['pago'], auth()->id());
-                    if ($r['ok'] ?? false) {
-                        $hechas++;
-                    } else {
-                        $fallos[] = ($r['numero'] ?? $nombre) . ': ' . $r['error'];
-                    }
-                }
-
-                $this->cargar();
-
-                Notification::make()
-                    ->title("{$hechas} facturas registradas con su XML")
-                    ->body(trim(($fallos ? 'No se pudo con ' . count($fallos) . ': ' . implode(' · ', array_slice($fallos, 0, 3)) : 'Todas quedaron con su detalle.')
-                        . ($resto ? " Quedaron {$resto} sin procesar: súbelas en otra tanda." : '')))
-                    ->{$fallos ? 'warning' : 'success'}()->persistent()->send();
-            });
-    }
-
-    /**
-     * Los XML de lo subido: los sueltos tal cual y los que vienen dentro de un .zip.
-     *
-     * @return array<string, string> nombre => contenido
-     */
-    private function xmlsDe(array $rutas): array
-    {
-        $xmls = [];
-
-        foreach ($rutas as $relativa) {
-            $ruta = storage_path('app/private/' . $relativa);
-            if (! file_exists($ruta)) {
-                $ruta = storage_path('app/' . $relativa);
-            }
-
-            if (str_ends_with(strtolower($relativa), '.zip')) {
-                $zip = new \ZipArchive;
-                if ($zip->open($ruta) === true) {
-                    for ($i = 0; $i < min($zip->numFiles, 500); $i++) {
-                        $nombre = $zip->getNameIndex($i);
-                        if (str_ends_with(strtolower($nombre), '.xml')) {
-                            $xmls[basename($nombre)] = $zip->getFromIndex($i);
-                        }
-                    }
-                    $zip->close();
-                }
-            } else {
-                $xmls[basename($relativa)] = file_get_contents($ruta);
-            }
-
-            @unlink($ruta);
-        }
-
-        return $xmls;
-    }
-
-    /** Dice qué es un producto de un proveedor: vale para esta factura y las que vengan. */
-    public function configurarProducto(int $id): void
-    {
-        $producto = app(ComprasElectronicasPendientes::class)->productos(Filament::getTenant()->id)->findOrFail($id);
-        [$tipo, $valor] = array_pad(explode(':', (string) ($this->productos[$id] ?? '')), 2, null);
-
-        try {
-            $confirmadas = app(ConfirmarCompraElectronica::class)->producto(
-                $producto, $tipo === 'item' ? (int) $valor : null, $tipo === 'gasto' ? (int) $valor : null, auth()->id(),
-            );
-        } catch (ValidationException $e) {
-            Notification::make()->title('Falta elegir')->body(collect($e->errors())->flatten()->first())->warning()->send();
-
-            return;
-        }
-
-        Notification::make()->title('Producto guardado')
-            ->body($confirmadas ? "{$confirmadas} compras quedaron registradas con su asiento." : 'Se usará en las próximas facturas de ese proveedor.')
-            ->success()->send();
-    }
-
     /** Clasifica a mano una factura que el SRI ya no devuelve. */
     public function clasificar(int $id): void
     {
@@ -495,7 +372,6 @@ class ClasificarComprobantes extends Page
     {
         return [
             ImportarDelPortal::make(fn () => $this->cargar()),
-            $this->accionSubirXml(),
 
             Action::make('ayuda')
                 ->label('Qué es esto')
@@ -518,9 +394,7 @@ class ClasificarComprobantes extends Page
     {
         $empresa = Filament::getTenant();
         $pendientes = in_array($this->vista, ['por_registrar', 'sin_detalle'], true) ? $this->pendientes() : collect();
-        [$registradas, $detalle] = in_array($this->vista, ['esperan', 'registradas'], true)
-            ? $this->registradas($empresa->id, $this->vista === 'esperan')
-            : [collect(), []];
+        [$registradas, $detalle] = $this->vista === 'registradas' ? $this->registradas($empresa->id) : [collect(), []];
 
         return [
             'conteos'    => $this->conteos($empresa->id),
@@ -538,9 +412,6 @@ class ClasificarComprobantes extends Page
             'urlDeclaraciones' => Declaraciones::getUrl(),
             'sinDetalle' => ClasificadorComprobantesService::SIN_DETALLE,
             'avance'     => Cache::get(RegistrarComprobantesDelPortal::claveAvance($empresa->id)),
-            // Productos de proveedor que aparecieron en una factura y nadie ha dicho qué son.
-            'productosNuevos' => app(ComprasElectronicasPendientes::class)->productos($empresa->id)
-                ->with('supplier:id,nombre')->orderBy('supplier_id')->limit(80)->get(),
             'porProveedor' => $pendientes->groupBy('identificacion')->map->count(),
             'destinos'   => ClasificadorComprobantesService::DESTINOS,
             'tiposGasto' => TipoGasto::where('activo', true)

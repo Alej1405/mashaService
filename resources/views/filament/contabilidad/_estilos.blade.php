@@ -113,6 +113,13 @@
                     font-size:13px; color:var(--t2); border-bottom:1px solid var(--b2); }
     .ct-lineas li span:last-child { white-space:nowrap; font-variant-numeric:tabular-nums; color:var(--t); font-weight:600; }
 
+    /* Zona para subir archivos: un botón grande, se procesa al elegir */
+    .ct-subir { display:flex; align-items:center; justify-content:center; gap:8px; min-height:52px;
+                padding:12px 16px; border:2px dashed var(--b); border-radius:12px; background:var(--s2);
+                color:var(--m); font-size:13px; cursor:pointer; transition:border-color .15s ease, background .15s ease; }
+    .ct-subir:hover, .ct-subir:focus-within { border-color:var(--ac); background:#eef2ff; color:var(--t); }
+    .ct-subir strong { color:var(--ac); }
+
     /* Desplegables e inputs dentro de las filas */
     /* La flecha la pinta el CSS base de Filament como imagen de fondo. Sin
        no-repeat se dibuja una por cada ancho del select: el desplegable

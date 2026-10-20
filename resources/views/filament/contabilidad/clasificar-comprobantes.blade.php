@@ -69,7 +69,7 @@
                             @if ($vista === 'por_registrar')
                                 Elige cómo se pagó cada una: lo que elijas se propone para el resto de ese proveedor
                             @else
-                                Lo mejor es subir su XML (botón «Subir XML»). Si no lo tienes, di qué fue
+                                Lo mejor es subir su XML arriba. Si no lo tienes, di qué fue
                             @endif
                             @if ($conteos[$vista] > 120) · se muestran las primeras 120 @endif
                         </p>
@@ -226,58 +226,19 @@
         @endif
     @endif
 
-    {{-- ── Esperan un producto nuevo ──────────────────────────────────── --}}
-    @if ($vista === 'esperan' && $productosNuevos->isNotEmpty())
-        <section class="ct-panel">
-            <header>
-                <div>
-                    <h2 class="ct-tit">Productos nuevos de proveedores</h2>
-                    <p class="ct-pie2">Dilo una vez y las compras que los esperan se registran solas, igual que las próximas</p>
-                </div>
-            </header>
-            @foreach ($productosNuevos as $p)
-                <div class="ct-fila" style="align-items:flex-start; flex-wrap:wrap; gap:10px" wire:key="p-{{ $p->id }}">
-                    <div style="min-width:230px; flex:1">
-                        <p class="ct-fila-t">{{ $p->descripcion }}</p>
-                        <p class="ct-fila-s">{{ $p->supplier?->nombre }} · código {{ $p->codigo }}
-                            @if ($p->ultimo_precio) · último precio {{ $money($p->ultimo_precio) }} @endif</p>
-                    </div>
-                    <div style="display:flex; gap:8px; align-items:center; flex:1 1 420px; flex-wrap:wrap">
-                        <select wire:model.live="productos.{{ $p->id }}" class="ct-select" style="flex:2 1 260px" aria-label="Qué es este producto">
-                            <option value="">— qué es —</option>
-                            @foreach ($items as $tipo => $grupo)
-                                <optgroup label="{{ ucfirst(str_replace('_', ' ', $tipo)) }}">
-                                    @foreach ($grupo as $id => $nombre)
-                                        <option value="item:{{ $id }}">{{ $nombre }}</option>
-                                    @endforeach
-                                </optgroup>
-                            @endforeach
-                            <optgroup label="Gasto">
-                                @foreach ($tiposGasto as $id => $nombre)
-                                    <option value="gasto:{{ $id }}">{{ $nombre }}</option>
-                                @endforeach
-                            </optgroup>
-                        </select>
-                        <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
-                                @disabled(empty($productos[$p->id] ?? '')) wire:click="configurarProducto({{ $p->id }})">Guardar</button>
-                    </div>
-                </div>
-            @endforeach
-        </section>
+    {{-- ── Sin detalle y esperan: subir el XML y completar cada factura aquí mismo ── --}}
+    @if (in_array($vista, ['sin_detalle', 'esperan'], true))
+        @livewire(\App\Livewire\CompletarFacturas::class)
     @endif
 
-    {{-- ── Registradas (y las que esperan): con lo que se registró ───────── --}}
-    @if (in_array($vista, ['esperan', 'registradas'], true))
+    {{-- ── Registradas: con lo que se registró ───────────────────────────── --}}
+    @if ($vista === 'registradas')
         <section class="ct-panel">
             <header>
                 <div>
-                    <h2 class="ct-tit">{{ $vista === 'esperan' ? 'Compras que esperan un producto' : 'Facturas registradas' }}</h2>
+                    <h2 class="ct-tit">Facturas registradas</h2>
                     <p class="ct-pie2">
-                        @if ($vista === 'registradas')
-                            Las registradas a mano se completan subiendo su XML: toman el detalle real y se rehace su asiento
-                        @else
-                            Ya tienen su detalle; se registran solas al decir qué es el producto nuevo
-                        @endif
+                        Las registradas a mano se completan subiendo su XML (pestaña «Sin detalle»): toman el detalle real y se rehace su asiento
                         @if ($conteos[$vista] > 120) · se muestran las 120 más recientes @endif
                     </p>
                 </div>
@@ -291,9 +252,7 @@
                         <p class="ct-fila-s">{{ $d['tipo'] }} · {{ $c->numero }} · {{ $c->fecha_emision->format('d/m/Y') }} ·
                             <strong>{{ $money($c->total) }}</strong></p>
                     </div>
-                    @if ($vista === 'esperan')
-                        <span class="ct-chip ct-chip-wa">Con detalle · espera un producto</span>
-                    @elseif ($d['con_detalle'])
+                    @if ($d['con_detalle'])
                         <span class="ct-chip ct-chip-ok">Con detalle · {{ count($d['lineas']) }} {{ count($d['lineas']) === 1 ? 'producto' : 'productos' }}</span>
                     @else
                         <span class="ct-chip ct-chip-n">A mano · sin detalle</span>
@@ -312,7 +271,7 @@
                 </div>
             @empty
                 <p class="ct-fila-s" style="padding:18px">
-                    {{ $vista === 'esperan' ? 'Ninguna compra espera un producto nuevo.' : 'Todavía no hay facturas registradas' . ($anio ? " en {$anio}" : '') . '.' }}
+                    Todavía no hay facturas registradas{{ $anio ? " en {$anio}" : '' }}.
                 </p>
             @endforelse
         </section>

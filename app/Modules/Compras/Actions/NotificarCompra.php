@@ -2,7 +2,6 @@
 
 namespace App\Modules\Compras\Actions;
 
-use App\Filament\Contabilidad\Pages\ComprasPorCompletar;
 use App\Filament\Operaciones\Pages\ProductosPorConfigurar;
 use App\Models\Purchase;
 use App\Models\User;
@@ -121,7 +120,7 @@ final class NotificarCompra
                     . ($compra->requiere_forma_pago ? 'falta decir cómo se pagó.' : $compra->error_contable_msg))
                 ->icon('heroicon-o-banknotes')->iconColor('warning')
                 ->actions([Action::make('completar')->label('Completar')->markAsRead()
-                    ->url(ComprasPorCompletar::getUrl(panel: 'contabilidad', tenant: $compra->empresa))])
+                    ->url(\App\Filament\Contabilidad\Pages\ClasificarComprobantes::getUrl(['vista' => 'esperan'], panel: 'contabilidad', tenant: $compra->empresa))])
                 ->sendToDatabase($usuarios);
         }
 
