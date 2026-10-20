@@ -56,6 +56,25 @@ class GastoService
                 'estado'           => 'confirmado',
             ]);
 
+            // Pagado en efectivo: el saldo de la caja baja con su movimiento.
+            // Puede quedar en negativo (la empresa aún no registra sus ingresos de caja).
+            if ($gasto->forma_pago === 'efectivo' && $gasto->cash_register_id) {
+                \App\Models\CashMovement::create([
+                    'empresa_id'       => $gasto->empresa_id,
+                    'cash_register_id' => $gasto->cash_register_id,
+                    'cash_session_id'  => \App\Models\CashSession::where('cash_register_id', $gasto->cash_register_id)
+                        ->where('estado', 'abierta')->latest()->value('id'),
+                    'tipo'             => 'egreso',
+                    'origen'           => 'gasto',
+                    'referencia_tipo'  => 'gasto',
+                    'referencia_id'    => $gasto->id,
+                    'journal_entry_id' => $asiento->id,
+                    'monto'            => round($subtotal + $iva - $retenido, 2),
+                    'descripcion'      => 'Gasto ' . ($gasto->numero_documento ?: '') . ' · ' . ($gasto->supplier?->nombre ?? ''),
+                    'fecha'            => $gasto->fecha,
+                ]);
+            }
+
             return $gasto->fresh(['lineas', 'retencion']);
         });
     }

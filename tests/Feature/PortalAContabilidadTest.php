@@ -124,6 +124,9 @@ class PortalAContabilidadTest extends TestCase
         $this->assertSame($caja->account_plan_id, $haber->first()->account_plan_id);
         $this->assertEquals(135, $haber->first()->haber);
 
+        // La caja baja su saldo aunque quede en negativo.
+        $this->assertEquals(-135, (float) $caja->fresh()->saldo_actual);
+
         // El ATS dice lo mismo que el asiento.
         $ats = app(AtsService::class)->datos($this->empresa->id, 2026, 9);
         $compra = collect($ats['compras'])->firstWhere('secuencial', '000000123');
