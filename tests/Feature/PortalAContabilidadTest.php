@@ -244,6 +244,11 @@ class PortalAContabilidadTest extends TestCase
         $this->assertFalse($avance['corriendo']);
         $this->assertSame(1, $avance['total']);
         $this->assertSame(1, $avance['manuales'], 'lo que el SRI ya no devuelve queda para decirlo a mano');
+
+        // Con un año elegido, solo se trabaja ese año.
+        \App\Jobs\RegistrarComprobantesDelPortal::dispatchSync($this->empresa->id, null, [], 2025);
+        $this->assertSame(0, \Illuminate\Support\Facades\Cache::get(
+            \App\Jobs\RegistrarComprobantesDelPortal::claveAvance($this->empresa->id))['total']);
     }
 
     public function test_una_factura_vieja_se_registra_con_su_xml_si_esta_en_el_listado(): void

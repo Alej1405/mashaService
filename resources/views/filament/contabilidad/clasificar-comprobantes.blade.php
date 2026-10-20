@@ -3,6 +3,19 @@
 @php $money = fn ($n) => '$ ' . number_format((float) $n, 2, ',', '.'); @endphp
 
 <div class="ct">
+    @if (count($anios) > 1)
+        {{-- Una bandeja de un año entero se trabaja año por año. --}}
+        <div style="display:flex; gap:8px; flex-wrap:wrap" role="tablist" aria-label="Año">
+            @foreach ([null, ...$anios] as $a)
+                <button type="button" role="tab" aria-selected="{{ $anio === $a ? 'true' : 'false' }}"
+                        wire:click="$set('anio', {{ $a ?? 'null' }})"
+                        class="ct-chip {{ $anio === $a ? 'ct-chip-ok' : 'ct-chip-n' }}"
+                        style="border:0; cursor:pointer; padding:8px 14px; font-size:.9rem">
+                    {{ $a ?? 'Todos los años' }}
+                </button>
+            @endforeach
+        </div>
+    @endif
     @if ($total === 0 && $ventas->isEmpty() && $productosNuevos->isEmpty())
         <section class="ct-panel">
             <header><h2 class="ct-tit">Bandeja vacía</h2></header>
@@ -27,14 +40,15 @@
     @if ($total > 0)
         <div class="ct-aviso" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
             <p style="flex:1 1 320px">
-                <strong>{{ $total }} facturas del portal sin registrar</strong> (se muestran las primeras 120).
+                <strong>{{ $total }} facturas del portal sin registrar{{ $anio ? " en {$anio}" : '' }}</strong>
+                @if ($total > 120) (se muestran las primeras 120) @endif.
                 Cada una se registra con el detalle que trae del SRI: sus productos, cantidades, precios e IVA.
                 Solo elige cómo se pagó.
             </p>
             @unless ($avance['corriendo'] ?? false)
                 <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                         wire:click="registrarTodas" wire:loading.attr="disabled" wire:target="registrarTodas">
-                    Registrar todas con su detalle
+                    Registrar todas{{ $anio ? " las de {$anio}" : '' }} con su detalle
                 </button>
             @endunless
         </div>

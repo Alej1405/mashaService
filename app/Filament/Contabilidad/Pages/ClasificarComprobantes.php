@@ -54,6 +54,10 @@ class ClasificarComprobantes extends Page
      */
     public array $eleccion = [];
 
+    /** Año que se trabaja en la bandeja; null = todos. Queda en la URL. */
+    #[\Livewire\Attributes\Url]
+    public ?int $anio = null;
+
     /** producto_proveedor_id => 'item:12' | 'gasto:5' — se dice una vez por producto, no por factura. */
     public array $productos = [];
 
@@ -83,6 +87,26 @@ class ClasificarComprobantes extends Page
     public function mount(): void
     {
         $this->cargar();
+    }
+
+    /** Al cambiar de año, las elecciones se vuelven a armar para lo que se ve. */
+    public function updatedAnio(): void
+    {
+        $this->cargar();
+    }
+
+    /** Filtra por el año elegido, si hay uno. */
+    private function delAnio($q)
+    {
+        return $q->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio));
+    }
+
+    /** Los años que tienen comprobantes del portal, del más reciente al más viejo. */
+    private function anios(int $empresaId): array
+    {
+        return ComprobanteSri::where('empresa_id', $empresaId)
+            ->selectRaw('distinct extract(year from fecha_emision)::int as anio')
+            ->orderByDesc('anio')->pluck('anio')->all();
     }
 
     private function cargar(): void
@@ -116,9 +140,9 @@ class ClasificarComprobantes extends Page
 
     private function ventasPendientes()
     {
-        return ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
+        return $this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
             ->where('origen', 'emitido')
-            ->sinClasificar()
+            ->sinClasificar())
             ->orderBy('fecha_emision')
             ->limit(60)
             ->get();
@@ -126,9 +150,9 @@ class ClasificarComprobantes extends Page
 
     private function pendientes()
     {
-        return ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
+        return $this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
             ->where('origen', 'recibido')
-            ->sinClasificar()
+            ->sinClasificar())
             ->orderBy('fecha_emision')
             ->orderBy('identificacion')
             ->limit(120)
@@ -199,7 +223,7 @@ class ClasificarComprobantes extends Page
         $pagos = collect($this->eleccion)->map(fn ($e) => $e['pago'] ?? null)->filter()->all();
         Cache::put(RegistrarComprobantesDelPortal::claveAvance($empresaId),
             ['corriendo' => true, 'total' => 0, 'hechos' => 0], now()->addHours(6));
-        RegistrarComprobantesDelPortal::dispatch($empresaId, auth()->id(), $pagos);
+        RegistrarComprobantesDelPortal::dispatch($empresaId, auth()->id(), $pagos, $this->anio);
 
         Notification::make()->title('Registrando en segundo plano')
             ->body('Cada factura se consulta en el SRI. Puedes seguir trabajando: te aviso en la campana al terminar.')
@@ -395,7 +419,9 @@ class ClasificarComprobantes extends Page
         return [
             'empresa'    => $empresa,
             'comprobantes' => $pendientes,
-            'total'      => app(ClasificadorComprobantesService::class)->pendientes($empresa->id),
+            'total'      => $this->delAnio(ComprobanteSri::where('empresa_id', $empresa->id)
+                ->where('origen', 'recibido')->sinClasificar())->count(),
+            'anios'      => $this->anios($empresa->id),
             'ventas'     => $this->ventasPendientes(),
             'medios'     => MedioPago::opciones($empresa->id),
             'mediosVenta' => MedioPago::opciones($empresa->id, true),
@@ -432,6 +458,7 @@ class ClasificarComprobantes extends Page
         // Pendiente: sin registrar, o registrada como compra que espera que se diga
         // qué es un producto nuevo (en borrador no tiene asiento ni entra al ATS).
         return ComprobanteSri::where('comprobantes_sri.empresa_id', $empresaId)
+            ->when($this->anio, fn ($q) => $q->whereYear('comprobantes_sri.fecha_emision', $this->anio))
             ->leftJoin('purchases as p', fn ($j) => $j->on('p.id', '=', 'comprobantes_sri.conciliado_id')
                 ->where('comprobantes_sri.conciliado_con', '=', 'purchase'))
             ->selectRaw("to_char(comprobantes_sri.fecha_emision, 'YYYY-MM') as mes, count(*) as total, "
