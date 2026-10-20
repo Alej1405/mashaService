@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ActivoFijo;
 use App\Models\Depreciacion;
 use App\Models\Gasto;
+use App\Models\GastoLinea;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\PorcentajeRetencion;
@@ -76,6 +77,59 @@ class GastoService
             }
 
             return $gasto->fresh(['lineas', 'retencion']);
+        });
+    }
+
+    /**
+     * Cambia las líneas de un gasto ya confirmado y rehace su asiento. Sirve para
+     * completar con el XML un gasto que se registró a mano con una sola línea.
+     * El total y la forma de pago no cambian, así que la caja no se toca: su
+     * movimiento solo pasa a apuntar al asiento nuevo.
+     *
+     * @param  array<int, array{tipo_gasto_id: int, account_plan_id: int, descripcion: string, base: float, iva: float, deducible: bool}>  $lineas
+     */
+    public function rehacer(Gasto $gasto, array $lineas): Gasto
+    {
+        return DB::transaction(function () use ($gasto, $lineas) {
+            $this->contabilidad->exigirEjercicioAbierto($gasto->empresa_id, $gasto->fecha->toDateString());
+
+            if ($gasto->retencion_id) {
+                throw new \RuntimeException('El gasto tiene retención: no se rehace solo, revísalo a mano.');
+            }
+
+            $gasto->lineas()->delete();
+            foreach ($lineas as $l) {
+                GastoLinea::create([
+                    'gasto_id' => $gasto->id, 'tipo_gasto_id' => $l['tipo_gasto_id'], 'account_plan_id' => $l['account_plan_id'],
+                    'descripcion' => $l['descripcion'], 'base' => $l['base'],
+                    'porcentaje_iva' => $l['base'] > 0 ? round($l['iva'] / $l['base'] * 100, 2) : 0,
+                    'iva' => $l['iva'], 'deducible' => $l['deducible'],
+                    'motivo_no_deducible' => $l['deducible'] ? null : 'Marcado al clasificar el comprobante',
+                ]);
+            }
+            $gasto->load('lineas.tipoGasto', 'supplier');
+
+            $subtotal = round((float) $gasto->lineas->sum('base'), 2);
+            $iva      = round((float) $gasto->lineas->sum('iva'), 2);
+
+            $anterior = $gasto->journal_entry_id;
+            $gasto->updateQuietly(['journal_entry_id' => null]);
+            if ($anterior) {
+                JournalEntry::whereKey($anterior)->delete();
+            }
+
+            $asiento = $this->asiento($gasto, $subtotal, $iva, 0.0);
+
+            $gasto->update([
+                'subtotal' => $subtotal, 'iva' => $iva, 'total' => round($subtotal + $iva, 2),
+                'no_deducible' => round((float) $gasto->lineas->where('deducible', false)->sum('base'), 2),
+                'journal_entry_id' => $asiento->id,
+            ]);
+
+            \App\Models\CashMovement::where('referencia_tipo', 'gasto')->where('referencia_id', $gasto->id)
+                ->update(['journal_entry_id' => $asiento->id]);
+
+            return $gasto->fresh(['lineas']);
         });
     }
 

@@ -190,7 +190,7 @@ class ClasificadorComprobantesService
         }
 
         if ($c->conciliado_con) {
-            return ['ok' => false, 'numero' => $c->numero, 'error' => "La factura {$c->numero} ya estaba registrada."];
+            return ['numero' => $c->numero] + $this->completarConXml($c, $lectura['comprobante'], $xml);
         }
 
         // Está en el listado del portal: autorizada.
@@ -213,6 +213,144 @@ class ClasificadorComprobantesService
         }
 
         return ['numero' => $c->numero] + $resultado;
+    }
+
+    /**
+     * El XML de una factura que ya estaba registrada: se guarda como respaldo y,
+     * si se había registrado a mano con una línea genérica, se completa con el
+     * detalle real (productos, cantidades, precios, IVA) y se rehace su asiento.
+     *
+     * No se toca nada si el total no coincide (no sería la misma factura), si el
+     * mes está cerrado o si el documento ya tenía su detalle.
+     */
+    private function completarConXml(ComprobanteSri $c, array $xml, string $contenido): array
+    {
+        $totalXml = round((float) ($xml['importe_total'] ?? 0), 2);
+
+        return match ($c->conciliado_con) {
+            'purchase' => $this->completarCompra($c, $xml, $contenido, $totalXml),
+            'gasto'    => $this->completarGasto($c, $xml, $totalXml),
+            default    => ['ok' => false, 'error' => "La factura {$c->numero} ya estaba registrada como venta: "
+                . 'las ventas no se rehacen con el XML.'],
+        };
+    }
+
+    private function completarCompra(ComprobanteSri $c, array $xml, string $contenido, float $totalXml): array
+    {
+        $compra = Purchase::withoutGlobalScopes()->with('items')->find($c->conciliado_id);
+
+        if (! $compra) {
+            return ['ok' => false, 'error' => "La compra de la factura {$c->numero} ya no existe."];
+        }
+
+        // El XML siempre queda como respaldo, y la clave como autorización del ATS.
+        $ruta = "comprobantes/{$c->empresa_id}/recibidos/{$c->clave_acceso}.xml";
+        \Illuminate\Support\Facades\Storage::disk('local')->put($ruta, $contenido);
+        $compra->updateQuietly(['xml_path' => $ruta, 'clave_acceso' => $compra->clave_acceso ?: $c->clave_acceso]);
+
+        if ($compra->items->whereNotNull('producto_proveedor_id')->isNotEmpty()) {
+            return ['ok' => true, 'detalle' => "compra {$c->numero}: ya tenía su detalle, se guardó el XML"];
+        }
+
+        if (abs((float) $compra->total - $totalXml) > 0.01) {
+            return ['ok' => false, 'error' => "compra {$c->numero}: el XML suma {$totalXml} y la compra {$compra->total}. "
+                . 'Se guardó el XML pero no se cambió nada.'];
+        }
+
+        try {
+            DB::transaction(function () use ($c, $xml, $compra) {
+                app(ContabilidadService::class)->exigirEjercicioAbierto($compra->empresa_id, $compra->date->toDateString());
+
+                // 1. Lo que entró al kardex sale al mismo costo, a la vista en el historial.
+                $entradas = \App\Models\InventoryMovement::where('reference_type', 'purchase')
+                    ->where('reference_id', $compra->id)->where('motivo', 'compra')->get();
+                foreach ($entradas as $m) {
+                    app(KardexService::class)->registrar([
+                        'item'            => InventoryItem::withoutGlobalScopes()->findOrFail($m->inventory_item_id),
+                        'motivo'          => 'devolucion_compra',
+                        'cantidad'        => (float) $m->quantity,
+                        'costo_unitario'  => (float) $m->unit_price,
+                        'fecha'           => $compra->date->toDateString(),
+                        'documento'       => "Compra {$compra->number}: se rehace con el detalle del XML",
+                        'referencia_tipo' => 'purchase',
+                        'referencia_id'   => $compra->id,
+                    ]);
+                }
+
+                // 2. El asiento anterior se reemplaza; la caja o el banco no cambian.
+                $anterior = $compra->journal_entry_id;
+                $compra->updateQuietly(['journal_entry_id' => null]);
+                if ($anterior) {
+                    \App\Models\JournalEntry::whereKey($anterior)->delete();
+                }
+
+                // 3. Las líneas reales y su asiento (que vuelve a entrar al kardex).
+                app(RegistrarCompraElectronica::class)->reemplazarLineas(
+                    $compra, $xml, $c->inventory_item_id, $c->tipo_gasto_id,
+                );
+                $asiento = app(AccountingService::class)->generarAsientoCompra($compra->fresh());
+                $compra->updateQuietly(['journal_entry_id' => $asiento->id]);
+
+                \App\Models\CashMovement::where('referencia_tipo', 'purchase')->where('referencia_id', $compra->id)
+                    ->update(['journal_entry_id' => $asiento->id]);
+            });
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => "compra {$c->numero}: se guardó el XML pero no se pudo completar: {$e->getMessage()}"];
+        }
+
+        $c->update(['desglose' => 'xml']);
+
+        return ['ok' => true, 'detalle' => "compra {$c->numero} completada con el detalle del XML"];
+    }
+
+    private function completarGasto(ComprobanteSri $c, array $xml, float $totalXml): array
+    {
+        $gasto = Gasto::with('lineas')->find($c->conciliado_id);
+
+        if (! $gasto) {
+            return ['ok' => false, 'error' => "El gasto de la factura {$c->numero} ya no existe."];
+        }
+
+        $gasto->updateQuietly(['autorizacion' => $gasto->autorizacion ?: $c->clave_acceso]);
+
+        if (abs((float) $gasto->total - $totalXml) > 0.01) {
+            return ['ok' => false, 'error' => "gasto {$c->numero}: el XML suma {$totalXml} y el gasto {$gasto->total}. No se cambió nada."];
+        }
+
+        $base = $gasto->lineas->first();
+        $tipo = TipoGasto::find($c->tipo_gasto_id ?? $base?->tipo_gasto_id);
+        if (! $tipo || ! ($cuenta = $tipo->cuentaEn($c->empresa_id))) {
+            return ['ok' => false, 'error' => "gasto {$c->numero}: no encuentro su tipo de gasto para completar el detalle."];
+        }
+
+        $lineas = [];
+        foreach ($xml['detalles'] ?? [] as $d) {
+            $iva = 0.0;
+            $otros = 0.0;
+            foreach ($d['impuestos'] ?? [] as $imp) {
+                if (($imp['codigo'] ?? '') === '2') {
+                    $iva += in_array($imp['codigo_porcentaje'] ?? '', ComprobanteSri::IVA_SIN_TARIFA, true) ? 0 : (float) $imp['valor'];
+                } else {
+                    $otros += (float) $imp['valor']; // ICE y otros: parte del gasto
+                }
+            }
+            $lineas[] = [
+                'tipo_gasto_id' => $tipo->id, 'account_plan_id' => $cuenta,
+                'descripcion' => \Illuminate\Support\Str::limit((string) $d['descripcion'], 250, ''),
+                'base' => round((float) $d['subtotal'] + $otros, 2), 'iva' => round($iva, 2),
+                'deducible' => (bool) ($base?->deducible ?? true),
+            ];
+        }
+
+        try {
+            app(GastoService::class)->rehacer($gasto, $lineas);
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'error' => "gasto {$c->numero}: no se pudo completar: {$e->getMessage()}"];
+        }
+
+        $c->update(['desglose' => 'xml']);
+
+        return ['ok' => true, 'detalle' => "gasto {$c->numero} completado con el detalle del XML"];
     }
 
     /** La compra entra por el mismo camino que una factura que llega por correo. */

@@ -285,4 +285,88 @@ class PortalAContabilidadTest extends TestCase
         $this->assertSame(self::CLAVE, $compra->clave_acceso);
         $this->assertNotNull($c->fresh()->conciliado_con, 'se casó con su factura del listado');
     }
+
+    /** El XML que trae el proveedor: 100 al 15 % y 20 a tarifa cero, mismo total que el listado (135). */
+    private function xmlConDetalle(): void
+    {
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('leerXmlComprobante')->andReturn([
+            'ok' => true, 'estado' => 'SIN_AUTORIZACION_ADJUNTA',
+            'comprobante' => [
+                'tipo' => 'factura', 'clave_acceso' => self::CLAVE, 'numero' => '001-001-000000123',
+                'fecha_emision' => '10/09/2026', 'importe_total' => '135.00',
+                'emisor' => ['ruc' => '1790012345001', 'razon_social' => 'Insumos del Valle S.A.'],
+                'comprador' => ['identificacion' => '1793229485001'],
+                'detalles' => [
+                    ['codigo' => 'BOT-750', 'descripcion' => 'Botella 750 ml', 'cantidad' => '100', 'precio_unitario' => '1.00',
+                     'subtotal' => '100.00', 'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '100.00', 'valor' => '15.00']]],
+                    ['codigo' => 'TAP-01', 'descripcion' => 'Tapa sintética', 'cantidad' => '50', 'precio_unitario' => '0.40',
+                     'subtotal' => '20.00', 'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '0', 'base_imponible' => '20.00', 'valor' => '0.00']]],
+                ],
+                'impuestos' => [], 'pagos' => [],
+            ],
+        ]));
+    }
+
+    public function test_una_compra_registrada_a_mano_se_completa_con_el_detalle_del_xml(): void
+    {
+        $inventario = $this->cuenta('1.1.03.01', 'Inventario de insumos', 'activo');
+        $iva = AccountPlan::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)->where('code', '1.1.02.05')->value('id');
+        foreach ([['insumo', 'compra_contado', $inventario->id], ['global', 'iva_compras', $iva]] as [$tipo, $mov, $cuenta]) {
+            \App\Models\AccountingMap::withoutGlobalScopes()->create([
+                'empresa_id' => $this->empresa->id, 'tipo_item' => $tipo, 'tipo_movimiento' => $mov, 'account_plan_id' => $cuenta,
+            ]);
+        }
+        $caja = CashRegister::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'nombre' => 'Caja', 'tipo' => 'principal', 'saldo_actual' => 0, 'activo' => true,
+        ]);
+        $item = \App\Models\InventoryItem::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'codigo' => 'ENV-' . uniqid(), 'nombre' => 'Envases',
+            'type' => 'insumo', 'account_plan_id' => $inventario->id, 'purchase_price' => 1, 'activo' => true,
+        ]);
+
+        // Como pasó con las facturas viejas: registrada a mano, una línea, cantidad 1.
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')
+            ->andReturn(['ok' => false, 'estado' => 'NO_ENCONTRADO']));
+        $c = $this->comprobante();
+        $servicio = app(ClasificadorComprobantesService::class);
+        $manual = $servicio->clasificar($c, ['inventory_item_id' => $item->id, 'cantidad' => 1, 'pago' => "efectivo:{$caja->id}"]);
+        $this->assertTrue($manual['ok'], $manual['error'] ?? '');
+        $this->assertEquals(1, (float) $item->fresh()->stock_actual);
+
+        // Llega su XML: se completa con el detalle real.
+        $this->xmlConDetalle();
+        $r = app(ClasificadorComprobantesService::class)->registrarDesdeXml($this->empresa->id, '<factura/>', null);
+        $this->assertTrue($r['ok'], $r['error'] ?? '');
+
+        $compra = Purchase::withoutGlobalScopes()->with('items')->findOrFail($manual['id']);
+        $this->assertCount(2, $compra->items, 'las líneas reales de la factura');
+        $this->assertEquals(135, (float) $compra->total, 'el total no cambia');
+        $this->assertNotNull($compra->journal_entry_id);
+        $this->assertNotNull($compra->xml_path, 'el XML queda de respaldo');
+        $this->assertEquals(150, (float) $item->fresh()->stock_actual, 'el kardex queda con las cantidades reales: 100 + 50');
+        $this->assertEquals(-135, (float) $caja->fresh()->saldo_actual, 'la caja no se toca: un solo pago');
+    }
+
+    public function test_un_gasto_registrado_a_mano_se_completa_con_el_detalle_del_xml(): void
+    {
+        $tipo = TipoGasto::create([
+            'nombre' => 'Suministros', 'account_plan_id' => $this->cuenta('6.1.01.03', 'Suministros', 'gasto')->id,
+            'deducible' => true, 'activo' => true,
+        ]);
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')
+            ->andReturn(['ok' => false, 'estado' => 'NO_ENCONTRADO']));
+        $c = $this->comprobante();
+        $manual = app(ClasificadorComprobantesService::class)->clasificar($c, ['destino' => 'gasto', 'tipo_gasto_id' => $tipo->id]);
+        $this->assertTrue($manual['ok'], $manual['error'] ?? '');
+
+        $this->xmlConDetalle();
+        $r = app(ClasificadorComprobantesService::class)->registrarDesdeXml($this->empresa->id, '<factura/>', null);
+        $this->assertTrue($r['ok'], $r['error'] ?? '');
+
+        $gasto = Gasto::with('lineas')->findOrFail($manual['id']);
+        $this->assertCount(2, $gasto->lineas);
+        $this->assertSame('Botella 750 ml', $gasto->lineas->firstWhere('iva', '>', 0)->descripcion);
+        $this->assertEquals(135, (float) $gasto->total);
+        $this->assertSame(self::CLAVE, $gasto->autorizacion);
+    }
 }

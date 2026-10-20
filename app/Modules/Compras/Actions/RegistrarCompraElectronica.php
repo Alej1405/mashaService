@@ -214,6 +214,36 @@ final class RegistrarCompraElectronica
         return $compra;
     }
 
+    /**
+     * Cambia las líneas de una compra registrada a mano por las reales del XML.
+     *
+     * Un producto que el ERP aún no conoce toma lo que se eligió al registrarla a
+     * mano (el ítem o el tipo de gasto): esa decisión ya decía qué fue la factura.
+     */
+    public function reemplazarLineas(Purchase $compra, array $c, ?int $itemPorDefecto, ?int $tipoGastoPorDefecto): void
+    {
+        $compra->items()->delete();
+        [$subtotal, $iva] = $this->lineas($compra, (int) $compra->supplier_id, $c['detalles'] ?? []);
+
+        foreach ($compra->items()->whereNull('inventory_item_id')->with('productoProveedor')->get() as $linea) {
+            $producto = $linea->productoProveedor;
+
+            if ($producto && ! $producto->estaConfigurado() && ($itemPorDefecto || $tipoGastoPorDefecto)) {
+                $producto->update([
+                    'inventory_item_id' => $itemPorDefecto,
+                    'tipo_gasto_id'     => $itemPorDefecto ? null : $tipoGastoPorDefecto,
+                    'configurado_en'    => now(),
+                ]);
+            }
+
+            if ($producto?->inventory_item_id) {
+                $linea->update(['inventory_item_id' => $producto->inventory_item_id]);
+            }
+        }
+
+        $compra->update(['subtotal' => $subtotal, 'iva' => $iva, 'total' => round($subtotal + $iva, 2)]);
+    }
+
     /** @return array{0: float, 1: float} subtotal e IVA de la compra */
     private function lineas(Purchase $compra, int $proveedorId, array $detalles): array
     {
