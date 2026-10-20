@@ -58,6 +58,18 @@ class ClasificarComprobantes extends Page
     #[\Livewire\Attributes\Url]
     public ?int $anio = null;
 
+    /**
+     * Qué parte de la bandeja se mira. Cada una es un estado del detalle:
+     *   por_registrar · el detalle se trae del SRI al registrar
+     *   sin_detalle   · el SRI ya no la devuelve: se sube su XML o se dice a mano
+     *   esperan       · registrada con detalle, espera que se diga qué es un producto nuevo
+     *   registradas   · con asiento; con su detalle o registrada a mano
+     */
+    #[\Livewire\Attributes\Url]
+    public string $vista = 'por_registrar';
+
+    public const VISTAS = ['por_registrar', 'sin_detalle', 'esperan', 'registradas'];
+
     /** producto_proveedor_id => 'item:12' | 'gasto:5' — se dice una vez por producto, no por factura. */
     public array $productos = [];
 
@@ -89,10 +101,101 @@ class ClasificarComprobantes extends Page
         $this->cargar();
     }
 
-    /** Al cambiar de año, las elecciones se vuelven a armar para lo que se ve. */
+    /** Al cambiar de año o de vista, las elecciones se vuelven a armar para lo que se ve. */
     public function updatedAnio(): void
     {
         $this->cargar();
+    }
+
+    public function verVista(string $vista): void
+    {
+        $this->vista = in_array($vista, self::VISTAS, true) ? $vista : 'por_registrar';
+        $this->cargar();
+    }
+
+    /** Los de esta vista: con detalle por traer, o los que hay que decir a mano. */
+    private function deLaVista($q)
+    {
+        $sin = ClasificadorComprobantesService::SIN_DETALLE;
+
+        return $this->vista === 'sin_detalle'
+            ? $q->whereIn('desglose', $sin)
+            : $q->where(fn ($q) => $q->whereNull('desglose')->orWhereNotIn('desglose', $sin));
+    }
+
+    /**
+     * Cuántos hay en cada vista, con el año elegido.
+     *
+     * @return array<string, int>
+     */
+    private function conteos(int $empresaId): array
+    {
+        $base = fn () => $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId));
+        $sin = ClasificadorComprobantesService::SIN_DETALLE;
+        $esperan = $this->esperanQuery($empresaId)->count();
+
+        return [
+            'por_registrar' => $base()->sinClasificar()
+                ->where(fn ($q) => $q->whereNull('desglose')->orWhereNotIn('desglose', $sin))->count(),
+            'sin_detalle'   => $base()->sinClasificar()->whereIn('desglose', $sin)->count(),
+            'esperan'       => $esperan,
+            'registradas'   => $base()->whereNotNull('conciliado_con')->count() - $esperan,
+        ];
+    }
+
+    /** Registradas como compra que espera que se diga qué es un producto nuevo. */
+    private function esperanQuery(int $empresaId)
+    {
+        return $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId)->where('conciliado_con', 'purchase'))
+            ->whereIn('conciliado_id', \App\Models\Purchase::withoutGlobalScopes()
+                ->where('empresa_id', $empresaId)->where('status', \App\Models\Purchase::BORRADOR)->select('id'));
+    }
+
+    /**
+     * Las registradas (o esperando) con lo que se registró de cada una.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: array<int, array{tipo: string, con_detalle: bool, lineas: array}>}
+     */
+    private function registradas(int $empresaId, bool $soloEsperan): array
+    {
+        $comprobantes = ($soloEsperan
+            ? $this->esperanQuery($empresaId)
+            : $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId)->whereNotNull('conciliado_con'))
+                ->whereNotIn('id', $this->esperanQuery($empresaId)->select('id')))
+            ->orderByDesc('fecha_emision')->limit(120)->get();
+
+        $ids = fn (string $tipo) => $comprobantes->where('conciliado_con', $tipo)->pluck('conciliado_id')->filter()->all();
+        $compras = \App\Models\Purchase::withoutGlobalScopes()->with('items.inventoryItem')->whereIn('id', $ids('purchase'))->get()->keyBy('id');
+        $gastos  = \App\Models\Gasto::with('lineas')->whereIn('id', $ids('gasto'))->get()->keyBy('id');
+        $ventas  = \App\Models\Sale::withoutGlobalScopes()->with('items.inventoryItem')->whereIn('id', $ids('sale'))->get()->keyBy('id');
+
+        $detalle = [];
+        foreach ($comprobantes as $c) {
+            $detalle[$c->id] = match ($c->conciliado_con) {
+                'purchase' => ($d = $compras[$c->conciliado_id] ?? null) ? [
+                    'tipo' => 'Compra',
+                    // Con detalle: cada línea viene de un producto del proveedor (del XML).
+                    'con_detalle' => $d->items->whereNotNull('producto_proveedor_id')->isNotEmpty(),
+                    'lineas' => $d->items->map(fn ($i) => [$i->descripcion ?: $i->inventoryItem?->nombre ?: 'Sin descripción',
+                        (float) $i->quantity, (float) $i->total_item])->all(),
+                ] : null,
+                'gasto' => ($d = $gastos[$c->conciliado_id] ?? null) ? [
+                    'tipo' => 'Gasto',
+                    // A mano, la línea dice "Del portal del SRI"; con el XML, el producto.
+                    'con_detalle' => $d->lineas->contains(fn ($l) => ! str_starts_with((string) $l->descripcion, 'Del portal del SRI')),
+                    'lineas' => $d->lineas->map(fn ($l) => [$l->descripcion, null, (float) $l->base + (float) $l->iva])->all(),
+                ] : null,
+                'sale' => ($d = $ventas[$c->conciliado_id] ?? null) ? [
+                    'tipo' => 'Venta',
+                    'con_detalle' => str_contains((string) $d->notas, 'con el detalle'),
+                    'lineas' => $d->items->map(fn ($i) => [$i->inventoryItem?->nombre ?? $i->descripcion_servicio,
+                        (float) $i->cantidad, (float) $i->total])->all(),
+                ] : null,
+                default => null,
+            } ?? ['tipo' => 'Registrada', 'con_detalle' => false, 'lineas' => []];
+        }
+
+        return [$comprobantes, $detalle];
     }
 
     /** Filtra por el año elegido, si hay uno. */
@@ -140,9 +243,9 @@ class ClasificarComprobantes extends Page
 
     private function ventasPendientes()
     {
-        return $this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
+        return $this->deLaVista($this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
             ->where('origen', 'emitido')
-            ->sinClasificar())
+            ->sinClasificar()))
             ->orderBy('fecha_emision')
             ->limit(60)
             ->get();
@@ -150,9 +253,9 @@ class ClasificarComprobantes extends Page
 
     private function pendientes()
     {
-        return $this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
+        return $this->deLaVista($this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
             ->where('origen', 'recibido')
-            ->sinClasificar())
+            ->sinClasificar()))
             ->orderBy('fecha_emision')
             ->orderBy('identificacion')
             ->limit(120)
@@ -414,15 +517,21 @@ class ClasificarComprobantes extends Page
     protected function getViewData(): array
     {
         $empresa = Filament::getTenant();
-        $pendientes = $this->pendientes();
+        $pendientes = in_array($this->vista, ['por_registrar', 'sin_detalle'], true) ? $this->pendientes() : collect();
+        [$registradas, $detalle] = in_array($this->vista, ['esperan', 'registradas'], true)
+            ? $this->registradas($empresa->id, $this->vista === 'esperan')
+            : [collect(), []];
 
         return [
+            'conteos'    => $this->conteos($empresa->id),
+            'registradas' => $registradas,
+            'detalle'    => $detalle,
             'empresa'    => $empresa,
             'comprobantes' => $pendientes,
             'total'      => $this->delAnio(ComprobanteSri::where('empresa_id', $empresa->id)
                 ->where('origen', 'recibido')->sinClasificar())->count(),
             'anios'      => $this->anios($empresa->id),
-            'ventas'     => $this->ventasPendientes(),
+            'ventas'     => in_array($this->vista, ['por_registrar', 'sin_detalle'], true) ? $this->ventasPendientes() : collect(),
             'medios'     => MedioPago::opciones($empresa->id),
             'mediosVenta' => MedioPago::opciones($empresa->id, true),
             'meses'      => $this->meses($empresa->id),

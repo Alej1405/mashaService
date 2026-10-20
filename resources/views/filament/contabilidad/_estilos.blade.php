@@ -55,6 +55,8 @@
                        background:var(--ac); color:#fff; text-decoration:none;
                        transition:filter .15s ease; }
     .ct-btn-descarga:hover { filter:brightness(1.1); }
+    .ct-btn-descarga:focus-visible, .ct-pestana:focus-visible { outline:2px solid var(--ac); outline-offset:2px; }
+    .ct-btn-descarga:disabled, .ct-pestana:disabled { opacity:.45; cursor:not-allowed; filter:none; }
 
     /* El resumen de una declaración antes de descargarla */
     .ct-resumen { display:flex; flex-wrap:wrap; gap:18px; width:100%;
@@ -86,6 +88,30 @@
     .ct-matriz thead .ct-matriz-fija { background:var(--s2); z-index:2; }
     .ct-matriz td { color:var(--m2); }
     .ct-matriz td.es-valor { color:var(--t); font-weight:700; }
+
+    /* Tarjeta que además filtra: el estado y su cantidad, y al tocarla se ve esa parte */
+    .ct-card-boton { text-align:left; cursor:pointer; font-family:inherit; width:100%;
+                     transition:border-color .15s ease, box-shadow .15s ease, transform .1s ease; }
+    .ct-card-boton:hover { border-color:var(--ac); }
+    .ct-card-boton:active { transform:scale(.99); }
+    .ct-card-boton:focus-visible { outline:2px solid var(--ac); outline-offset:2px; }
+    .ct-card-boton[aria-pressed="true"] { border-color:var(--ac); box-shadow:0 0 0 3px #4f46e51f; }
+    .ct-card-boton .ct-val { font-variant-numeric:tabular-nums; }
+    .ct-card-boton .ct-pie strong { color:var(--t2); }
+
+    /* Lo registrado de una factura: se despliega en la misma fila */
+    .ct-detalle { width:100%; margin-top:8px; }
+    .ct-detalle summary { cursor:pointer; font-size:12px; font-weight:700; color:var(--ac); list-style:none;
+                          display:inline-flex; align-items:center; gap:6px; }
+    .ct-detalle summary::-webkit-details-marker { display:none; }
+    .ct-detalle summary::before { content:''; width:6px; height:6px; border-right:2px solid currentColor;
+                                  border-bottom:2px solid currentColor; transform:rotate(-45deg);
+                                  transition:transform .15s ease; }
+    .ct-detalle[open] summary::before { transform:rotate(45deg); }
+    .ct-lineas { margin:8px 0 0; padding:0; list-style:none; border-top:1px dashed var(--b); }
+    .ct-lineas li { display:flex; justify-content:space-between; gap:12px; padding:6px 0;
+                    font-size:13px; color:var(--t2); border-bottom:1px solid var(--b2); }
+    .ct-lineas li span:last-child { white-space:nowrap; font-variant-numeric:tabular-nums; color:var(--t); font-weight:600; }
 
     /* Desplegables e inputs dentro de las filas */
     /* La flecha la pinta el CSS base de Filament como imagen de fondo. Sin
