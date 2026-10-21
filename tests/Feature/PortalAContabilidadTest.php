@@ -247,6 +247,32 @@ class PortalAContabilidadTest extends TestCase
         $this->assertEquals(10.44, (float) $compra->items->first()->iva_monto);
     }
 
+    public function test_la_base_que_manda_es_la_de_la_cabecera_cuando_el_xml_se_contradice(): void
+    {
+        // Disproquim: la línea dice 4,17 × 2,2609 = 9,43; la cabecera, 9,42 y total 10,83.
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')->andReturn([
+            'ok' => true, 'estado' => 'AUTORIZADO',
+            'comprobante' => [
+                'tipo' => 'factura', 'clave_acceso' => self::CLAVE, 'numero' => '001-001-000000123',
+                'fecha_emision' => '10/09/2026', 'importe_total' => '10.83',
+                'emisor' => ['ruc' => '1792224659001', 'razon_social' => 'Disproquim'],
+                'comprador' => ['identificacion' => '1793229485001'],
+                'detalles' => [['codigo' => '0000172', 'descripcion' => 'Glucosa', 'cantidad' => '4.17',
+                    'precio_unitario' => '2.260900', 'subtotal' => '9.43',
+                    'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '9.43', 'valor' => '1.41']]]],
+                'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '9.42', 'valor' => '1.41']],
+                'pagos' => [['codigo' => '01', 'total' => '10.83']],
+            ],
+        ]));
+
+        $r = app(ClasificadorComprobantesService::class)->registrarConDetalle($this->comprobante(), 'credito');
+        $compra = Purchase::withoutGlobalScopes()->with('items')->findOrFail($r['id']);
+
+        $this->assertEquals(9.42, (float) $compra->subtotal);
+        $this->assertEquals(10.83, (float) $compra->total, 'lo que consta en el SRI');
+        $this->assertEquals(9.42, (float) $compra->items->first()->subtotal);
+    }
+
     public function test_si_el_sri_ya_no_la_devuelve_se_pide_a_mano(): void
     {
         $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')

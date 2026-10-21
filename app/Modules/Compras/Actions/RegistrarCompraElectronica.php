@@ -189,7 +189,7 @@ final class RegistrarCompraElectronica
         ]);
 
         [$subtotal, $iva] = $this->lineas($compra, $proveedor->id, $c['detalles'] ?? []);
-        $iva = $this->ivaDeLaFactura($compra, $iva, $c['impuestos'] ?? []);
+        [$subtotal, $iva] = $this->cuadrarConLaFactura($compra, $subtotal, $iva, $c['impuestos'] ?? []);
 
         $total = round($subtotal + $iva, 2);
         $importe = round((float) $c['importe_total'], 2);
@@ -229,7 +229,7 @@ final class RegistrarCompraElectronica
     {
         $compra->items()->delete();
         [$subtotal, $iva] = $this->lineas($compra, (int) $compra->supplier_id, $c['detalles'] ?? []);
-        $iva = $this->ivaDeLaFactura($compra, $iva, $c['impuestos'] ?? []);
+        [$subtotal, $iva] = $this->cuadrarConLaFactura($compra, $subtotal, $iva, $c['impuestos'] ?? []);
 
         foreach ($compra->items()->whereNull('inventory_item_id')->with('productoProveedor')->get() as $linea) {
             $producto = $linea->productoProveedor;
@@ -251,29 +251,44 @@ final class RegistrarCompraElectronica
     }
 
     /**
-     * El IVA que manda es el de la factura, no la suma de las líneas.
+     * La base y el IVA que mandan son los de la cabecera de la factura, no la suma de las líneas.
      *
-     * El emisor redondea el IVA sobre el total (69,57 × 15 % = 10,4355 → 10,44) y
-     * las líneas, cada una por su lado, pueden dar un centavo menos. Esa diferencia
-     * de redondeo se carga a la línea con más IVA: así la cuenta por pagar, el
-     * crédito tributario y el 104 dicen lo mismo que el SRI.
+     * Hay emisores cuyo XML se contradice por redondeo: la línea dice 4,17 × 2,2609 =
+     * 9,43 y la cabecera 9,42 (Disproquim 004-002-000046102); o el IVA sobre el total
+     * da 10,44 y las líneas suman 10,43. Lo que consta en el SRI es la cabecera. La
+     * diferencia de redondeo (hasta 5 centavos) se carga a la línea más grande: así la
+     * cuenta por pagar, la caja, el crédito tributario y el 104 dicen lo mismo que el SRI.
+     *
+     * @return array{0: float, 1: float} subtotal e IVA de la compra
      */
-    private function ivaDeLaFactura(Purchase $compra, float $ivaLineas, array $impuestos): float
+    private function cuadrarConLaFactura(Purchase $compra, float $subtotalLineas, float $ivaLineas, array $impuestos): array
     {
-        $ivaFactura = ComprobanteSri::basesDesdeXml($impuestos)['iva'];
-        $diferencia = round($ivaFactura - $ivaLineas, 2);
+        $cabecera = ComprobanteSri::basesDesdeXml($impuestos);
+        $base = round($cabecera['base_gravada'] + $cabecera['base_cero'], 2);
 
-        if ($ivaFactura <= 0 || $diferencia == 0.0 || abs($diferencia) > 0.05) {
-            return $ivaLineas; // sin desglose en la cabecera, o no es redondeo: se respeta lo de las líneas
+        $difBase = round($base - $subtotalLineas, 2);
+        if ($base > 0 && $difBase != 0.0 && abs($difBase) <= 0.05
+            && $linea = $compra->items()->orderByDesc('subtotal')->first()) {
+            $nueva = round((float) $linea->subtotal + $difBase, 2);
+            $linea->update([
+                'subtotal'   => $nueva,
+                'unit_price' => round($nueva / ((float) $linea->quantity ?: 1), 4),
+                'total_item' => round((float) $linea->total_item + $difBase, 2),
+            ]);
+            $subtotalLineas = $base;
         }
 
-        $linea = $compra->items()->where('iva_monto', '>', 0)->orderByDesc('iva_monto')->first();
-        $linea?->update([
-            'iva_monto'  => round((float) $linea->iva_monto + $diferencia, 2),
-            'total_item' => round((float) $linea->total_item + $diferencia, 2),
-        ]);
+        $difIva = round($cabecera['iva'] - $ivaLineas, 2);
+        if ($cabecera['iva'] > 0 && $difIva != 0.0 && abs($difIva) <= 0.05
+            && $linea = $compra->items()->where('iva_monto', '>', 0)->orderByDesc('iva_monto')->first()) {
+            $linea->update([
+                'iva_monto'  => round((float) $linea->iva_monto + $difIva, 2),
+                'total_item' => round((float) $linea->total_item + $difIva, 2),
+            ]);
+            $ivaLineas = $cabecera['iva'];
+        }
 
-        return $linea ? $ivaFactura : $ivaLineas;
+        return [round($subtotalLineas, 2), round($ivaLineas, 2)];
     }
 
     /** @return array{0: float, 1: float} subtotal e IVA de la compra */
