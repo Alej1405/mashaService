@@ -7,6 +7,7 @@ use App\Models\CashRegister;
 use App\Models\ComprobanteSri;
 use App\Models\Empresa;
 use App\Models\Gasto;
+use App\Models\InventoryItem;
 use App\Models\JournalEntryLine;
 use App\Models\ProductoProveedor;
 use App\Models\Purchase;
@@ -407,10 +408,22 @@ class PortalAContabilidadTest extends TestCase
         $componente = \Livewire\Livewire::test(\App\Livewire\CompletarFacturas::class)
             ->assertSee('Facturas por completar')
             ->assertSee('Botella 750 ml');
-        foreach (ProductoProveedor::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)->pluck('id') as $id) {
+        // El ERP ya propone: la botella es un bien sin ítem parecido, se propone crearla.
+        $botella = ProductoProveedor::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
+            ->where('descripcion', 'Botella 750 ml')->firstOrFail();
+        $this->assertSame('nuevo:insumo', $componente->get("producto.{$botella->id}"));
+
+        // Se acepta la propuesta de la botella (crea el insumo) y la tapa se manda a un gasto.
+        foreach (ProductoProveedor::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)->where('id', '!=', $botella->id)->pluck('id') as $id) {
             $componente->set("producto.{$id}", "gasto:{$tipo->id}");
         }
+        \App\Models\AccountingMap::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'tipo_item' => 'insumo', 'tipo_movimiento' => 'compra_credito_local',
+            'account_plan_id' => $this->cuenta('1.1.03.02', 'Inventario de insumos', 'activo')->id,
+        ]);
         $componente->call('registrar', $r['id']);
+        $this->assertTrue(InventoryItem::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
+            ->where('nombre', 'Botella 750 ml')->where('type', 'insumo')->exists(), 'el insumo se creó en el mismo bloque');
         $this->assertSame([], $componente->errors()->all(), implode(' ', $componente->errors()->all()));
 
         $this->assertSame('confirmado', Purchase::withoutGlobalScopes()->find($r['id'])->status);

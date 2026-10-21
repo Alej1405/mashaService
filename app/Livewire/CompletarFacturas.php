@@ -9,6 +9,7 @@ use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
 use App\Modules\Compras\Actions\RegistrarCompraElectronica;
 use App\Modules\Compras\Queries\ComprasElectronicasPendientes;
 use App\Services\ClasificadorComprobantesService;
+use App\Services\ClasificadorProductos;
 use App\Services\MedioPago;
 use Filament\Facades\Filament;
 use Illuminate\Validation\ValidationException;
@@ -37,8 +38,11 @@ class CompletarFacturas extends Component
     /** Cómo se pagaron las que se suben (formato MedioPago). */
     public string $pago = 'credito';
 
-    /** producto_proveedor_id => 'item:12' | 'gasto:5' */
+    /** producto_proveedor_id => 'item:12' | 'gasto:5' | 'nuevo:insumo' | 'nuevo:materia_prima' */
     public array $producto = [];
+
+    /** producto_proveedor_id => propuesta del clasificador (valor, etiqueta, motivo, confianza) */
+    public array $propuestas = [];
 
     /** compra_id => 'credito' | 'efectivo:2' | ... (solo si la compra no lo sabe) */
     public array $pagoCompra = [];
@@ -81,8 +85,24 @@ class CompletarFacturas extends Component
         $this->xmls = [];
     }
 
+    /** Registra todas las facturas que ya tienen elegido qué es cada producto nuevo. */
+    public function registrarTodas(): void
+    {
+        $hechas = 0;
+        foreach ($this->pendientes()->get() as $compra) {
+            $listas = $compra->items->every(fn ($l) => ! $l->productoProveedor || $l->productoProveedor->estaConfigurado()
+                || ! empty($this->producto[$l->productoProveedor->id]));
+            if ($listas && $this->registrar($compra->id, false)) {
+                $hechas++;
+            }
+        }
+
+        $this->resultado = ['registradas' => $hechas, 'esperan' => 0, 'fallos' => [], 'resto' => 0,
+                            'texto' => "{$hechas} " . ($hechas === 1 ? 'factura registrada' : 'facturas registradas') . ' con su asiento.'];
+    }
+
     /** Registra una factura con lo que se eligió en su fila: productos nuevos y, si falta, el pago. */
-    public function registrar(int $compraId): void
+    public function registrar(int $compraId, bool $avisar = true): bool
     {
         $compra = app(ComprasElectronicasPendientes::class)->compras(Filament::getTenant()->id)
             ->with('items.productoProveedor')->findOrFail($compraId);
@@ -100,6 +120,16 @@ class CompletarFacturas extends Component
                     throw ValidationException::withMessages(['producto' => "Falta decir qué es «{$p->descripcion}»."]);
                 }
 
+                // Un bien que el inventario no tenía: se crea aquí, con el nombre de la factura.
+                if ($tipo === 'nuevo') {
+                    $valor = InventoryItem::withoutGlobalScopes()->create([
+                        'empresa_id' => $compra->empresa_id, 'nombre' => $p->descripcion,
+                        'type' => $valor === 'materia_prima' ? 'materia_prima' : 'insumo',
+                        'purchase_price' => (float) $p->ultimo_precio, 'activo' => true,
+                    ])->id;
+                    $tipo = 'item';
+                }
+
                 $confirmar->producto($p, $tipo === 'item' ? (int) $valor : null, $tipo === 'gasto' ? (int) $valor : null, auth()->id());
             }
 
@@ -113,27 +143,60 @@ class CompletarFacturas extends Component
         } catch (ValidationException $e) {
             $this->addError("compra.{$compraId}", collect($e->errors())->flatten()->first());
 
-            return;
+            return false;
         }
 
         $compra->refresh();
         if ($compra->status !== Purchase::CONFIRMADO) {
             $this->addError("compra.{$compraId}", $compra->error_contable_msg ?: 'No se pudo registrar; revisa lo elegido.');
 
-            return;
+            return false;
         }
 
-        $this->resultado = ['registradas' => 1, 'esperan' => 0, 'fallos' => [], 'resto' => 0,
-                            'texto' => "Factura {$compra->numero_factura} registrada con su asiento."];
+        if ($avisar) {
+            $this->resultado = ['registradas' => 1, 'esperan' => 0, 'fallos' => [], 'resto' => 0,
+                                'texto' => "Factura {$compra->numero_factura} registrada con su asiento."];
+        }
+
+        return true;
+    }
+
+    private function pendientes()
+    {
+        return app(ComprasElectronicasPendientes::class)->compras(Filament::getTenant()->id)
+            ->with(['supplier:id,nombre,numero_identificacion', 'items.productoProveedor', 'items.inventoryItem:id,nombre'])
+            ->orderBy('date')->limit(60);
+    }
+
+    /**
+     * Lo que el ERP propone para cada producto nuevo, ya elegido en su selector.
+     * Quien registra solo confirma o cambia; el motivo queda a la vista.
+     */
+    private function proponer($compras): void
+    {
+        $clasificador = app(ClasificadorProductos::class);
+
+        foreach ($compras as $compra) {
+            foreach ($compra->items as $linea) {
+                $p = $linea->productoProveedor;
+                if (! $p || $p->estaConfigurado() || isset($this->propuestas[$p->id])) {
+                    continue;
+                }
+
+                $this->propuestas[$p->id] = $clasificador->proponer(
+                    $compra->empresa_id, (string) $p->descripcion, $compra->supplier?->numero_identificacion,
+                );
+                $this->producto[$p->id] ??= $this->propuestas[$p->id]['valor'];
+            }
+        }
     }
 
     public function render()
     {
         $empresa = Filament::getTenant();
 
-        $compras = app(ComprasElectronicasPendientes::class)->compras($empresa->id)
-            ->with(['supplier:id,nombre', 'items.productoProveedor', 'items.inventoryItem:id,nombre'])
-            ->orderBy('date')->limit(60)->get();
+        $compras = $this->pendientes()->get();
+        $this->proponer($compras);
 
         return view('livewire.completar-facturas', [
             'compras'    => $compras,

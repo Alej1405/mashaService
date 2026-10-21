@@ -49,8 +49,14 @@
         <header>
             <div>
                 <h2 class="ct-tit">Facturas por completar</h2>
-                <p class="ct-pie2">Di qué es cada producto nuevo una sola vez: las próximas facturas de ese proveedor entran solas.</p>
+                <p class="ct-pie2">El ERP propone qué es cada producto nuevo y por qué. Confirma o cambia: se dice una sola vez y las próximas facturas entran solas.</p>
             </div>
+            @if ($compras->count() > 1)
+                <button type="button" class="ct-btn-descarga" style="border:0; cursor:pointer"
+                        wire:click="registrarTodas" wire:loading.attr="disabled" wire:target="registrarTodas">
+                    Registrar todas
+                </button>
+            @endif
         </header>
 
         @forelse ($compras as $c)
@@ -74,8 +80,14 @@
                                 @endif
                             </span>
                             @if ($nuevo)
-                                <select wire:model="producto.{{ $p->id }}" class="ct-select" style="flex:1 1 220px" aria-label="Qué es {{ $p->descripcion }}">
+                                @php $prop = $propuestas[$p->id] ?? null; @endphp
+                                <span style="display:flex; flex-direction:column; gap:4px; flex:1 1 240px">
+                                <select wire:model.live="producto.{{ $p->id }}" class="ct-select" aria-label="Qué es {{ $p->descripcion }}">
                                     <option value="">— producto nuevo: qué es —</option>
+                                    <optgroup label="Crear en el inventario">
+                                        <option value="nuevo:insumo">Crear insumo nuevo</option>
+                                        <option value="nuevo:materia_prima">Crear materia prima nueva</option>
+                                    </optgroup>
                                     @foreach ($items as $tipo => $grupo)
                                         <optgroup label="{{ ucfirst(str_replace('_', ' ', $tipo)) }}">
                                             @foreach ($grupo as $id => $nombre)
@@ -89,6 +101,12 @@
                                         @endforeach
                                     </optgroup>
                                 </select>
+                                @if ($prop && $prop['valor'] !== '' && ($producto[$p->id] ?? '') === $prop['valor'])
+                                    <span class="ct-fila-s" style="margin:0">Propuesta del ERP: {{ $prop['motivo'] }}</span>
+                                @elseif ($prop && $prop['valor'] === '')
+                                    <span class="ct-fila-s" style="margin:0; color:var(--wa)">{{ ucfirst($prop['motivo']) }}: elige el tipo de gasto</span>
+                                @endif
+                                </span>
                             @endif
                             <span>{{ $money($l->total_item) }}</span>
                         </li>
