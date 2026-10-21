@@ -65,14 +65,14 @@ class Purchase extends Model
 
         static::creating(function ($model) {
             if (empty($model->number)) {
-                $year = now()->year;
-                $last = self::where('empresa_id', $model->empresa_id)
-                    ->whereYear('date', $year)
-                    ->latest('id')
-                    ->first();
-                
-                $next = $last ? ((int) substr($last->number, -5)) + 1 : 1;
-                $model->number = "COM-{$year}-" . str_pad($next, 5, '0', STR_PAD_LEFT);
+                // El año es el de la factura, y el siguiente sale del número más alto con ese
+                // prefijo: buscar por fecha mezclaba compras viejas registradas hoy y repetía números.
+                $year = $model->date ? \Illuminate\Support\Carbon::parse($model->date)->year : now()->year;
+                $max = self::withoutGlobalScopes()->where('empresa_id', $model->empresa_id)
+                    ->where('number', 'like', "COM-{$year}-%")
+                    ->max(\DB::raw('cast(right(number, 5) as integer)'));
+
+                $model->number = "COM-{$year}-" . str_pad(((int) $max) + 1, 5, '0', STR_PAD_LEFT);
             }
         });
     }
