@@ -222,7 +222,7 @@ class ClasificarComprobantes extends Page
                 return [$c->id => [
                     'que'          => $que,
                     'cantidad'     => 1,
-                    'no_deducible' => $propuesta['destino'] === 'no_deducible',
+                    'uso'          => $propuesta['destino'] === 'no_deducible' ? 'no_deducible' : 'gasto',
                     'pago'         => '',
                 ]];
             })->all();
@@ -269,7 +269,7 @@ class ClasificarComprobantes extends Page
 
         if ($tipo === 'gasto') {
             return [
-                'destino'       => ($e['no_deducible'] ?? false) ? 'no_deducible' : 'gasto',
+                'destino'       => in_array($e['uso'] ?? 'gasto', ['no_deducible', 'personal'], true) ? $e['uso'] : 'gasto',
                 'tipo_gasto_id' => (int) $valor,
                 'pago'          => $pago,
             ];
@@ -341,6 +341,20 @@ class ClasificarComprobantes extends Page
         }
 
         Notification::make()->title('Registrado')->body(ucfirst($r['detalle']))->success()->send();
+    }
+
+    /**
+     * Una factura que no es de la empresa se decide a mano: pasa a "Sin detalle",
+     * donde se elige su tipo de gasto y se marca como personal.
+     */
+    public function aMano(int $id): void
+    {
+        ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->sinClasificar()
+            ->whereKey($id)->update(['desglose' => 'sin_detalle']);
+
+        $this->cargar();
+        Notification::make()->title('Pasó a «Sin detalle»')
+            ->body('Ahí eliges su tipo de gasto y la marcas como personal.')->success()->send();
     }
 
     /**

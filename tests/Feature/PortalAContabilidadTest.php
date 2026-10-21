@@ -477,4 +477,32 @@ class PortalAContabilidadTest extends TestCase
         $this->assertSame('efectivo', $compra->forma_pago, 'manda el XML: efectivo, no crédito');
         $this->assertSame($chica->id, $compra->cash_register_id);
     }
+
+    public function test_una_compra_personal_respeta_lo_declarado_y_despues_queda_fuera(): void
+    {
+        $tipo = TipoGasto::create([
+            'nombre' => 'Útiles', 'account_plan_id' => $this->cuenta('6.1.08.01', 'Suministros', 'gasto')->id,
+            'deducible' => true, 'activo' => true,
+        ]);
+        $servicio = app(ClasificadorComprobantesService::class);
+
+        // Mes ya declarado (cargado del portal): entra como no deducible, con su IVA como se declaró.
+        \App\Models\Declaracion::create(['empresa_id' => $this->empresa->id, 'seguimiento' => (string) \Illuminate\Support\Str::uuid(),
+            'tipo' => 'f104', 'anio' => 2026, 'mes' => 9, 'estado' => 'listo', 'origen' => 'cargada']);
+        $declarado = $this->comprobante();
+        $r = $servicio->clasificar($declarado, ['destino' => 'personal', 'tipo_gasto_id' => $tipo->id, 'pago' => 'credito']);
+        $this->assertTrue($r['ok'], $r['error'] ?? '');
+        $gasto = \App\Models\Gasto::with('lineas')->findOrFail($r['id']);
+        $this->assertGreaterThan(0, (float) $gasto->no_deducible);
+        $this->assertGreaterThan(0, (float) $gasto->iva, 'el IVA queda como se declaró');
+        $this->assertStringContainsString('ya la declaró', $gasto->lineas->first()->motivo_no_deducible);
+
+        // Mes sin declarar: fuera de la contabilidad, del 104 y del ATS.
+        $nuevo = $this->comprobante('1010202601179001234500120010010000009991234567811', '001-001-000000999');
+        $nuevo->update(['fecha_emision' => '2026-10-10']);
+        $r = $servicio->clasificar($nuevo->fresh(), ['destino' => 'personal', 'tipo_gasto_id' => $tipo->id]);
+        $this->assertTrue($r['ok'], $r['error'] ?? '');
+        $this->assertSame('personal', $nuevo->fresh()->conciliado_con);
+        $this->assertSame(0, \App\Models\Gasto::where('numero_documento', '001-001-000000999')->count());
+    }
 }

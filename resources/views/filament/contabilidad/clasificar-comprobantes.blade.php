@@ -136,9 +136,12 @@
                                 <input type="number" step="0.01" min="0.01" wire:model="eleccion.{{ $c->id }}.cantidad"
                                        class="ct-select" style="width:88px" placeholder="cant." aria-label="Cantidad">
                             @elseif ($manual && str_starts_with($que, 'gasto:'))
-                                <label class="ct-fila-s" style="display:flex; align-items:center; gap:6px; white-space:nowrap">
-                                    <input type="checkbox" wire:model="eleccion.{{ $c->id }}.no_deducible"> no deducible
-                                </label>
+                                {{-- Personal: si el mes ya se declaró entra como no deducible con su IVA; si no, queda fuera. --}}
+                                <select wire:model="eleccion.{{ $c->id }}.uso" class="ct-select" style="flex:1 1 180px" aria-label="De quién es">
+                                    <option value="gasto">Gasto de la empresa</option>
+                                    <option value="no_deducible">No deducible</option>
+                                    <option value="personal">Personal · no es de la empresa</option>
+                                </select>
                             @endif
 
                             @if ($manual)
@@ -149,6 +152,7 @@
                                             wire:click="clasificarProveedor('{{ $c->identificacion }}', {{ $c->id }})">Las {{ $delProveedor }} de este proveedor</button>
                                 @endif
                             @else
+                                <button type="button" class="ct-pestana" wire:click="aMano({{ $c->id }})">No es de la empresa</button>
                                 <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                         wire:click="registrar({{ $c->id }})" wire:loading.attr="disabled"
                                         wire:target="registrar({{ $c->id }})">

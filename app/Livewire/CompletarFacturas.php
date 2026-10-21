@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\ComprobanteSri;
 use App\Models\InventoryItem;
 use App\Models\Purchase;
 use App\Models\TipoGasto;
@@ -127,6 +128,27 @@ class CompletarFacturas extends Component
         $texto = "{$hechas} " . ($hechas === 1 ? 'factura registrada' : 'facturas registradas') . ' con su asiento.';
         $this->resultado = ['registradas' => $hechas, 'esperan' => 0, 'fallos' => [], 'resto' => 0,
                             'texto' => $quedan ? "{$texto} {$quedan} siguen abajo con lo que les falta." : $texto];
+    }
+
+    /**
+     * Una factura con el RUC de la empresa que no es de la empresa (una compra
+     * personal): se quita el borrador, que no tiene asiento ni kardex, y vuelve a
+     * la bandeja en «Sin detalle», donde se marca como personal.
+     */
+    public function noEsDeLaEmpresa(int $compraId): void
+    {
+        $compra = app(ComprasElectronicasPendientes::class)->compras(Filament::getTenant()->id)->findOrFail($compraId);
+
+        \DB::transaction(function () use ($compra) {
+            ComprobanteSri::where('empresa_id', $compra->empresa_id)->where('conciliado_con', 'purchase')
+                ->where('conciliado_id', $compra->id)
+                ->update(['conciliado_con' => null, 'conciliado_id' => null, 'desglose' => 'sin_detalle', 'pago' => null]);
+            $compra->items()->delete();
+            $compra->delete();
+        });
+
+        $this->resultado = ['registradas' => 0, 'esperan' => 0, 'fallos' => [], 'resto' => 0,
+                            'texto' => "La factura {$compra->numero_factura} pasó a «Sin detalle»: márcala ahí como personal."];
     }
 
     /** Cómo se pagó: lo que se eligió en la fila o, si no, lo que dice el XML. */

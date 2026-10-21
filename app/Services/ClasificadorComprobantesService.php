@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ComprobanteSri;
+use App\Models\Declaracion;
 use App\Models\Empresa;
 use App\Models\Gasto;
 use App\Models\GastoLinea;
@@ -56,6 +57,7 @@ class ClasificadorComprobantesService
         'activo_fijo'  => 'Activo fijo',
         'gasto'        => 'Gasto',
         'no_deducible' => 'Gasto no deducible',
+        'personal'     => 'Personal · no es de la empresa',
     ];
 
     /**
@@ -71,6 +73,21 @@ class ClasificadorComprobantesService
         }
 
         $destino = $c->origen === 'emitido' ? 'venta' : $this->destino($c, $datos);
+
+        // Una compra personal hecha con el RUC de la empresa no es de la empresa: no da
+        // crédito tributario. Pero lo que ya se declaró no se toca: si el 104 de ese mes
+        // ya la incluyó, entra como gasto no deducible con el IVA tal como se declaró.
+        if ($destino === 'personal') {
+            if (! $this->mesDeclarado($c)) {
+                $c->update(['destino' => 'personal', 'conciliado_con' => 'personal', 'conciliado_id' => null,
+                            'pago' => null, 'clasificado_en' => now(), 'clasificado_por' => $usuarioId]);
+
+                return ['ok' => true, 'documento' => 'personal', 'id' => null,
+                        'detalle' => "factura {$c->numero}: personal, fuera de la contabilidad, del 104 y del ATS"];
+            }
+            $destino = 'no_deducible';
+            $datos['motivo'] = 'Personal: el 104 de ' . $c->fecha_emision->format('m/Y') . ' ya la declaró con su IVA';
+        }
 
         // Sin XML no hay de dónde sacar cómo se pagó: lo dice quien registra, factura por factura.
         if ($c->origen === 'recibido' && empty($datos['pago'])) {
@@ -97,7 +114,7 @@ class ClasificadorComprobantesService
             $resultado = match ($destino) {
                 'venta'                     => $this->comoVenta($c, $datos),
                 'inventario', 'activo_fijo' => $this->comoCompra($c, $datos, $destino),
-                default                     => $this->comoGasto($c, $datos, $destino === 'no_deducible'),
+                default                     => $this->comoGasto($c, $datos, $destino === 'no_deducible', $datos['motivo'] ?? null),
             };
 
             if (! ($resultado['ok'] ?? false)) {
@@ -568,7 +585,7 @@ class ClasificadorComprobantesService
     }
 
     /** La factura entra como gasto, con su IVA como crédito tributario. */
-    private function comoGasto(ComprobanteSri $c, array $datos, bool $noDeducible): array
+    private function comoGasto(ComprobanteSri $c, array $datos, bool $noDeducible, ?string $motivo = null): array
     {
         $tipo = TipoGasto::find($datos['tipo_gasto_id'] ?? null);
 
@@ -606,7 +623,7 @@ class ClasificadorComprobantesService
                 'porcentaje_iva'  => $parte > 0 ? round($ivaParte / $parte * 100, 2) : 0,
                 'iva'             => $ivaParte,
                 'deducible'       => ! $noDeducible,
-                'motivo_no_deducible' => $noDeducible ? 'Marcado al clasificar el comprobante' : null,
+                'motivo_no_deducible' => $noDeducible ? ($motivo ?? 'Marcado al clasificar el comprobante') : null,
             ]);
         }
 
@@ -614,6 +631,15 @@ class ClasificadorComprobantesService
 
         return ['ok' => true, 'documento' => 'gasto', 'id' => $confirmado->id,
                 'detalle' => "gasto {$c->numero} · {$tipo->nombre}"];
+    }
+
+    /** El 104 de ese mes ya consta en el SRI: cargado del portal o marcado como presentado. */
+    private function mesDeclarado(ComprobanteSri $c): bool
+    {
+        return Declaracion::where('empresa_id', $c->empresa_id)->where('tipo', 'f104')
+            ->where('anio', $c->fecha_emision->year)->where('mes', $c->fecha_emision->month)
+            ->where(fn ($q) => $q->where('origen', 'cargada')->orWhereNotNull('presentado_en'))
+            ->exists();
     }
 
     /**

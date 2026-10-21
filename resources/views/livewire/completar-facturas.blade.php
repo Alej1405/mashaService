@@ -147,6 +147,10 @@
                             <option value="{{ $valor }}">{{ $etiqueta }}</option>
                         @endforeach
                     </select>
+                    @if ($c->origen === \App\Models\Purchase::ORIGEN_PORTAL)
+                        <button type="button" class="ct-pestana" wire:click="noEsDeLaEmpresa({{ $c->id }})"
+                                wire:confirm="¿Quitar esta factura del registro? Vuelve a la bandeja para marcarla como personal.">No es de la empresa</button>
+                    @endif
                     <button type="button" class="ct-btn-descarga" style="border:0; cursor:pointer"
                             wire:click="registrar({{ $c->id }})" wire:loading.attr="disabled" wire:target="registrar({{ $c->id }})">
                         Registrar
