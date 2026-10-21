@@ -217,6 +217,34 @@ class PortalAContabilidadTest extends TestCase
         $this->assertSame(self::CLAVE, $registro['autorizacion']);
         $this->assertSame('100.00', $registro['baseImpGrav']);
         $this->assertSame('20.00', $registro['baseImponible']);
+        $this->assertSame('01', $registro['codSustento'], 'una compra que solo trae servicios o gastos no es inventario');
+    }
+
+    public function test_el_iva_que_manda_es_el_de_la_factura_no_el_redondeo_de_las_lineas(): void
+    {
+        // 69,57 × 15 % = 10,4355: la factura dice 10,44; la línea, redondeada sola, 10,43.
+        $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')->andReturn([
+            'ok' => true, 'estado' => 'AUTORIZADO',
+            'comprobante' => [
+                'tipo' => 'factura', 'clave_acceso' => self::CLAVE, 'numero' => '001-001-000000123',
+                'fecha_emision' => '10/09/2026', 'importe_total' => '80.01',
+                'emisor' => ['ruc' => '1717729485001', 'razon_social' => 'Fumigaciones'],
+                'comprador' => ['identificacion' => '1793229485001'],
+                'detalles' => [['codigo' => 'PLAGA', 'descripcion' => 'Control de plagas', 'cantidad' => '1',
+                    'precio_unitario' => '69.57', 'subtotal' => '69.57',
+                    'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '69.57', 'valor' => '10.43']]]],
+                'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '4', 'base_imponible' => '69.57', 'valor' => '10.44']],
+                'pagos' => [],
+            ],
+        ]));
+
+        $c = $this->comprobante();
+        $r = app(ClasificadorComprobantesService::class)->registrarConDetalle($c, 'credito');
+        $compra = Purchase::withoutGlobalScopes()->with('items')->findOrFail($r['id']);
+
+        $this->assertEquals(10.44, (float) $compra->iva);
+        $this->assertEquals(80.01, (float) $compra->total, 'la cuenta por pagar es la de la factura');
+        $this->assertEquals(10.44, (float) $compra->items->first()->iva_monto);
     }
 
     public function test_si_el_sri_ya_no_la_devuelve_se_pide_a_mano(): void

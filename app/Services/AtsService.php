@@ -87,6 +87,9 @@ class AtsService
             ->selectRaw('(select coalesce(sum(i.subtotal), 0) from purchase_items i where i.purchase_id = p.id and not i.aplica_iva) as base_cero')
             ->selectRaw("exists(select 1 from purchase_items i join inventory_items ii on ii.id = i.inventory_item_id
                          where i.purchase_id = p.id and ii.type = 'activo_fijo') as es_activo")
+            // Una compra sin ninguna línea al inventario (un servicio por factura electrónica) no es inventario.
+            ->selectRaw("exists(select 1 from purchase_items i join inventory_items ii on ii.id = i.inventory_item_id
+                         where i.purchase_id = p.id and ii.type <> 'activo_fijo') as es_inventario")
             ->get();
 
         $gastos = DB::table('gastos as g')
@@ -100,6 +103,7 @@ class AtsService
             ->selectRaw('(select coalesce(sum(l.base), 0) from gasto_lineas l where l.gasto_id = g.id and l.iva > 0) as base_grav')
             ->selectRaw('(select coalesce(sum(l.base), 0) from gasto_lineas l where l.gasto_id = g.id and l.iva = 0) as base_cero')
             ->selectRaw('false as es_activo')
+            ->selectRaw('false as es_inventario')
             ->get();
 
         // Lo que llegó del portal y nadie registró no existe en la contabilidad, y
@@ -137,8 +141,8 @@ class AtsService
             //   06 inventario con crédito de IVA · 03 activo fijo con crédito de IVA
             //   01 crédito tributario (bienes y servicios) · 02 costo o gasto sin crédito
             $sustento = match (true) {
-                $d->origen === 'compra' && (bool) $d->es_activo => '03',
-                $d->origen === 'compra'                          => '06',
+                $d->origen === 'compra' && (bool) $d->es_activo     => '03',
+                $d->origen === 'compra' && (bool) $d->es_inventario => '06',
                 (float) $d->iva <= 0 || (float) $d->no_deducible > 0 => '02',
                 default                                          => '01',
             };
