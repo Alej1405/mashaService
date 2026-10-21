@@ -198,6 +198,8 @@ class AccountingService
                         // El costo por unidad de consumo: el IVA no es costo del
                         // inventario, por eso va el precio sin impuesto.
                         'costo_unitario'  => $factor > 0 ? $item->unit_price / $factor : (float) $item->unit_price,
+                        // El valor exacto de la línea: el costo unitario sale de aquí, sin redondeo.
+                        'valor'           => (float) $item->subtotal,
                         'fecha'           => $purchase->date,
                         'ubicacion_id'    => $item->inventoryItem->ubicacion_almacen_id,
                         'documento'       => 'Compra ' . $purchase->number,

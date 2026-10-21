@@ -40,7 +40,7 @@ class KardexService
      *
      * @param  array{
      *   item: InventoryItem, motivo: string, cantidad: float, fecha: string,
-     *   costo_unitario?: float, almacen_id?: int, ubicacion_id?: int,
+     *   costo_unitario?: float, valor?: float, almacen_id?: int, ubicacion_id?: int,
      *   ubicacion_destino_id?: int, documento?: string, referencia_tipo?: string,
      *   referencia_id?: int, lote?: string, acta?: array{numero: string, fecha: string, archivo?: string}
      * }  $datos
@@ -81,8 +81,17 @@ class KardexService
             $valorAnterior    = (float) $bloqueado->saldo_valorado;
             $promedioAnterior = (float) $bloqueado->costo_promedio;
 
+            $valorMovimiento = null;
+
             if ($esEntrada) {
-                $costoUnitario = round((float) ($datos['costo_unitario'] ?? 0), 4);
+                // Con el valor del documento (la base de la línea de compra), la entrada vale
+                // exactamente eso: 4.170 g por 9,42 no es 4.170 × 0,0023 = 9,59. El costo
+                // unitario se guarda con 10 decimales y sale de ahí, no al revés.
+                $valorMovimiento = isset($datos['valor']) ? round((float) $datos['valor'], 4) : null;
+                $costoUnitario = $valorMovimiento !== null
+                    ? round($valorMovimiento / $cantidad, 10)
+                    : round((float) ($datos['costo_unitario'] ?? 0), 10);
+                $valorMovimiento ??= round($cantidad * $costoUnitario, 4);
 
                 if ($costoUnitario <= 0) {
                     throw new \InvalidArgumentException(
@@ -100,9 +109,9 @@ class KardexService
                     $promedioNuevo = $costoUnitario;
                     $valorNuevo    = round($cantidadNueva * $costoUnitario, 4);
                 } else {
-                    $valorNuevo    = round($valorAnterior + ($cantidad * $costoUnitario), 4);
+                    $valorNuevo    = round($valorAnterior + $valorMovimiento, 4);
                     // El promedio solo se mueve aquí.
-                    $promedioNuevo = $cantidadNueva > 0 ? round($valorNuevo / $cantidadNueva, 4) : 0.0;
+                    $promedioNuevo = $cantidadNueva > 0 ? round($valorNuevo / $cantidadNueva, 10) : 0.0;
                 }
             } else {
                 if ($cantidad > $cantidadAnterior) {
@@ -115,7 +124,7 @@ class KardexService
                 if ($esReversa) {
                     // Sale al costo con el que entró: el promedio se recalcula
                     // sobre lo que queda, como si esa compra no hubiera existido.
-                    $costoUnitario = round((float) ($datos['costo_unitario'] ?? 0), 4);
+                    $costoUnitario = round((float) ($datos['costo_unitario'] ?? 0), 10);
 
                     if ($costoUnitario <= 0) {
                         throw new \InvalidArgumentException(
@@ -125,7 +134,7 @@ class KardexService
 
                     $cantidadNueva = round($cantidadAnterior - $cantidad, 4);
                     $valorNuevo    = round(max($valorAnterior - ($cantidad * $costoUnitario), 0), 4);
-                    $promedioNuevo = $cantidadNueva > 0 ? round($valorNuevo / $cantidadNueva, 4) : 0.0;
+                    $promedioNuevo = $cantidadNueva > 0 ? round($valorNuevo / $cantidadNueva, 10) : 0.0;
                 } else {
                     // La salida se valora al promedio vigente y no lo modifica.
                     $costoUnitario = $promedioAnterior;
@@ -144,7 +153,7 @@ class KardexService
                 'ubicacion_almacen_id' => $datos['ubicacion_id'] ?? null,
                 'quantity'             => $cantidad,
                 'unit_price'           => $costoUnitario,
-                'total'                => round($cantidad * $costoUnitario, 4),
+                'total'                => $valorMovimiento ?? round($cantidad * $costoUnitario, 4),
                 'saldo_cantidad'       => $cantidadNueva,
                 'costo_promedio'       => $promedioNuevo,
                 'saldo_valor'          => $valorNuevo,

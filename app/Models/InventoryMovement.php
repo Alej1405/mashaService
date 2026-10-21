@@ -41,10 +41,10 @@ class InventoryMovement extends Model
         'date'           => 'date',
         'acta_fecha'     => 'date',
         'quantity'       => 'decimal:4',
-        'unit_price'     => 'decimal:4',
+        'unit_price'     => 'decimal:10',
         'total'          => 'decimal:4',
         'saldo_cantidad' => 'decimal:4',
-        'costo_promedio' => 'decimal:4',
+        'costo_promedio' => 'decimal:10',
         'saldo_valor'    => 'decimal:4',
     ];
 
