@@ -72,6 +72,11 @@ class ClasificadorComprobantesService
 
         $destino = $c->origen === 'emitido' ? 'venta' : $this->destino($c, $datos);
 
+        // Sin XML no hay de dónde sacar cómo se pagó: lo dice quien registra, factura por factura.
+        if ($c->origen === 'recibido' && empty($datos['pago'])) {
+            return ['ok' => false, 'error' => "Di cómo se pagó la factura {$c->numero}."];
+        }
+
         if ($destino !== 'venta' && ! array_key_exists((string) $destino, self::DESTINOS)) {
             return ['ok' => false, 'error' => 'Hay que decir qué fue esa factura.'];
         }
@@ -155,7 +160,7 @@ class ClasificadorComprobantesService
 
         if ($resultado['ok'] ?? false) {
             $c->refresh();
-            $c->update(['pago' => $pago ?? 'credito', 'clasificado_en' => now(), 'clasificado_por' => $usuarioId,
+            $c->update(['pago' => $pago ?: null, 'clasificado_en' => now(), 'clasificado_por' => $usuarioId,
                         'desglose' => 'xml'] + ($c->conciliado_con ? [] : [
                             'conciliado_con' => $resultado['documento'], 'conciliado_id' => $resultado['id']]));
         }
@@ -207,7 +212,7 @@ class ClasificadorComprobantesService
 
         if ($resultado['ok'] ?? false) {
             $c->refresh();
-            $c->update(['pago' => $pago ?? 'credito', 'clasificado_en' => now(), 'clasificado_por' => $usuarioId,
+            $c->update(['pago' => $pago ?: null, 'clasificado_en' => now(), 'clasificado_por' => $usuarioId,
                         'desglose' => 'xml'] + ($c->conciliado_con ? [] : [
                             'conciliado_con' => $resultado['documento'], 'conciliado_id' => $resultado['id']]));
         }
@@ -778,7 +783,12 @@ class ClasificadorComprobantesService
      *
      * @return array{hechos: int, fallos: array<int, string>}
      */
-    public function clasificarProveedor(int $empresaId, string $identificacion, array $datos, ?int $usuarioId = null): array
+    /**
+     * $pagos: comprobante_id => cómo se pagó esa factura. Lo que es (el ítem o el tipo
+     * de gasto) se repite para todo el proveedor; el pago no: cada factura lleva el
+     * suyo, y la que no lo tiene se queda con ese motivo.
+     */
+    public function clasificarProveedor(int $empresaId, string $identificacion, array $datos, ?int $usuarioId = null, array $pagos = []): array
     {
         $pendientes = ComprobanteSri::where('empresa_id', $empresaId)
             ->where('identificacion', $identificacion)
@@ -789,7 +799,7 @@ class ClasificadorComprobantesService
 
         foreach ($pendientes as $c) {
             // La cantidad se reparte por comprobante: cada factura trae la suya.
-            $suyo = $datos;
+            $suyo = array_merge($datos, ['pago' => $pagos[$c->id] ?? '']);
 
             if (($datos['inventory_item_id'] ?? null) && empty($datos['cantidad'])) {
                 $suyo['cantidad'] = 1;

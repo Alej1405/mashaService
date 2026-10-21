@@ -126,6 +126,7 @@
 
                             {{-- Cómo se pagó: decide la cuenta del asiento. El SRI no lo sabe. --}}
                             <select wire:model="eleccion.{{ $c->id }}.pago" class="ct-select" style="flex:1 1 200px" aria-label="Cómo se pagó">
+                                <option value="">Como diga su XML (se audita abajo)</option>
                                 @foreach ($medios as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach

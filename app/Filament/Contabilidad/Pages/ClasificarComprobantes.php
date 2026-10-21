@@ -223,7 +223,7 @@ class ClasificarComprobantes extends Page
                     'que'          => $que,
                     'cantidad'     => 1,
                     'no_deducible' => $propuesta['destino'] === 'no_deducible',
-                    'pago'         => $propuesta['pago'] ?? 'credito',
+                    'pago'         => '',
                 ]];
             })->all();
 
@@ -260,7 +260,7 @@ class ClasificarComprobantes extends Page
         $e = $this->eleccion[$id] ?? [];
         [$tipo, $valor] = array_pad(explode(':', (string) ($e['que'] ?? '')), 2, null);
 
-        $pago = (string) ($e['pago'] ?? 'credito');
+        $pago = (string) ($e['pago'] ?? '');
 
         if ($tipo === 'item') {
             // El destino sale del ítem: el servicio lo resuelve.
@@ -287,7 +287,7 @@ class ClasificarComprobantes extends Page
     {
         $c = ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->findOrFail($id);
         $r = app(ClasificadorComprobantesService::class)
-            ->registrarConDetalle($c, $this->eleccion[$id]['pago'] ?? 'credito', auth()->id());
+            ->registrarConDetalle($c, ($this->eleccion[$id]['pago'] ?? '') ?: null, auth()->id());
 
         $this->cargar();
 
@@ -354,6 +354,7 @@ class ClasificarComprobantes extends Page
             $identificacion,
             $this->datosDe($desdeId),
             auth()->id(),
+            collect($this->eleccion)->map(fn ($e) => (string) ($e['pago'] ?? ''))->all(),
         );
 
         $this->cargar();

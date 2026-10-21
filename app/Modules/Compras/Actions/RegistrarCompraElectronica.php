@@ -204,6 +204,10 @@ final class RegistrarCompraElectronica
             [$forma, $medio] = array_pad(explode(':', $pagoElegido, 2), 2, null);
             $formaPago = $formas->elegida($compra, $forma, $medio ? (int) $medio : null, (int) ($pago['plazo'] ?? 0) ?: null)
                 + ['requiere_forma_pago' => false];
+        } elseif ($origen === Purchase::ORIGEN_PORTAL) {
+            // Del portal se registran muchas a la vez: cada una espera su auditoría
+            // (lo que dice su XML, confirmado una por una o todas juntas) antes del asiento.
+            $formaPago = ['requiere_forma_pago' => true];
         } else {
             $formaPago = $formas->desdeXml($compra, $pago);
         }

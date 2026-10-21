@@ -321,7 +321,7 @@ class PortalAContabilidadTest extends TestCase
     }
 
     /** El XML que trae el proveedor: 100 al 15 % y 20 a tarifa cero, mismo total que el listado (135). */
-    private function xmlConDetalle(): void
+    private function xmlConDetalle(array $pagos = []): void
     {
         $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('leerXmlComprobante')->andReturn([
             'ok' => true, 'estado' => 'SIN_AUTORIZACION_ADJUNTA',
@@ -336,7 +336,7 @@ class PortalAContabilidadTest extends TestCase
                     ['codigo' => 'TAP-01', 'descripcion' => 'Tapa sintética', 'cantidad' => '50', 'precio_unitario' => '0.40',
                      'subtotal' => '20.00', 'impuestos' => [['codigo' => '2', 'codigo_porcentaje' => '0', 'base_imponible' => '20.00', 'valor' => '0.00']]],
                 ],
-                'impuestos' => [], 'pagos' => [],
+                'impuestos' => [], 'pagos' => $pagos,
             ],
         ]));
     }
@@ -390,7 +390,7 @@ class PortalAContabilidadTest extends TestCase
         $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')
             ->andReturn(['ok' => false, 'estado' => 'NO_ENCONTRADO']));
         $c = $this->comprobante();
-        $manual = app(ClasificadorComprobantesService::class)->clasificar($c, ['destino' => 'gasto', 'tipo_gasto_id' => $tipo->id]);
+        $manual = app(ClasificadorComprobantesService::class)->clasificar($c, ['destino' => 'gasto', 'tipo_gasto_id' => $tipo->id, 'pago' => 'credito']);
         $this->assertTrue($manual['ok'], $manual['error'] ?? '');
 
         $this->xmlConDetalle();
@@ -426,15 +426,29 @@ class PortalAContabilidadTest extends TestCase
             'deducible' => true, 'activo' => true,
         ]);
 
-        // Sube el XML: el producto es nuevo, la factura queda por completar.
-        $this->xmlConDetalle();
-        $this->comprobante();
-        $r = app(ClasificadorComprobantesService::class)->registrarDesdeXml($this->empresa->id, '<factura/>', 'credito');
-        $this->assertSame('pendiente', $r['estado'] ?? null, $r['error'] ?? '');
+        // Dos cajas: el XML dice "efectivo" (01) pero no de cuál; con plazo de 30 días que no es crédito.
+        $chica = CashRegister::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'nombre' => 'Caja chica', 'tipo' => 'chica', 'saldo_actual' => 0, 'activo' => true,
+        ]);
+        CashRegister::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'nombre' => 'Cobros', 'tipo' => 'principal', 'saldo_actual' => 0, 'activo' => true,
+        ]);
+        \App\Models\AccountingMap::withoutGlobalScopes()->create([
+            'empresa_id' => $this->empresa->id, 'tipo_item' => 'insumo', 'tipo_movimiento' => 'compra_contado',
+            'account_plan_id' => $this->cuenta('1.1.03.03', 'Inventario insumos contado', 'activo')->id,
+        ]);
 
-        // En el mismo bloque: se dice qué es cada producto nuevo y un botón la registra.
+        // Sube el XML: nada se registra, la factura queda para auditar.
+        $this->xmlConDetalle([['codigo' => '01', 'total' => '135.00', 'plazo' => '30', 'unidad_tiempo' => 'dias']]);
+        $this->comprobante();
+        $r = app(ClasificadorComprobantesService::class)->registrarDesdeXml($this->empresa->id, '<factura/>', null);
+        $this->assertSame('pendiente', $r['estado'] ?? null, $r['error'] ?? '');
+        $this->assertTrue((bool) Purchase::withoutGlobalScopes()->find($r['id'])->requiere_forma_pago, 'espera su auditoría');
+
+        // En el mismo bloque: se ve qué dice el XML y qué es cada producto nuevo.
         $componente = \Livewire\Livewire::test(\App\Livewire\CompletarFacturas::class)
-            ->assertSee('Facturas por completar')
+            ->assertSee('Facturas por auditar')
+            ->assertSee('sin sistema financiero (efectivo)')
             ->assertSee('Botella 750 ml');
         // El ERP ya propone: la botella es un bien sin ítem parecido, se propone crearla.
         $botella = ProductoProveedor::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
@@ -449,11 +463,18 @@ class PortalAContabilidadTest extends TestCase
             'empresa_id' => $this->empresa->id, 'tipo_item' => 'insumo', 'tipo_movimiento' => 'compra_credito_local',
             'account_plan_id' => $this->cuenta('1.1.03.02', 'Inventario de insumos', 'activo')->id,
         ]);
+        // Sin decir de qué caja salió el efectivo, no se registra ni se supone crédito.
         $componente->call('registrar', $r['id']);
+        $this->assertSame('borrador', Purchase::withoutGlobalScopes()->find($r['id'])->status);
+
+        $componente->set('cuentaPor.efectivo', "efectivo:{$chica->id}")->call('registrarTodas');
         $this->assertTrue(InventoryItem::withoutGlobalScopes()->where('empresa_id', $this->empresa->id)
             ->where('nombre', 'Botella 750 ml')->where('type', 'insumo')->exists(), 'el insumo se creó en el mismo bloque');
         $this->assertSame([], $componente->errors()->all(), implode(' ', $componente->errors()->all()));
 
-        $this->assertSame('confirmado', Purchase::withoutGlobalScopes()->find($r['id'])->status);
+        $compra = Purchase::withoutGlobalScopes()->find($r['id']);
+        $this->assertSame('confirmado', $compra->status);
+        $this->assertSame('efectivo', $compra->forma_pago, 'manda el XML: efectivo, no crédito');
+        $this->assertSame($chica->id, $compra->cash_register_id);
     }
 }

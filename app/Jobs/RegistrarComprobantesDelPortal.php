@@ -59,7 +59,8 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
         $this->avance($cuenta);
 
         foreach ($pendientes as $c) {
-            $pago = $this->pagos[$c->id] ?? $servicio->proponer($c)['pago'] ?? 'credito';
+            // Sin forma elegida en la fila, la compra queda para auditar con lo que dice su XML.
+            $pago = $this->pagos[$c->id] ?? null;
             $r = $servicio->registrarConDetalle($c, $pago, $this->usuarioId);
 
             if ($r['ok'] ?? false) {

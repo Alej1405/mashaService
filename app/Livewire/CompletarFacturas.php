@@ -7,6 +7,7 @@ use App\Models\Purchase;
 use App\Models\TipoGasto;
 use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
 use App\Modules\Compras\Actions\RegistrarCompraElectronica;
+use App\Modules\Compras\Actions\ResolverFormaPago;
 use App\Modules\Compras\Queries\ComprasElectronicasPendientes;
 use App\Services\ClasificadorComprobantesService;
 use App\Services\ClasificadorProductos;
@@ -19,11 +20,11 @@ use Livewire\WithFileUploads;
 /**
  * Registrar facturas de compra desde su XML, en un solo lugar.
  *
- * Una tarea, de principio a fin: se suben los XML (varios o un .zip) y lo que no
- * entra solo queda aquí mismo, factura por factura, con sus productos a la vista.
- * Lo que falta se dice en la misma línea —qué es un producto nuevo, cómo se pagó—
- * y un botón la registra. Antes eso estaba repartido en tres pantallas de dos
- * paneles; ahora las tres usan este componente.
+ * Una tarea, de principio a fin: se suben los XML (varios o un .zip) y nada se
+ * registra todavía. Cada factura queda aquí para auditarla: cómo dice su XML que
+ * se pagó y qué propone el ERP para cada producto. Se registran una por una
+ * (cambiando lo que haga falta) o todas juntas tal como dicen sus XML. Nunca se
+ * aplica una forma de pago general a varias facturas.
  *
  * Cada producto se dice una sola vez: queda recordado para las próximas facturas
  * de ese proveedor (ProductoProveedor).
@@ -35,20 +36,31 @@ class CompletarFacturas extends Component
     /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
     public array $xmls = [];
 
-    /** Cómo se pagaron las que se suben (formato MedioPago). */
-    public string $pago = 'credito';
-
     /** producto_proveedor_id => 'item:12' | 'gasto:5' | 'nuevo:insumo' | 'nuevo:materia_prima' */
     public array $producto = [];
 
     /** producto_proveedor_id => propuesta del clasificador (valor, etiqueta, motivo, confianza) */
     public array $propuestas = [];
 
-    /** compra_id => 'credito' | 'efectivo:2' | ... (solo si la compra no lo sabe) */
+    /** compra_id => 'credito' | 'efectivo:2' | ... cuando se cambia lo que dice el XML */
     public array $pagoCompra = [];
+
+    /** forma => medio ('efectivo' => 'efectivo:2'): de qué caja o banco salió lo que el XML dice */
+    public array $cuentaPor = [];
 
     /** Lo que pasó con la última subida, para decirlo en la pantalla. */
     public ?array $resultado = null;
+
+    /** Tabla 24 del SRI, como se lee en la fila. */
+    private const SRI = [
+        '01' => 'sin sistema financiero (efectivo)', '15' => 'compensación de deudas', '16' => 'tarjeta de débito',
+        '17' => 'dinero electrónico', '18' => 'tarjeta prepago', '19' => 'tarjeta de crédito',
+        '20' => 'con sistema financiero (transferencia)', '21' => 'endoso de títulos',
+    ];
+
+    private const FORMAS = [
+        'efectivo' => 'En efectivo', 'transferencia' => 'Por el sistema financiero', 'tarjeta' => 'Con tarjeta de crédito',
+    ];
 
     /** Hasta 80 por subida: cada XML es una lectura en el servicio del SRI y la web corta a los 30 s. */
     private const POR_SUBIDA = 80;
@@ -78,7 +90,7 @@ class CompletarFacturas extends Component
             : ['registradas' => 0, 'esperan' => 0, 'fallos' => [], 'resto' => 0];
 
         foreach (array_slice($contenidos, 0, self::POR_SUBIDA, true) as $nombre => $xml) {
-            $r = $servicio->registrarDesdeXml($empresaId, $xml, $this->pago, auth()->id());
+            $r = $servicio->registrarDesdeXml($empresaId, $xml, null, auth()->id());
 
             // Sin el listado del portal, la factura entra igual si el SRI todavía la tiene.
             if (! ($r['ok'] ?? false) && str_contains($r['error'] ?? '', 'no está en el listado')) {
@@ -90,7 +102,7 @@ class CompletarFacturas extends Component
             } elseif (($r['estado'] ?? '') === 'pendiente') {
                 $cuenta['esperan']++;
             } else {
-                $cuenta['registradas']++;
+                $cuenta['registradas']++; // ya estaba en el ERP: el XML queda de respaldo
             }
         }
 
@@ -99,20 +111,29 @@ class CompletarFacturas extends Component
         $this->xmls = [];
     }
 
-    /** Registra todas las facturas que ya tienen elegido qué es cada producto nuevo. */
+    /**
+     * Registra todas tal como dicen sus XML: la forma de pago de cada una y lo que
+     * se ve elegido en cada producto. Las que no tienen todo (un producto sin decir,
+     * o un pago sin caja o banco) se quedan, cada una con su motivo.
+     */
     public function registrarTodas(): void
     {
         $hechas = 0;
+        $quedan = 0;
         foreach ($this->pendientes()->get() as $compra) {
-            $listas = $compra->items->every(fn ($l) => ! $l->productoProveedor || $l->productoProveedor->estaConfigurado()
-                || ! empty($this->producto[$l->productoProveedor->id]));
-            if ($listas && $this->registrar($compra->id, false)) {
-                $hechas++;
-            }
+            $this->registrar($compra->id, false) ? $hechas++ : $quedan++;
         }
 
+        $texto = "{$hechas} " . ($hechas === 1 ? 'factura registrada' : 'facturas registradas') . ' con su asiento.';
         $this->resultado = ['registradas' => $hechas, 'esperan' => 0, 'fallos' => [], 'resto' => 0,
-                            'texto' => "{$hechas} " . ($hechas === 1 ? 'factura registrada' : 'facturas registradas') . ' con su asiento.'];
+                            'texto' => $quedan ? "{$texto} {$quedan} siguen abajo con lo que les falta." : $texto];
+    }
+
+    /** Cómo se pagó: lo que se eligió en la fila o, si no, lo que dice el XML. */
+    private function pagoDe(Purchase $compra): ?string
+    {
+        return ($this->pagoCompra[$compra->id] ?? '') ?: app(ResolverFormaPago::class)
+            ->sugerida($compra->empresa_id, $compra->forma_pago_sri, $this->cuentaPor);
     }
 
     /** Registra una factura con lo que se eligió en su fila: productos nuevos y, si falta, el pago. */
@@ -123,6 +144,13 @@ class CompletarFacturas extends Component
         $confirmar = app(ConfirmarCompraElectronica::class);
 
         try {
+            $pago = $this->pagoDe($compra);
+            if (! $pago) {
+                throw ValidationException::withMessages(['pago' => $compra->forma_pago_sri
+                    ? 'Elige arriba de qué caja o cuenta salió el pago, o cámbialo en esta factura.'
+                    : 'El XML no dice cómo se pagó: elígelo en esta factura.']);
+            }
+
             foreach ($compra->items as $linea) {
                 $p = $linea->productoProveedor;
                 if (! $p || $p->estaConfigurado()) {
@@ -147,13 +175,9 @@ class CompletarFacturas extends Component
                 $confirmar->producto($p, $tipo === 'item' ? (int) $valor : null, $tipo === 'gasto' ? (int) $valor : null, auth()->id());
             }
 
-            $compra->refresh();
-            if ($compra->requiere_forma_pago) {
-                [$forma, $medio] = array_pad(explode(':', (string) ($this->pagoCompra[$compra->id] ?? 'credito'), 2), 2, null);
-                $confirmar->formaPago($compra, $forma, $medio ? (int) $medio : null);
-            } else {
-                $confirmar->intentar($compra);
-            }
+            // La forma de pago al final: es lo que la deja lista y genera el asiento.
+            [$forma, $medio] = array_pad(explode(':', $pago, 2), 2, null);
+            $confirmar->formaPago($compra->refresh(), $forma, $medio ? (int) $medio : null);
         } catch (ValidationException $e) {
             $this->addError("compra.{$compraId}", collect($e->errors())->flatten()->first());
 
@@ -211,10 +235,25 @@ class CompletarFacturas extends Component
 
         $compras = $this->pendientes()->get();
         $this->proponer($compras);
+        $formas = app(ResolverFormaPago::class);
+        $medios = MedioPago::opciones($empresa->id);
+
+        // Por cada tipo de pago que dicen los XML y que tiene más de una caja o banco: de cuál salió.
+        $cuentasPorElegir = [];
+        foreach ($compras->groupBy(fn ($c) => ResolverFormaPago::formaDelSri($c->forma_pago_sri)) as $forma => $grupo) {
+            $opciones = collect($medios)->filter(fn ($e, $v) => str_starts_with($v, "{$forma}:"))->all();
+            if ($forma && count($opciones) > 1) {
+                $cuentasPorElegir[$forma] = ['etiqueta' => self::FORMAS[$forma] ?? $forma,
+                                             'cuantas' => $grupo->count(), 'opciones' => $opciones];
+            }
+        }
 
         return view('livewire.completar-facturas', [
             'compras'    => $compras,
-            'medios'     => MedioPago::opciones($empresa->id),
+            'medios'     => $medios,
+            'sugeridas'  => $compras->mapWithKeys(fn ($c) => [$c->id => $formas->sugerida($empresa->id, $c->forma_pago_sri, $this->cuentaPor)])->all(),
+            'cuentasPorElegir' => $cuentasPorElegir,
+            'formasSri'  => self::SRI,
             'items'      => InventoryItem::withoutGlobalScopes()->where('empresa_id', $empresa->id)->where('activo', true)
                 ->orderBy('type')->orderBy('nombre')->get()->groupBy('type')->map(fn ($g) => $g->pluck('nombre', 'id')),
             'tiposGasto' => TipoGasto::where('activo', true)

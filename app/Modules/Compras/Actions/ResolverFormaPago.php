@@ -12,10 +12,11 @@ use Illuminate\Validation\ValidationException;
 /**
  * Cómo se pagó una compra que llegó como factura electrónica.
  *
- * El XML trae la forma de pago del SRI (Tabla 24), que dice "con tarjeta" o "sin
- * sistema financiero", no de qué caja o banco salió el dinero. Se carga sola solo
- * cuando no hay dudas: crédito con plazo, o un único medio activo de ese tipo en
- * la empresa. En otro caso queda pendiente y se pregunta.
+ * El XML trae la forma de pago del SRI (Tabla 24): "sin sistema financiero" es
+ * efectivo, "otros con sistema financiero" es transferencia, y así. Eso manda:
+ * nunca se supone crédito ni se aplica una forma general a varias facturas. Lo
+ * que el XML no dice es de qué caja o banco salió: se carga solo si la empresa
+ * tiene un único medio de ese tipo; si no, se pregunta.
  */
 #[Documentado(
     grupo: 'Compras',
@@ -39,19 +40,44 @@ final class ResolverFormaPago
         'credito'       => 'Crédito (por pagar)',
     ];
 
+    /** La forma del ERP que corresponde al código de la Tabla 24, o null si no se sabe. */
+    public static function formaDelSri(?string $codigo): ?string
+    {
+        return self::DESDE_SRI[(string) $codigo] ?? null;
+    }
+
+    /**
+     * Lo que dice el XML, con la caja o el banco si no hay dudas; null si falta
+     * elegir de cuál salió. $cuentas: la elegida por forma ('efectivo' => 'efectivo:2').
+     */
+    public function sugerida(int $empresaId, ?string $codigoSri, array $cuentas = []): ?string
+    {
+        $forma = self::formaDelSri($codigoSri);
+        if (! $forma) {
+            return null;
+        }
+        if (! empty($cuentas[$forma])) {
+            return $cuentas[$forma];
+        }
+
+        $medios = $this->medios($empresaId, $forma);
+
+        return count($medios) === 1 ? $forma . ':' . array_key_first($medios) : null;
+    }
+
     /** @return array<string,mixed> columnas de la compra */
     public function desdeXml(Purchase $compra, array $pago): array
     {
-        $plazo = (int) ($pago['plazo'] ?? 0);
-        if ($plazo > 0) {
-            return $this->credito($compra, $plazo);
+        // El código del SRI manda sobre el plazo: muchos emisores ponen un plazo
+        // por defecto aunque se haya pagado en efectivo.
+        if ($sugerida = $this->sugerida($compra->empresa_id, $pago['codigo'] ?? null)) {
+            [$forma, $medio] = explode(':', $sugerida, 2);
+
+            return $this->contado($forma, (int) $medio);
         }
 
-        $forma = self::DESDE_SRI[$pago['codigo'] ?? ''] ?? null;
-        $medios = $forma ? $this->medios($compra->empresa_id, $forma) : [];
-
-        if (count($medios) === 1) {
-            return $this->contado($forma, (int) array_key_first($medios));
+        if (! self::formaDelSri($pago['codigo'] ?? null) && (int) ($pago['plazo'] ?? 0) > 0) {
+            return $this->credito($compra, (int) $pago['plazo']);
         }
 
         return ['requiere_forma_pago' => true];

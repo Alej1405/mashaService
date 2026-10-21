@@ -63,6 +63,17 @@ class MedioPago
         };
     }
 
+    /** De las columnas de un documento a la elección (formato de este servicio). */
+    public static function de(object $doc): string
+    {
+        return match ($doc->forma_pago) {
+            'efectivo'      => "efectivo:{$doc->cash_register_id}",
+            'transferencia' => "transferencia:{$doc->bank_account_id}",
+            'tarjeta'       => "tarjeta:{$doc->credit_card_id}",
+            default         => 'credito',
+        };
+    }
+
     public static function esCredito(?string $eleccion): bool
     {
         return self::atributos($eleccion)['forma_pago'] === 'credito';

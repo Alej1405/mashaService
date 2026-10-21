@@ -432,7 +432,7 @@ class IntegridadCruzadaTest extends TestCase
             'el tipo de gasto resuelve su cuenta en el plan de esta empresa');
 
         $r = app(\App\Services\ClasificadorComprobantesService::class)
-            ->clasificar($c, ['destino' => 'gasto', 'tipo_gasto_id' => $tipo->id], null);
+            ->clasificar($c, ['destino' => 'gasto', 'tipo_gasto_id' => $tipo->id, 'pago' => 'credito'], null);
 
         $this->assertTrue($r['ok'], $r['error'] ?? '');
 
@@ -485,7 +485,7 @@ class IntegridadCruzadaTest extends TestCase
         // Sin decir qué fue: el ítem ya está clasificado como materia prima en
         // el formulario de bodega, y de ahí sale el destino.
         $r = app(\App\Services\ClasificadorComprobantesService::class)->clasificar($c, [
-            'inventory_item_id' => $item->id, 'cantidad' => 4,
+            'inventory_item_id' => $item->id, 'cantidad' => 4, 'pago' => 'credito',
         ], null);
 
         $this->assertTrue($r['ok'] ?? false, $r['error'] ?? 'sin motivo');
@@ -512,7 +512,7 @@ class IntegridadCruzadaTest extends TestCase
         $tipo = \App\Models\TipoGasto::where('nombre', 'Alimentación')->first();
         $servicio = app(\App\Services\ClasificadorComprobantesService::class);
 
-        $servicio->clasificar($primera, ['destino' => 'gasto', 'tipo_gasto_id' => $tipo->id], null);
+        $servicio->clasificar($primera, ['destino' => 'gasto', 'tipo_gasto_id' => $tipo->id, 'pago' => 'credito'], null);
 
         // La segunda del mismo proveedor viene con la propuesta puesta.
         $propuesta = $servicio->proponer($segunda);
