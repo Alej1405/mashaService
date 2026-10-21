@@ -19,10 +19,24 @@
                     @endforeach
                 </select>
             </label>
-            <label class="ct-subir" style="flex:2 1 320px; position:relative">
-                <input type="file" multiple accept=".xml,.zip" wire:model="xmls" style="position:absolute; width:1px; height:1px; opacity:0">
-                <span wire:loading.remove wire:target="xmls"><strong>Elegir XML o .zip</strong> · se registran al soltarlos</span>
-                <span wire:loading wire:target="xmls">Leyendo y registrando…</span>
+            {{-- El servidor acepta 20 archivos por petición (max_file_uploads): se mandan en grupos de 15. --}}
+            <label class="ct-subir" style="flex:2 1 320px; position:relative"
+                   x-data="{ total: 0, enviados: 0 }"
+                   x-on:change="
+                       const archivos = Array.from($event.target.files);
+                       if (! archivos.length) return;
+                       total = archivos.length; enviados = 0;
+                       await $wire.empezarSubida();
+                       for (let i = 0; i < archivos.length; i += 15) {
+                           const grupo = archivos.slice(i, i + 15);
+                           await new Promise((listo, fallo) => $wire.uploadMultiple('xmls', grupo, listo, fallo));
+                           enviados += grupo.length;
+                       }
+                       total = 0; $event.target.value = '';
+                   ">
+                <input type="file" multiple accept=".xml,.zip" style="position:absolute; width:1px; height:1px; opacity:0">
+                <span x-show="! total"><strong>Elegir XML o .zip</strong> · se registran al soltarlos</span>
+                <span x-show="total" x-cloak>Leyendo y registrando… <span x-text="enviados"></span> de <span x-text="total"></span></span>
             </label>
         </div>
         @error('xmls.*') <p class="ct-fila-s" style="color:var(--da); padding:0 18px 12px">{{ $message }}</p> @enderror

@@ -53,7 +53,18 @@ class CompletarFacturas extends Component
     /** Hasta 80 por subida: cada XML es una lectura en el servicio del SRI y la web corta a los 30 s. */
     private const POR_SUBIDA = 80;
 
-    /** Se procesa apenas se eligen los archivos: elegir es la intención. */
+    /** Una subida nueva: el resultado vuelve a cero y cada grupo de archivos le suma. */
+    public function empezarSubida(): void
+    {
+        $this->resultado = ['registradas' => 0, 'esperan' => 0, 'fallos' => [], 'resto' => 0];
+        $this->resetErrorBag();
+    }
+
+    /**
+     * Se procesa apenas llega cada grupo de archivos: elegir es la intención.
+     * El navegador los manda de 15 en 15 porque PHP solo acepta 20 por petición
+     * y descarta el resto sin avisar.
+     */
     public function updatedXmls(): void
     {
         $this->validate(['xmls.*' => 'file|max:20480|mimes:xml,zip,txt']);
@@ -62,7 +73,9 @@ class CompletarFacturas extends Component
         $servicio = app(ClasificadorComprobantesService::class);
         $contenidos = $this->leerArchivos();
         $resto = max(count($contenidos) - self::POR_SUBIDA, 0);
-        $cuenta = ['registradas' => 0, 'esperan' => 0, 'fallos' => []];
+        $cuenta = $this->resultado && ! isset($this->resultado['texto'])
+            ? $this->resultado
+            : ['registradas' => 0, 'esperan' => 0, 'fallos' => [], 'resto' => 0];
 
         foreach (array_slice($contenidos, 0, self::POR_SUBIDA, true) as $nombre => $xml) {
             $r = $servicio->registrarDesdeXml($empresaId, $xml, $this->pago, auth()->id());
@@ -81,7 +94,8 @@ class CompletarFacturas extends Component
             }
         }
 
-        $this->resultado = $cuenta + ['resto' => $resto];
+        $cuenta['resto'] += $resto;
+        $this->resultado = $cuenta;
         $this->xmls = [];
     }
 
