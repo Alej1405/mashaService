@@ -15,6 +15,7 @@ return [
         'mano de obra', 'mantenimiento', 'reparacion', 'instalacion', 'control de plagas', 'fumigacion',
         'transporte', 'flete', 'arriendo', 'arrendamiento', 'alquiler', 'capacitacion', 'curso', 'suscripcion',
         'licencia', 'comision', 'auditoria', 'diseno', 'desarrollo', 'soporte', 'certificado de firma',
+        'firma electronica', 'firma elec',
     ],
 
     // Señales de que la línea es un BIEN físico (unidades, envases, medidas).
@@ -42,7 +43,7 @@ return [
         ],
         'servicios-profesionales-de-sociedades' => [
             'asesoria', 'consultoria', 'auditoria', 'servicios profesionales', 'contable', 'contabilidad', 'legal',
-            'juridico', 'desarrollo de software', 'software', 'diseno', 'certificado de firma', 'firma electronica',
+            'juridico', 'desarrollo de software', 'software', 'diseno',
         ],
         'honorarios-profesionales' => [
             'honorario', 'honorarios', 'servicios profesionales', 'asesoria', 'consultoria',
@@ -55,6 +56,10 @@ return [
         'publicidad-y-comunicacion' => [
             'publicidad', 'pauta', 'anuncio', 'volantes', 'redes sociales', 'marketing', 'rotulo', 'letrero',
             'banner', 'impresion', 'fotografia',
+        ],
+        'firma-electronica-y-certificados-digitales' => [
+            'firma electronica', 'firma elec', 'certificado de firma', 'certificado digital', 'firma digital',
+            'security data', 'renovacion de firma',
         ],
         'seguros' => ['seguro', 'poliza', 'prima de seguro'],
         'servicios-basicos' => [
