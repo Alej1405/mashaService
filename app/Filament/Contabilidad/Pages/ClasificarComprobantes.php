@@ -55,6 +55,13 @@ class ClasificarComprobantes extends Page
     #[\Livewire\Attributes\Url]
     public ?int $anio = null;
 
+    /** RUC del proveedor que se trabaja; null = todos. Queda en la URL. */
+    #[\Livewire\Attributes\Url]
+    public ?string $proveedor = null;
+
+    /** Con un proveedor elegido: una sola forma de pago para todas sus facturas. */
+    public string $pagoTodas = '';
+
     /**
      * Qué parte de la bandeja se mira. Cada una es un estado del detalle:
      *   por_registrar · el detalle se trae del SRI al registrar
@@ -101,6 +108,21 @@ class ClasificarComprobantes extends Page
         $this->cargar();
     }
 
+    public function updatedProveedor(): void
+    {
+        $this->proveedor = $this->proveedor ?: null;
+        $this->pagoTodas = '';
+        $this->cargar();
+    }
+
+    /** El pago elegido arriba se pone en cada factura del proveedor; se puede cambiar fila a fila. */
+    public function updatedPagoTodas(): void
+    {
+        foreach ($this->pendientes() as $c) {
+            $this->eleccion[$c->id]['pago'] = $this->pagoTodas;
+        }
+    }
+
     public function verVista(string $vista): void
     {
         $this->vista = in_array($vista, self::VISTAS, true) ? $vista : 'por_registrar';
@@ -124,7 +146,7 @@ class ClasificarComprobantes extends Page
      */
     private function conteos(int $empresaId): array
     {
-        $base = fn () => $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId));
+        $base = fn () => $this->delFiltro(ComprobanteSri::where('empresa_id', $empresaId));
         $sin = ClasificadorComprobantesService::SIN_DETALLE;
         $esperan = $this->esperanQuery($empresaId)->count();
 
@@ -140,7 +162,7 @@ class ClasificarComprobantes extends Page
     /** Registradas como compra que espera que se diga qué es un producto nuevo. */
     private function esperanQuery(int $empresaId)
     {
-        return $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId)->where('conciliado_con', 'purchase'))
+        return $this->delFiltro(ComprobanteSri::where('empresa_id', $empresaId)->where('conciliado_con', 'purchase'))
             ->whereIn('conciliado_id', \App\Models\Purchase::withoutGlobalScopes()
                 ->where('empresa_id', $empresaId)->where('status', \App\Models\Purchase::BORRADOR)->select('id'));
     }
@@ -152,7 +174,7 @@ class ClasificarComprobantes extends Page
      */
     private function registradas(int $empresaId): array
     {
-        $comprobantes = $this->delAnio(ComprobanteSri::where('empresa_id', $empresaId)->whereNotNull('conciliado_con'))
+        $comprobantes = $this->delFiltro(ComprobanteSri::where('empresa_id', $empresaId)->whereNotNull('conciliado_con'))
             ->whereNotIn('id', $this->esperanQuery($empresaId)->select('id'))
             ->orderByDesc('fecha_emision')->limit(120)->get();
 
@@ -190,10 +212,24 @@ class ClasificarComprobantes extends Page
         return [$comprobantes, $detalle];
     }
 
-    /** Filtra por el año elegido, si hay uno. */
-    private function delAnio($q)
+    /** Filtra por el año y el proveedor elegidos, si los hay. */
+    private function delFiltro($q)
     {
-        return $q->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio));
+        return $q->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+            ->when($this->proveedor, fn ($q) => $q->where('identificacion', $this->proveedor));
+    }
+
+    /**
+     * Proveedores con facturas por registrar en el año elegido, con cuántas tiene cada uno.
+     *
+     * @return \Illuminate\Support\Collection<int, object{identificacion: string, nombre: string, n: int}>
+     */
+    private function proveedores(int $empresaId)
+    {
+        return ComprobanteSri::where('empresa_id', $empresaId)->where('origen', 'recibido')->sinClasificar()
+            ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+            ->selectRaw("identificacion, max(coalesce(nullif(razon_social, ''), identificacion)) as nombre, count(*) as n")
+            ->groupBy('identificacion')->orderBy('nombre')->get();
     }
 
     /** Los años que tienen comprobantes del portal, del más reciente al más viejo. */
@@ -223,7 +259,7 @@ class ClasificarComprobantes extends Page
                     'que'          => $que,
                     'cantidad'     => 1,
                     'uso'          => $propuesta['destino'] === 'no_deducible' ? 'no_deducible' : 'gasto',
-                    'pago'         => '',
+                    'pago'         => $this->pagoTodas,
                 ]];
             })->all();
 
@@ -235,7 +271,7 @@ class ClasificarComprobantes extends Page
 
     private function ventasPendientes()
     {
-        return $this->deLaVista($this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
+        return $this->deLaVista($this->delFiltro(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
             ->where('origen', 'emitido')
             ->sinClasificar()))
             ->orderBy('fecha_emision')
@@ -245,7 +281,7 @@ class ClasificarComprobantes extends Page
 
     private function pendientes()
     {
-        return $this->deLaVista($this->delAnio(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
+        return $this->deLaVista($this->delFiltro(ComprobanteSri::where('empresa_id', Filament::getTenant()->id)
             ->where('origen', 'recibido')
             ->sinClasificar()))
             ->orderBy('fecha_emision')
@@ -318,7 +354,7 @@ class ClasificarComprobantes extends Page
         $pagos = collect($this->eleccion)->map(fn ($e) => $e['pago'] ?? null)->filter()->all();
         Cache::put(RegistrarComprobantesDelPortal::claveAvance($empresaId),
             ['corriendo' => true, 'total' => 0, 'hechos' => 0], now()->addHours(6));
-        RegistrarComprobantesDelPortal::dispatch($empresaId, auth()->id(), $pagos, $this->anio);
+        RegistrarComprobantesDelPortal::dispatch($empresaId, auth()->id(), $pagos, $this->anio, $this->proveedor);
 
         Notification::make()->title('Registrando en segundo plano')
             ->body('Cada factura se consulta en el SRI. Puedes seguir trabajando: te aviso en la campana al terminar.')
@@ -417,9 +453,10 @@ class ClasificarComprobantes extends Page
             'detalle'    => $detalle,
             'empresa'    => $empresa,
             'comprobantes' => $pendientes,
-            'total'      => $this->delAnio(ComprobanteSri::where('empresa_id', $empresa->id)
+            'total'      => $this->delFiltro(ComprobanteSri::where('empresa_id', $empresa->id)
                 ->where('origen', 'recibido')->sinClasificar())->count(),
             'anios'      => $this->anios($empresa->id),
+            'proveedores' => $this->proveedores($empresa->id),
             'ventas'     => in_array($this->vista, ['por_registrar', 'sin_detalle'], true) ? $this->ventasPendientes() : collect(),
             'medios'     => MedioPago::opciones($empresa->id),
             'mediosVenta' => MedioPago::opciones($empresa->id, true),

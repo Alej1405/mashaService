@@ -25,6 +25,24 @@
         </div>
     @endif
 
+    {{-- Proveedor: se filtran sus facturas y se registran todas de una con un solo pago. --}}
+    @if ($proveedores->count() > 1 || $proveedor)
+        <div class="ct-barra">
+            <select wire:model.live="proveedor" class="ct-select" style="flex:1 1 280px; max-width:420px" aria-label="Proveedor">
+                <option value="">Todos los proveedores</option>
+                @foreach ($proveedores as $p)
+                    <option value="{{ $p->identificacion }}">{{ $p->nombre }} · {{ $p->n }}</option>
+                @endforeach
+                @if ($proveedor && ! $proveedores->contains('identificacion', $proveedor))
+                    <option value="{{ $proveedor }}">{{ $proveedor }} · sin pendientes</option>
+                @endif
+            </select>
+            @if ($proveedor)
+                <button type="button" class="ct-pestana" wire:click="$set('proveedor', null)">Quitar filtro</button>
+            @endif
+        </div>
+    @endif
+
     <div class="ct-rej-4">
         @foreach ($tarjetas as $clave => [$titulo, $pie, $tono])
             <button type="button" class="ct-card ct-card-boton" aria-pressed="{{ $vista === $clave ? 'true' : 'false' }}"
@@ -77,10 +95,27 @@
                     @if ($vista === 'por_registrar' && ! ($avance['corriendo'] ?? false))
                         <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                 wire:click="registrarTodas" wire:loading.attr="disabled" wire:target="registrarTodas">
-                            Registrar todas{{ $anio ? " las de {$anio}" : '' }}
+                            @if ($proveedor)
+                                Registrar las {{ $conteos['por_registrar'] }} de este proveedor
+                            @else
+                                Registrar todas{{ $anio ? " las de {$anio}" : '' }}
+                            @endif
                         </button>
                     @endif
                 </header>
+
+                @if ($proveedor)
+                    {{-- Un solo pago para todo el proveedor; cada fila lo toma y se puede cambiar. --}}
+                    <div class="ct-fila" style="flex-wrap:wrap; gap:10px">
+                        <p class="ct-fila-t" style="flex:1; min-width:200px">Cómo se pagaron todas</p>
+                        <select wire:model.live="pagoTodas" class="ct-select" style="flex:1 1 260px" aria-label="Cómo se pagaron todas">
+                            <option value="">Como diga el XML de cada una (se audita abajo)</option>
+                            @foreach ($medios as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
 
                 @foreach ($comprobantes as $c)
                     @php

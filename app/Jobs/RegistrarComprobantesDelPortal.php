@@ -37,6 +37,7 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
         public readonly ?int $usuarioId,
         public readonly array $pagos = [],
         public readonly ?int $anio = null,
+        public readonly ?string $proveedor = null,
     ) {
     }
 
@@ -50,6 +51,7 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
         $pendientes = ComprobanteSri::where('empresa_id', $this->empresaId)
             ->sinClasificar()
             ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+            ->when($this->proveedor, fn ($q) => $q->where('identificacion', $this->proveedor))
             ->where(fn ($q) => $q->whereNull('desglose')->orWhereNotIn('desglose', ClasificadorComprobantesService::SIN_DETALLE))
             ->orderByDesc('fecha_emision')
             ->get();
