@@ -220,13 +220,20 @@ class ClasificarComprobantes extends Page
     }
 
     /**
-     * Proveedores con facturas por registrar en el año elegido, con cuántas tiene cada uno.
+     * Proveedores con facturas pendientes en el año elegido —sin registrar o esperando
+     * un producto—, con cuántas tiene cada uno.
      *
      * @return \Illuminate\Support\Collection<int, object{identificacion: string, nombre: string, n: int}>
      */
     private function proveedores(int $empresaId)
     {
-        return ComprobanteSri::where('empresa_id', $empresaId)->where('origen', 'recibido')->sinClasificar()
+        $esperan = ComprobanteSri::where('empresa_id', $empresaId)->where('conciliado_con', 'purchase')
+            ->whereIn('conciliado_id', \App\Models\Purchase::withoutGlobalScopes()
+                ->where('empresa_id', $empresaId)->where('status', \App\Models\Purchase::BORRADOR)->select('id'))
+            ->select('id');
+
+        return ComprobanteSri::where('empresa_id', $empresaId)->where('origen', 'recibido')
+            ->where(fn ($q) => $q->sinClasificar()->orWhereIn('id', $esperan))
             ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
             ->selectRaw("identificacion, max(coalesce(nullif(razon_social, ''), identificacion)) as nombre, count(*) as n")
             ->groupBy('identificacion')->orderBy('nombre')->get();

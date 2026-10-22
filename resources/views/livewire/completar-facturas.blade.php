@@ -60,10 +60,23 @@
             @if ($compras->count() > 1)
                 <button type="button" class="ct-btn-descarga" style="border:0; cursor:pointer"
                         wire:click="registrarTodas" wire:loading.attr="disabled" wire:target="registrarTodas">
-                    Registrar todas según su XML
+                    {{ $proveedor ? 'Registrar las ' . $compras->count() . ' de este proveedor' : 'Registrar todas según su XML' }}
                 </button>
             @endif
         </header>
+
+        @if ($proveedor && $compras->isNotEmpty())
+            {{-- Un solo pago para todo el proveedor; cada fila lo toma y se puede cambiar. --}}
+            <div class="ct-fila" style="flex-wrap:wrap; gap:10px">
+                <p class="ct-fila-t" style="flex:1; min-width:200px">Cómo se pagaron todas</p>
+                <select wire:model.live="pagoTodas" class="ct-select" style="flex:1 1 260px" aria-label="Cómo se pagaron todas">
+                    <option value="">Como diga el XML de cada una</option>
+                    @foreach ($medios as $valor => $etiqueta)
+                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
+            </div>
+        @endif
 
         {{-- El XML dice el tipo de pago, no de qué caja o banco salió: se elige una vez por tipo. --}}
         @if (count($cuentasPorElegir))

@@ -24,8 +24,9 @@ use Livewire\WithFileUploads;
  * Una tarea, de principio a fin: se suben los XML (varios o un .zip) y nada se
  * registra todavía. Cada factura queda aquí para auditarla: cómo dice su XML que
  * se pagó y qué propone el ERP para cada producto. Se registran una por una
- * (cambiando lo que haga falta) o todas juntas tal como dicen sus XML. Nunca se
- * aplica una forma de pago general a varias facturas.
+ * (cambiando lo que haga falta) o todas juntas tal como dicen sus XML. Una forma
+ * de pago para varias facturas solo con un proveedor elegido: es una decisión
+ * consciente sobre las facturas de ese proveedor, no sobre toda la bandeja.
  *
  * Cada producto se dice una sola vez: queda recordado para las próximas facturas
  * de ese proveedor (ProductoProveedor).
@@ -49,6 +50,16 @@ class CompletarFacturas extends Component
     /** forma => medio ('efectivo' => 'efectivo:2'): de qué caja o banco salió lo que el XML dice */
     public array $cuentaPor = [];
 
+    /** Filtros de la bandeja que contiene este bloque (RUC del proveedor y año); null = todos. */
+    #[\Livewire\Attributes\Reactive]
+    public ?string $proveedor = null;
+
+    #[\Livewire\Attributes\Reactive]
+    public ?int $anio = null;
+
+    /** Con un proveedor elegido: una sola forma de pago para todas sus facturas. */
+    public string $pagoTodas = '';
+
     /** Lo que pasó con la última subida, para decirlo en la pantalla. */
     public ?array $resultado = null;
 
@@ -65,6 +76,14 @@ class CompletarFacturas extends Component
 
     /** Hasta 80 por subida: cada XML es una lectura en el servicio del SRI y la web corta a los 30 s. */
     private const POR_SUBIDA = 80;
+
+    /** El pago elegido arriba se pone en cada factura del proveedor; se puede cambiar fila a fila. */
+    public function updatedPagoTodas(): void
+    {
+        foreach ($this->pendientes()->pluck('purchases.id') as $id) {
+            $this->pagoCompra[$id] = $this->pagoTodas;
+        }
+    }
 
     /** Una subida nueva: el resultado vuelve a cero y cada grupo de archivos le suma. */
     public function empezarSubida(): void
@@ -225,6 +244,8 @@ class CompletarFacturas extends Component
     {
         return app(ComprasElectronicasPendientes::class)->compras(Filament::getTenant()->id)
             ->with(['supplier:id,nombre,numero_identificacion', 'items.productoProveedor', 'items.inventoryItem:id,nombre'])
+            ->when($this->proveedor, fn ($q) => $q->whereHas('supplier', fn ($q) => $q->where('numero_identificacion', $this->proveedor)))
+            ->when($this->anio, fn ($q) => $q->whereYear('date', $this->anio))
             ->orderBy('date')->limit(60);
     }
 

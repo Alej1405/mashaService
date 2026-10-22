@@ -268,7 +268,7 @@
 
     {{-- ── Sin detalle y esperan: subir el XML y completar cada factura aquí mismo ── --}}
     @if (in_array($vista, ['sin_detalle', 'esperan'], true))
-        @livewire(\App\Livewire\CompletarFacturas::class)
+        @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio])
     @endif
 
     {{-- ── Registradas: con lo que se registró ───────────────────────────── --}}
