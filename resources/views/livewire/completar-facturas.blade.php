@@ -163,7 +163,7 @@
                     </select>
                     @if ($c->origen === \App\Models\Purchase::ORIGEN_PORTAL)
                         <button type="button" class="ct-pestana" wire:click="noEsDeLaEmpresa({{ $c->id }})"
-                                wire:confirm="¿Es una compra personal? Sale de la contabilidad de la empresa; si su mes ya se declaró, entra como gasto no deducible con el pago elegido.">No es de la empresa</button>
+                                wire:confirm="¿Es una compra personal? No se registra como gasto ni mueve dinero de la empresa: solo su IVA suma al 104.">No es de la empresa</button>
                     @endif
                     <button type="button" class="ct-btn-descarga" style="border:0; cursor:pointer"
                             wire:click="registrar({{ $c->id }})" wire:loading.attr="disabled" wire:target="registrar({{ $c->id }})">

@@ -44,8 +44,7 @@ class ClasificarComprobantes extends Page
     /**
      * comprobante_id => ['pago' => 'credito'|'efectivo:2'|…]
      *
-     * El cobro de cada venta, y el pago de una compra personal cuando el 104 de su
-     * mes ya la declaró (entra como gasto no deducible). Lo demás lo dice el XML.
+     * El cobro de cada venta. Lo de las compras lo dice su XML.
      */
     public array $eleccion = [];
 
@@ -235,7 +234,7 @@ class ClasificarComprobantes extends Page
 
     private function cargar(): void
     {
-        $this->eleccion = $this->pendientes()->mapWithKeys(fn ($c) => [$c->id => ['pago' => '']])->all();
+        $this->eleccion = [];
 
         // Las facturas emitidas que no están en el ERP entran como venta.
         foreach ($this->ventasPendientes() as $c) {
@@ -304,14 +303,13 @@ class ClasificarComprobantes extends Page
     }
 
     /**
-     * No es de la empresa: una compra personal con su RUC. Sale de la contabilidad,
-     * del 104 y del ATS; si el 104 de su mes ya la declaró, entra como no deducible.
+     * No es de la empresa: una compra personal con su RUC. Sin gasto, sin asiento y
+     * sin mover dinero; solo su IVA suma al 104, como lo cuenta el SRI.
      */
     public function personal(int $id): void
     {
         $c = ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->sinClasificar()->findOrFail($id);
-        $r = app(ClasificadorComprobantesService::class)
-            ->marcarPersonal($c, ($this->eleccion[$id]['pago'] ?? '') ?: null, auth()->id());
+        $r = app(ClasificadorComprobantesService::class)->marcarPersonal($c, auth()->id());
 
         $this->cargar();
 
@@ -365,16 +363,11 @@ class ClasificarComprobantes extends Page
             'anios'      => $this->anios($empresa->id),
             'proveedores' => $this->proveedores($empresa->id),
             'ventas'     => in_array($this->vista, ['por_registrar', 'sin_detalle'], true) ? $this->ventasPendientes() : collect(),
-            'medios'     => MedioPago::opciones($empresa->id),
             'mediosVenta' => MedioPago::opciones($empresa->id, true),
             'meses'      => $this->meses($empresa->id),
             'urlDeclaraciones' => Declaraciones::getUrl(),
             'sinDetalle' => ClasificadorComprobantesService::SIN_DETALLE,
             'avance'     => Cache::get(RegistrarComprobantesDelPortal::claveAvance($empresa->id)),
-            // Personal en un mes ya declarado entra como no deducible: pide cómo se pagó.
-            'declarados' => $pendientes->groupBy(fn ($c) => $c->fecha_emision->format('Y-m'))
-                ->filter(fn ($mes) => app(ClasificadorComprobantesService::class)->mesDeclarado($mes->first()))
-                ->flatten()->pluck('id')->flip()->all(),
         ];
     }
 

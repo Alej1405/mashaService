@@ -187,16 +187,17 @@ class Formulario104Service
     {
         $t = $this->importados->totalesDelPeriodo($empresaId, $anio, $mes);
 
-        if ($t['compras_numero'] === 0 && $t['ventas_numero'] === 0) {
+        if ($t['compras_numero'] === 0 && $t['ventas_numero'] === 0 && $t['personales_numero'] === 0) {
             return;
         }
 
-        $c['500'] += $t['compras_gravadas'];
-        $c['510'] += $t['compras_gravadas'];
-        $c['520'] += $t['compras_iva'];
-        $c['507'] += $t['compras_cero'];
-        $c['517'] += $t['compras_cero'];
-        $c['115'] += $t['compras_numero'];
+        // Las personales suman como compras: el SRI cuenta su IVA aunque no haya gasto.
+        $c['500'] += $t['compras_gravadas'] + $t['personales_gravadas'];
+        $c['510'] += $t['compras_gravadas'] + $t['personales_gravadas'];
+        $c['520'] += $t['compras_iva'] + $t['personales_iva'];
+        $c['507'] += $t['compras_cero'] + $t['personales_cero'];
+        $c['517'] += $t['compras_cero'] + $t['personales_cero'];
+        $c['115'] += $t['compras_numero'] + $t['personales_numero'];
 
         $c['401'] += $t['ventas_gravadas'];
         $c['411'] += $t['ventas_gravadas'];
@@ -221,8 +222,15 @@ class Formulario104Service
         $detalle = trim(($t['compras_numero'] ? "{$t['compras_numero']} compras " : '')
             . ($t['ventas_numero'] ? "{$t['ventas_numero']} ventas" : ''));
 
-        $avisos[] = "Se sumaron {$detalle} importadas del portal del SRI que no están registradas "
-            . 'en el ERP. Contablemente no existen: el asiento hay que hacerlo aparte.';
+        if ($detalle !== '') {
+            $avisos[] = "Se sumaron {$detalle} importadas del portal del SRI que no están registradas "
+                . 'en el ERP. Contablemente no existen: el asiento hay que hacerlo aparte.';
+        }
+
+        if ($t['personales_numero'] > 0) {
+            $avisos[] = "Se sumaron {$t['personales_numero']} compras personales hechas con el RUC: "
+                . 'solo su IVA, como lo cuenta el SRI. No son gasto ni tienen asiento.';
+        }
 
         if ($t['estimados'] > 0) {
             $avisos[] = "{$t['estimados']} ventas importadas traen la base despejada del total, porque "

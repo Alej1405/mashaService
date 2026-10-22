@@ -171,6 +171,25 @@ class ImportadorComprobantesSri
             'ventas_cero'      => $sumar('emitido', 'base_cero'),
             'ventas_numero'    => $filas->where('origen', 'emitido')->count(),
             'estimados'        => $filas->where('desglose', 'estimado')->count(),
+        ] + $this->personalesDelPeriodo($empresaId, $anio, $mes);
+    }
+
+    /**
+     * Compras personales hechas con el RUC de la empresa: no son gasto ni tienen
+     * asiento, pero su IVA está en el SRI y el 104 lo suma.
+     *
+     * @return array<string, float>
+     */
+    private function personalesDelPeriodo(int $empresaId, int $anio, int $mes): array
+    {
+        $filas = ComprobanteSri::where('empresa_id', $empresaId)->delPeriodo($anio, $mes)
+            ->where('origen', 'recibido')->where('conciliado_con', 'personal')->get();
+
+        return [
+            'personales_gravadas' => (float) $filas->sum('base_gravada'),
+            'personales_iva'      => (float) $filas->sum('iva'),
+            'personales_cero'     => (float) $filas->sum('base_cero'),
+            'personales_numero'   => $filas->count(),
         ];
     }
 }

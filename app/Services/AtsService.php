@@ -106,6 +106,23 @@ class AtsService
             ->selectRaw('false as es_inventario')
             ->get();
 
+        // Las compras personales con el RUC de la empresa no son gasto ni tienen asiento,
+        // pero su IVA está en el 104: el SRI cruza los dos, así que van aquí también.
+        $personales = DB::table('comprobantes_sri as c')
+            ->where('c.empresa_id', $empresaId)
+            ->where('c.origen', 'recibido')->where('c.conciliado_con', 'personal')
+            ->whereBetween('c.fecha_emision', [$desde, $hasta])
+            ->select('c.id', 'c.numero as numero_factura', 'c.fecha_emision as fecha', 'c.clave_acceso as autorizacion',
+                'c.identificacion as numero_identificacion', 'c.razon_social as nombre')
+            ->selectRaw("null as forma_pago, null as tipo_persona, 'personal' as origen")
+            ->selectRaw("case length(c.identificacion) when 13 then 'ruc' when 10 then 'cedula' else 'pasaporte' end as tipo_identificacion")
+            ->selectRaw("case c.tipo_comprobante when '03' then 'liquidacion_compra' when '04' then 'nota_credito'
+                         when '05' then 'nota_debito' else 'factura' end as tipo_documento")
+            ->selectRaw('(c.base_gravada + c.base_cero) as subtotal, c.iva, c.total, 0 as no_deducible, c.base_gravada as base_grav, c.base_cero')
+            ->selectRaw('false as es_activo')
+            ->selectRaw('false as es_inventario')
+            ->get();
+
         // Lo que llegó del portal y nadie registró no existe en la contabilidad, y
         // por eso tampoco está aquí. Se avisa: el 104 sí lo suma.
         $sinRegistrar = DB::table('comprobantes_sri')->where('empresa_id', $empresaId)
@@ -119,7 +136,7 @@ class AtsService
                 . 'hasta clasificarlas en «Clasificar comprobantes», y el ATS no cuadraría con el 104.';
         }
 
-        foreach ($documentos->concat($gastos) as $d) {
+        foreach ($documentos->concat($gastos)->concat($personales) as $d) {
             if (! $d->numero_identificacion) {
                 $avisos[] = "El documento {$d->numero_factura} no tiene proveedor con identificación: "
                     . 'el SRI rechaza el registro sin ella.';

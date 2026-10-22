@@ -106,7 +106,6 @@
                 </header>
 
                 @foreach ($comprobantes as $c)
-                    @php $declarado = isset($declarados[$c->id]); @endphp
                     <div class="ct-fila" style="align-items:flex-start; flex-wrap:wrap; gap:10px" wire:key="c-{{ $c->id }}">
                         <div style="min-width:230px; flex:1">
                             <p class="ct-fila-t">{{ $c->razon_social ?: $c->identificacion }}</p>
@@ -125,18 +124,8 @@
                         </div>
 
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
-                            {{-- Personal en un mes ya declarado: entra como no deducible, con su pago. --}}
-                            @if ($declarado)
-                                <select wire:model="eleccion.{{ $c->id }}.pago" class="ct-select" style="flex:1 1 220px"
-                                        aria-label="Cómo se pagó, si es personal">
-                                    <option value="">Si es personal: cómo se pagó</option>
-                                    @foreach ($medios as $valor => $etiqueta)
-                                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                                    @endforeach
-                                </select>
-                            @endif
                             <button type="button" class="ct-pestana" wire:click="personal({{ $c->id }})"
-                                    wire:confirm="¿Es una compra personal? Sale de la contabilidad de la empresa{{ $declarado ? ': su mes ya se declaró, así que entra como gasto no deducible' : ', del 104 y del ATS' }}.">
+                                    wire:confirm="¿Es una compra personal? No se registra como gasto ni mueve dinero de la empresa: solo su IVA suma al 104.">
                                 No es de la empresa
                             </button>
                         </div>

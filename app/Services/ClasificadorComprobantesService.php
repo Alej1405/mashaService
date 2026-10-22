@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ComprobanteSri;
-use App\Models\Declaracion;
 use App\Models\Empresa;
 use App\Models\Gasto;
 use App\Models\GastoLinea;
@@ -44,7 +43,8 @@ use Illuminate\Support\Facades\DB;
  * Cada producto del proveedor se recuerda: la primera vez se dice qué es y las
  * siguientes facturas entran solas. Si el SRI ya no devuelve el comprobante
  * (guarda unas semanas), no se registra: sin detalle no se sabe qué fue, y espera
- * su XML. A mano (clasificar) solo se marca una compra personal.
+ * su XML. A mano (clasificar) solo se marca una compra personal: sin gasto ni
+ * asiento, solo su IVA.
  * En los dos casos la clave queda como autorización, que es lo que pide el ATS.
  * Cómo se pagó (caja, banco, tarjeta o a crédito) lo dice quien registra: el
  * SRI no lo sabe (ver MedioPago).
@@ -75,19 +75,15 @@ class ClasificadorComprobantesService
 
         $destino = $c->origen === 'emitido' ? 'venta' : $this->destino($c, $datos);
 
-        // Una compra personal hecha con el RUC de la empresa no es de la empresa: no da
-        // crédito tributario. Pero lo que ya se declaró no se toca: si el 104 de ese mes
-        // ya la incluyó, entra como gasto no deducible con el IVA tal como se declaró.
+        // Una compra personal hecha con el RUC de la empresa no es un gasto de la empresa
+        // ni salió de su dinero: no hay documento ni asiento. Solo se toma su IVA, que el
+        // SRI suma solo al 104 (Formulario104Service lo cuenta igual).
         if ($destino === 'personal') {
-            if (! $this->mesDeclarado($c)) {
-                $c->update(['destino' => 'personal', 'conciliado_con' => 'personal', 'conciliado_id' => null,
-                            'pago' => null, 'clasificado_en' => now(), 'clasificado_por' => $usuarioId]);
+            $c->update(['destino' => 'personal', 'conciliado_con' => 'personal', 'conciliado_id' => null,
+                        'pago' => null, 'clasificado_en' => now(), 'clasificado_por' => $usuarioId]);
 
-                return ['ok' => true, 'documento' => 'personal', 'id' => null,
-                        'detalle' => "factura {$c->numero}: personal, fuera de la contabilidad, del 104 y del ATS"];
-            }
-            $destino = 'no_deducible';
-            $datos['motivo'] = 'Personal: el 104 de ' . $c->fecha_emision->format('m/Y') . ' ya la declaró con su IVA';
+            return ['ok' => true, 'documento' => 'personal', 'id' => null,
+                    'detalle' => "factura {$c->numero}: personal, sin gasto ni asiento; solo su IVA suma al 104"];
         }
 
         // Sin XML no hay de dónde sacar cómo se pagó: lo dice quien registra, factura por factura.
@@ -634,26 +630,10 @@ class ClasificadorComprobantesService
                 'detalle' => "gasto {$c->numero} · {$tipo->nombre}"];
     }
 
-    /**
-     * Una compra hecha con el RUC de la empresa que no es de la empresa. Si el 104 de
-     * ese mes ya la declaró, entra como gasto no deducible y hace falta saber cómo se pagó.
-     */
-    public function marcarPersonal(ComprobanteSri $c, ?string $pago, ?int $usuarioId = null): array
+    /** Una compra hecha con el RUC de la empresa que no es de la empresa: solo cuenta su IVA. */
+    public function marcarPersonal(ComprobanteSri $c, ?int $usuarioId = null): array
     {
-        return $this->clasificar($c, [
-            'destino'       => 'personal',
-            'tipo_gasto_id' => TipoGasto::where('codigo', 'gastos-no-deducibles')->whereNull('empresa_id')->value('id'),
-            'pago'          => $pago,
-        ], $usuarioId);
-    }
-
-    /** El 104 de ese mes ya consta en el SRI: cargado del portal o marcado como presentado. */
-    public function mesDeclarado(ComprobanteSri $c): bool
-    {
-        return Declaracion::where('empresa_id', $c->empresa_id)->where('tipo', 'f104')
-            ->where('anio', $c->fecha_emision->year)->where('mes', $c->fecha_emision->month)
-            ->where(fn ($q) => $q->where('origen', 'cargada')->orWhereNotNull('presentado_en'))
-            ->exists();
+        return $this->clasificar($c, ['destino' => 'personal'], $usuarioId);
     }
 
     /**

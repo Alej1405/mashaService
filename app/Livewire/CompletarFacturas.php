@@ -155,8 +155,7 @@ class CompletarFacturas extends Component
     /**
      * Una factura con el RUC de la empresa que no es de la empresa (una compra
      * personal), en un solo paso: se quita el borrador, que no tiene asiento ni
-     * kardex, y la factura queda como personal. Si el 104 de su mes ya la declaró,
-     * entra como gasto no deducible con el pago elegido en su fila.
+     * kardex, y la factura queda como personal: sin gasto ni asiento, solo su IVA.
      */
     public function noEsDeLaEmpresa(int $compraId): void
     {
@@ -164,7 +163,6 @@ class CompletarFacturas extends Component
         $c = ComprobanteSri::where('empresa_id', $compra->empresa_id)->where('conciliado_con', 'purchase')
             ->where('conciliado_id', $compra->id)->first();
         $servicio = app(ClasificadorComprobantesService::class);
-        $pago = ($this->pagoCompra[$compraId] ?? '') ?: null;
 
         if (! $c) {
             $this->addError("compra.{$compraId}", 'Esta factura no vino del portal: no hay comprobante que sacar.');
@@ -172,20 +170,13 @@ class CompletarFacturas extends Component
             return;
         }
 
-        if (! $pago && $servicio->mesDeclarado($c)) {
-            $this->addError("compra.{$compraId}", 'El 104 de ' . $c->fecha_emision->format('m/Y')
-                . ' ya la declaró: entra como gasto no deducible. Elige cómo se pagó y vuelve a tocar.');
-
-            return;
-        }
-
         try {
-            $r = \DB::transaction(function () use ($compra, $c, $servicio, $pago) {
+            $r = \DB::transaction(function () use ($compra, $c, $servicio) {
                 $c->update(['conciliado_con' => null, 'conciliado_id' => null, 'pago' => null]);
                 $compra->items()->delete();
                 $compra->delete();
 
-                $r = $servicio->marcarPersonal($c->refresh(), $pago, auth()->id());
+                $r = $servicio->marcarPersonal($c->refresh(), auth()->id());
                 if (! ($r['ok'] ?? false)) {
                     throw new \RuntimeException($r['error'] ?? 'No se pudo sacar.');
                 }
