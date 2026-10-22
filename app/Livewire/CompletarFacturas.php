@@ -203,10 +203,10 @@ class CompletarFacturas extends Component
                     throw ValidationException::withMessages(['producto' => "Falta decir qué es «{$p->descripcion}»."]);
                 }
 
-                // Un bien que el inventario no tenía: se crea aquí, con el nombre de la factura.
+                // Un bien que el inventario no tenía: se crea aquí, con el nombre de la factura sin abreviaturas.
                 if ($tipo === 'nuevo') {
                     $valor = InventoryItem::withoutGlobalScopes()->create([
-                        'empresa_id' => $compra->empresa_id, 'nombre' => $p->descripcion,
+                        'empresa_id' => $compra->empresa_id, 'nombre' => ClasificadorProductos::nombreLegible((string) $p->descripcion),
                         'type' => $valor === 'materia_prima' ? 'materia_prima' : 'insumo',
                         'purchase_price' => (float) $p->ultimo_precio, 'activo' => true,
                     ])->id;

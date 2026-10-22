@@ -9,13 +9,21 @@
  */
 return [
 
+    // Abreviaturas de los proveedores (la clave sin punto ni tildes; el valor, bien escrito): se expanden antes de comparar
+    // ("FRCO. 100 PET" se lee "frasco 100 pet") y en el nombre del ítem que se crea.
+    // Solo las vistas en facturas reales: una abreviatura cambia de sentido entre rubros.
+    'abreviaturas' => [
+        'frco' => 'frasco', 'gal' => 'galón', 'nat' => 'natural', 'tr' => 'transparente',
+        'pl' => 'plástico', 'elec' => 'electrónica',
+    ],
+
     // Señales de que la línea es un SERVICIO (va a gasto, nunca al inventario).
     'servicio' => [
         'servicio', 'servicios', 'por concepto de', 'honorario', 'honorarios', 'asesoria', 'consultoria',
         'mano de obra', 'mantenimiento', 'reparacion', 'instalacion', 'control de plagas', 'fumigacion',
         'transporte', 'flete', 'arriendo', 'arrendamiento', 'alquiler', 'capacitacion', 'curso', 'suscripcion',
         'licencia', 'comision', 'auditoria', 'diseno', 'desarrollo', 'soporte', 'certificado de firma',
-        'firma electronica', 'firma elec',
+        'firma electronica',
     ],
 
     // Señales de que la línea es un BIEN físico (unidades, envases, medidas).
@@ -58,7 +66,7 @@ return [
             'banner', 'impresion', 'fotografia',
         ],
         'firma-electronica-y-certificados-digitales' => [
-            'firma electronica', 'firma elec', 'certificado de firma', 'certificado digital', 'firma digital',
+            'firma electronica', 'certificado de firma', 'certificado digital', 'firma digital',
             'security data', 'renovacion de firma',
         ],
         'seguros' => ['seguro', 'poliza', 'prima de seguro'],

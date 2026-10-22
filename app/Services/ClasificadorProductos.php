@@ -67,13 +67,30 @@ class ClasificadorProductos
                 'motivo' => 'es un servicio, pero no reconozco de qué tipo'];
     }
 
-    /** Texto comparable: minúsculas, sin tildes, sin signos, espacios simples. */
+    /** Texto comparable: minúsculas, sin tildes, sin signos, espacios simples y abreviaturas expandidas. */
     public static function normalizar(string $texto): string
     {
         $texto = Str::lower(Str::ascii($texto));
         $texto = preg_replace('/[^a-z0-9 ]+/', ' ', $texto);
+        $abreviaturas = config('clasificacion.abreviaturas', []);
+        $palabras = array_map(fn ($p) => isset($abreviaturas[$p]) ? Str::lower(Str::ascii($abreviaturas[$p])) : $p, explode(' ', preg_replace('/\s+/', ' ', trim($texto))));
 
-        return trim(preg_replace('/\s+/', ' ', $texto));
+        return implode(' ', $palabras);
+    }
+
+    /**
+     * Nombre para un ítem nuevo: el texto de la factura con sus abreviaturas expandidas.
+     * "FRCO. 100 PET BOSTON TR" → "Frasco 100 PET BOSTON Transparente". El resto queda como vino.
+     */
+    public static function nombreLegible(string $descripcion): string
+    {
+        $abreviaturas = config('clasificacion.abreviaturas', []);
+
+        return trim(preg_replace_callback('/[\p{L}]+\.?/u', function ($m) use ($abreviaturas) {
+            $clave = Str::lower(Str::ascii(rtrim($m[0], '.')));
+
+            return isset($abreviaturas[$clave]) ? Str::ucfirst($abreviaturas[$clave]) : $m[0];
+        }, $descripcion));
     }
 
     /** Coincidencias de un diccionario: una frase de n palabras suma n. */
