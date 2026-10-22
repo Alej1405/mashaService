@@ -15,7 +15,11 @@ use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * Registra con su detalle todas las facturas del portal que esperan en la bandeja.
+ * Trae del SRI el detalle de las facturas recibidas del portal que esperan en la bandeja.
+ *
+ * Corre solo al subir el archivo del portal (y con «Traer el detalle»). Cada factura
+ * termina en uno de dos grupos: con su detalle, lista para elegir el pago y
+ * registrarla; o sin él, porque el SRI ya no la entrega, esperando su XML.
  *
  * Un año son cientos de facturas y cada una es una consulta al SRI: dentro de la
  * petición web se cortaría a los 30 segundos. Aquí corre en la cola, deja el
@@ -46,9 +50,23 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
         return "portal-sri:avance:{$empresaId}";
     }
 
+    /** Lo pone en la cola si no hay otro corriendo para esa empresa. false = ya había uno. */
+    public static function encolar(int $empresaId, ?int $usuarioId, array $pagos = [], ?int $anio = null, ?string $proveedor = null): bool
+    {
+        if (Cache::get(self::claveAvance($empresaId))['corriendo'] ?? false) {
+            return false;
+        }
+
+        Cache::put(self::claveAvance($empresaId), ['corriendo' => true, 'total' => 0, 'hechos' => 0], now()->addHours(6));
+        self::dispatch($empresaId, $usuarioId, $pagos, $anio, $proveedor);
+
+        return true;
+    }
+
     public function handle(ClasificadorComprobantesService $servicio): void
     {
-        $pendientes = ComprobanteSri::where('empresa_id', $this->empresaId)
+        // Solo recibidas: una emitida es una venta y se registra en su fila.
+        $pendientes = ComprobanteSri::where('empresa_id', $this->empresaId)->where('origen', 'recibido')
             ->sinClasificar()
             ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
             ->when($this->proveedor, fn ($q) => $q->where('identificacion', $this->proveedor))

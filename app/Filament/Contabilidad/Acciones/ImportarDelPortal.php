@@ -2,6 +2,7 @@
 
 namespace App\Filament\Contabilidad\Acciones;
 
+use App\Jobs\RegistrarComprobantesDelPortal;
 use App\Services\ImportadorComprobantesSri;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -13,6 +14,9 @@ use Filament\Notifications\Notification;
  * Subir el listado de comprobantes que la empresa baja del portal del SRI
  * (recibidos o emitidos). Una sola acción para Cumplimiento y para la bandeja
  * de clasificar: el archivo se sube donde se va a trabajar.
+ *
+ * Al subirlo se trae del SRI el detalle de cada factura recibida, en la cola:
+ * las que lo tienen quedan listas para registrar; las otras, esperando su XML.
  */
 class ImportarDelPortal
 {
@@ -57,12 +61,14 @@ class ImportarDelPortal
                 }
 
                 $periodos = implode(', ', array_keys($r['periodos'] ?? []));
+                $trae = RegistrarComprobantesDelPortal::encolar(Filament::getTenant()->id, auth()->id());
 
                 Notification::make()
                     ->title("{$r['importados']} comprobantes importados")
                     ->body(trim("{$r['tipo']} · {$r['repetidos']} ya estaban · {$r['conciliados']} casan con el ERP"
                         . ($periodos ? " · períodos: {$periodos}" : '')
-                        . ' ' . implode(' ', $r['avisos'] ?? [])))
+                        . ' ' . implode(' ', $r['avisos'] ?? [])
+                        . ($trae ? ' · Trayendo el detalle del SRI: te aviso en la campana al terminar.' : '')))
                     ->success()->persistent()->send();
 
                 if ($despues) {

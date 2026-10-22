@@ -42,8 +42,9 @@ use Illuminate\Support\Facades\DB;
  * se pide al SRI el XML por la clave de acceso, que trae cada producto con su
  * cantidad, precio e IVA, y la compra entra igual que una que llega por correo.
  * Cada producto del proveedor se recuerda: la primera vez se dice qué es y las
- * siguientes facturas entran solas. Solo si el SRI ya no devuelve el comprobante
- * (guarda unas semanas) se cae a la elección manual de abajo (clasificar).
+ * siguientes facturas entran solas. Si el SRI ya no devuelve el comprobante
+ * (guarda unas semanas), no se registra: sin detalle no se sabe qué fue, y espera
+ * su XML. A mano (clasificar) solo se marca una compra personal.
  * En los dos casos la clave queda como autorización, que es lo que pide el ATS.
  * Cómo se pagó (caja, banco, tarjeta o a crédito) lo dice quien registra: el
  * SRI no lo sabe (ver MedioPago).
@@ -164,7 +165,7 @@ class ClasificadorComprobantesService
             $c->update(['desglose' => 'sin_xml']);
 
             return ['ok' => false, 'manual' => true,
-                    'error' => 'El SRI ya no devuelve esa factura: di a mano qué fue.'];
+                    'error' => 'El SRI ya no devuelve esa factura: sube su XML en «Falta el detalle».'];
         }
 
         try {
@@ -633,8 +634,21 @@ class ClasificadorComprobantesService
                 'detalle' => "gasto {$c->numero} · {$tipo->nombre}"];
     }
 
+    /**
+     * Una compra hecha con el RUC de la empresa que no es de la empresa. Si el 104 de
+     * ese mes ya la declaró, entra como gasto no deducible y hace falta saber cómo se pagó.
+     */
+    public function marcarPersonal(ComprobanteSri $c, ?string $pago, ?int $usuarioId = null): array
+    {
+        return $this->clasificar($c, [
+            'destino'       => 'personal',
+            'tipo_gasto_id' => TipoGasto::where('codigo', 'gastos-no-deducibles')->whereNull('empresa_id')->value('id'),
+            'pago'          => $pago,
+        ], $usuarioId);
+    }
+
     /** El 104 de ese mes ya consta en el SRI: cargado del portal o marcado como presentado. */
-    private function mesDeclarado(ComprobanteSri $c): bool
+    public function mesDeclarado(ComprobanteSri $c): bool
     {
         return Declaracion::where('empresa_id', $c->empresa_id)->where('tipo', 'f104')
             ->where('anio', $c->fecha_emision->year)->where('mes', $c->fecha_emision->month)
@@ -802,45 +816,6 @@ class ClasificadorComprobantesService
             'pago'              => $anterior?->pago,
             'visto'             => $vistos,
         ];
-    }
-
-    /**
-     * Clasifica de golpe todos los comprobantes pendientes de un proveedor.
-     *
-     * @return array{hechos: int, fallos: array<int, string>}
-     */
-    /**
-     * $pagos: comprobante_id => cómo se pagó esa factura. Lo que es (el ítem o el tipo
-     * de gasto) se repite para todo el proveedor; el pago no: cada factura lleva el
-     * suyo, y la que no lo tiene se queda con ese motivo.
-     */
-    public function clasificarProveedor(int $empresaId, string $identificacion, array $datos, ?int $usuarioId = null, array $pagos = []): array
-    {
-        $pendientes = ComprobanteSri::where('empresa_id', $empresaId)
-            ->where('identificacion', $identificacion)
-            ->sinClasificar()->where('origen', 'recibido')->get();
-
-        $hechos = 0;
-        $fallos = [];
-
-        foreach ($pendientes as $c) {
-            // La cantidad se reparte por comprobante: cada factura trae la suya.
-            $suyo = array_merge($datos, ['pago' => $pagos[$c->id] ?? '']);
-
-            if (($datos['inventory_item_id'] ?? null) && empty($datos['cantidad'])) {
-                $suyo['cantidad'] = 1;
-            }
-
-            $r = $this->clasificar($c, $suyo, $usuarioId);
-
-            if ($r['ok'] ?? false) {
-                $hechos++;
-            } else {
-                $fallos[] = "{$c->numero}: {$r['error']}";
-            }
-        }
-
-        return ['hechos' => $hechos, 'fallos' => $fallos];
     }
 
     /**

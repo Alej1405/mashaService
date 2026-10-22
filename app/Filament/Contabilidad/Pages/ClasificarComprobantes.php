@@ -3,12 +3,9 @@
 namespace App\Filament\Contabilidad\Pages;
 
 use App\Models\ComprobanteSri;
-use App\Models\InventoryItem;
-use App\Models\TipoGasto;
 use App\Filament\Contabilidad\Acciones\ImportarDelPortal;
 use App\Services\ClasificadorComprobantesService;
 use App\Services\MedioPago;
-use App\Models\ProductoProveedor;
 use App\Jobs\RegistrarComprobantesDelPortal;
 use Illuminate\Support\Facades\Cache;
 use Filament\Actions\Action;
@@ -28,9 +25,12 @@ use Filament\Pages\Page;
  * kardex, un gasto con su IVA como crédito. Por eso hay dos puertas al
  * inventario —bodega y esta— y es la segunda la que salva los meses viejos.
  *
- * Todo el flujo vive aquí: se sube el archivo del portal, se dice qué fue cada
- * factura y cómo se pagó, y al registrarla quedan el documento, su asiento y su
- * autorización. Cuando un mes queda vacío, su ATS está completo.
+ * Todo el flujo vive aquí. Al subir el archivo del portal se trae del SRI el
+ * detalle de cada factura recibida, y quedan dos grupos: las que lo tienen, listas
+ * para elegir cómo se pagaron y registrarlas; y las que el SRI ya no entrega, que
+ * esperan su XML. Sin detalle no se registra: no se sabe qué fue esa factura.
+ * Una compra personal se saca con un clic desde cualquiera de los dos grupos.
+ * Cuando un mes queda vacío, su ATS está completo.
  */
 class ClasificarComprobantes extends Page
 {
@@ -42,12 +42,10 @@ class ClasificarComprobantes extends Page
     protected static string  $view            = 'filament.contabilidad.clasificar-comprobantes';
 
     /**
-     * comprobante_id => ['que' => 'item:12'|'gasto:5', 'cantidad', 'no_deducible', 'pago']
+     * comprobante_id => ['pago' => 'credito'|'efectivo:2'|…]
      *
-     * Una sola decisión por factura. Si entra a un ítem del inventario, el tipo
-     * —materia prima, insumo, activo fijo— ya lo dijo el formulario de bodega y
-     * no se vuelve a preguntar. Lo único que el contador clasifica es lo que no
-     * está registrado en ninguna parte: los gastos.
+     * El cobro de cada venta, y el pago de una compra personal cuando el 104 de su
+     * mes ya la declaró (entra como gasto no deducible). Lo demás lo dice el XML.
      */
     public array $eleccion = [];
 
@@ -59,20 +57,17 @@ class ClasificarComprobantes extends Page
     #[\Livewire\Attributes\Url]
     public ?string $proveedor = null;
 
-    /** Con un proveedor elegido: una sola forma de pago para todas sus facturas. */
-    public string $pagoTodas = '';
-
     /**
      * Qué parte de la bandeja se mira. Cada una es un estado del detalle:
-     *   por_registrar · el detalle se trae del SRI al registrar
-     *   sin_detalle   · el SRI ya no la devuelve: se sube su XML o se dice a mano
-     *   esperan       · registrada con detalle, espera que se diga qué es un producto nuevo
-     *   registradas   · con asiento; con su detalle o registrada a mano
+     *   por_registrar · todavía no se trae su detalle del SRI
+     *   esperan       · con su detalle: lista para elegir cómo se pagó y registrarla
+     *   sin_detalle   · el SRI ya no la devuelve: espera su XML
+     *   registradas   · con asiento; con su detalle o registrada a mano antes
      */
     #[\Livewire\Attributes\Url]
-    public string $vista = 'por_registrar';
+    public string $vista = 'esperan';
 
-    public const VISTAS = ['por_registrar', 'sin_detalle', 'esperan', 'registradas'];
+    public const VISTAS = ['por_registrar', 'esperan', 'sin_detalle', 'registradas'];
 
     public static function canAccess(): bool
     {
@@ -111,21 +106,12 @@ class ClasificarComprobantes extends Page
     public function updatedProveedor(): void
     {
         $this->proveedor = $this->proveedor ?: null;
-        $this->pagoTodas = '';
         $this->cargar();
-    }
-
-    /** El pago elegido arriba se pone en cada factura del proveedor; se puede cambiar fila a fila. */
-    public function updatedPagoTodas(): void
-    {
-        foreach ($this->pendientes() as $c) {
-            $this->eleccion[$c->id]['pago'] = $this->pagoTodas;
-        }
     }
 
     public function verVista(string $vista): void
     {
-        $this->vista = in_array($vista, self::VISTAS, true) ? $vista : 'por_registrar';
+        $this->vista = in_array($vista, self::VISTAS, true) ? $vista : 'esperan';
         $this->cargar();
     }
 
@@ -249,30 +235,11 @@ class ClasificarComprobantes extends Page
 
     private function cargar(): void
     {
-        $servicio = app(ClasificadorComprobantesService::class);
-
-        $this->eleccion = $this->pendientes()
-            ->mapWithKeys(function (ComprobanteSri $c) use ($servicio) {
-                // Lo que se hizo con ese proveedor la última vez
-                $propuesta = $servicio->proponer($c);
-
-                $que = match (true) {
-                    (bool) $propuesta['inventory_item_id'] => 'item:' . $propuesta['inventory_item_id'],
-                    (bool) $propuesta['tipo_gasto_id']     => 'gasto:' . $propuesta['tipo_gasto_id'],
-                    default                                => '',
-                };
-
-                return [$c->id => [
-                    'que'          => $que,
-                    'cantidad'     => 1,
-                    'uso'          => $propuesta['destino'] === 'no_deducible' ? 'no_deducible' : 'gasto',
-                    'pago'         => $this->pagoTodas,
-                ]];
-            })->all();
+        $this->eleccion = $this->pendientes()->mapWithKeys(fn ($c) => [$c->id => ['pago' => '']])->all();
 
         // Las facturas emitidas que no están en el ERP entran como venta.
         foreach ($this->ventasPendientes() as $c) {
-            $this->eleccion[$c->id] = ['que' => '', 'cantidad' => 1, 'no_deducible' => false, 'pago' => 'credito'];
+            $this->eleccion[$c->id] = ['pago' => 'credito'];
         }
     }
 
@@ -297,34 +264,9 @@ class ClasificarComprobantes extends Page
             ->get();
     }
 
-    /** De la única elección de la fila a lo que el servicio necesita. */
-    private function datosDe(int $id): array
-    {
-        $e = $this->eleccion[$id] ?? [];
-        [$tipo, $valor] = array_pad(explode(':', (string) ($e['que'] ?? '')), 2, null);
-
-        $pago = (string) ($e['pago'] ?? '');
-
-        if ($tipo === 'item') {
-            // El destino sale del ítem: el servicio lo resuelve.
-            return ['inventory_item_id' => (int) $valor, 'cantidad' => (float) ($e['cantidad'] ?? 1), 'pago' => $pago];
-        }
-
-        if ($tipo === 'gasto') {
-            return [
-                'destino'       => in_array($e['uso'] ?? 'gasto', ['no_deducible', 'personal'], true) ? $e['uso'] : 'gasto',
-                'tipo_gasto_id' => (int) $valor,
-                'pago'          => $pago,
-            ];
-        }
-
-        return [];
-    }
-
     /**
-     * Registra una factura con su detalle: el XML del SRI trae cada producto con
-     * su cantidad, precio e IVA. Solo se pide algo a mano si el SRI ya no la
-     * devuelve, o si en una venta no se reconoce el producto.
+     * Registra una venta con su detalle: el XML del SRI trae cada producto con su
+     * cantidad y precio. Si el SRI ya no la devuelve, espera su XML.
      */
     public function registrar(int $id): void
     {
@@ -335,7 +277,7 @@ class ClasificarComprobantes extends Page
         $this->cargar();
 
         if (! ($r['ok'] ?? false)) {
-            Notification::make()->title(($r['manual'] ?? false) ? 'Hay que decirlo a mano' : 'No se pudo registrar')
+            Notification::make()->title(($r['manual'] ?? false) ? 'Falta el detalle' : 'No se pudo registrar')
                 ->body($r['error'])->{($r['manual'] ?? false) ? 'warning' : 'danger'}()->send();
 
             return;
@@ -345,85 +287,41 @@ class ClasificarComprobantes extends Page
     }
 
     /**
-     * Todas las pendientes con su detalle, cada una con el pago elegido en su fila.
+     * Trae del SRI el detalle de las que faltan (con el año y el proveedor elegidos).
      * Va a la cola: un año son cientos de consultas al SRI y la web corta a los 30 s.
      */
-    public function registrarTodas(): void
+    public function traerDetalle(): void
     {
-        $empresaId = Filament::getTenant()->id;
-
-        if ((Cache::get(RegistrarComprobantesDelPortal::claveAvance($empresaId))['corriendo'] ?? false)) {
-            Notification::make()->title('Ya se está registrando')->body('Mira el avance aquí arriba.')->info()->send();
+        if (! RegistrarComprobantesDelPortal::encolar(Filament::getTenant()->id, auth()->id(), [], $this->anio, $this->proveedor)) {
+            Notification::make()->title('Ya se está trayendo el detalle')->body('Mira el avance aquí arriba.')->info()->send();
 
             return;
         }
 
-        $pagos = collect($this->eleccion)->map(fn ($e) => $e['pago'] ?? null)->filter()->all();
-        Cache::put(RegistrarComprobantesDelPortal::claveAvance($empresaId),
-            ['corriendo' => true, 'total' => 0, 'hechos' => 0], now()->addHours(6));
-        RegistrarComprobantesDelPortal::dispatch($empresaId, auth()->id(), $pagos, $this->anio, $this->proveedor);
-
-        Notification::make()->title('Registrando en segundo plano')
+        Notification::make()->title('Trayendo el detalle en segundo plano')
             ->body('Cada factura se consulta en el SRI. Puedes seguir trabajando: te aviso en la campana al terminar.')
             ->info()->send();
     }
 
-    /** Clasifica a mano una factura que el SRI ya no devuelve. */
-    public function clasificar(int $id): void
+    /**
+     * No es de la empresa: una compra personal con su RUC. Sale de la contabilidad,
+     * del 104 y del ATS; si el 104 de su mes ya la declaró, entra como no deducible.
+     */
+    public function personal(int $id): void
     {
-        $c = ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->findOrFail($id);
+        $c = ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->sinClasificar()->findOrFail($id);
         $r = app(ClasificadorComprobantesService::class)
-            ->clasificar($c, $this->datosDe($id), auth()->id());
+            ->marcarPersonal($c, ($this->eleccion[$id]['pago'] ?? '') ?: null, auth()->id());
 
         $this->cargar();
 
         if (! ($r['ok'] ?? false)) {
-            Notification::make()->title('No se pudo registrar')->body($r['error'])->danger()->send();
+            Notification::make()->title('No se pudo sacar')->body($r['error'])->danger()->send();
 
             return;
         }
 
-        Notification::make()->title('Registrado')->body(ucfirst($r['detalle']))->success()->send();
-    }
-
-    /**
-     * Una factura que no es de la empresa se decide a mano: pasa a "Sin detalle",
-     * donde se elige su tipo de gasto y se marca como personal.
-     */
-    public function aMano(int $id): void
-    {
-        ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->sinClasificar()
-            ->whereKey($id)->update(['desglose' => 'sin_detalle']);
-
-        $this->cargar();
-        Notification::make()->title('Pasó a «Sin detalle»')
-            ->body('Ahí eliges su tipo de gasto y la marcas como personal.')->success()->send();
-    }
-
-    /**
-     * Aplica la misma clasificación a todas las facturas pendientes de ese
-     * proveedor. Con veintinueve del mismo emisor, decirlo una vez basta.
-     */
-    public function clasificarProveedor(string $identificacion, int $desdeId): void
-    {
-        $r = app(ClasificadorComprobantesService::class)->clasificarProveedor(
-            Filament::getTenant()->id,
-            $identificacion,
-            $this->datosDe($desdeId),
-            auth()->id(),
-            collect($this->eleccion)->map(fn ($e) => (string) ($e['pago'] ?? ''))->all(),
-        );
-
-        $this->cargar();
-
-        Notification::make()
-            ->title("{$r['hechos']} facturas registradas")
-            ->body($r['fallos']
-                ? 'No se pudo con ' . count($r['fallos']) . ': ' . implode(' · ', array_slice($r['fallos'], 0, 3))
-                : 'Todas las de ese proveedor quedaron con su asiento.')
-            ->{$r['fallos'] ? 'warning' : 'success'}()
-            ->persistent()
-            ->send();
+        Notification::make()->title('Compra personal')->body(ucfirst($r['detalle']))->success()->send();
     }
 
     protected function getHeaderActions(): array
@@ -440,9 +338,11 @@ class ClasificarComprobantes extends Page
                     . 'cuánto, pero no qué se compró. Hasta que lo digas, esas facturas suman al '
                     . 'formulario 104 y no existen en la contabilidad: el balance y la declaración '
                     . 'no cuadran, y el mes no se puede cerrar. Lo que el ERP ya tenía registrado '
-                    . 'no aparece aquí, porque se concilió solo por el número de factura. Al registrar '
-                    . 'cada una se consulta su XML en el SRI por la clave de acceso, y la clave queda '
-                    . 'como número de autorización: es lo que pide el ATS.')
+                    . 'no aparece aquí, porque se concilió solo por el número de factura. Al subir el '
+                    . 'archivo, el ERP trae del SRI el detalle de cada factura por su clave de acceso: '
+                    . 'las que lo tienen quedan listas para decir cómo se pagaron y registrarlas; las '
+                    . 'que el SRI ya no entrega esperan su XML, porque sin detalle no se sabe qué fue. '
+                    . 'La clave queda como número de autorización: es lo que pide el ATS.')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Entendido'),
         ];
@@ -471,18 +371,10 @@ class ClasificarComprobantes extends Page
             'urlDeclaraciones' => Declaraciones::getUrl(),
             'sinDetalle' => ClasificadorComprobantesService::SIN_DETALLE,
             'avance'     => Cache::get(RegistrarComprobantesDelPortal::claveAvance($empresa->id)),
-            'porProveedor' => $pendientes->groupBy('identificacion')->map->count(),
-            'destinos'   => ClasificadorComprobantesService::DESTINOS,
-            'tiposGasto' => TipoGasto::where('activo', true)
-                ->where(fn ($q) => $q->whereNull('empresa_id')->orWhere('empresa_id', $empresa->id))
-                ->orderBy('nombre')->pluck('nombre', 'id'),
-            // Agrupados por su tipo, que es la clasificación que ya existe.
-            'items'      => InventoryItem::withoutGlobalScopes()
-                ->where('empresa_id', $empresa->id)->where('activo', true)
-                ->orderBy('type')->orderBy('nombre')
-                ->get()
-                ->groupBy('type')
-                ->map(fn ($g) => $g->pluck('nombre', 'id')),
+            // Personal en un mes ya declarado entra como no deducible: pide cómo se pagó.
+            'declarados' => $pendientes->groupBy(fn ($c) => $c->fecha_emision->format('Y-m'))
+                ->filter(fn ($mes) => app(ClasificadorComprobantesService::class)->mesDeclarado($mes->first()))
+                ->flatten()->pluck('id')->flip()->all(),
         ];
     }
 

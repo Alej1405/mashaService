@@ -27,12 +27,13 @@ class RegistroDelPortalTerminado extends Notification
         $c = $this->cuenta;
 
         return FilamentNotification::make()
-            ->title("{$c['registradas']} facturas del portal registradas con su detalle")
+            ->title(($c['registradas'] + $c['pendientes']) . ' facturas del portal con su detalle')
             ->body(collect([
-                $c['pendientes'] ? "{$c['pendientes']} esperan que digas qué son sus productos nuevos" : null,
-                $c['manuales'] ? "{$c['manuales']} ya no las devuelve el SRI: quedaron para decirlas a mano" : null,
+                $c['registradas'] ? "{$c['registradas']} quedaron registradas con su asiento" : null,
+                $c['pendientes'] ? "{$c['pendientes']} están en «Listas para registrar»: elige cómo se pagaron" : null,
+                $c['manuales'] ? "{$c['manuales']} ya no las devuelve el SRI: están en «Falta el detalle», sube su XML" : null,
                 $c['errores'] ? "{$c['errores']} no se pudieron: " . implode(' · ', array_slice($c['detalle_errores'], 0, 2)) : null,
-            ])->filter()->implode('. ') ?: 'Todas quedaron con su asiento.')
+            ])->filter()->implode('. ') ?: 'No había facturas por traer.')
             ->icon('heroicon-o-inbox-stack')
             ->status($c['errores'] ? 'warning' : 'success')
             ->getDatabaseMessage();

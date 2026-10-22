@@ -273,7 +273,7 @@ class PortalAContabilidadTest extends TestCase
         $this->assertEquals(9.42, (float) $compra->items->first()->subtotal);
     }
 
-    public function test_si_el_sri_ya_no_la_devuelve_se_pide_a_mano(): void
+    public function test_si_el_sri_ya_no_la_devuelve_no_se_registra_y_espera_su_xml(): void
     {
         $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')
             ->andReturn(['ok' => false, 'estado' => 'NO_ENCONTRADO']));
@@ -284,9 +284,10 @@ class PortalAContabilidadTest extends TestCase
         $this->assertFalse($r['ok']);
         $this->assertTrue($r['manual']);
         $this->assertSame('sin_xml', $c->fresh()->desglose);
+        $this->assertNull($c->fresh()->conciliado_con, 'sin detalle no se registra');
     }
 
-    public function test_registrar_todas_corre_en_la_cola_y_deja_el_avance(): void
+    public function test_traer_el_detalle_corre_en_la_cola_y_deja_el_avance(): void
     {
         $this->mock(ServicioSri::class, fn ($m) => $m->shouldReceive('autorizacionComprobante')
             ->andReturn(['ok' => false, 'estado' => 'NO_ENCONTRADO']));
@@ -298,7 +299,7 @@ class PortalAContabilidadTest extends TestCase
             \App\Jobs\RegistrarComprobantesDelPortal::claveAvance($this->empresa->id));
         $this->assertFalse($avance['corriendo']);
         $this->assertSame(1, $avance['total']);
-        $this->assertSame(1, $avance['manuales'], 'lo que el SRI ya no devuelve queda para decirlo a mano');
+        $this->assertSame(1, $avance['manuales'], 'lo que el SRI ya no devuelve queda esperando su XML');
 
         // Con un año elegido, solo se trabaja ese año.
         \App\Jobs\RegistrarComprobantesDelPortal::dispatchSync($this->empresa->id, null, [], 2025);
@@ -530,5 +531,22 @@ class PortalAContabilidadTest extends TestCase
         $this->assertTrue($r['ok'], $r['error'] ?? '');
         $this->assertSame('personal', $nuevo->fresh()->conciliado_con);
         $this->assertSame(0, \App\Models\Gasto::where('numero_documento', '001-001-000000999')->count());
+    }
+
+    public function test_una_compra_personal_se_saca_en_un_solo_paso_desde_las_listas(): void
+    {
+        // Con su detalle, lista para registrar: un borrador sin asiento.
+        $this->xmlConDetalle([['codigo' => '20', 'total' => '135.00']]);
+        $c = $this->comprobante();
+        $r = app(ClasificadorComprobantesService::class)->registrarDesdeXml($this->empresa->id, '<factura/>', null);
+        $this->assertSame('pendiente', $r['estado'] ?? null, $r['error'] ?? '');
+
+        // Mes sin declarar: un clic y queda fuera, sin pasar por otra pestaña.
+        $componente = \Livewire\Livewire::test(\App\Livewire\CompletarFacturas::class)->call('noEsDeLaEmpresa', $r['id']);
+
+        $this->assertSame([], $componente->errors()->all(), implode(' ', $componente->errors()->all()));
+        $this->assertNull(Purchase::withoutGlobalScopes()->find($r['id']), 'el borrador se quita');
+        $this->assertSame('personal', $c->fresh()->conciliado_con);
+        $this->assertSame('personal', $c->fresh()->destino);
     }
 }

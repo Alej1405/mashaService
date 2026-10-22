@@ -60,6 +60,9 @@ class CompletarFacturas extends Component
     /** Con un proveedor elegido: una sola forma de pago para todas sus facturas. */
     public string $pagoTodas = '';
 
+    /** false = solo el bloque de subir XML (en «Falta el detalle»); la lista vive en «Listas para registrar». */
+    public bool $conLista = true;
+
     /** Lo que pasó con la última subida, para decirlo en la pantalla. */
     public ?array $resultado = null;
 
@@ -151,23 +154,52 @@ class CompletarFacturas extends Component
 
     /**
      * Una factura con el RUC de la empresa que no es de la empresa (una compra
-     * personal): se quita el borrador, que no tiene asiento ni kardex, y vuelve a
-     * la bandeja en «Sin detalle», donde se marca como personal.
+     * personal), en un solo paso: se quita el borrador, que no tiene asiento ni
+     * kardex, y la factura queda como personal. Si el 104 de su mes ya la declaró,
+     * entra como gasto no deducible con el pago elegido en su fila.
      */
     public function noEsDeLaEmpresa(int $compraId): void
     {
         $compra = app(ComprasElectronicasPendientes::class)->compras(Filament::getTenant()->id)->findOrFail($compraId);
+        $c = ComprobanteSri::where('empresa_id', $compra->empresa_id)->where('conciliado_con', 'purchase')
+            ->where('conciliado_id', $compra->id)->first();
+        $servicio = app(ClasificadorComprobantesService::class);
+        $pago = ($this->pagoCompra[$compraId] ?? '') ?: null;
 
-        \DB::transaction(function () use ($compra) {
-            ComprobanteSri::where('empresa_id', $compra->empresa_id)->where('conciliado_con', 'purchase')
-                ->where('conciliado_id', $compra->id)
-                ->update(['conciliado_con' => null, 'conciliado_id' => null, 'desglose' => 'sin_detalle', 'pago' => null]);
-            $compra->items()->delete();
-            $compra->delete();
-        });
+        if (! $c) {
+            $this->addError("compra.{$compraId}", 'Esta factura no vino del portal: no hay comprobante que sacar.');
+
+            return;
+        }
+
+        if (! $pago && $servicio->mesDeclarado($c)) {
+            $this->addError("compra.{$compraId}", 'El 104 de ' . $c->fecha_emision->format('m/Y')
+                . ' ya la declaró: entra como gasto no deducible. Elige cómo se pagó y vuelve a tocar.');
+
+            return;
+        }
+
+        try {
+            $r = \DB::transaction(function () use ($compra, $c, $servicio, $pago) {
+                $c->update(['conciliado_con' => null, 'conciliado_id' => null, 'pago' => null]);
+                $compra->items()->delete();
+                $compra->delete();
+
+                $r = $servicio->marcarPersonal($c->refresh(), $pago, auth()->id());
+                if (! ($r['ok'] ?? false)) {
+                    throw new \RuntimeException($r['error'] ?? 'No se pudo sacar.');
+                }
+
+                return $r;
+            });
+        } catch (\RuntimeException $e) {
+            $this->addError("compra.{$compraId}", $e->getMessage());
+
+            return;
+        }
 
         $this->resultado = ['registradas' => 0, 'esperan' => 0, 'fallos' => [], 'resto' => 0,
-                            'texto' => "La factura {$compra->numero_factura} pasó a «Sin detalle»: márcala ahí como personal."];
+                            'texto' => ucfirst($r['detalle']) . '.'];
     }
 
     /** Cómo se pagó: lo que se eligió en la fila o, si no, lo que dice el XML. */
@@ -276,7 +308,7 @@ class CompletarFacturas extends Component
     {
         $empresa = Filament::getTenant();
 
-        $compras = $this->pendientes()->get();
+        $compras = $this->conLista ? $this->pendientes()->get() : collect();
         $this->proponer($compras);
         $formas = app(ResolverFormaPago::class);
         $medios = MedioPago::opciones($empresa->id);

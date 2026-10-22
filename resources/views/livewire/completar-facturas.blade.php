@@ -7,7 +7,7 @@
         <header>
             <div>
                 <h2 class="ct-tit">Subir facturas en XML</h2>
-                <p class="ct-pie2">Varios a la vez o un .zip. Nada se registra al subir: cada factura queda abajo con lo que dice su XML, para auditarla.</p>
+                <p class="ct-pie2">Varios a la vez o un .zip. Nada se registra al subir: cada factura queda {{ $conLista ? 'abajo' : 'en «Listas para registrar»' }} con lo que dice su XML, para auditarla.</p>
             </div>
         </header>
         <div class="ct-fila" style="flex-wrap:wrap; gap:10px">
@@ -39,7 +39,7 @@
                     <span class="ct-chip ct-chip-ok">{{ $resultado['texto'] }}</span>
                 @else
                     @if ($resultado['registradas']) <span class="ct-chip ct-chip-ok">{{ $resultado['registradas'] }} ya estaban registradas</span> @endif
-                    @if ($resultado['esperan']) <span class="ct-chip ct-chip-wa">{{ $resultado['esperan'] }} por auditar abajo</span> @endif
+                    @if ($resultado['esperan']) <span class="ct-chip ct-chip-wa">{{ $resultado['esperan'] }} {{ $conLista ? 'por auditar abajo' : 'pasaron a «Listas para registrar»' }}</span> @endif
                     @if (count($resultado['fallos'])) <span class="ct-chip ct-chip-da">{{ count($resultado['fallos']) }} no se pudieron</span> @endif
                     @if ($resultado['resto']) <span class="ct-chip ct-chip-n">{{ $resultado['resto'] }} sin procesar: súbelas en otra tanda</span> @endif
                 @endif
@@ -50,6 +50,7 @@
         @endif
     </section>
 
+    @if ($conLista)
     {{-- 2 · Completar: cada factura con sus productos; lo que falta, en la misma línea. --}}
     <section class="ct-panel">
         <header>
@@ -162,7 +163,7 @@
                     </select>
                     @if ($c->origen === \App\Models\Purchase::ORIGEN_PORTAL)
                         <button type="button" class="ct-pestana" wire:click="noEsDeLaEmpresa({{ $c->id }})"
-                                wire:confirm="¿Quitar esta factura del registro? Vuelve a la bandeja para marcarla como personal.">No es de la empresa</button>
+                                wire:confirm="¿Es una compra personal? Sale de la contabilidad de la empresa; si su mes ya se declaró, entra como gasto no deducible con el pago elegido.">No es de la empresa</button>
                     @endif
                     <button type="button" class="ct-btn-descarga" style="border:0; cursor:pointer"
                             wire:click="registrar({{ $c->id }})" wire:loading.attr="disabled" wire:target="registrar({{ $c->id }})">
@@ -175,4 +176,5 @@
             <p class="ct-fila-s" style="padding:18px">No hay facturas por completar. Todo lo que llegó está registrado con su asiento.</p>
         @endforelse
     </section>
+    @endif
 </div>

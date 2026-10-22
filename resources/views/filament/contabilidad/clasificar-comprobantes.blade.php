@@ -4,9 +4,9 @@
     $money = fn ($n) => '$ ' . number_format((float) $n, 2, ',', '.');
     $cant = fn ($n) => rtrim(rtrim(number_format((float) $n, 2, ',', '.'), '0'), ',');
     $tarjetas = [
-        'por_registrar' => ['Por registrar', 'el detalle se trae del SRI al registrar', 'n'],
-        'sin_detalle'   => ['Sin detalle', 'el SRI ya no las entrega: sube su XML o dilas a mano', 'wa'],
-        'esperan'       => ['Esperan un producto', 'tienen su detalle; falta decir qué es un producto nuevo', 'wa'],
+        'por_registrar' => ['Por traer del SRI', 'todavía no se trae su detalle', 'n'],
+        'esperan'       => ['Listas para registrar', 'con su detalle: elige cómo se pagaron y regístralas', 'wa'],
+        'sin_detalle'   => ['Falta el detalle', 'el SRI ya no las entrega: sube su XML', 'wa'],
         'registradas'   => ['Registradas', 'con su asiento; despliega cada una para ver su detalle', 'ok'],
     ];
 @endphp
@@ -57,11 +57,11 @@
     @if ($avance['corriendo'] ?? false)
         {{-- Se refresca solo mientras corre el registro en segundo plano. --}}
         <div class="ct-aviso" wire:poll.5s>
-            <p><strong>Registrando en segundo plano: {{ $avance['hechos'] ?? 0 }} de {{ $avance['total'] ?? '…' }}.</strong>
+            <p><strong>Trayendo el detalle del SRI: {{ $avance['hechos'] ?? 0 }} de {{ $avance['total'] ?? '…' }}.</strong>
                 Cada factura se consulta en el SRI. Te aviso en la campana al terminar.</p>
         </div>
     @elseif (! empty($avance['falla']))
-        <div class="ct-aviso"><p><strong>El registro se detuvo:</strong> {{ $avance['falla'] }}. Lo registrado quedó; vuelve a tocar «Registrar todas».</p></div>
+        <div class="ct-aviso"><p><strong>Se detuvo:</strong> {{ $avance['falla'] }}. Lo traído quedó; vuelve a tocar «Traer el detalle» en «Por traer del SRI».</p></div>
     @endif
 
     {{-- ── Por registrar y sin detalle: las que faltan ─────────────────── --}}
@@ -70,59 +70,43 @@
             <section class="ct-panel">
                 <p class="ct-fila-s" style="padding:18px">
                     @if ($vista === 'por_registrar')
-                        No hay facturas por registrar{{ $anio ? " en {$anio}" : '' }}. Para traer otro mes, usa «Subir archivo del SRI» arriba.
+                        No hay facturas por traer{{ $anio ? " en {$anio}" : '' }}. Para traer otro mes, usa «Subir archivo del SRI» arriba.
                     @else
-                        No hay facturas sin detalle{{ $anio ? " en {$anio}" : '' }}: todo lo que el SRI entregó se registró con su detalle.
+                        No hay facturas sin detalle{{ $anio ? " en {$anio}" : '' }}: el SRI entregó el de todas.
                     @endif
                 </p>
             </section>
+        @endif
+
+        {{-- Sin detalle no se registra: aquí se sube su XML. --}}
+        @if ($vista === 'sin_detalle')
+            @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio, 'conLista' => false], key('subir-xml'))
         @endif
 
         @if ($comprobantes->isNotEmpty())
             <section class="ct-panel">
                 <header>
                     <div>
-                        <h2 class="ct-tit">{{ $vista === 'por_registrar' ? 'Compras por registrar' : 'Compras sin detalle' }}</h2>
+                        <h2 class="ct-tit">{{ $vista === 'por_registrar' ? 'Compras por traer del SRI' : 'Compras sin detalle' }}</h2>
                         <p class="ct-pie2">
                             @if ($vista === 'por_registrar')
-                                Elige cómo se pagó cada una: lo que elijas se propone para el resto de ese proveedor
+                                Al subir el archivo del portal se traen solas. Las que tengan detalle pasan a «Listas para registrar»; las que el SRI ya no entregue, a «Falta el detalle»
                             @else
-                                Lo mejor es subir su XML arriba. Si no lo tienes, di qué fue
+                                Sin detalle no se sabe qué fue la factura: sube su XML arriba (el portal del SRI lo deja bajar en «Comprobantes recibidos»)
                             @endif
                             @if ($conteos[$vista] > 120) · se muestran las primeras 120 @endif
                         </p>
                     </div>
                     @if ($vista === 'por_registrar' && ! ($avance['corriendo'] ?? false))
                         <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
-                                wire:click="registrarTodas" wire:loading.attr="disabled" wire:target="registrarTodas">
-                            @if ($proveedor)
-                                Registrar las {{ $conteos['por_registrar'] }} de este proveedor
-                            @else
-                                Registrar todas{{ $anio ? " las de {$anio}" : '' }}
-                            @endif
+                                wire:click="traerDetalle" wire:loading.attr="disabled" wire:target="traerDetalle">
+                            Traer el detalle de {{ $conteos['por_registrar'] === 1 ? 'la factura' : "las {$conteos['por_registrar']}" }}{{ $proveedor ? ' de este proveedor' : '' }}
                         </button>
                     @endif
                 </header>
 
-                @if ($proveedor)
-                    {{-- Un solo pago para todo el proveedor; cada fila lo toma y se puede cambiar. --}}
-                    <div class="ct-fila" style="flex-wrap:wrap; gap:10px">
-                        <p class="ct-fila-t" style="flex:1; min-width:200px">Cómo se pagaron todas</p>
-                        <select wire:model.live="pagoTodas" class="ct-select" style="flex:1 1 260px" aria-label="Cómo se pagaron todas">
-                            <option value="">Como diga el XML de cada una (se audita abajo)</option>
-                            @foreach ($medios as $valor => $etiqueta)
-                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endif
-
                 @foreach ($comprobantes as $c)
-                    @php
-                        $que = (string) ($eleccion[$c->id]['que'] ?? '');
-                        $manual = $vista === 'sin_detalle';
-                        $delProveedor = $porProveedor[$c->identificacion] ?? 1;
-                    @endphp
+                    @php $declarado = isset($declarados[$c->id]); @endphp
                     <div class="ct-fila" style="align-items:flex-start; flex-wrap:wrap; gap:10px" wire:key="c-{{ $c->id }}">
                         <div style="min-width:230px; flex:1">
                             <p class="ct-fila-t">{{ $c->razon_social ?: $c->identificacion }}</p>
@@ -132,69 +116,29 @@
                                 <strong>{{ $money($c->total) }}</strong>
                             </p>
                             <p style="margin:6px 0 0">
-                                @if ($manual)
-                                    <span class="ct-chip ct-chip-wa">Sin detalle · sube su XML</span>
+                                @if ($vista === 'sin_detalle')
+                                    <span class="ct-chip ct-chip-wa">Falta el detalle · sube su XML</span>
                                 @else
-                                    <span class="ct-chip ct-chip-n">Detalle: se trae del SRI</span>
+                                    <span class="ct-chip ct-chip-n">Por traer del SRI</span>
                                 @endif
                             </p>
                         </div>
 
-                        <div style="display:flex; gap:8px; align-items:center; flex:1 1 460px; flex-wrap:wrap">
-                            @if ($manual)
-                                <select wire:model.live="eleccion.{{ $c->id }}.que" class="ct-select" style="flex:2 1 240px" aria-label="Qué fue">
-                                    <option value="">— qué fue —</option>
-                                    @foreach ($items as $tipo => $grupo)
-                                        <optgroup label="{{ ucfirst(str_replace('_', ' ', $tipo)) }}">
-                                            @foreach ($grupo as $id => $nombre)
-                                                <option value="item:{{ $id }}">{{ $nombre }}</option>
-                                            @endforeach
-                                        </optgroup>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
+                            {{-- Personal en un mes ya declarado: entra como no deducible, con su pago. --}}
+                            @if ($declarado)
+                                <select wire:model="eleccion.{{ $c->id }}.pago" class="ct-select" style="flex:1 1 220px"
+                                        aria-label="Cómo se pagó, si es personal">
+                                    <option value="">Si es personal: cómo se pagó</option>
+                                    @foreach ($medios as $valor => $etiqueta)
+                                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                     @endforeach
-                                    <optgroup label="Gasto">
-                                        @foreach ($tiposGasto as $id => $nombre)
-                                            <option value="gasto:{{ $id }}">{{ $nombre }}</option>
-                                        @endforeach
-                                    </optgroup>
                                 </select>
                             @endif
-
-                            {{-- Cómo se pagó: decide la cuenta del asiento. El SRI no lo sabe. --}}
-                            <select wire:model="eleccion.{{ $c->id }}.pago" class="ct-select" style="flex:1 1 200px" aria-label="Cómo se pagó">
-                                <option value="">Como diga su XML (se audita abajo)</option>
-                                @foreach ($medios as $valor => $etiqueta)
-                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                                @endforeach
-                            </select>
-
-                            @if ($manual && str_starts_with($que, 'item:'))
-                                <input type="number" step="0.01" min="0.01" wire:model="eleccion.{{ $c->id }}.cantidad"
-                                       class="ct-select" style="width:88px" placeholder="cant." aria-label="Cantidad">
-                            @elseif ($manual && str_starts_with($que, 'gasto:'))
-                                {{-- Personal: si el mes ya se declaró entra como no deducible con su IVA; si no, queda fuera. --}}
-                                <select wire:model="eleccion.{{ $c->id }}.uso" class="ct-select" style="flex:1 1 180px" aria-label="De quién es">
-                                    <option value="gasto">Gasto de la empresa</option>
-                                    <option value="no_deducible">No deducible</option>
-                                    <option value="personal">Personal · no es de la empresa</option>
-                                </select>
-                            @endif
-
-                            @if ($manual)
-                                <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
-                                        @disabled($que === '') wire:click="clasificar({{ $c->id }})">Registrar a mano</button>
-                                @if ($delProveedor > 1)
-                                    <button type="button" class="ct-pestana" @disabled($que === '')
-                                            wire:click="clasificarProveedor('{{ $c->identificacion }}', {{ $c->id }})">Las {{ $delProveedor }} de este proveedor</button>
-                                @endif
-                            @else
-                                <button type="button" class="ct-pestana" wire:click="aMano({{ $c->id }})">No es de la empresa</button>
-                                <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
-                                        wire:click="registrar({{ $c->id }})" wire:loading.attr="disabled"
-                                        wire:target="registrar({{ $c->id }})">
-                                    <span wire:loading.remove wire:target="registrar({{ $c->id }})">Registrar</span>
-                                    <span wire:loading wire:target="registrar({{ $c->id }})">Consultando al SRI…</span>
-                                </button>
-                            @endif
+                            <button type="button" class="ct-pestana" wire:click="personal({{ $c->id }})"
+                                    wire:confirm="¿Es una compra personal? Sale de la contabilidad de la empresa{{ $declarado ? ': su mes ya se declaró, así que entra como gasto no deducible' : ', del 104 y del ATS' }}.">
+                                No es de la empresa
+                            </button>
                         </div>
                     </div>
                 @endforeach
@@ -211,10 +155,7 @@
                 </header>
 
                 @foreach ($ventas as $c)
-                    @php
-                        $que = (string) ($eleccion[$c->id]['que'] ?? '');
-                        $manual = $vista === 'sin_detalle';
-                    @endphp
+                    @php $manual = $vista === 'sin_detalle'; @endphp
                     <div class="ct-fila" style="align-items:flex-start; flex-wrap:wrap; gap:10px" wire:key="v-{{ $c->id }}">
                         <div style="min-width:230px; flex:1">
                             <p class="ct-fila-t">{{ $c->razon_social ?: $c->identificacion }}</p>
@@ -222,37 +163,18 @@
                                 <strong>{{ $money($c->total) }}</strong></p>
                             <p style="margin:6px 0 0">
                                 <span class="ct-chip {{ $manual ? 'ct-chip-wa' : 'ct-chip-n' }}">
-                                    {{ $manual ? 'Sin detalle · di qué se vendió' : 'Detalle: se trae del SRI' }}
+                                    {{ $manual ? 'Falta el detalle · sube su XML' : 'Detalle: se trae del SRI' }}
                                 </span>
                             </p>
                         </div>
 
                         <div style="display:flex; gap:8px; align-items:center; flex:1 1 460px; flex-wrap:wrap">
-                            @if ($manual)
-                                <select wire:model.live="eleccion.{{ $c->id }}.que" class="ct-select" style="flex:2 1 240px" aria-label="Qué se vendió">
-                                    <option value="">— qué se vendió —</option>
-                                    @foreach ($items as $tipo => $grupo)
-                                        <optgroup label="{{ ucfirst(str_replace('_', ' ', $tipo)) }}">
-                                            @foreach ($grupo as $id => $nombre)
-                                                <option value="item:{{ $id }}">{{ $nombre }}</option>
-                                            @endforeach
-                                        </optgroup>
+                            @if (! $manual)
+                                <select wire:model="eleccion.{{ $c->id }}.pago" class="ct-select" style="flex:1 1 200px" aria-label="Cómo se cobró">
+                                    @foreach ($mediosVenta as $valor => $etiqueta)
+                                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                     @endforeach
                                 </select>
-                                <input type="number" step="0.01" min="0.01" wire:model="eleccion.{{ $c->id }}.cantidad"
-                                       class="ct-select" style="width:88px" placeholder="cant." aria-label="Cantidad">
-                            @endif
-
-                            <select wire:model="eleccion.{{ $c->id }}.pago" class="ct-select" style="flex:1 1 200px" aria-label="Cómo se cobró">
-                                @foreach ($mediosVenta as $valor => $etiqueta)
-                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                                @endforeach
-                            </select>
-
-                            @if ($manual)
-                                <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
-                                        @disabled(! str_starts_with($que, 'item:')) wire:click="clasificar({{ $c->id }})">Registrar a mano</button>
-                            @else
                                 <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                         wire:click="registrar({{ $c->id }})" wire:loading.attr="disabled" wire:target="registrar({{ $c->id }})">
                                     <span wire:loading.remove wire:target="registrar({{ $c->id }})">Registrar</span>
@@ -266,9 +188,9 @@
         @endif
     @endif
 
-    {{-- ── Sin detalle y esperan: subir el XML y completar cada factura aquí mismo ── --}}
-    @if (in_array($vista, ['sin_detalle', 'esperan'], true))
-        @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio])
+    {{-- ── Listas para registrar: con su detalle; se elige el pago y se registran ── --}}
+    @if ($vista === 'esperan')
+        @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio], key('listas'))
     @endif
 
     {{-- ── Registradas: con lo que se registró ───────────────────────────── --}}
@@ -278,7 +200,7 @@
                 <div>
                     <h2 class="ct-tit">Facturas registradas</h2>
                     <p class="ct-pie2">
-                        Las registradas a mano se completan subiendo su XML (pestaña «Sin detalle»): toman el detalle real y se rehace su asiento
+                        Las registradas a mano antes se completan subiendo su XML (pestaña «Falta el detalle»): toman el detalle real y se rehace su asiento
                         @if ($conteos[$vista] > 120) · se muestran las 120 más recientes @endif
                     </p>
                 </div>
