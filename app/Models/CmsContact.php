@@ -12,7 +12,7 @@ class CmsContact extends Model
     protected $table = 'cms_contacts';
 
     protected $fillable = [
-        'empresa_id', 'direccion', 'telefono', 'email', 'whatsapp',
+        'empresa_id', 'pagina_titulo', 'pagina_descripcion', 'direccion', 'telefono', 'email', 'whatsapp',
         'mapa_embed', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok', 'activo',
     ];
 

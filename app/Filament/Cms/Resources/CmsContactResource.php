@@ -25,6 +25,21 @@ class CmsContactResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            Forms\Components\Section::make('Página de contacto')
+                ->description('El título y el texto que abren la página de contacto de tu sitio.')
+                ->icon('heroicon-o-document-text')
+                ->schema([
+                    Forms\Components\TextInput::make('pagina_titulo')
+                        ->label('Título')
+                        ->maxLength(200)
+                        ->columnSpanFull(),
+
+                    Forms\Components\Textarea::make('pagina_descripcion')
+                        ->label('Texto de introducción')
+                        ->rows(3)
+                        ->columnSpanFull(),
+                ]),
+
             Forms\Components\Section::make('Información de contacto')
                 ->description('Cómo te encuentran y te escriben. Estos datos salen en el pie de página de todo tu sitio.')
                 ->icon('heroicon-o-phone')

@@ -274,7 +274,8 @@ class CmsController extends Controller
         $data = $this->cached("cms:{$slug}:contact", self::TTL, function () use ($slug) {
             $empresa = $this->empresa($slug);
             $contact = CmsContact::withoutGlobalScopes()
-                ->select(['direccion', 'telefono', 'email', 'whatsapp', 'mapa_embed',
+                ->select(['pagina_titulo', 'pagina_descripcion',
+                          'direccion', 'telefono', 'email', 'whatsapp', 'mapa_embed',
                           'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok'])
                 ->where('empresa_id', $empresa->id)
                 ->where('activo', true)
@@ -285,6 +286,8 @@ class CmsController extends Controller
             }
 
             return [
+                'pagina_titulo'      => $contact->pagina_titulo,
+                'pagina_descripcion' => $contact->pagina_descripcion,
                 'direccion'  => $contact->direccion,
                 'telefono'   => $contact->telefono,
                 'email'      => $contact->email,
