@@ -180,15 +180,24 @@ class Cumplimiento extends Page
                     ->registrar($declaracion, $pdf->get(), $pdf->getClientOriginalName(), auth()->id());
                 $pdf->delete();
 
+                // Solo se rechaza lo que no es auténtico (otra empresa, otro mes, sin serial).
                 if (! $r['ok']) {
-                    $cuerpo = $r['error'];
-                    foreach (array_slice($r['diferencias'] ?? [], 0, 6) as $x) {
-                        $cuerpo .= " · casilla {$x['codigo']}: el ERP dice " . number_format($x['erp'], 2, ',', '.')
-                            . ' y el comprobante ' . number_format($x['sri'], 2, ',', '.');
+                    Notification::make()->title('No se registró la declaración')->body($r['error'])->danger()->persistent()->send();
+                    $action->halt();
+                }
+
+                // Registrada con lo presentado. Si el ERP calculó distinto, se dice en qué:
+                // es una falla nuestra y ya le llegó a soporte.
+                if ($r['diferencias'] ?? []) {
+                    $cuerpo = 'Quedó con los valores presentados en el SRI. El ERP había calculado distinto en '
+                        . count($r['diferencias']) . ' casillas:';
+                    foreach (array_slice($r['diferencias'], 0, 6) as $x) {
+                        $cuerpo .= " · {$x['codigo']}: SRI " . number_format($x['sri'], 2, ',', '.')
+                            . ', ERP ' . number_format($x['erp'], 2, ',', '.');
                     }
 
-                    Notification::make()->title('No se registró la declaración')->body($cuerpo)->danger()->persistent()->send();
-                    $action->halt();
+                    Notification::make()->title('Declaración registrada, con diferencias')
+                        ->body($cuerpo . '. Ya lo estamos revisando.')->warning()->persistent()->send();
                 }
 
                 $this->abierta = null;
@@ -205,6 +214,17 @@ class Cumplimiento extends Page
      */
     private function cerrarPeriodo(Declaracion $declaracion): void
     {
+        // Antes del inicio de gestión es terreno del modo cuadre: queda presentado
+        // pero no se cierra, para poder seguir cuadrando.
+        $inicio = Filament::getTenant()->inicio_gestion_erp;
+        if ($inicio && \Illuminate\Support\Carbon::create($declaracion->anio, $declaracion->mes, 1)->lessThan($inicio->copy()->startOfMonth())) {
+            Notification::make()->title('Declaración registrada')
+                ->body("{$declaracion->periodo} queda presentado y abierto: es anterior al inicio de gestión y se trabaja con el modo cuadre.")
+                ->success()->send();
+
+            return;
+        }
+
         // Solo cierra el mes lo que salió del sistema: una declaración cargada
         // del portal no tiene asientos detrás que respalden el cierre.
         if ($declaracion->es_cargada) {

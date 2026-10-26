@@ -73,6 +73,17 @@ class ImportadorDeclaracionesPdf
                 continue;
             }
 
+            // Desde el inicio de gestión el 104 se declara en Cumplimiento, donde se
+            // recalcula y se compara: un mes, un solo lugar.
+            $inicio = $empresa->inicio_gestion_erp ?? null;
+            if ($inicio && \Illuminate\Support\Carbon::create((int) $cab['anio'], (int) $cab['mes'], 1)
+                    ->greaterThanOrEqualTo(\Illuminate\Support\Carbon::parse($inicio)->startOfMonth())) {
+                $rechazadas[] = ['archivo' => $archivo['nombre'], 'motivo' => sprintf('es de %02d/%d, que ya se declara en '
+                    . 'Cumplimiento: súbela ahí, en «Declara el IVA»', (int) $cab['mes'], (int) $cab['anio'])];
+
+                continue;
+            }
+
             $ya = Declaracion::where('empresa_id', $empresaId)->where('tipo', 'f104')
                 ->where('anio', $cab['anio'])->where('mes', $cab['mes'])
                 ->where(fn ($q) => $q->cargadas()->orWhereNotNull('presentado_en'))

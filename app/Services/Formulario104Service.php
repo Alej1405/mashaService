@@ -330,7 +330,9 @@ class Formulario104Service
         $t = (float) $tarifa / 100;
 
         foreach (['421' => '411', '422' => '412', '520' => '510', '521' => '511', '522' => '512'] as $iva => $base) {
-            $c[$iva] = round((float) $c[$base] * $t, 2);
+            // Redondeo a cuatro primero: 391,50 × 15 % = 58,725 en binario es 58,72499…
+            // y el SRI declara 58,73 (agosto 2026 de Rivet).
+            $c[$iva] = round(round((float) $c[$base] * $t, 4), 2);
         }
 
         $c['429'] = $c['421'] + $c['422'] + $c['430'] + $c['445'] + $c['423'] - $c['424'];

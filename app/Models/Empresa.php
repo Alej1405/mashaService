@@ -36,6 +36,8 @@ class Empresa extends Model implements HasName
         // Desde cuándo el ERP responde por las declaraciones de esta empresa,
         // y cada cuánto declara el IVA. No es la fecha de constitución.
         'inicio_gestion_erp', 'periodicidad_iva',
+        // Modo «Cuadre de gestión anterior»: quién lo encendió y cuándo (null = apagado).
+        'modo_cuadre_en', 'modo_cuadre_por',
         'name', 'email', 'website_url', 'slug', 'activo',
         'tipo_persona', 'tipo_identificacion', 'numero_identificacion', 'direccion', 'actividad_economica',
         'plan',
@@ -59,6 +61,7 @@ class Empresa extends Model implements HasName
 
     protected $casts = [
         'inicio_gestion_erp' => 'date',
+        'modo_cuadre_en'     => 'datetime',
         'actividades_economicas' => 'array',
         'obligado_contabilidad'  => 'boolean',
         'contribuyente_especial' => 'boolean',

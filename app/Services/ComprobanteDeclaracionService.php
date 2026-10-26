@@ -3,16 +3,20 @@
 namespace App\Services;
 
 use App\Models\Declaracion;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Da por presentado un 104 con el comprobante que entrega el SRI al declarar.
+ * Da por presentado un 104 con la declaración que consta en el SRI.
  *
- * El SRI no tiene un servicio que el ERP pueda consultar para validar una
- * declaración, así que la prueba es el propio comprobante: tiene que ser de esta
- * empresa, de este mes y del formulario 104, no estar usado en otra declaración,
- * y sus casillas tienen que ser las que el ERP generó. Un PDF de otro mes, de
- * otra empresa o con valores cambiados no pasa.
+ * Lo presentado ya es un hecho: no se bloquea. El flujo es leer la declaración,
+ * volver a calcular ese mes con lo registrado y comparar casilla por casilla. Si
+ * algo difiere, manda el SRI: sus valores quedan como los de la declaración y lo
+ * que calculó el ERP se guarda aparte. Una diferencia es una falla nuestra (de
+ * cálculo o de clasificación), así que avisa a soporte en la campana.
+ *
+ * Solo se rechaza lo que no es auténtico: otra empresa, otro mes, otro
+ * formulario, sin serial o con un serial ya usado.
  *
  * Se guardan el serial y el código verificador (SRIDEC…): con ellos y el RUC,
  * cualquiera puede contrastarlo en el SRI.
@@ -33,8 +37,8 @@ class ComprobanteDeclaracionService
      */
     public function registrar(Declaracion $d, string $pdf, string $nombre, ?int $usuarioId = null): array
     {
-        if ($d->tipo !== 'f104' || ! $d->datos) {
-            return ['ok' => false, 'error' => 'Esa declaración todavía no tiene valores generados.'];
+        if ($d->tipo !== 'f104') {
+            return ['ok' => false, 'error' => 'Solo las declaraciones del IVA (104) se registran así.'];
         }
 
         $lectura = $this->servicio->leerDeclaracionPdf($pdf, $nombre);
@@ -78,18 +82,10 @@ class ComprobanteDeclaracionService
             return ['ok' => false, 'error' => "El serial {$cab['numero_serial']} ya respalda otra declaración."];
         }
 
-        $diferencias = $this->diferencias($d->datos['casilleros'] ?? [], $lectura['casilleros'] ?? []);
-
-        if ($diferencias) {
-            // Si lo que no cuadra es lo que viene del mes anterior, el problema está en
-            // ese mes, no en este: se dice qué hacer.
-            $arrastre = collect($diferencias)->pluck('codigo')->intersect(['483', '605', '606', '607', '608'])->isNotEmpty();
-
-            return ['ok' => false, 'diferencias' => $diferencias,
-                    'error' => 'Los valores de la declaración no son los que calculó el ERP.'
-                        . ($arrastre ? ' El saldo del mes anterior no cuadra: sube primero la declaración presentada de ese mes '
-                            . '(Declaraciones → Cargar declaraciones presentadas), luego «Volver a calcular» este mes y vuelve a subir esta.' : '')];
-        }
+        // Se vuelve a calcular el mes con lo que hay registrado hoy, y con eso se compara.
+        $calculo = app(Formulario104Service::class)->calcular($d->empresa_id, $d->anio, $d->mes);
+        $sri = array_map(fn ($v) => round((float) $v, 4), $lectura['casilleros'] ?? []);
+        $diferencias = $this->diferencias($calculo['casilleros'], $sri);
 
         $archivo = sprintf('declaraciones/%d/comprobantes/f104-%d-%02d-%s.pdf',
             $d->empresa_id, $d->anio, $d->mes, $cab['numero_serial']);
@@ -98,18 +94,55 @@ class ComprobanteDeclaracionService
         $d->update([
             'presentado_en'            => $cab['fecha_recaudacion'] ?? now()->toDateString(),
             'comprobante_presentacion' => $cab['numero_serial'],
-            'valor_pagado'             => $lectura['resumen']['total_pagado'] ?? $d->casillero('999'),
+            'valor_pagado'             => $lectura['resumen']['total_pagado'] ?? $sri['999'] ?? 0,
             'archivo_pdf'              => $archivo,
-            'datos'                    => $d->datos + ['comprobante' => [
-                'serial'             => $cab['numero_serial'],
-                'codigo_verificador' => $cab['codigo_verificador'] ?? null,
-                'fecha_recaudacion'  => $cab['fecha_recaudacion'] ?? null,
-                'subido_por'         => $usuarioId,
-                'subido_en'          => now()->toDateTimeString(),
-            ]],
+            'estado'                   => 'listo',
+            'generado_en'              => $d->generado_en ?? now(),
+            'datos'                    => [
+                // Manda lo presentado; lo que el formulario no trae se queda con el cálculo.
+                'casilleros'           => array_replace($calculo['casilleros'], $sri),
+                'calculado_por_el_erp' => $calculo['casilleros'],
+                'diferencias'          => $diferencias,
+                'comprobante'          => [
+                    'serial'             => $cab['numero_serial'],
+                    'codigo_verificador' => $cab['codigo_verificador'] ?? null,
+                    'fecha_recaudacion'  => $cab['fecha_recaudacion'] ?? null,
+                    'subido_por'         => $usuarioId,
+                    'subido_en'          => now()->toDateTimeString(),
+                ],
+            ],
+            'avisos' => $diferencias
+                ? ['El cálculo del ERP difería del SRI en ' . count($diferencias) . ' casillas; quedó lo presentado.']
+                : [],
         ]);
 
-        return ['ok' => true];
+        if ($diferencias) {
+            $this->avisarFalla($d, $diferencias);
+        }
+
+        return ['ok' => true, 'diferencias' => $diferencias];
+    }
+
+    /**
+     * Una diferencia con el SRI es una falla del ERP: llega a soporte para corregir el
+     * cálculo o la clasificación, y queda en el log.
+     *
+     * @param  array<int, array{codigo: string, erp: float, sri: float}>  $diferencias
+     */
+    private function avisarFalla(Declaracion $d, array $diferencias): void
+    {
+        $detalle = collect($diferencias)->take(8)
+            ->map(fn ($x) => "{$x['codigo']}: ERP {$x['erp']} · SRI {$x['sri']}")->join(' · ');
+
+        Log::warning('104: el cálculo del ERP difiere de lo presentado en el SRI', [
+            'empresa_id' => $d->empresa_id, 'periodo' => $d->periodo, 'diferencias' => $diferencias,
+        ]);
+
+        \Filament\Notifications\Notification::make()
+            ->title("Falla del 104 · {$d->empresa?->name} · {$d->periodo}")
+            ->body('El ERP calculó distinto que la declaración presentada en ' . count($diferencias) . " casillas. {$detalle}")
+            ->danger()
+            ->sendToDatabase(\App\Models\User::role('super_admin')->get());
     }
 
     /**

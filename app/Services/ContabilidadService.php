@@ -204,6 +204,11 @@ class ContabilidadService
     {
         $momento = Carbon::parse($fecha);
 
+        // En modo cuadre, lo anterior al inicio de gestión se puede corregir.
+        if ($this->permiteCuadre($empresaId, $momento)) {
+            return;
+        }
+
         $cerrado = EjercicioContable::withoutGlobalScopes()
             ->where('empresa_id', $empresaId)
             ->where('anio', $momento->year)
@@ -226,6 +231,21 @@ class ContabilidadService
                 $momento->month, $momento->year,
             ));
         }
+    }
+
+    /**
+     * ¿Esa fecha cae en lo que el modo «Cuadre de gestión anterior» deja corregir?
+     *
+     * Solo con el modo encendido y solo antes del inicio de gestión: desde ese mes
+     * el ERP responde por lo declarado y un mes cerrado no se toca.
+     */
+    public function permiteCuadre(int $empresaId, Carbon $momento): bool
+    {
+        $empresa = \App\Models\Empresa::withoutGlobalScopes()->find($empresaId);
+
+        return $empresa?->modo_cuadre_en !== null
+            && $empresa->inicio_gestion_erp !== null
+            && $momento->lessThan(Carbon::parse($empresa->inicio_gestion_erp)->startOfMonth());
     }
 
     /** ¿El mes está cerrado, por inventario o porque ya se declaró su IVA? */

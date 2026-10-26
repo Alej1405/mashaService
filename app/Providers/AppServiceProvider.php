@@ -45,18 +45,23 @@ class AppServiceProvider extends ServiceProvider
                     return '';
                 }
 
+                // Modo cuadre encendido: que nadie en Contabilidad lo olvide.
+                $cuadre = $empresa->modo_cuadre_en && \Filament\Facades\Filament::getCurrentPanel()?->getId() === 'contabilidad'
+                    ? view('filament.avisos.cuadre', ['empresa' => $empresa])->render()
+                    : '';
+
                 // En Cumplimiento el propio bloque «Declara el IVA» es el aviso: no se repite.
                 if (str_ends_with((string) request()->route()?->getName(), 'pages.cumplimiento')) {
-                    return '';
+                    return $cuadre;
                 }
 
                 $alerta = app(\App\Services\GestionSriService::class)->alertaIva($empresa);
 
                 if (! $alerta) {
-                    return '';
+                    return $cuadre;
                 }
 
-                return view('filament.avisos.iva', [
+                return $cuadre . view('filament.avisos.iva', [
                     'alerta' => $alerta,
                     'url'    => \App\Filament\Contabilidad\Pages\Cumplimiento::getUrl(panel: 'contabilidad', tenant: $empresa),
                 ])->render();

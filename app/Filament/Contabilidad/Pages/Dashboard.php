@@ -120,4 +120,41 @@ class Dashboard extends Page
             'url'    => $url,
         ];
     }
+
+    /**
+     * Switch del modo «Cuadre de gestión anterior». Solo los administradores: abre
+     * a cambios los meses anteriores al inicio de gestión, aunque estén cerrados.
+     */
+    protected function getHeaderActions(): array
+    {
+        $empresa = Filament::getTenant();
+        $encendido = $empresa?->modo_cuadre_en !== null;
+        $corte = $empresa?->inicio_gestion_erp?->translatedFormat('F \\d\\e Y') ?? 'el inicio de gestión';
+
+        return [
+            \Filament\Actions\Action::make('modo_cuadre')
+                ->label($encendido ? 'Apagar modo cuadre' : 'Modo cuadre de gestión anterior')
+                ->icon($encendido ? 'heroicon-o-lock-closed' : 'heroicon-o-lock-open')
+                ->color($encendido ? 'warning' : 'gray')
+                ->visible(fn () => auth()->user()?->hasAnyRole(['admin_empresa', 'super_admin']))
+                ->requiresConfirmation()
+                ->modalHeading($encendido ? 'Apagar el modo cuadre' : 'Encender el modo cuadre')
+                ->modalDescription($encendido
+                    ? "Los meses anteriores a {$corte} vuelven a quedar protegidos: los que están cerrados ya no admiten cambios."
+                    : "Mientras esté encendido, los meses anteriores a {$corte} admiten registros y correcciones aunque estén "
+                        . "cerrados, para cuadrar la gestión de antes del ERP. Desde {$corte} nada cambia: lo declarado sigue cerrado.")
+                ->modalSubmitActionLabel($encendido ? 'Apagar' : 'Encender')
+                ->action(function () use ($empresa, $encendido) {
+                    $empresa->update($encendido
+                        ? ['modo_cuadre_en' => null, 'modo_cuadre_por' => null]
+                        : ['modo_cuadre_en' => now(), 'modo_cuadre_por' => auth()->id()]);
+
+                    \Filament\Notifications\Notification::make()
+                        ->title($encendido ? 'Modo cuadre apagado' : 'Modo cuadre encendido')
+                        ->success()->send();
+
+                    $this->redirect(static::getUrl());
+                }),
+        ];
+    }
 }

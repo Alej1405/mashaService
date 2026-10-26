@@ -270,6 +270,10 @@ class KardexService
     {
         $momento = \Illuminate\Support\Carbon::parse($fecha);
 
+        if (app(ContabilidadService::class)->permiteCuadre($empresaId, $momento)) {
+            return;
+        }
+
         $cerrado = PeriodoContable::withoutGlobalScopes()
             ->where('empresa_id', $empresaId)
             ->where('anio', $momento->year)
