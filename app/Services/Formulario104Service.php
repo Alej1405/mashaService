@@ -355,11 +355,15 @@ class Formulario104Service
 
     /**
      * Totales y fórmulas que el portal calcula solo: no se escriben, se comparan.
-     * Son los de las fórmulas de liquidar() y los subtotales de cada bloque.
+     * Son los de las fórmulas de liquidar(), los subtotales de cada bloque y el IVA
+     * de cada línea, que el formulario saca de la base neta por la tarifa (la 520
+     * sale de la 510; la 421, de la 411).
      */
     public const CALCULADOS = [
         '409', '419', '429', '482', '484', '499', '509', '519', '529', '563', '564', '565',
         '601', '602', '615', '617', '620', '699', '799', '801', '859', '902', '999',
+        // IVA de ventas y de compras por tarifa
+        '421', '422', '430', '445', '520', '521', '522', '534', '560',
     ];
 
     /** Casilleros que cuentan comprobantes: van sin decimales. */

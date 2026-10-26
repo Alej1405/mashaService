@@ -316,6 +316,8 @@ class Cumplimiento extends Page
         }
 
         $comparar = array_filter([
+            ['IVA de las ventas', '429', $d->casillero('429')],
+            ['IVA de las compras', '529', $d->casillero('529')],
             ['Impuesto a liquidar en el mes', '499', $d->casillero('499')],
             ['Crédito tributario aplicable', '564', $d->casillero('564')],
             ['Impuesto causado', '601', $d->casillero('601')],
