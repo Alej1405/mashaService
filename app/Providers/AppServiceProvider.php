@@ -45,6 +45,11 @@ class AppServiceProvider extends ServiceProvider
                     return '';
                 }
 
+                // En Cumplimiento el propio bloque «Declara el IVA» es el aviso: no se repite.
+                if (str_ends_with((string) request()->route()?->getName(), 'pages.cumplimiento')) {
+                    return '';
+                }
+
                 $alerta = app(\App\Services\GestionSriService::class)->alertaIva($empresa);
 
                 if (! $alerta) {

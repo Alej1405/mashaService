@@ -63,6 +63,9 @@
                                 title="Si registraste facturas después de calcular, vuelve a calcular antes de declarar">
                             Volver a calcular
                         </button>
+                        @if ($dAhora->generado_en)
+                            <span class="ct-pie2" style="align-self:center">calculado el {{ $dAhora->generado_en->format('d/m/Y \a \l\a\s H:i') }}</span>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -85,8 +88,8 @@
 
         <div class="ct-card">
             <p class="ct-val">{{ $cumplimiento['vencidos'] }}</p>
-            <p class="ct-tit" style="margin-top:7px">Vencidos sin generar</p>
-            <p class="ct-pie2">{{ $cumplimiento['vencidos'] ? 'pasó la fecha del noveno dígito' : 'ninguno fuera de plazo' }}</p>
+            <p class="ct-tit" style="margin-top:7px">Vencidos sin presentar</p>
+            <p class="ct-pie2">{{ $cumplimiento['vencidos'] ? 'pasó la fecha y no hay declaración del SRI' : 'ninguno fuera de plazo' }}</p>
         </div>
 
         <div class="ct-card">
@@ -132,24 +135,24 @@
                         @if ($p['vence'])
                             · vence {{ $p['vence']->format('d/m/Y') }}
                         @endif
-                        @if ($d?->descargado_en)
-                            · descargado {{ $d->descargado_en->format('d/m/Y') }}
-                        @endif
                     </p>
                 </div>
 
-                @if ($d?->estado === 'listo' && $d->datos)
+                @php $esElDeArriba = $ahora && $ahora['alerta']['anio'] === $p['anio'] && $ahora['alerta']['mes'] === $p['mes']; @endphp
+
+                @if ($esElDeArriba)
+                    {{-- Un mes, un solo lugar: el que toca declarar se trabaja en el bloque de arriba. --}}
+                    <p class="ct-fila-s" style="flex:1; text-align:right">Se declara en el bloque de arriba</p>
+                @elseif ($d?->estado === 'listo' && $d->datos)
                     @php $r = $this->resumenDe($d->id); @endphp
                     {{-- Lo que generó el sistema, antes de ir al portal --}}
                     <div class="ct-resumen">
-                        @foreach ([
+                        @foreach (array_filter([
                             ['Ventas netas', $r['ventas_netas']],
                             ['Compras netas', $r['compras_netas']],
-                            ['IVA en ventas · lo calcula el portal', $r['iva_ventas']],
-                            ['IVA en compras · lo calcula el portal', $r['iva_compras']],
-                            [$r['a_pagar'] > 0 ? 'A pagar' : 'A favor', $r['a_pagar'] > 0 ? $r['a_pagar'] : $r['a_favor']],
+                            $r['a_pagar'] > 0 ? ['A pagar', $r['a_pagar']] : null,
                             ['Crédito para el próximo mes', $r['arrastra']],
-                        ] as [$etiqueta, $valor])
+                        ]) as [$etiqueta, $valor])
                             <div>
                                 <span class="ct-resumen-n">{{ $money($valor) }}</span>
                                 <span class="ct-resumen-e">{{ $etiqueta }}</span>
@@ -159,7 +162,8 @@
                 @endif
 
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end">
-                    @if ($d?->estado === 'listo' && ! $d->presentado_en)
+                    @if ($esElDeArriba)
+                    @elseif ($d?->estado === 'listo' && ! $d->presentado_en)
                         <button type="button" class="ct-pestana {{ $declarar && $declarar['id'] === $d->id ? 'es-activa' : '' }}"
                                 aria-expanded="{{ $declarar && $declarar['id'] === $d->id ? 'true' : 'false' }}"
                                 wire:click="verDeclarar({{ $d->id }})">
@@ -214,18 +218,5 @@
         @endforelse
     </section>
 
-    <section class="ct-panel">
-        <header><h2 class="ct-tit">Qué cuenta como cumplido</h2></header>
-        @foreach ([
-            ['Generado', 'los valores están calculados: «Qué declarar» dice qué escribir en el portal', 'wa'],
-            ['Presentado', 'se subió el comprobante del SRI y cuadra con lo generado — esto es cumplir', 'ok'],
-            ['Vencido', 'pasó la fecha del noveno dígito y no hay comprobante', 'da'],
-        ] as [$titulo, $detalle, $tono])
-            <div class="ct-fila">
-                <div><p class="ct-fila-t">{{ $titulo }}</p><p class="ct-fila-s">{{ $detalle }}</p></div>
-                <span class="ct-chip ct-chip-{{ $tono }}">{{ $titulo }}</span>
-            </div>
-        @endforeach
-    </section>
 </div>
 </x-filament-panels::page>

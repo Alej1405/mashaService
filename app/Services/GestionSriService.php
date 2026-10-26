@@ -195,9 +195,13 @@ class GestionSriService
         return match (true) {
             $d?->presentado_en !== null => ['clave' => 'presentado', 'tono' => 'ok',
                                             'texto' => 'Presentado el ' . $d->presentado_en->format('d/m/Y')],
-            // El 104 no se descarga: se escribe en el portal y se sube su comprobante.
+            // Pasada la fecha sin la declaración del SRI está vencido, aunque se haya
+            // calculado: lo calculado no es lo presentado.
+            $vencido && $d?->estado === 'listo' => ['clave' => 'vencido', 'tono' => 'da',
+                                            'texto' => 'Vencido, falta presentar'],
+            // El 104 no se descarga: se escribe en el portal y se sube la declaración.
             $d?->estado === 'listo'     => ['clave' => 'generado', 'tono' => 'wa',
-                                            'texto' => 'Generado, falta el comprobante'],
+                                            'texto' => 'Calculado, falta presentar'],
             $d?->estado === 'error'     => ['clave' => 'error', 'tono' => 'da', 'texto' => 'Falló al generar'],
             $d !== null                 => ['clave' => 'en_cola', 'tono' => 'n', 'texto' => 'En cola'],
             $vencido                    => ['clave' => 'vencido', 'tono' => 'da', 'texto' => 'Vencido, sin generar'],

@@ -61,7 +61,8 @@ class Cumplimiento extends Page
     {
         return [
             $this->accionInicioDeGestion(),
-            \App\Filament\Contabilidad\Acciones\ImportarDelPortal::make(),
+            // Aquí la tarea es declarar: subir el archivo del portal es secundario.
+            \App\Filament\Contabilidad\Acciones\ImportarDelPortal::make()->color('gray'),
         ];
     }
 
