@@ -63,6 +63,7 @@ class Cumplimiento extends Page
     {
         return [
             $this->accionInicioDeGestion(),
+            $this->cargarConfirmacionesAtsAction(),
             // Aquí la tarea es declarar: subir el archivo del portal es secundario.
             \App\Filament\Contabilidad\Acciones\ImportarDelPortal::make()->color('gray'),
         ];
@@ -288,7 +289,8 @@ class Cumplimiento extends Page
         return [
             'empresa'      => $empresa,
             'cumplimiento' => $gestion->cumplimiento($empresa->id),
-            'periodos'     => $gestion->periodos($empresa->id, 12),
+            // Los últimos 12 meses, también los anteriores al inicio de gestión, para verlos y cuadrarlos.
+            'periodos'     => $gestion->periodos($empresa->id, 12, soloGestion: false),
             'sinMapear'    => app(\App\Services\SuperciasService::class)->cuentasSinCodigo($empresa->id),
             'porRevisar'   => app(\App\Services\MapeoSuperciasService::class)->porRevisar($empresa->id),
             'importados'   => \App\Models\ComprobanteSri::where('empresa_id', $empresa->id)->count(),

@@ -88,4 +88,45 @@ trait GestionaDeclaraciones
                     ->body("{$declaracion->periodo} quedó presentado. El SRI lo valida en 48 horas.")->success()->send();
             });
     }
+
+    /**
+     * Sube de golpe las confirmaciones del ATS de cualquier mes, también de los que el ERP
+     * no generó (meses anteriores o presentados por fuera). El mes sale de cada PDF.
+     */
+    protected function cargarConfirmacionesAtsAction(): Action
+    {
+        return Action::make('cargarConfirmacionesAts')
+            ->label('Cargar confirmaciones del ATS')
+            ->icon('heroicon-o-document-check')
+            ->color('gray')
+            ->modalHeading('Confirmaciones del ATS')
+            ->modalDescription('El PDF «Confirmación de Presentación de Archivo – ATS» que muestra el portal al subir '
+                . 'el anexo, de cualquier mes. De cada uno se lee la empresa y el mes, y ese ATS queda presentado, '
+                . 'aunque no se haya generado en el ERP. Los de otra empresa se rechazan solos.')
+            ->modalSubmitActionLabel('Subir y registrar')
+            ->form([
+                \Filament\Forms\Components\FileUpload::make('pdfs')
+                    ->label('Confirmaciones en PDF')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->multiple()->maxFiles(36)->maxSize(5120)
+                    ->storeFiles(false)
+                    ->required(),
+            ])
+            ->action(function (array $data) {
+                $servicio = app(\App\Services\ConfirmacionAtsService::class);
+                $registrados = [];
+                $rechazados = [];
+
+                foreach ((array) $data['pdfs'] as $pdf) {
+                    $r = $servicio->registrarDesdePdf(Filament::getTenant()->id, $pdf->get(), $pdf->getClientOriginalName(), auth()->id());
+                    $r['ok'] ? $registrados[] = $r['periodo'] : $rechazados[] = $pdf->getClientOriginalName() . ': ' . $r['error'];
+                    $pdf->delete();
+                }
+
+                Notification::make()
+                    ->title($registrados ? 'ATS presentados: ' . implode(', ', $registrados) : 'No se registró ninguno')
+                    ->body($rechazados ? implode(' · ', $rechazados) : 'El SRI valida cada anexo en las 48 horas siguientes a subirlo.')
+                    ->{$rechazados ? 'warning' : 'success'}()->persistent()->send();
+            });
+    }
 }

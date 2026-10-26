@@ -33,7 +33,12 @@ class GestionSriService
      *
      * @return array<int, array<string, mixed>>
      */
-    public function periodos(int $empresaId, int $limite = 12): array
+    /**
+     * @param  bool  $soloGestion  true: solo desde el inicio de gestión (lo que cuenta para
+     *                             «estamos al día»); false: también los meses anteriores, para
+     *                             verlos y cuadrarlos aunque no cuenten como vencidos.
+     */
+    public function periodos(int $empresaId, int $limite = 12, bool $soloGestion = true): array
     {
         $empresa = Empresa::withoutGlobalScopes()->findOrFail($empresaId);
         $inicio = $this->inicioDeGestion($empresa);
@@ -57,7 +62,8 @@ class GestionSriService
         $mes = now()->startOfMonth()->subMonth();
         $periodos = [];
 
-        while ($mes->greaterThanOrEqualTo($inicio) && count($periodos) < $limite) {
+        while (($soloGestion ? $mes->greaterThanOrEqualTo($inicio) : true) && count($periodos) < $limite) {
+            $antes = $mes->lessThan($inicio);
             $clave = $mes->format('Y-m');
             $declaracion = $declaraciones->get($mes->format('Y-m'))
                 ?? $declaraciones->get(sprintf('%d-%02d', $mes->year, $mes->month));
@@ -71,7 +77,11 @@ class GestionSriService
                 'declaracion' => $declaracion,
                 'ats'         => $anexos?->get($mes->format('Y-m')),
                 'debe_ats'    => $anexos !== null,
-                'estado'      => $this->estado($declaracion, $this->vencimiento($empresa, $mes->year, $mes->month)),
+                'antes'       => $antes,
+                // Antes del inicio de gestión el ERP no reclama: o consta presentado o se cuadra.
+                'estado'      => $antes && ! $declaracion?->presentado_en
+                    ? ['clave' => 'anterior', 'tono' => 'n', 'texto' => 'Antes del inicio de gestión']
+                    : $this->estado($declaracion, $this->vencimiento($empresa, $mes->year, $mes->month)),
             ];
 
             $mes->subMonth();

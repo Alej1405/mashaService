@@ -112,6 +112,7 @@ class Declaraciones extends Page
                 }),
 
             $this->accionCargarPresentadas(),
+            $this->cargarConfirmacionesAtsAction(),
             // El 104 no es un archivo: se declara en Cumplimiento, casilla por casilla.
             Action::make('declarar_iva')
                 ->label('Declarar el IVA')
@@ -134,7 +135,7 @@ class Declaraciones extends Page
     private function accionCargarPresentadas(): Action
     {
         return Action::make('cargar_presentadas')
-            ->label('Cargar declaraciones presentadas')
+            ->label('Cargar declaraciones del 104')
             ->icon('heroicon-o-document-arrow-up')
             ->color('gray')
             ->modalHeading('Subir los comprobantes del portal')
