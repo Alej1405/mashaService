@@ -58,17 +58,6 @@ class Dashboard extends Page
             ->whereBetween('fecha', [$mes->toDateString(), now()->endOfMonth()->toDateString()])
             ->count();
 
-        // Lo que se declara cada mes. El valor del IVA sale de los asientos;
-        // el vencimiento depende del noveno dígito del RUC, que aún no está.
-        $ivaPorPagar = (float) \App\Models\JournalEntryLine::query()
-            ->join('journal_entries as a', 'a.id', '=', 'journal_entry_lines.journal_entry_id')
-            ->join('account_plans as c', 'c.id', '=', 'journal_entry_lines.account_plan_id')
-            ->where('a.empresa_id', $empresa->id)
-            ->where('a.status', 'confirmado')
-            ->whereBetween('a.fecha', [$mes->toDateString(), now()->endOfMonth()->toDateString()])
-            ->where('c.code', 'like', '2.1.04%')
-            ->sum(DB::raw('journal_entry_lines.haber - journal_entry_lines.debe'));
-
         $retenido = (float) \App\Models\Retencion::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->whereBetween('fecha', [$mes->toDateString(), now()->endOfMonth()->toDateString()])
@@ -88,9 +77,7 @@ class Dashboard extends Page
             'asientosDelMes'=> $asientosDelMes,
             'periodo'       => $mes->translatedFormat('F \d\e Y'),
             'declaraciones' => [
-                ['codigo' => 'FORMULARIO 104', 'nombre' => 'IVA mensual',
-                 'cifra' => '$ ' . number_format(max($ivaPorPagar, 0), 2, ',', '.'),
-                 'pie' => 'a pagar · ' . $mes->translatedFormat('F'), 'estado' => 'Por generar'],
+                $this->tarjeta104($empresa),
                 ['codigo' => 'FORMULARIO 103', 'nombre' => 'Retenciones en la fuente',
                  'cifra' => '$ ' . number_format($retenido, 2, ',', '.'),
                  'pie' => $retenido > 0 ? 'retenido en el mes' : 'sin retenciones registradas', 'estado' => 'Por generar'],
@@ -102,6 +89,35 @@ class Dashboard extends Page
             'societario'    => $conta->resumenSocietario($empresa->id),
             'ejercicios'    => $ejercicios,
             'tarifaIva'     => $conta->tarifaIvaVigente($empresa->id),
+        ];
+    }
+
+    /**
+     * El 104 que toca declarar, con su estado real: el mes en curso todavía no se
+     * declara, así que la tarjeta mira el primero que falta presentar.
+     */
+    private function tarjeta104(\App\Models\Empresa $empresa): array
+    {
+        $alerta = app(\App\Services\GestionSriService::class)->alertaIva($empresa);
+        $url = Cumplimiento::getUrl();
+
+        if (! $alerta) {
+            return ['codigo' => 'FORMULARIO 104', 'nombre' => 'IVA mensual', 'cifra' => 'Al día',
+                    'pie' => 'todos los meses presentados', 'estado' => 'Presentado', 'tono' => 'ok', 'url' => $url];
+        }
+
+        $d = \App\Models\Declaracion::where('empresa_id', $empresa->id)->where('tipo', 'f104')
+            ->where('anio', $alerta['anio'])->where('mes', $alerta['mes'])->latest('id')->first();
+        $listo = $d?->estado === 'listo';
+
+        return [
+            'codigo' => 'FORMULARIO 104',
+            'nombre' => 'IVA de ' . $alerta['etiqueta'],
+            'cifra'  => $listo ? '$ ' . number_format($d->casillero('999'), 2, ',', '.') : '—',
+            'pie'    => ($listo ? 'a pagar · ' : '') . ($alerta['vence'] ? 'vence el ' . $alerta['vence']->format('d/m/Y') : 'sin fecha de vencimiento'),
+            'estado' => $listo ? 'Falta el comprobante' : 'Por generar',
+            'tono'   => $alerta['urgente'] ? 'da' : 'wa',
+            'url'    => $url,
         ];
     }
 }

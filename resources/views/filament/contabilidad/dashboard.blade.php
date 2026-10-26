@@ -72,16 +72,19 @@
     <p class="ct-tit">Declaraciones de {{ $periodo }}</p>
     <div class="ct-rej">
         @foreach ($declaraciones as $d)
-            <div class="ct-card">
+            {{-- La del 104 lleva a Cumplimiento, donde se declara. --}}
+            <{{ isset($d['url']) ? 'a href=' . $d['url'] : 'div' }} class="ct-card {{ isset($d['url']) ? 'ct-card-boton' : '' }}" style="text-decoration:none">
                 <div class="ct-card-cab">
                     <span class="ct-tit">{{ $d['codigo'] }}</span>
-                    <span class="ct-chip ct-chip-wa">{{ $d['estado'] }}</span>
+                    <span class="ct-chip ct-chip-{{ $d['tono'] ?? 'wa' }}">{{ $d['estado'] }}</span>
                 </div>
                 <p class="ct-nom">{{ $d['nombre'] }}</p>
                 <p class="ct-val">{{ $d['cifra'] }}</p>
                 <p class="ct-pie">{{ $d['pie'] }}</p>
-                <p class="ct-pie2">vence según el 9.º dígito del RUC</p>
-            </div>
+                @unless (isset($d['url']))
+                    <p class="ct-pie2">vence según el 9.º dígito del RUC</p>
+                @endunless
+            </{{ isset($d['url']) ? 'a' : 'div' }}>
         @endforeach
     </div>
 

@@ -84,6 +84,9 @@
                     @endif
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0">
+                    @if ($d->tipo === 'f104' && $d->estado === 'listo' && ! $d->presentado_en)
+                        <a class="ct-btn-descarga" href="{{ \App\Filament\Contabilidad\Pages\Cumplimiento::getUrl() }}">Qué declarar</a>
+                    @endif
                     @if ($d->archivo)
                         <a class="ct-btn-descarga" href="{{ route('contabilidad.declaracion', $d->id) }}">
                             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -127,50 +130,9 @@
     </section>
 
     <section class="ct-panel">
-        <header>
-            <h2 class="ct-tit">Periodos</h2>
-            <span class="ct-pie2">{{ $empresa->name }}</span>
-        </header>
-        <table class="ct-tabla">
-            <thead>
-                <tr><th>Periodo</th><th>Documento</th><th style="text-align:right">Valor</th><th>Comprobantes</th><th>Estado</th></tr>
-            </thead>
-            <tbody>
-            @foreach ($periodos as $p)
-                <tr class="fuerte">
-                    <td data-col="Periodo">{{ ucfirst($p['etiqueta']) }}</td>
-                    <td data-col="Documento">Formulario 104 · IVA</td>
-                    <td class="num" data-col="Valor">{{ $money($p['iva']) }}</td>
-                    <td data-col="Comprobantes">{{ $p['comprobantes'] }}</td>
-                    <td data-col="Estado"><span class="ct-chip ct-chip-wa">Por generar</span></td>
-                </tr>
-                <tr>
-                    <td data-col="Periodo"></td>
-                    <td data-col="Documento">Formulario 103 · Retenciones</td>
-                    <td class="num" data-col="Valor">{{ $money($p['retenido']) }}</td>
-                    <td data-col="Comprobantes">—</td>
-                    <td data-col="Estado">
-                        <span class="ct-chip ct-chip-{{ $p['retenido'] > 0 ? 'wa' : 'n' }}">
-                            {{ $p['retenido'] > 0 ? 'Por generar' : 'Sin retenciones' }}
-                        </span>
-                    </td>
-                </tr>
-                <tr>
-                    <td data-col="Periodo"></td>
-                    <td data-col="Documento">Anexo transaccional</td>
-                    <td class="num" data-col="Valor">—</td>
-                    <td data-col="Comprobantes">{{ $p['comprobantes'] }}</td>
-                    <td data-col="Estado"><span class="ct-chip ct-chip-wa">Por generar</span></td>
-                </tr>
-            @endforeach
-            </tbody>
-        </table>
-    </section>
-
-    <section class="ct-panel">
         <header><h2 class="ct-tit">Qué falta para cerrar el ciclo</h2></header>
         @foreach ([
-            ['Formulario 104', 'los casilleros salen de ventas, compras, gastos y retenciones del mes', 'Funcionando', 'ok'],
+            ['Formulario 104', 'se declara en Cumplimiento: las casillas a escribir en el portal y el comprobante del SRI que lo cierra', 'Funcionando', 'ok'],
             ['Anexo transaccional', 'un registro por comprobante, con sustento y forma de pago', 'Funcionando', 'ok'],
             ['Formulario 103', 'retenciones en la fuente de renta', 'Pendiente', 'wa'],
             ['Firma electrónica', 'certificado de la empresa para firmar el anexo antes de subirlo', 'Por definir', 'n'],

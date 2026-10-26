@@ -109,17 +109,29 @@ class Cumplimiento extends Page
             });
     }
 
-    /** Pide la declaración de un período desde la propia fila. */
+    /**
+     * Pide la declaración de un período desde la propia fila.
+     *
+     * Un período tiene una sola declaración: si ya hay una sin presentar, se
+     * vuelve a calcular esa misma (por ejemplo, tras registrar facturas que
+     * faltaban). Una ya presentada no se toca: corregirla es una sustitutiva.
+     */
     public function pedir(int $anio, int $mes, string $tipo = 'f104'): void
     {
-        $declaracion = Declaracion::create([
-            'empresa_id'     => Filament::getTenant()->id,
-            'tipo'           => $tipo,
-            'anio'           => $anio,
-            'mes'            => $mes,
-            'estado'         => 'pendiente',
-            'solicitado_por' => auth()->id(),
-        ]);
+        $empresaId = Filament::getTenant()->id;
+        $existente = Declaracion::where('empresa_id', $empresaId)->where('tipo', $tipo)
+            ->where('anio', $anio)->where('mes', $mes)->latest('id')->first();
+
+        if ($existente?->presentado_en) {
+            Notification::make()->title('Ese mes ya está presentado')
+                ->body('Para cambiarlo hace falta una declaración sustitutiva.')->warning()->send();
+
+            return;
+        }
+
+        $declaracion = $existente ?? new Declaracion(['empresa_id' => $empresaId, 'tipo' => $tipo, 'anio' => $anio, 'mes' => $mes]);
+        $declaracion->fill(['estado' => 'pendiente', 'mensaje' => null, 'solicitado_por' => auth()->id()])->save();
+        $this->abierta = null;
 
         GenerarDeclaracion::dispatch($declaracion->id);
 

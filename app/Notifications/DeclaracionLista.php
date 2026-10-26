@@ -30,9 +30,13 @@ class DeclaracionLista extends Notification
 
         return FilamentNotification::make()
             ->title($listo ? "{$tipo} de {$this->declaracion->periodo} listo" : "Falló {$tipo} de {$this->declaracion->periodo}")
-            ->body($listo
-                ? 'Ya puedes descargarlo desde Declaraciones.'
-                : ($this->declaracion->mensaje ?? 'Revisa el detalle en Declaraciones.'))
+            ->body(match (true) {
+                // El 104 no se descarga: se escriben sus casillas en el portal.
+                $listo && $this->declaracion->tipo === 'f104'
+                    => 'Abre «Qué declarar» en Cumplimiento: ahí están las casillas a escribir en el portal.',
+                $listo => 'Ya puedes descargarlo desde Declaraciones.',
+                default => $this->declaracion->mensaje ?? 'Revisa el detalle en Declaraciones.',
+            })
             ->icon($listo ? 'heroicon-o-document-check' : 'heroicon-o-exclamation-triangle')
             ->status($listo ? 'success' : 'danger')
             ->getDatabaseMessage();

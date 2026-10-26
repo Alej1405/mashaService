@@ -47,8 +47,11 @@
     </div>
 
 
-    {{-- Período a período: lo que de verdad se puede auditar --}}
-    <section class="ct-panel">
+    {{-- Período a período: lo que de verdad se puede auditar. Se refresca solo mientras algo se calcula. --}}
+    <section class="ct-panel"
+             @if (collect($periodos)->contains(fn ($p) => in_array($p['declaracion']?->estado, ['pendiente', 'procesando'], true)))
+                 wire:poll.5s
+             @endif>
         <header>
             <h2 class="ct-tit">Períodos · formulario 104</h2>
             <span class="ct-pie2">el vencimiento sale del noveno dígito del RUC</span>
@@ -104,6 +107,11 @@
                                 aria-expanded="{{ $declarar && $declarar['id'] === $d->id ? 'true' : 'false' }}"
                                 wire:click="verDeclarar({{ $d->id }})">
                             {{ $declarar && $declarar['id'] === $d->id ? 'Ocultar' : 'Qué declarar' }}
+                        </button>
+                        <button type="button" class="ct-pestana" wire:click="pedir({{ $p['anio'] }}, {{ $p['mes'] }})"
+                                wire:loading.attr="disabled" wire:target="pedir"
+                                title="Vuelve a calcular el mes, por ejemplo después de registrar facturas que faltaban">
+                            Volver a generar
                         </button>
                         <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                 wire:click="mountAction('subirComprobante', { id: {{ $d->id }} })">

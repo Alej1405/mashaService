@@ -4,8 +4,6 @@ namespace App\Filament\Contabilidad\Pages;
 
 use App\Jobs\GenerarDeclaracion;
 use App\Models\Declaracion;
-use App\Models\JournalEntry;
-use App\Models\Retencion;
 use Filament\Facades\Filament;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
@@ -14,16 +12,14 @@ use App\Services\ServicioSri;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Declaraciones del SRI: formulario 104, 103 y anexo transaccional.
+ * Declaraciones del SRI: anexo transaccional, histórico y formulario 101.
  *
- * Pedir una declaración no devuelve el archivo: devuelve un número de
- * seguimiento y el trabajo se va a la cola. El ERP calcula los casilleros desde
- * el libro diario y el microservicio escribe el XML; cuando termina, llega el
- * aviso a la campana. Un anexo de un mes cargado no cabe en una petición HTTP.
+ * El ATS sí es un archivo: pedirlo devuelve un número de seguimiento, el trabajo
+ * se va a la cola y el microservicio escribe el XML. El 104 no: el portal no
+ * deja subirlo, así que se declara en Cumplimiento escribiendo sus casillas.
  */
 class Declaraciones extends Page
 {
@@ -113,31 +109,12 @@ class Declaraciones extends Page
                         ->success()->persistent()->send();
                 }),
 
-            Action::make('descargar_101')
-                ->label('Generar el XML del 101')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('primary')
-                ->action(function () {
-                    $anio = now()->year - 1;
-                    $empresa = Filament::getTenant();
-                    $ruc = $empresa->numero_identificacion ?: '';
-                    $r = app(ServicioSri::class)->formulario101($ruc, $anio, $this->conceptos101($anio));
-
-                    if (! ($r['ok'] ?? false)) {
-                        Notification::make()->title('No se generó el archivo')->body($r['error'] ?? 'sin detalle')
-                            ->danger()->persistent()->send();
-                        return;
-                    }
-
-                    return response()->streamDownload(
-                        fn () => print($r['xml']),
-                        "formulario_101_{$anio}_{$ruc}.xml",
-                        ['Content-Type' => 'application/xml'],
-                    );
-                }),
-
             $this->accionCargarPresentadas(),
-            $this->accionPedir('f104', 'Pedir el 104 del mes', 'heroicon-o-calculator'),
+            // El 104 no es un archivo: se declara en Cumplimiento, casilla por casilla.
+            Action::make('declarar_iva')
+                ->label('Declarar el IVA')
+                ->icon('heroicon-o-calculator')
+                ->url(fn () => Cumplimiento::getUrl()),
             $this->accionPedir('ats', 'Pedir el anexo transaccional', 'heroicon-o-document-duplicate'),
         ];
     }
@@ -301,48 +278,10 @@ class Declaraciones extends Page
     protected function getViewData(): array
     {
         $empresa = Filament::getTenant();
-        $periodos = [];
-
-        // Los seis últimos meses, con lo que hoy se puede calcular del ERP.
-        for ($i = 0; $i < 6; $i++) {
-            $mes = now()->startOfMonth()->subMonths($i);
-            $desde = $mes->toDateString();
-            $hasta = $mes->copy()->endOfMonth()->toDateString();
-
-            $iva = (float) DB::table('journal_entry_lines as l')
-                ->join('journal_entries as a', 'a.id', '=', 'l.journal_entry_id')
-                ->join('account_plans as c', 'c.id', '=', 'l.account_plan_id')
-                ->where('a.empresa_id', $empresa->id)
-                ->where('a.status', 'confirmado')
-                ->whereBetween('a.fecha', [$desde, $hasta])
-                ->where('c.code', 'like', '2.1.04%')
-                ->sum(DB::raw('l.haber - l.debe'));
-
-            $retenido = (float) Retencion::withoutGlobalScopes()
-                ->where('empresa_id', $empresa->id)
-                ->whereBetween('fecha', [$desde, $hasta])
-                ->sum('total_retenido');
-
-            $comprobantes = JournalEntry::withoutGlobalScopes()
-                ->where('empresa_id', $empresa->id)
-                ->whereBetween('fecha', [$desde, $hasta])
-                ->whereIn('tipo', ['compra', 'venta'])
-                ->count();
-
-            $periodos[] = [
-                'etiqueta'     => $mes->translatedFormat('F \d\e Y'),
-                'iva'          => max($iva, 0),
-                'retenido'     => $retenido,
-                'comprobantes' => $comprobantes,
-                'cerrado'      => $mes->isBefore(now()->startOfMonth()),
-            ];
-        }
-
         $anio = now()->year - 1;
 
         return [
             'empresa'    => $empresa,
-            'periodos'   => $periodos,
             'servicio'   => app(ServicioSri::class)->salud(),
             'anio101'    => $anio,
             'conceptos'  => $this->conceptos101($anio),
