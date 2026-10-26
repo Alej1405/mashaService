@@ -87,7 +87,8 @@
                     @if ($d->tipo === 'f104' && $d->estado === 'listo' && ! $d->presentado_en)
                         <a class="ct-btn-descarga" href="{{ \App\Filament\Contabilidad\Pages\Cumplimiento::getUrl() }}">Qué declarar</a>
                     @endif
-                    @if ($d->archivo)
+                    {{-- Solo el ATS se descarga: el 104 se escribe en el portal, aunque uno viejo tenga XML guardado. --}}
+                    @if ($d->archivo && $d->tipo !== 'f104')
                         <a class="ct-btn-descarga" href="{{ route('contabilidad.declaracion', $d->id) }}">
                             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round"
