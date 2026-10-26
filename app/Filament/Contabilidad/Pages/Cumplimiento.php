@@ -270,6 +270,9 @@ class Cumplimiento extends Page
 
         return [
             'periodo'       => $d->periodo,
+            // Lo que se escribe en el portal es la base neta; el IVA lo calcula el formulario.
+            'ventas_netas'  => $d->casillero('419'),
+            'compras_netas' => $d->casillero('519'),
             'iva_ventas'    => $d->casillero('429'),
             'iva_compras'   => $d->casillero('529'),
             'credito_mes'   => $d->casillero('564'),

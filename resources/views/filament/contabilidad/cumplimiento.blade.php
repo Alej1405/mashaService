@@ -87,9 +87,10 @@
                     {{-- Lo que generó el sistema, antes de ir al portal --}}
                     <div class="ct-resumen">
                         @foreach ([
-                            ['IVA en ventas', $r['iva_ventas']],
-                            ['IVA en compras', $r['iva_compras']],
-                            ['Crédito aplicado', $r['credito_mes']],
+                            ['Ventas netas', $r['ventas_netas']],
+                            ['Compras netas', $r['compras_netas']],
+                            ['IVA en ventas · lo calcula el portal', $r['iva_ventas']],
+                            ['IVA en compras · lo calcula el portal', $r['iva_compras']],
                             [$r['a_pagar'] > 0 ? 'A pagar' : 'A favor', $r['a_pagar'] > 0 ? $r['a_pagar'] : $r['a_favor']],
                             ['Crédito para el próximo mes', $r['arrastra']],
                         ] as [$etiqueta, $valor])
