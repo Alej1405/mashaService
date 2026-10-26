@@ -24,6 +24,8 @@ use Illuminate\Support\Carbon;
  */
 class Cumplimiento extends Page
 {
+    use \App\Filament\Contabilidad\Concerns\GestionaDeclaraciones;
+
     protected static ?string $navigationIcon  = 'heroicon-o-clipboard-document-check';
     protected static ?string $navigationLabel = 'Cumplimiento';
     protected static ?string $navigationGroup = 'Impuestos';
@@ -108,36 +110,6 @@ class Cumplimiento extends Page
 
                 Notification::make()->title('Inicio de gestión guardado')->success()->send();
             });
-    }
-
-    /**
-     * Pide la declaración de un período desde la propia fila.
-     *
-     * Un período tiene una sola declaración: si ya hay una sin presentar, se
-     * vuelve a calcular esa misma (por ejemplo, tras registrar facturas que
-     * faltaban). Una ya presentada no se toca: corregirla es una sustitutiva.
-     */
-    public function pedir(int $anio, int $mes, string $tipo = 'f104'): void
-    {
-        $empresaId = Filament::getTenant()->id;
-        $existente = Declaracion::where('empresa_id', $empresaId)->where('tipo', $tipo)
-            ->where('anio', $anio)->where('mes', $mes)->latest('id')->first();
-
-        if ($existente?->presentado_en) {
-            Notification::make()->title('Ese mes ya está presentado')
-                ->body('Para cambiarlo hace falta una declaración sustitutiva.')->warning()->send();
-
-            return;
-        }
-
-        $declaracion = $existente ?? new Declaracion(['empresa_id' => $empresaId, 'tipo' => $tipo, 'anio' => $anio, 'mes' => $mes]);
-        $declaracion->fill(['estado' => 'pendiente', 'mensaje' => null, 'solicitado_por' => auth()->id()])->save();
-        $this->abierta = null;
-
-        GenerarDeclaracion::dispatch($declaracion->id);
-
-        Notification::make()->title('Se está generando')
-            ->body("Seguimiento {$declaracion->seguimiento}.")->info()->send();
     }
 
     /** Abre o cierra lo que hay que escribir en el portal para una declaración. */
@@ -345,7 +317,12 @@ class Cumplimiento extends Page
         return [
             'alerta'      => $alerta,
             'declaracion' => $d,
-            'guia'        => $d?->estado === 'listo' ? $this->paraDeclarar($d->id) : null,
+            'guia'        => $d?->estado === 'listo' && ! $d->presentado_en ? $this->paraDeclarar($d->id) : null,
+            'ats'         => app(GestionSriService::class)->atsObligatorio($empresa)
+                ? Declaracion::where('empresa_id', $empresa->id)->where('tipo', 'ats')
+                    ->where('anio', $alerta['anio'])->where('mes', $alerta['mes'])->latest('id')->first()
+                : null,
+            'debe_ats'    => app(GestionSriService::class)->atsObligatorio($empresa),
         ];
     }
 

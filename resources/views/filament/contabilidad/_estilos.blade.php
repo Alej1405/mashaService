@@ -82,6 +82,11 @@
     .ct-paso > b { flex:0 0 22px; height:22px; border-radius:999px; background:var(--t); color:#fff;
         font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
     .ct-paso a { color:var(--ac); font-weight:600; }
+    .ct-paso-hecho > b { background:var(--ok); }
+    /* Las dos partes del mes (IVA y ATS) dentro del bloque «Declara». */
+    .ct-parte { padding:14px 0 4px; border-top:1px solid var(--b); }
+    .ct-parte:first-child { border-top:0; padding-top:4px; }
+    .ct-parte-tit { margin:0 0 4px; font-size:13px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:var(--m); }
     .ct-casilla-total { grid-template-columns:52px 1fr auto; }
     .ct-casilla-total .ct-casilla-v { color:var(--m); }
     @media (max-width:640px) {

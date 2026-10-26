@@ -16,7 +16,14 @@
      padding:12px 16px; border-radius:12px; border:1px solid {{ $rojo ? '#fca5a5' : '#fcd34d' }};
      background:{{ $rojo ? '#fef2f2' : '#fffbeb' }}; color:{{ $rojo ? '#991b1b' : '#92400e' }}; font-size:14px">
     <p style="margin:0; flex:1 1 320px">
-        <strong>Declaración del IVA de {{ $alerta['etiqueta'] }}:</strong> {{ $cuando }}.
+        @php
+            $que = match (true) {
+                ($alerta['falta_104'] ?? true) && ($alerta['falta_ats'] ?? false) => 'Declaración del IVA y ATS',
+                $alerta['falta_ats'] ?? false => 'ATS',
+                default => 'Declaración del IVA',
+            };
+        @endphp
+        <strong>{{ $que }} de {{ $alerta['etiqueta'] }}:</strong> {{ $cuando }}.
         @if ($alerta['otros'] > 0)
             Y {{ $alerta['otros'] === 1 ? 'otro mes también falta' : "otros {$alerta['otros']} meses también faltan" }}.
         @endif

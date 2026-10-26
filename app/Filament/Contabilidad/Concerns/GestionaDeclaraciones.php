@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Filament\Contabilidad\Concerns;
+
+use App\Jobs\GenerarDeclaracion;
+use App\Models\Declaracion;
+use Filament\Actions\Action;
+use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
+
+/**
+ * Lo que comparten Cumplimiento y Declaraciones para el 104 y el ATS: pedir (o volver
+ * a calcular) la declaración de un mes y subir la confirmación del ATS del portal.
+ * Las dos pantallas llaman a lo mismo, así no pueden comportarse distinto.
+ */
+trait GestionaDeclaraciones
+{
+    /**
+     * Pide la declaración de un período desde la propia fila.
+     *
+     * Un período tiene una sola declaración: si ya hay una sin presentar, se
+     * vuelve a calcular esa misma (por ejemplo, tras registrar facturas que
+     * faltaban). Una ya presentada no se toca: corregirla es una sustitutiva.
+     */
+    public function pedir(int $anio, int $mes, string $tipo = 'f104'): void
+    {
+        $empresaId = Filament::getTenant()->id;
+        $existente = Declaracion::where('empresa_id', $empresaId)->where('tipo', $tipo)
+            ->where('anio', $anio)->where('mes', $mes)->latest('id')->first();
+
+        if ($existente?->presentado_en) {
+            Notification::make()->title('Ese mes ya está presentado')
+                ->body('Para cambiarlo hace falta una declaración sustitutiva.')->warning()->send();
+
+            return;
+        }
+
+        $declaracion = $existente ?? new Declaracion(['empresa_id' => $empresaId, 'tipo' => $tipo, 'anio' => $anio, 'mes' => $mes]);
+        $declaracion->fill(['estado' => 'pendiente', 'mensaje' => null, 'solicitado_por' => auth()->id()])->save();
+        // En Cumplimiento se cierra el «Qué declarar» abierto: lo que mostraba se recalcula.
+        if (property_exists($this, 'abierta')) {
+            $this->abierta = null;
+        }
+
+        GenerarDeclaracion::dispatch($declaracion->id);
+
+        Notification::make()->title('Se está generando')
+            ->body("Seguimiento {$declaracion->seguimiento}.")->info()->send();
+    }
+
+    /**
+     * Sube la «Confirmación de Presentación de Archivo – ATS» del portal. La misma
+     * auditoría que el 104: el ATS queda presentado solo con el documento del SRI.
+     */
+    public function subirConfirmacionAtsAction(): Action
+    {
+        return Action::make('subirConfirmacionAts')
+            ->label('Subir la confirmación del SRI')
+            ->modalHeading(fn (array $arguments) => 'Confirmación del ATS · '
+                . Declaracion::where('empresa_id', Filament::getTenant()->id)->find($arguments['id'] ?? 0)?->periodo)
+            ->modalDescription('El PDF «Confirmación de Presentación de Archivo – ATS» que muestra el portal al '
+                . 'subir el anexo. Se comprueba que sea de esta empresa y de este mes. El SRI valida el archivo '
+                . 'en las 48 horas siguientes: si llega un archivo de errores, el anexo se corrige y se vuelve a subir.')
+            ->modalSubmitActionLabel('Comprobar y registrar')
+            ->form([
+                \Filament\Forms\Components\FileUpload::make('pdf')
+                    ->label('Confirmación en PDF')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->maxSize(5120)
+                    ->storeFiles(false)
+                    ->required(),
+            ])
+            ->action(function (array $data, array $arguments, Action $action) {
+                $declaracion = Declaracion::where('empresa_id', Filament::getTenant()->id)
+                    ->where('tipo', 'ats')->findOrFail($arguments['id'] ?? 0);
+                $pdf = is_array($data['pdf']) ? reset($data['pdf']) : $data['pdf'];
+
+                $r = app(\App\Services\ConfirmacionAtsService::class)
+                    ->registrar($declaracion, $pdf->get(), $pdf->getClientOriginalName(), auth()->id());
+                $pdf->delete();
+
+                if (! $r['ok']) {
+                    Notification::make()->title('No se registró la confirmación')->body($r['error'])->danger()->persistent()->send();
+                    $action->halt();
+                }
+
+                Notification::make()->title('ATS presentado')
+                    ->body("{$declaracion->periodo} quedó presentado. El SRI lo valida en 48 horas.")->success()->send();
+            });
+    }
+}

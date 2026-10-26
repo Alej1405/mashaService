@@ -25,17 +25,22 @@
                 default              => 'vence el ' . $al['vence']->format('d/m/Y') . ' · faltan ' . $al['dias'] . ' días',
             };
         @endphp
-        <section class="ct-panel ct-ahora {{ $al['urgente'] ? 'es-urgente' : '' }}"
-                 @if (in_array($dAhora?->estado, ['pendiente', 'procesando'], true)) wire:poll.5s @endif>
+        @php $calculando = collect([$dAhora, $ahora['ats']])->contains(fn ($x) => in_array($x?->estado, ['pendiente', 'procesando'], true)); @endphp
+        <section class="ct-panel ct-ahora {{ $al['urgente'] ? 'es-urgente' : '' }}" @if ($calculando) wire:poll.5s @endif>
             <header>
                 <div>
-                    <h2 class="ct-ahora-tit">Declara el IVA de {{ $al['etiqueta'] }}</h2>
-                    <p class="ct-pie2">{{ $cuando }}</p>
+                    <h2 class="ct-ahora-tit">Declara el IVA{{ $ahora['debe_ats'] ? ' y el ATS' : '' }} de {{ $al['etiqueta'] }}</h2>
+                    <p class="ct-pie2">{{ $cuando }} · el mes queda al día cuando {{ $ahora['debe_ats'] ? 'los dos estén presentados' : 'esté presentado' }}</p>
                 </div>
             </header>
 
             <div class="ct-declarar">
-                @if (! $dAhora || ! in_array($dAhora->estado, ['listo', 'pendiente', 'procesando'], true))
+              <div class="ct-parte">
+                <p class="ct-parte-tit">IVA · formulario 104</p>
+                @if ($dAhora?->presentado_en)
+                    <p class="ct-paso ct-paso-hecho"><b>✓</b><span>IVA presentado el {{ $dAhora->presentado_en->format('d/m/Y') }}
+                        @if ($dAhora->comprobante_presentacion) · serial {{ $dAhora->comprobante_presentacion }} @endif.</span></p>
+                @elseif (! $dAhora || ! in_array($dAhora->estado, ['listo', 'pendiente', 'procesando'], true))
                     <p class="ct-paso"><b>1</b><span>Calcula la declaración con lo registrado en el ERP.</span></p>
                     <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                             wire:click="pedir({{ $al['anio'] }}, {{ $al['mes'] }})" wire:loading.attr="disabled" wire:target="pedir">
@@ -52,7 +57,7 @@
 
                     <p class="ct-paso" style="margin-top:16px"><b>3</b><span>Antes de enviar, los totales del portal deben ser los de arriba. Si uno no coincide, revisa lo que escribiste.</span></p>
                     <p class="ct-paso"><b>4</b><span>Envía la declaración. El portal te entrega un «Comprobante electrónico para pago»: guárdalo, pero <strong>no es el que se sube aquí</strong>, porque no trae las casillas.</span></p>
-                    <p class="ct-paso"><b>5</b><span>En SRI en línea entra a <strong>Declaraciones presentadas</strong>, descarga la declaración de {{ $al['etiqueta'] }} (el PDF de varias páginas con todas las casillas) y súbela aquí. El ERP la compara casilla por casilla con lo que calculó; si cuadra, el mes queda presentado, se cierra y este aviso se apaga.</span></p>
+                    <p class="ct-paso"><b>5</b><span>En SRI en línea entra a <strong>Declaraciones presentadas</strong>, descarga la declaración de {{ $al['etiqueta'] }} (el PDF de varias páginas con todas las casillas) y súbela aquí. El ERP la compara casilla por casilla con lo que calculó y el IVA queda presentado.</span></p>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
                         <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                 wire:click="mountAction('subirComprobante', { id: {{ $dAhora->id }} })">
@@ -68,6 +73,15 @@
                         @endif
                     </div>
                 @endif
+              </div>
+
+              @if ($ahora['debe_ats'])
+                  {{-- El ATS se presenta con el 104: mismo mes, mismo lugar. --}}
+                  <div class="ct-parte">
+                      <p class="ct-parte-tit">ATS · anexo transaccional</p>
+                      @include('filament.contabilidad.parciales.ats-pasos', ['ats' => $ahora['ats'], 'anio' => $al['anio'], 'mes' => $al['mes'], 'etiqueta' => $al['etiqueta']])
+                  </div>
+              @endif
             </div>
         </section>
     @endif
@@ -134,6 +148,9 @@
                         @endif
                         @if ($p['vence'])
                             · vence {{ $p['vence']->format('d/m/Y') }}
+                        @endif
+                        @if ($p['debe_ats'])
+                            · ATS {{ $p['ats']?->presentado_en ? 'presentado' : ($p['ats']?->estado === 'listo' ? 'generado, falta presentar' : 'sin generar') }}
                         @endif
                     </p>
                 </div>

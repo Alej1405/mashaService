@@ -47,6 +47,12 @@ class GestionSriService
             ->get()
             ->keyBy(fn ($d) => sprintf('%d-%02d', $d->anio, $d->mes));
 
+        // El ATS del mismo mes, si la empresa lo debe: el mes está al día con los dos.
+        $anexos = $this->atsObligatorio($empresa)
+            ? Declaracion::where('empresa_id', $empresaId)->where('tipo', 'ats')->orderBy('id')->get()
+                ->keyBy(fn ($d) => sprintf('%d-%02d', $d->anio, $d->mes))
+            : null;
+
         // El mes en curso todavía no se declara: se cierra y luego se presenta.
         $mes = now()->startOfMonth()->subMonth();
         $periodos = [];
@@ -63,6 +69,8 @@ class GestionSriService
                 'vence'       => $this->vencimiento($empresa, $mes->year, $mes->month),
                 'movimiento'  => $this->hayMovimiento($empresaId, $mes->year, $mes->month),
                 'declaracion' => $declaracion,
+                'ats'         => $anexos?->get($mes->format('Y-m')),
+                'debe_ats'    => $anexos !== null,
                 'estado'      => $this->estado($declaracion, $this->vencimiento($empresa, $mes->year, $mes->month)),
             ];
 
@@ -122,9 +130,11 @@ class GestionSriService
             return null;
         }
 
-        $presentados = Declaracion::where('empresa_id', $empresa->id)->where('tipo', 'f104')
+        $presentados = fn (string $tipo) => Declaracion::where('empresa_id', $empresa->id)->where('tipo', $tipo)
             ->whereNotNull('presentado_en')->get(['anio', 'mes'])
             ->map(fn ($d) => sprintf('%d-%02d', $d->anio, $d->mes))->all();
+        $iva = $presentados('f104');
+        $ats = $this->atsObligatorio($empresa) ? $presentados('ats') : null;
 
         // Solo meses ya terminados: el del mes en curso aún no se puede declarar.
         // En RIMPE el IVA es semestral: se declaran junio y diciembre.
@@ -135,7 +145,9 @@ class GestionSriService
                 continue;
             }
 
-            if (! in_array($mes->format('Y-m'), $presentados, true)) {
+            // El mes queda pendiente mientras falte el 104 o, si la empresa lo debe, el ATS.
+            $clave = $mes->format('Y-m');
+            if (! in_array($clave, $iva, true) || ($ats !== null && ! in_array($clave, $ats, true))) {
                 $faltan[] = $mes->copy();
             }
         }
@@ -152,11 +164,25 @@ class GestionSriService
             'anio'     => $mes->year,
             'mes'      => $mes->month,
             'etiqueta' => $mes->translatedFormat('F \d\e Y'),
+            'falta_104' => ! in_array($mes->format('Y-m'), $iva, true),
+            'falta_ats' => $ats !== null && ! in_array($mes->format('Y-m'), $ats, true),
             'vence'    => $vence,
             'dias'     => $dias,
             'urgente'  => $dias === null || $dias <= 2,
             'otros'    => count($faltan) - 1,
         ];
+    }
+
+    /**
+     * ¿Debe presentar el ATS cada mes? La ficha técnica lo pide a las sociedades, a las
+     * personas naturales obligadas a llevar contabilidad y a los contribuyentes especiales
+     * (además de a los emisores electrónicos).
+     */
+    public function atsObligatorio(Empresa $empresa): bool
+    {
+        return $empresa->tipo_persona === 'juridica'
+            || (bool) $empresa->obligado_contabilidad
+            || (bool) $empresa->contribuyente_especial;
     }
 
     /** ¿Hubo algo que declarar? Un mes en cero también se declara, pero se avisa. */

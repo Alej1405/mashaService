@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Storage;
  */
 class Declaraciones extends Page
 {
+    use \App\Filament\Contabilidad\Concerns\GestionaDeclaraciones;
+
     protected static ?string $navigationIcon  = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'Declaraciones';
     protected static ?string $navigationGroup = 'Impuestos';
@@ -244,65 +246,8 @@ class Declaraciones extends Page
                     ->default(now()->subMonth()->month)
                     ->required(),
             ])
-            ->action(function (array $data) use ($tipo, $etiqueta) {
-                $declaracion = Declaracion::create([
-                    'empresa_id'     => Filament::getTenant()->id,
-                    'tipo'           => $tipo,
-                    'anio'           => (int) $data['anio'],
-                    'mes'            => (int) $data['mes'],
-                    'estado'         => 'pendiente',
-                    'solicitado_por' => auth()->id(),
-                ]);
-
-                GenerarDeclaracion::dispatch($declaracion->id);
-
-                Notification::make()
-                    ->title('Se está generando')
-                    ->body("Seguimiento {$declaracion->seguimiento}. Te aviso aquí mismo cuando esté.")
-                    ->info()
-                    ->send();
-            });
-    }
-
-    /**
-     * Sube la «Confirmación de Presentación de Archivo – ATS» del portal. La misma
-     * auditoría que el 104: el ATS queda presentado solo con el documento del SRI.
-     */
-    public function subirConfirmacionAtsAction(): Action
-    {
-        return Action::make('subirConfirmacionAts')
-            ->label('Subir la confirmación del SRI')
-            ->modalHeading(fn (array $arguments) => 'Confirmación del ATS · '
-                . Declaracion::where('empresa_id', Filament::getTenant()->id)->find($arguments['id'] ?? 0)?->periodo)
-            ->modalDescription('El PDF «Confirmación de Presentación de Archivo – ATS» que muestra el portal al '
-                . 'subir el anexo. Se comprueba que sea de esta empresa y de este mes. El SRI valida el archivo '
-                . 'en las 48 horas siguientes: si llega un archivo de errores, el anexo se corrige y se vuelve a subir.')
-            ->modalSubmitActionLabel('Comprobar y registrar')
-            ->form([
-                \Filament\Forms\Components\FileUpload::make('pdf')
-                    ->label('Confirmación en PDF')
-                    ->acceptedFileTypes(['application/pdf'])
-                    ->maxSize(5120)
-                    ->storeFiles(false)
-                    ->required(),
-            ])
-            ->action(function (array $data, array $arguments, Action $action) {
-                $declaracion = Declaracion::where('empresa_id', Filament::getTenant()->id)
-                    ->where('tipo', 'ats')->findOrFail($arguments['id'] ?? 0);
-                $pdf = is_array($data['pdf']) ? reset($data['pdf']) : $data['pdf'];
-
-                $r = app(\App\Services\ConfirmacionAtsService::class)
-                    ->registrar($declaracion, $pdf->get(), $pdf->getClientOriginalName(), auth()->id());
-                $pdf->delete();
-
-                if (! $r['ok']) {
-                    Notification::make()->title('No se registró la confirmación')->body($r['error'])->danger()->persistent()->send();
-                    $action->halt();
-                }
-
-                Notification::make()->title('ATS presentado')
-                    ->body("{$declaracion->periodo} quedó presentado. El SRI lo valida en 48 horas.")->success()->send();
-            });
+            // Un mes, una declaración: si ya existe sin presentar, se vuelve a calcular.
+            ->action(fn (array $data) => $this->pedir((int) $data['anio'], (int) $data['mes'], $tipo));
     }
 
     /** Baja el XML ya generado. */

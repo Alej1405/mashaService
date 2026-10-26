@@ -81,25 +81,22 @@
                     @foreach ($d->avisos ?? [] as $aviso)
                         <p class="ct-fila-s" style="color:var(--wa)">{{ $aviso }}</p>
                     @endforeach
-                    @if ($d->mensaje)
+                    @if ($d->mensaje && $d->tipo !== 'ats')
                         <p class="ct-fila-s" style="color:var(--da)">{{ $d->mensaje }}</p>
+                    @endif
+                    {{-- El ATS se presenta aquí mismo, con los mismos pasos que en Cumplimiento. --}}
+                    @if ($d->tipo === 'ats' && $d->mes)
+                        <div style="margin-top:8px">
+                            @include('filament.contabilidad.parciales.ats-pasos', ['ats' => $d, 'anio' => $d->anio, 'mes' => $d->mes, 'etiqueta' => $d->periodo])
+                        </div>
                     @endif
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0">
                     @if ($d->tipo === 'f104' && $d->estado === 'listo' && ! $d->presentado_en)
                         <a class="ct-btn-descarga" href="{{ \App\Filament\Contabilidad\Pages\Cumplimiento::getUrl() }}">Qué declarar</a>
                     @endif
-                    {{-- El ATS queda presentado solo con la confirmación del portal, igual que el 104. --}}
-                    @if ($d->tipo === 'ats' && $d->estado === 'listo' && ! $d->presentado_en)
-                        <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
-                                wire:click="mountAction('subirConfirmacionAts', { id: {{ $d->id }} })">
-                            Subir la confirmación del SRI
-                        </button>
-                    @elseif ($d->tipo === 'ats' && ($d->datos['confirmacion'] ?? null))
-                        <span class="ct-fila-s">presentado el {{ \Illuminate\Support\Carbon::parse($d->datos['confirmacion']['presentado_en'])->format('d/m/Y H:i') }} · el SRI valida en 48 horas</span>
-                    @endif
-                    {{-- Solo el ATS se descarga: el 104 se escribe en el portal, aunque uno viejo tenga XML guardado. --}}
-                    @if ($d->archivo && $d->tipo !== 'f104')
+                    {{-- El ATS se descarga dentro de sus pasos; el 104 se escribe en el portal. Aquí queda el resto. --}}
+                    @if ($d->archivo && ! in_array($d->tipo, ['f104', 'ats'], true))
                         <a class="ct-btn-descarga" href="{{ route('contabilidad.declaracion', $d->id) }}">
                             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round"
