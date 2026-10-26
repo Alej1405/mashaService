@@ -81,14 +81,14 @@
 
                 @if ($d?->estado === 'listo' && $d->datos)
                     @php $r = $this->resumenDe($d->id); @endphp
-                    {{-- Antes de descargar: qué generó el sistema --}}
+                    {{-- Lo que generó el sistema, antes de ir al portal --}}
                     <div class="ct-resumen">
                         @foreach ([
                             ['IVA en ventas', $r['iva_ventas']],
                             ['IVA en compras', $r['iva_compras']],
                             ['Crédito aplicado', $r['credito_mes']],
                             [$r['a_pagar'] > 0 ? 'A pagar' : 'A favor', $r['a_pagar'] > 0 ? $r['a_pagar'] : $r['a_favor']],
-                            ['Arrastra al mes siguiente', $r['arrastra']],
+                            ['Crédito para el próximo mes', $r['arrastra']],
                         ] as [$etiqueta, $valor])
                             <div>
                                 <span class="ct-resumen-n">{{ $money($valor) }}</span>
@@ -98,22 +98,24 @@
                     </div>
                 @endif
 
-                <div style="display:flex; align-items:center; gap:10px; flex-shrink:0">
-                    @if ($d?->archivo)
-                        <a class="ct-btn-descarga" href="{{ route('contabilidad.declaracion', $d->id) }}">
-                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>
-                            </svg>
-                            XML
-                        </a>
-                    @endif
-
+                <div style="display:flex; align-items:center; gap:10px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end">
                     @if ($d?->estado === 'listo' && ! $d->presentado_en)
-                        <button type="button" class="ct-chip ct-chip-n" style="border:0;cursor:pointer"
-                                wire:click="marcarPresentado({{ $d->id }})">
-                            Marcar presentado
+                        <button type="button" class="ct-pestana {{ $declarar && $declarar['id'] === $d->id ? 'es-activa' : '' }}"
+                                aria-expanded="{{ $declarar && $declarar['id'] === $d->id ? 'true' : 'false' }}"
+                                wire:click="verDeclarar({{ $d->id }})">
+                            {{ $declarar && $declarar['id'] === $d->id ? 'Ocultar' : 'Qué declarar' }}
                         </button>
+                        <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+                                wire:click="mountAction('subirComprobante', { id: {{ $d->id }} })">
+                            Subir comprobante del SRI
+                        </button>
+                    @elseif ($d?->presentado_en && ($d->datos['comprobante'] ?? null))
+                        <span class="ct-fila-s">
+                            serial {{ $d->datos['comprobante']['serial'] }}
+                            @if ($d->datos['comprobante']['codigo_verificador'] ?? null)
+                                · verificador {{ $d->datos['comprobante']['codigo_verificador'] }}
+                            @endif
+                        </span>
                     @elseif (! $d)
                         <button type="button" class="ct-chip ct-chip-n" style="border:0;cursor:pointer"
                                 wire:click="pedir({{ $p['anio'] }}, {{ $p['mes'] }})">
@@ -124,6 +126,47 @@
                     <span class="ct-chip ct-chip-{{ $p['estado']['tono'] }}">{{ $p['estado']['texto'] }}</span>
                 </div>
             </div>
+
+            {{-- Qué escribir en el portal: solo lo que lleva valor, en el orden del formulario. --}}
+            @if ($declarar && $d && $declarar['id'] === $d->id)
+                <div class="ct-declarar">
+                    <ol class="ct-pasos">
+                        <li>En el portal del SRI abre la declaración del IVA de {{ $p['etiqueta'] }}.</li>
+                        <li>Escribe estas casillas. Las demás se quedan en cero.</li>
+                        <li>Antes de enviar, el portal debe mostrarte los totales de abajo.</li>
+                        <li>Al terminar, sube aquí el comprobante en PDF.</li>
+                    </ol>
+
+                    @forelse ($declarar['casillas'] as $seccion => $filas)
+                        <p class="ct-tit" style="margin:14px 0 6px">{{ $seccion }}</p>
+                        @foreach ($filas as $f)
+                            @php $valor = $f['conteo'] ? (string) (int) $f['valor'] : number_format($f['valor'], 2, '.', ''); @endphp
+                            <div class="ct-casilla" x-data="{ copiado: false }">
+                                <span class="ct-casilla-n">{{ $f['codigo'] }}</span>
+                                <span class="ct-casilla-t">{{ $f['nombre'] }}</span>
+                                <span class="ct-casilla-v">{{ $f['conteo'] ? $valor : $money($f['valor']) }}</span>
+                                <button type="button" class="ct-pestana"
+                                        x-on:click="navigator.clipboard.writeText('{{ $valor }}'); copiado = true; setTimeout(() => copiado = false, 1500)"
+                                        :aria-label="'Copiar casilla {{ $f['codigo'] }}'">
+                                    <span x-text="copiado ? 'Copiado' : 'Copiar'"></span>
+                                </button>
+                            </div>
+                        @endforeach
+                    @empty
+                        <p class="ct-fila-s">Mes sin movimiento: se declara en cero, sin escribir ninguna casilla.</p>
+                    @endforelse
+
+                    <p class="ct-tit" style="margin:18px 0 6px">El portal debe mostrarte</p>
+                    @foreach ($declarar['comparar'] as [$nombre, $codigo, $valor])
+                        <div class="ct-casilla ct-casilla-total">
+                            <span class="ct-casilla-n">{{ $codigo }}</span>
+                            <span class="ct-casilla-t">{{ $nombre }}</span>
+                            <span class="ct-casilla-v">{{ $money($valor) }}</span>
+                        </div>
+                    @endforeach
+                    <p class="ct-pie2" style="margin-top:8px">Si un total no coincide, revisa la casilla que escribiste antes de enviar: el comprobante se compara con estos valores.</p>
+                </div>
+            @endif
         @empty
             <p class="ct-vacio">
                 Marca el inicio de gestión para ver los períodos por los que responde el sistema.
@@ -134,10 +177,9 @@
     <section class="ct-panel">
         <header><h2 class="ct-tit">Qué cuenta como cumplido</h2></header>
         @foreach ([
-            ['Generado', 'el archivo existe en el sistema', 'wa'],
-            ['Descargado', 'alguien se lo llevó para subirlo al portal', 'wa'],
-            ['Presentado', 'consta la fecha en que se subió al SRI — esto es cumplir', 'ok'],
-            ['Vencido', 'pasó la fecha del noveno dígito y no hay nada generado', 'da'],
+            ['Generado', 'los valores están calculados: «Qué declarar» dice qué escribir en el portal', 'wa'],
+            ['Presentado', 'se subió el comprobante del SRI y cuadra con lo generado — esto es cumplir', 'ok'],
+            ['Vencido', 'pasó la fecha del noveno dígito y no hay comprobante', 'da'],
         ] as [$titulo, $detalle, $tono])
             <div class="ct-fila">
                 <div><p class="ct-fila-t">{{ $titulo }}</p><p class="ct-fila-s">{{ $detalle }}</p></div>

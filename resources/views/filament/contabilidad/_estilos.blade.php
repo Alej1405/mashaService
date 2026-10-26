@@ -62,6 +62,20 @@
     .ct-resumen { display:flex; flex-wrap:wrap; gap:18px; width:100%;
                   padding:10px 0 2px; border-top:1px dashed var(--b2); margin-top:8px; }
     .ct-resumen > div { display:flex; flex-direction:column; min-width:92px; }
+    /* Qué escribir en el portal del SRI: casilla, nombre, valor y copiar. */
+    .ct-declarar { padding:4px 18px 18px; border-bottom:1px solid var(--b); }
+    .ct-pasos { margin:6px 0 4px; padding-left:20px; font-size:13px; color:var(--m); line-height:1.7; }
+    .ct-casilla { display:grid; grid-template-columns:52px 1fr auto auto; gap:12px; align-items:center;
+        padding:8px 0; border-top:1px solid var(--b); }
+    .ct-casilla-n { font-family:ui-monospace,monospace; font-weight:700; font-size:15px; color:var(--t); }
+    .ct-casilla-t { font-size:13px; color:var(--m); min-width:0; }
+    .ct-casilla-v { font-size:15px; font-weight:700; color:var(--t); font-variant-numeric:tabular-nums; text-align:right; }
+    .ct-casilla-total { grid-template-columns:52px 1fr auto; }
+    .ct-casilla-total .ct-casilla-v { color:var(--m); }
+    @media (max-width:640px) {
+        .ct-casilla { grid-template-columns:44px 1fr auto; }
+        .ct-casilla .ct-casilla-t { grid-column:2 / 4; grid-row:2; }
+    }
     .ct-resumen-n { font-size:15px; font-weight:700; color:var(--t); }
     .ct-resumen-e { font-size:11px; color:var(--m); }
 

@@ -21,6 +21,9 @@ use Throwable;
  * El reparto es a propósito: **el ERP calcula, el microservicio escribe el
  * archivo**. El cálculo necesita el libro diario y vive donde están los datos;
  * el armado del XML no necesita la base y puede caerse sin arrastrar al ERP.
+ *
+ * El 104 no lleva archivo: el portal del SRI no deja subirlo, se escribe casilla
+ * por casilla. Sus casilleros quedan en la declaración y Cumplimiento los muestra.
  */
 class GenerarDeclaracion implements ShouldQueue
 {
@@ -56,15 +59,15 @@ class GenerarDeclaracion implements ShouldQueue
             default => throw new \InvalidArgumentException("No sé generar {$declaracion->tipo}."),
         };
 
-        // 2 · el microservicio escribe el XML, sin tocar la base
+        // 2 · el microservicio escribe el XML del ATS, sin tocar la base. El 104
+        // termina aquí: se declara escribiendo sus casillas en el portal.
         $respuesta = $declaracion->tipo === 'f104'
-            ? $servicio->formulario104(
-                $datos['ruc'] ?? '', $declaracion->anio, $declaracion->mes, $datos['casilleros'])
+            ? ['ok' => true, 'xml' => null]
             : $servicio->ats($datos);
 
         $archivo = null;
 
-        if ($respuesta['ok'] ?? false) {
+        if (($respuesta['ok'] ?? false) && $respuesta['xml']) {
             $archivo = sprintf(
                 'declaraciones/%d/%s-%d-%02d-%s.xml',
                 $declaracion->empresa_id, $declaracion->tipo,

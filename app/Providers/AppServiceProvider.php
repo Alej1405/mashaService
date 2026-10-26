@@ -32,6 +32,32 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
+        // Aviso fijo del IVA por presentar, arriba de toda página con empresa, para
+        // quien declara: contador y administradores. Se apaga con el comprobante.
+        \Filament\Support\Facades\FilamentView::registerRenderHook(
+            \Filament\View\PanelsRenderHook::CONTENT_START,
+            function (): string {
+                $empresa = \Filament\Facades\Filament::getTenant();
+                $usuario = auth()->user();
+
+                if (! $empresa instanceof \App\Models\Empresa || ! $usuario?->hasAnyRole(['contador', 'admin_empresa', 'super_admin'])
+                    || ! \App\Helpers\PlanHelper::hasModule('finanzas')) {
+                    return '';
+                }
+
+                $alerta = app(\App\Services\GestionSriService::class)->alertaIva($empresa);
+
+                if (! $alerta) {
+                    return '';
+                }
+
+                return view('filament.avisos.iva', [
+                    'alerta' => $alerta,
+                    'url'    => \App\Filament\Contabilidad\Pages\Cumplimiento::getUrl(panel: 'contabilidad', tenant: $empresa),
+                ])->render();
+            },
+        );
+
         // Sidebar en modo ACORDEÓN: al abrir un grupo, colapsa los demás (solo uno
         // abierto a la vez) para no contaminar la visión. Complementa el
         // ->collapsed() por defecto de cada grupo. Filament no lo trae nativo:

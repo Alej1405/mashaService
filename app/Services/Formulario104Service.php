@@ -353,6 +353,45 @@ class Formulario104Service
         $c['999'] = $c['902'] + $c['903'] + $c['904'];
     }
 
+    /**
+     * Totales y fórmulas que el portal calcula solo: no se escriben, se comparan.
+     * Son los de las fórmulas de liquidar() y los subtotales de cada bloque.
+     */
+    public const CALCULADOS = [
+        '409', '419', '429', '482', '484', '499', '509', '519', '529', '563', '564', '565',
+        '601', '602', '615', '617', '620', '699', '799', '801', '859', '902', '999',
+    ];
+
+    /** Casilleros que cuentan comprobantes: van sin decimales. */
+    public const CONTEOS = ['111', '113', '115', '117', '119'];
+
+    /**
+     * Lo que hay que escribir en el portal: solo las casillas con valor que no
+     * calcula el propio formulario, agrupadas por la sección donde están.
+     *
+     * @param  array<string, float|int>  $casilleros
+     * @return array<string, array<int, array{codigo: string, nombre: string, valor: float, conteo: bool}>>
+     */
+    public function paraElPortal(array $casilleros): array
+    {
+        $catalogo = \App\Models\CatalogoSri::where('anexo', 'f104')->get(['codigo', 'descripcion', 'nombre_tabla'])
+            ->keyBy('codigo');
+
+        return collect($casilleros)
+            ->filter(fn ($v, $codigo) => abs((float) $v) > 0.004 && ! in_array((string) $codigo, self::CALCULADOS, true))
+            ->sortKeys(SORT_NUMERIC)
+            ->map(fn ($v, $codigo) => [
+                'codigo'  => (string) $codigo,
+                'nombre'  => $catalogo[$codigo]->descripcion ?? "Casillero {$codigo}",
+                'seccion' => $catalogo[$codigo]->nombre_tabla ?? 'Otros',
+                'valor'   => (float) $v,
+                'conteo'  => in_array((string) $codigo, self::CONTEOS, true),
+            ])
+            ->groupBy('seccion')
+            ->map(fn ($filas) => $filas->map(fn ($f) => collect($f)->except('seccion')->all())->values()->all())
+            ->all();
+    }
+
     /** Los casilleros que existen, según el catálogo oficial. */
     private function codigosDelFormulario(): array
     {

@@ -103,6 +103,62 @@ class GestionSriService
         return Carbon::create($anio, $mes, 1)->addMonth()->day($dia)->endOfDay();
     }
 
+    /**
+     * El aviso del 104 que falta presentar, o null si está todo presentado.
+     *
+     * Nace al día siguiente del último día del mes y no se apaga hasta que se
+     * sube el comprobante del SRI. Amarillo mientras hay tiempo; rojo desde dos
+     * días antes del vencimiento y también ya vencido. Si faltan varios meses,
+     * avisa del más antiguo, que es el que más urge.
+     *
+     * @return array{anio: int, mes: int, etiqueta: string, vence: Carbon|null, dias: int|null,
+     *               urgente: bool, otros: int}|null
+     */
+    public function alertaIva(Empresa $empresa): ?array
+    {
+        $inicio = $this->inicioDeGestion($empresa);
+
+        if (! $inicio) {
+            return null;
+        }
+
+        $presentados = Declaracion::where('empresa_id', $empresa->id)->where('tipo', 'f104')
+            ->whereNotNull('presentado_en')->get(['anio', 'mes'])
+            ->map(fn ($d) => sprintf('%d-%02d', $d->anio, $d->mes))->all();
+
+        // Solo meses ya terminados: el del mes en curso aún no se puede declarar.
+        // En RIMPE el IVA es semestral: se declaran junio y diciembre.
+        $semestral = $empresa->periodicidad_iva === 'semestral';
+        $faltan = [];
+        for ($mes = $inicio->copy(); $mes->lessThan(now()->startOfMonth()); $mes->addMonth()) {
+            if ($semestral && ! in_array($mes->month, [6, 12], true)) {
+                continue;
+            }
+
+            if (! in_array($mes->format('Y-m'), $presentados, true)) {
+                $faltan[] = $mes->copy();
+            }
+        }
+
+        if (! $faltan) {
+            return null;
+        }
+
+        $mes = $faltan[0];
+        $vence = $this->vencimiento($empresa, $mes->year, $mes->month);
+        $dias = $vence ? (int) now()->startOfDay()->diffInDays($vence->copy()->startOfDay(), false) : null;
+
+        return [
+            'anio'     => $mes->year,
+            'mes'      => $mes->month,
+            'etiqueta' => $mes->translatedFormat('F \d\e Y'),
+            'vence'    => $vence,
+            'dias'     => $dias,
+            'urgente'  => $dias === null || $dias <= 2,
+            'otros'    => count($faltan) - 1,
+        ];
+    }
+
     /** ¿Hubo algo que declarar? Un mes en cero también se declara, pero se avisa. */
     public function hayMovimiento(int $empresaId, int $anio, int $mes): array
     {
@@ -139,10 +195,9 @@ class GestionSriService
         return match (true) {
             $d?->presentado_en !== null => ['clave' => 'presentado', 'tono' => 'ok',
                                             'texto' => 'Presentado el ' . $d->presentado_en->format('d/m/Y')],
-            $d?->descargado_en !== null => ['clave' => 'descargado', 'tono' => 'wa',
-                                            'texto' => 'Descargado, falta presentar'],
+            // El 104 no se descarga: se escribe en el portal y se sube su comprobante.
             $d?->estado === 'listo'     => ['clave' => 'generado', 'tono' => 'wa',
-                                            'texto' => 'Generado, sin descargar'],
+                                            'texto' => 'Generado, falta el comprobante'],
             $d?->estado === 'error'     => ['clave' => 'error', 'tono' => 'da', 'texto' => 'Falló al generar'],
             $d !== null                 => ['clave' => 'en_cola', 'tono' => 'n', 'texto' => 'En cola'],
             $vencido                    => ['clave' => 'vencido', 'tono' => 'da', 'texto' => 'Vencido, sin generar'],
