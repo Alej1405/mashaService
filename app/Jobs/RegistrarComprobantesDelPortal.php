@@ -17,7 +17,8 @@ use Throwable;
 /**
  * Trae del SRI el detalle de las facturas recibidas del portal que esperan en la bandeja.
  *
- * Corre solo al subir el archivo del portal (y con «Traer el detalle»). Cada factura
+ * Corre al subir el archivo del portal, con «Traer el detalle» y con «Volver a
+ * consultar al SRI» (este último solo con las que quedaron sin detalle). Cada factura
  * termina en uno de dos grupos: con su detalle, lista para elegir el pago y
  * registrarla; o sin él, porque el SRI ya no la entrega, esperando su XML.
  *
@@ -42,6 +43,9 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
         public readonly array $pagos = [],
         public readonly ?int $anio = null,
         public readonly ?string $proveedor = null,
+        public readonly ?int $mes = null,
+        /** true: solo las que el SRI no entregó antes (sin_xml), para darles otra oportunidad. */
+        public readonly bool $reintentar = false,
     ) {
     }
 
@@ -51,14 +55,14 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
     }
 
     /** Lo pone en la cola si no hay otro corriendo para esa empresa. false = ya había uno. */
-    public static function encolar(int $empresaId, ?int $usuarioId, array $pagos = [], ?int $anio = null, ?string $proveedor = null): bool
+    public static function encolar(int $empresaId, ?int $usuarioId, array $pagos = [], ?int $anio = null, ?string $proveedor = null, ?int $mes = null, bool $reintentar = false): bool
     {
         if (Cache::get(self::claveAvance($empresaId))['corriendo'] ?? false) {
             return false;
         }
 
         Cache::put(self::claveAvance($empresaId), ['corriendo' => true, 'total' => 0, 'hechos' => 0], now()->addHours(6));
-        self::dispatch($empresaId, $usuarioId, $pagos, $anio, $proveedor);
+        self::dispatch($empresaId, $usuarioId, $pagos, $anio, $proveedor, $mes, $reintentar);
 
         return true;
     }
@@ -69,8 +73,11 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
         $pendientes = ComprobanteSri::where('empresa_id', $this->empresaId)->where('origen', 'recibido')
             ->sinClasificar()
             ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+            ->when($this->anio && $this->mes, fn ($q) => $q->whereMonth('fecha_emision', $this->mes))
             ->when($this->proveedor, fn ($q) => $q->where('identificacion', $this->proveedor))
-            ->where(fn ($q) => $q->whereNull('desglose')->orWhereNotIn('desglose', ClasificadorComprobantesService::SIN_DETALLE))
+            ->when($this->reintentar,
+                fn ($q) => $q->where('desglose', 'sin_xml'),
+                fn ($q) => $q->where(fn ($q) => $q->whereNull('desglose')->orWhereNotIn('desglose', ClasificadorComprobantesService::SIN_DETALLE)))
             ->orderByDesc('fecha_emision')
             ->get();
 

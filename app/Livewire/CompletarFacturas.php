@@ -50,12 +50,15 @@ class CompletarFacturas extends Component
     /** forma => medio ('efectivo' => 'efectivo:2'): de qué caja o banco salió lo que el XML dice */
     public array $cuentaPor = [];
 
-    /** Filtros de la bandeja que contiene este bloque (RUC del proveedor y año); null = todos. */
+    /** Filtros de la bandeja que contiene este bloque (RUC del proveedor, año y mes); null = todos. */
     #[\Livewire\Attributes\Reactive]
     public ?string $proveedor = null;
 
     #[\Livewire\Attributes\Reactive]
     public ?int $anio = null;
+
+    #[\Livewire\Attributes\Reactive]
+    public ?int $mes = null;
 
     /** Con un proveedor elegido: una sola forma de pago para todas sus facturas. */
     public string $pagoTodas = '';
@@ -269,6 +272,7 @@ class CompletarFacturas extends Component
             ->with(['supplier:id,nombre,numero_identificacion', 'items.productoProveedor', 'items.inventoryItem:id,nombre'])
             ->when($this->proveedor, fn ($q) => $q->whereHas('supplier', fn ($q) => $q->where('numero_identificacion', $this->proveedor)))
             ->when($this->anio, fn ($q) => $q->whereYear('date', $this->anio))
+            ->when($this->anio && $this->mes, fn ($q) => $q->whereMonth('date', $this->mes))
             ->orderBy('date')->limit(60);
     }
 

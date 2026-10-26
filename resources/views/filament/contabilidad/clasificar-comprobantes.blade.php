@@ -9,6 +9,9 @@
         'sin_detalle'   => ['Falta el detalle', 'el SRI ya no las entrega: sube su XML', 'wa'],
         'registradas'   => ['Registradas', 'con su asiento; despliega cada una para ver su detalle', 'ok'],
     ];
+    $nombresMes = [1 => 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    // "en marzo de 2026", "en 2026" o nada: lo que se está mirando, para los mensajes vacíos.
+    $periodo = $anio ? ' en ' . ($mes ? mb_strtolower($nombresMes[$mes]) . ' de ' : '') . $anio : '';
 @endphp
 
 <div class="ct">
@@ -20,6 +23,19 @@
                         class="ct-pestana {{ $anio === $a ? 'es-activa' : '' }}"
                         wire:click="$set('anio', {{ $a ?? 'null' }})">
                     {{ $a ?? 'Todos los años' }}
+                </button>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- Mes: solo dentro de un año elegido. --}}
+    @if ($anio && count($mesesDelAnio) > 1)
+        <div class="ct-barra" role="tablist" aria-label="Mes">
+            @foreach ([null, ...$mesesDelAnio] as $m)
+                <button type="button" role="tab" aria-selected="{{ $mes === $m ? 'true' : 'false' }}"
+                        class="ct-pestana {{ $mes === $m ? 'es-activa' : '' }}"
+                        wire:click="$set('mes', {{ $m ?? 'null' }})">
+                    {{ $m ? $nombresMes[$m] : "Todo {$anio}" }}
                 </button>
             @endforeach
         </div>
@@ -70,9 +86,9 @@
             <section class="ct-panel">
                 <p class="ct-fila-s" style="padding:18px">
                     @if ($vista === 'por_registrar')
-                        No hay facturas por traer{{ $anio ? " en {$anio}" : '' }}. Para traer otro mes, usa «Subir archivo del SRI» arriba.
+                        No hay facturas por traer{{ $periodo }}. Para traer otro mes, usa «Subir archivo del SRI» arriba.
                     @else
-                        No hay facturas sin detalle{{ $anio ? " en {$anio}" : '' }}: el SRI entregó el de todas.
+                        No hay facturas sin detalle{{ $periodo }}: el SRI entregó el de todas.
                     @endif
                 </p>
             </section>
@@ -80,7 +96,7 @@
 
         {{-- Sin detalle no se registra: aquí se sube su XML. --}}
         @if ($vista === 'sin_detalle')
-            @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio, 'conLista' => false], key('subir-xml'))
+            @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio, 'mes' => $mes, 'conLista' => false], key('subir-xml'))
         @endif
 
         @if ($comprobantes->isNotEmpty())
@@ -103,6 +119,22 @@
                             Traer el detalle de {{ $conteos['por_registrar'] === 1 ? 'la factura' : "las {$conteos['por_registrar']}" }}{{ $proveedor ? ' de este proveedor' : '' }}
                         </button>
                     @endif
+                    {{-- El SRI pudo no responder en su momento: se le vuelve a preguntar, por lote. --}}
+                    @if ($vista === 'sin_detalle' && $porReconsultar['todas'] > 0 && ! ($avance['corriendo'] ?? false))
+                        @php $filtrado = $anio || $proveedor; @endphp
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
+                            @if ($filtrado && $porReconsultar['filtro'] > 0)
+                                <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+                                        wire:click="volverAConsultar(false)" wire:loading.attr="disabled" wire:target="volverAConsultar">
+                                    Consultar al SRI {{ $porReconsultar['filtro'] === 1 ? 'la' : "las {$porReconsultar['filtro']}" }}{{ $periodo }}{{ $proveedor ? ' de este proveedor' : '' }}
+                                </button>
+                            @endif
+                            <button type="button" class="{{ $filtrado ? 'ct-pestana' : 'ct-btn-descarga' }}" style="{{ $filtrado ? '' : 'border:0;' }}cursor:pointer"
+                                    wire:click="volverAConsultar(true)" wire:loading.attr="disabled" wire:target="volverAConsultar">
+                                Consultar al SRI {{ $porReconsultar['todas'] === 1 ? 'la única' : "todas ({$porReconsultar['todas']})" }}
+                            </button>
+                        </div>
+                    @endif
                 </header>
 
                 @foreach ($comprobantes as $c)
@@ -124,6 +156,13 @@
                         </div>
 
                         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
+                            @if ($vista === 'sin_detalle' && $c->desglose === 'sin_xml')
+                                <button type="button" class="ct-pestana" wire:click="volverAConsultarUna({{ $c->id }})"
+                                        wire:loading.attr="disabled" wire:target="volverAConsultarUna({{ $c->id }})">
+                                    <span wire:loading.remove wire:target="volverAConsultarUna({{ $c->id }})">Consultar al SRI</span>
+                                    <span wire:loading wire:target="volverAConsultarUna({{ $c->id }})">Consultando…</span>
+                                </button>
+                            @endif
                             <button type="button" class="ct-pestana" wire:click="personal({{ $c->id }})"
                                     wire:confirm="¿Es una compra personal? No se registra como gasto ni mueve dinero de la empresa: solo su IVA suma al 104.">
                                 No es de la empresa
@@ -179,7 +218,7 @@
 
     {{-- ── Listas para registrar: con su detalle; se elige el pago y se registran ── --}}
     @if ($vista === 'esperan')
-        @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio], key('listas'))
+        @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio, 'mes' => $mes], key('listas'))
     @endif
 
     {{-- ── Registradas: con lo que se registró ───────────────────────────── --}}
@@ -222,7 +261,7 @@
                 </div>
             @empty
                 <p class="ct-fila-s" style="padding:18px">
-                    Todavía no hay facturas registradas{{ $anio ? " en {$anio}" : '' }}.
+                    Todavía no hay facturas registradas{{ $periodo }}.
                 </p>
             @endforelse
         </section>

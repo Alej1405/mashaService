@@ -52,6 +52,10 @@ class ClasificarComprobantes extends Page
     #[\Livewire\Attributes\Url]
     public ?int $anio = null;
 
+    /** Mes (1-12) dentro del año elegido; null = todo el año. Queda en la URL. */
+    #[\Livewire\Attributes\Url]
+    public ?int $mes = null;
+
     /** RUC del proveedor que se trabaja; null = todos. Queda en la URL. */
     #[\Livewire\Attributes\Url]
     public ?string $proveedor = null;
@@ -99,6 +103,14 @@ class ClasificarComprobantes extends Page
     /** Al cambiar de año o de vista, las elecciones se vuelven a armar para lo que se ve. */
     public function updatedAnio(): void
     {
+        // Un mes sin su año no se filtra: al cambiar de año se ve el año completo.
+        $this->mes = null;
+        $this->cargar();
+    }
+
+    public function updatedMes(): void
+    {
+        $this->mes = $this->anio && $this->mes >= 1 && $this->mes <= 12 ? $this->mes : null;
         $this->cargar();
     }
 
@@ -197,10 +209,11 @@ class ClasificarComprobantes extends Page
         return [$comprobantes, $detalle];
     }
 
-    /** Filtra por el año y el proveedor elegidos, si los hay. */
+    /** Filtra por el año, el mes y el proveedor elegidos, si los hay. */
     private function delFiltro($q)
     {
         return $q->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+            ->when($this->anio && $this->mes, fn ($q) => $q->whereMonth('fecha_emision', $this->mes))
             ->when($this->proveedor, fn ($q) => $q->where('identificacion', $this->proveedor));
     }
 
@@ -220,6 +233,7 @@ class ClasificarComprobantes extends Page
         return ComprobanteSri::where('empresa_id', $empresaId)->where('origen', 'recibido')
             ->where(fn ($q) => $q->sinClasificar()->orWhereIn('id', $esperan))
             ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+            ->when($this->anio && $this->mes, fn ($q) => $q->whereMonth('fecha_emision', $this->mes))
             ->selectRaw("identificacion, max(coalesce(nullif(razon_social, ''), identificacion)) as nombre, count(*) as n")
             ->groupBy('identificacion')->orderBy('nombre')->get();
     }
@@ -230,6 +244,19 @@ class ClasificarComprobantes extends Page
         return ComprobanteSri::where('empresa_id', $empresaId)
             ->selectRaw('distinct extract(year from fecha_emision)::int as anio')
             ->orderByDesc('anio')->pluck('anio')->all();
+    }
+
+    /** Los meses del año elegido que tienen comprobantes del portal, en orden. */
+    private function mesesDelAnio(int $empresaId): array
+    {
+        if (! $this->anio) {
+            return [];
+        }
+
+        return ComprobanteSri::where('empresa_id', $empresaId)
+            ->whereYear('fecha_emision', $this->anio)
+            ->selectRaw('distinct extract(month from fecha_emision)::int as mes')
+            ->orderBy('mes')->pluck('mes')->all();
     }
 
     private function cargar(): void
@@ -291,7 +318,7 @@ class ClasificarComprobantes extends Page
      */
     public function traerDetalle(): void
     {
-        if (! RegistrarComprobantesDelPortal::encolar(Filament::getTenant()->id, auth()->id(), [], $this->anio, $this->proveedor)) {
+        if (! RegistrarComprobantesDelPortal::encolar(Filament::getTenant()->id, auth()->id(), [], $this->anio, $this->proveedor, $this->mes)) {
             Notification::make()->title('Ya se está trayendo el detalle')->body('Mira el avance aquí arriba.')->info()->send();
 
             return;
@@ -300,6 +327,63 @@ class ClasificarComprobantes extends Page
         Notification::make()->title('Trayendo el detalle en segundo plano')
             ->body('Cada factura se consulta en el SRI. Puedes seguir trabajando: te aviso en la campana al terminar.')
             ->info()->send();
+    }
+
+    /**
+     * Vuelve a pedir al SRI las que quedaron sin detalle. Una factura cae ahí también
+     * cuando el SRI no respondió en ese momento; esto le da otra oportunidad. Las que
+     * respondan se registran como al subir el archivo; las demás siguen esperando su XML.
+     *
+     * $todas = false: las del año, mes y proveedor elegidos; true: todas las que hay.
+     */
+    public function volverAConsultar(bool $todas = false): void
+    {
+        $encolada = $todas
+            ? RegistrarComprobantesDelPortal::encolar(Filament::getTenant()->id, auth()->id(), reintentar: true)
+            : RegistrarComprobantesDelPortal::encolar(Filament::getTenant()->id, auth()->id(), [], $this->anio, $this->proveedor, $this->mes, reintentar: true);
+
+        if (! $encolada) {
+            Notification::make()->title('Ya se está consultando el SRI')->body('Mira el avance aquí arriba.')->info()->send();
+
+            return;
+        }
+
+        Notification::make()->title('Consultando de nuevo al SRI')
+            ->body('Las que el SRI entregue se registran solas. Te aviso en la campana al terminar.')
+            ->info()->send();
+    }
+
+    /** Vuelve a pedir al SRI una sola factura sin detalle. Es una consulta: corre aquí mismo. */
+    public function volverAConsultarUna(int $id): void
+    {
+        $c = ComprobanteSri::where('empresa_id', Filament::getTenant()->id)->where('origen', 'recibido')
+            ->sinClasificar()->where('desglose', 'sin_xml')->findOrFail($id);
+        $r = app(ClasificadorComprobantesService::class)->registrarConDetalle($c, null, auth()->id());
+
+        $this->cargar();
+
+        if ($r['ok'] ?? false) {
+            Notification::make()->title('El SRI la entregó')->body(ucfirst($r['detalle'] ?? "factura {$c->numero} registrada"))->success()->send();
+
+            return;
+        }
+
+        Notification::make()->title(($r['manual'] ?? false) ? 'El SRI sigue sin entregarla' : 'No se pudo registrar')
+            ->body(($r['manual'] ?? false) ? "La factura {$c->numero} sigue esperando su XML." : $r['error'])
+            ->{($r['manual'] ?? false) ? 'warning' : 'danger'}()->send();
+    }
+
+    /**
+     * Cuántas compras esperan otra consulta al SRI: con los filtros y en total.
+     *
+     * @return array{filtro: int, todas: int}
+     */
+    private function porReconsultar(int $empresaId): array
+    {
+        $base = fn () => ComprobanteSri::where('empresa_id', $empresaId)->where('origen', 'recibido')
+            ->sinClasificar()->where('desglose', 'sin_xml');
+
+        return ['filtro' => $this->delFiltro($base())->count(), 'todas' => $base()->count()];
     }
 
     /**
@@ -361,6 +445,8 @@ class ClasificarComprobantes extends Page
             'total'      => $this->delFiltro(ComprobanteSri::where('empresa_id', $empresa->id)
                 ->where('origen', 'recibido')->sinClasificar())->count(),
             'anios'      => $this->anios($empresa->id),
+            'mesesDelAnio' => $this->mesesDelAnio($empresa->id),
+            'porReconsultar' => $this->vista === 'sin_detalle' ? $this->porReconsultar($empresa->id) : ['filtro' => 0, 'todas' => 0],
             'proveedores' => $this->proveedores($empresa->id),
             'ventas'     => in_array($this->vista, ['por_registrar', 'sin_detalle'], true) ? $this->ventasPendientes() : collect(),
             'mediosVenta' => MedioPago::opciones($empresa->id, true),
