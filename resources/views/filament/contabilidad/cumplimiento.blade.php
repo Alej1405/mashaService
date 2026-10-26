@@ -13,6 +13,63 @@
         </div>
     @endif
 
+    {{-- Lo que hay que hacer ahora, ya abierto: el mes que toca declarar, paso a paso. --}}
+    @if ($ahora)
+        @php
+            $al = $ahora['alerta'];
+            $dAhora = $ahora['declaracion'];
+            $cuando = match (true) {
+                $al['dias'] === null => 'sin fecha de vencimiento: falta el RUC',
+                $al['dias'] < 0      => 'venció el ' . $al['vence']->format('d/m/Y'),
+                $al['dias'] === 0    => 'vence hoy',
+                default              => 'vence el ' . $al['vence']->format('d/m/Y') . ' · faltan ' . $al['dias'] . ' días',
+            };
+        @endphp
+        <section class="ct-panel ct-ahora {{ $al['urgente'] ? 'es-urgente' : '' }}"
+                 @if (in_array($dAhora?->estado, ['pendiente', 'procesando'], true)) wire:poll.5s @endif>
+            <header>
+                <div>
+                    <h2 class="ct-ahora-tit">Declara el IVA de {{ $al['etiqueta'] }}</h2>
+                    <p class="ct-pie2">{{ $cuando }}</p>
+                </div>
+            </header>
+
+            <div class="ct-declarar">
+                @if (! $dAhora || ! in_array($dAhora->estado, ['listo', 'pendiente', 'procesando'], true))
+                    <p class="ct-paso"><span>1</span> Calcula la declaración con lo registrado en el ERP.</p>
+                    <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+                            wire:click="pedir({{ $al['anio'] }}, {{ $al['mes'] }})" wire:loading.attr="disabled" wire:target="pedir">
+                        Calcular la declaración
+                    </button>
+                @elseif ($dAhora->estado !== 'listo')
+                    <p class="ct-paso"><span>1</span> Calculando la declaración… esta página se actualiza sola.</p>
+                @else
+                    <p class="ct-paso"><span>1</span>
+                        Entra a <a href="https://srienlinea.sri.gob.ec" target="_blank" rel="noopener">SRI en línea</a>
+                        con el RUC y la clave de la empresa, y abre la declaración del IVA de {{ $al['etiqueta'] }}.
+                    </p>
+                    <p class="ct-paso"><span>2</span> Escribe en el formulario estas casillas. Las que no aparecen aquí se quedan en cero.</p>
+
+                    @include('filament.contabilidad.parciales.casillas-104', ['guia' => $ahora['guia']])
+
+                    <p class="ct-paso" style="margin-top:16px"><span>3</span> Antes de enviar, los totales del portal deben ser los de arriba. Si uno no coincide, revisa lo que escribiste.</p>
+                    <p class="ct-paso"><span>4</span> Envía la declaración, descarga el comprobante en PDF y súbelo aquí. Con eso el mes queda presentado y este aviso se apaga.</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+                        <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+                                wire:click="mountAction('subirComprobante', { id: {{ $dAhora->id }} })">
+                            Subir comprobante del SRI
+                        </button>
+                        <button type="button" class="ct-pestana" wire:click="pedir({{ $al['anio'] }}, {{ $al['mes'] }})"
+                                wire:loading.attr="disabled" wire:target="pedir"
+                                title="Si registraste facturas después de calcular, vuelve a calcular antes de declarar">
+                            Volver a calcular
+                        </button>
+                    </div>
+                @endif
+            </div>
+        </section>
+    @endif
+
     {{-- La respuesta a "¿estamos al día?" --}}
     <div class="ct-rej-4">
         <div class="ct-card">
@@ -146,33 +203,8 @@
                         <li>Al terminar, sube aquí el comprobante en PDF.</li>
                     </ol>
 
-                    @forelse ($declarar['casillas'] as $seccion => $filas)
-                        <p class="ct-tit" style="margin:14px 0 6px">{{ $seccion }}</p>
-                        @foreach ($filas as $f)
-                            @php $valor = $f['conteo'] ? (string) (int) $f['valor'] : number_format($f['valor'], 2, '.', ''); @endphp
-                            <div class="ct-casilla" x-data="{ copiado: false }">
-                                <span class="ct-casilla-n">{{ $f['codigo'] }}</span>
-                                <span class="ct-casilla-t">{{ $f['nombre'] }}</span>
-                                <span class="ct-casilla-v">{{ $f['conteo'] ? $valor : $money($f['valor']) }}</span>
-                                <button type="button" class="ct-pestana"
-                                        x-on:click="navigator.clipboard.writeText('{{ $valor }}'); copiado = true; setTimeout(() => copiado = false, 1500)"
-                                        :aria-label="'Copiar casilla {{ $f['codigo'] }}'">
-                                    <span x-text="copiado ? 'Copiado' : 'Copiar'"></span>
-                                </button>
-                            </div>
-                        @endforeach
-                    @empty
-                        <p class="ct-fila-s">Mes sin movimiento: se declara en cero, sin escribir ninguna casilla.</p>
-                    @endforelse
+                    @include('filament.contabilidad.parciales.casillas-104', ['guia' => $declarar])
 
-                    <p class="ct-tit" style="margin:18px 0 6px">El portal debe mostrarte</p>
-                    @foreach ($declarar['comparar'] as [$nombre, $codigo, $valor])
-                        <div class="ct-casilla ct-casilla-total">
-                            <span class="ct-casilla-n">{{ $codigo }}</span>
-                            <span class="ct-casilla-t">{{ $nombre }}</span>
-                            <span class="ct-casilla-v">{{ $money($valor) }}</span>
-                        </div>
-                    @endforeach
                     <p class="ct-pie2" style="margin-top:8px">Si un total no coincide, revisa la casilla que escribiste antes de enviar: el comprobante se compara con estos valores.</p>
                 </div>
             @endif

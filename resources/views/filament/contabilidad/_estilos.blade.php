@@ -70,6 +70,18 @@
     .ct-casilla-n { font-family:ui-monospace,monospace; font-weight:700; font-size:15px; color:var(--t); }
     .ct-casilla-t { font-size:13px; color:var(--m); min-width:0; }
     .ct-casilla-v { font-size:15px; font-weight:700; color:var(--t); font-variant-numeric:tabular-nums; text-align:right; }
+    .ct-casilla-ayuda { display:block; font-size:14px; font-weight:600; color:var(--t); }
+    .ct-casilla-oficial { display:block; font-size:12px; color:var(--m2); margin-top:2px; }
+    /* El mes que toca declarar, arriba de Cumplimiento. */
+    .ct-ahora { border-color:#fcd34d; }
+    .ct-ahora.es-urgente { border-color:#fca5a5; }
+    .ct-ahora > header { background:#fffbeb; }
+    .ct-ahora.es-urgente > header { background:#fef2f2; }
+    .ct-ahora-tit { margin:0; font-size:17px; font-weight:700; color:var(--t); }
+    .ct-paso { display:flex; gap:10px; align-items:baseline; margin:10px 0 4px; font-size:14px; color:var(--t); line-height:1.5; }
+    .ct-paso > span { flex:0 0 22px; height:22px; border-radius:999px; background:var(--t); color:#fff;
+        font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+    .ct-paso a { color:var(--ac); font-weight:600; }
     .ct-casilla-total { grid-template-columns:52px 1fr auto; }
     .ct-casilla-total .ct-casilla-v { color:var(--m); }
     @media (max-width:640px) {

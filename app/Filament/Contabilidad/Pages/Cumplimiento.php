@@ -299,6 +299,31 @@ class Cumplimiento extends Page
             'porRevisar'   => app(\App\Services\MapeoSuperciasService::class)->porRevisar($empresa->id),
             'importados'   => \App\Models\ComprobanteSri::where('empresa_id', $empresa->id)->count(),
             'declarar'     => $this->paraDeclarar(),
+            'ahora'        => $this->ahora($empresa),
+        ];
+    }
+
+    /**
+     * El mes que toca declarar, con la guía ya abierta: quien no sabe de impuestos
+     * no tiene por qué adivinar que hay un botón con lo que debe escribir.
+     *
+     * @return array{alerta: array, declaracion: Declaracion|null, guia: array|null}|null
+     */
+    private function ahora(\App\Models\Empresa $empresa): ?array
+    {
+        $alerta = app(GestionSriService::class)->alertaIva($empresa);
+
+        if (! $alerta) {
+            return null;
+        }
+
+        $d = Declaracion::where('empresa_id', $empresa->id)->where('tipo', 'f104')
+            ->where('anio', $alerta['anio'])->where('mes', $alerta['mes'])->latest('id')->first();
+
+        return [
+            'alerta'      => $alerta,
+            'declaracion' => $d,
+            'guia'        => $d?->estado === 'listo' ? $this->paraDeclarar($d->id) : null,
         ];
     }
 
@@ -308,10 +333,11 @@ class Cumplimiento extends Page
      *
      * @return array{id: int, casillas: array, comparar: array}|null
      */
-    private function paraDeclarar(): ?array
+    private function paraDeclarar(?int $declaracionId = null): ?array
     {
-        $d = $this->abierta
-            ? Declaracion::where('empresa_id', Filament::getTenant()->id)->where('tipo', 'f104')->find($this->abierta)
+        $id = $declaracionId ?? $this->abierta;
+        $d = $id
+            ? Declaracion::where('empresa_id', Filament::getTenant()->id)->where('tipo', 'f104')->find($id)
             : null;
 
         if (! $d || ! $d->datos) {

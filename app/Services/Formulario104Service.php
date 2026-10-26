@@ -366,6 +366,43 @@ class Formulario104Service
         '421', '422', '430', '445', '520', '521', '522', '534', '560',
     ];
 
+    /**
+     * Qué es cada casilla en palabras de quien no es contador. El nombre oficial
+     * se muestra igual, más pequeño: es el que aparece en el portal.
+     */
+    public const EN_PALABRAS = [
+        '111' => 'Cuántas facturas de venta emitiste en el mes',
+        '113' => 'Cuántas facturas de venta anulaste',
+        '115' => 'Cuántas facturas de compra recibiste en el mes',
+        '117' => 'Cuántas notas de venta recibiste',
+        '119' => 'Cuántas liquidaciones de compra emitiste',
+        '401' => 'Ventas con IVA 15 %, sin sumar el IVA',
+        '411' => 'Lo mismo que la 401, restando notas de crédito',
+        '405' => 'Ventas con IVA 0 %',
+        '415' => 'Lo mismo que la 405, restando notas de crédito',
+        '480' => 'De las ventas con IVA, lo que cobraste al contado',
+        '481' => 'De las ventas con IVA, lo que quedó a crédito',
+        '483' => 'Impuesto que quedó por liquidar del mes anterior',
+        '500' => 'Compras con IVA 15 %, sin sumar el IVA',
+        '501' => 'Activos fijos comprados con IVA 15 %, sin sumar el IVA',
+        '502' => 'Compras con IVA que no te dan crédito tributario, sin sumar el IVA',
+        '507' => 'Compras con IVA 0 %',
+        '510' => 'Lo mismo que la 500, restando notas de crédito',
+        '512' => 'Lo mismo que la 502, restando notas de crédito',
+        '517' => 'Lo mismo que la 507, restando notas de crédito',
+        '540' => 'Compras con IVA 5 %, sin sumar el IVA',
+        '550' => 'Lo mismo que la 540, restando notas de crédito',
+        '605' => 'Crédito tributario que te sobró el mes pasado',
+        '606' => 'Crédito por retenciones que te sobró el mes pasado',
+        '609' => 'IVA que tus clientes te retuvieron este mes',
+        '721' => 'IVA que retuviste a tus proveedores al 10 %',
+        '723' => 'IVA que retuviste a tus proveedores al 20 %',
+        '725' => 'IVA que retuviste a tus proveedores al 30 %',
+        '727' => 'IVA que retuviste a tus proveedores al 50 %',
+        '729' => 'IVA que retuviste a tus proveedores al 70 %',
+        '731' => 'IVA que retuviste a tus proveedores al 100 %',
+    ];
+
     /** Casilleros que cuentan comprobantes: van sin decimales. */
     public const CONTEOS = ['111', '113', '115', '117', '119'];
 
@@ -387,6 +424,7 @@ class Formulario104Service
             ->map(fn ($v, $codigo) => [
                 'codigo'  => (string) $codigo,
                 'nombre'  => $catalogo[$codigo]->descripcion ?? "Casillero {$codigo}",
+                'ayuda'   => self::EN_PALABRAS[(string) $codigo] ?? null,
                 'seccion' => $catalogo[$codigo]->nombre_tabla ?? 'Otros',
                 'valor'   => (float) $v,
                 'conteo'  => in_array((string) $codigo, self::CONTEOS, true),
