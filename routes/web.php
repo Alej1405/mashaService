@@ -323,6 +323,19 @@ Route::middleware(['web', 'auth'])->get('/contabilidad/declaracion/{declaracion}
         $modelo->forceFill(['descargado_en' => now(), 'descargado_por' => auth()->id()])->save();
     }
 
+    // El ATS se sube al portal empaquetado: ATmmaaaa.zip con ATmmaaaa.xml adentro
+    // (Ficha Técnica ATS, 1.2). Solo se aceptan archivos comprimidos.
+    if ($modelo->tipo === 'ats') {
+        $nombre = sprintf('AT%02d%d', $modelo->mes, $modelo->anio);
+        $zip = tempnam(sys_get_temp_dir(), 'ats');
+        $paquete = new \ZipArchive();
+        $paquete->open($zip, \ZipArchive::OVERWRITE);
+        $paquete->addFromString("{$nombre}.xml", \Illuminate\Support\Facades\Storage::disk('local')->get($modelo->archivo));
+        $paquete->close();
+
+        return response()->download($zip, "{$nombre}.zip", ['Content-Type' => 'application/zip'])->deleteFileAfterSend();
+    }
+
     return response()->streamDownload(
         fn () => print(\Illuminate\Support\Facades\Storage::disk('local')->get($modelo->archivo)),
         basename($modelo->archivo),

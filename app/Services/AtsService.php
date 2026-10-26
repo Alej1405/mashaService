@@ -45,7 +45,7 @@ class AtsService
             'cabecera' => [
                 // En `empresas` el RUC vive en numero_identificacion: no hay columna `ruc`.
                 'IdInformante'    => $this->soloDigitos($empresa->numero_identificacion ?? ''),
-                'razonSocial'     => $empresa->name ?? '',
+                'razonSocial'     => $this->razonSocialDelSri($empresaId) ?? $empresa->name ?? '',
                 'anio'            => (string) $anio,
                 'mes'             => sprintf('%02d', $mes),
                 'numEstabRuc'     => '001',
@@ -306,5 +306,19 @@ class AtsService
     private function monto($v): string
     {
         return number_format((float) $v, 2, '.', '');
+    }
+
+    /**
+     * La razón social como consta en el SRI (RIVETECUADOR S.A.S.), que no siempre es el
+     * nombre con que se creó la empresa en el ERP. Sale de la última declaración leída
+     * del portal; sin ninguna, se usa el nombre de la empresa.
+     */
+    private function razonSocialDelSri(int $empresaId): ?string
+    {
+        $razon = \App\Models\Declaracion::where('empresa_id', $empresaId)
+            ->whereNotNull('datos->cabecera->razon_social')
+            ->latest('updated_at')->first()?->datos['cabecera']['razon_social'] ?? null;
+
+        return filled($razon) ? trim((string) $razon) : null;
     }
 }

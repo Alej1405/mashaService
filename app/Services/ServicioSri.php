@@ -139,6 +139,11 @@ class ServicioSri
                 ->withToken($this->token ?? config('services.sri.token'))
                 ->post($this->url() . $ruta, $cuerpo);
 
+            // 422: el archivo no cumple la ficha técnica; el detalle dice qué falta.
+            if ($r->status() === 422) {
+                return ['ok' => false, 'error' => (string) ($r->json('detail') ?? 'El archivo no cumple la ficha técnica.')];
+            }
+
             if (! $r->successful()) {
                 Log::warning('microservicio SRI respondió ' . $r->status(), ['ruta' => $ruta]);
 
