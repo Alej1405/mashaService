@@ -450,7 +450,9 @@ class Formulario104Service
             ->keyBy('codigo');
 
         return collect($casilleros)
-            ->filter(fn ($v, $codigo) => abs((float) $v) > 0.004 && ! in_array((string) $codigo, self::CALCULADOS, true))
+            // Los conteos (111, 115…) no están en el formulario vigente: no se piden.
+            ->filter(fn ($v, $codigo) => abs((float) $v) > 0.004 && ! in_array((string) $codigo, self::CALCULADOS, true)
+                && ! in_array((string) $codigo, self::CONTEOS, true))
             ->sortKeys(SORT_NUMERIC)
             ->map(fn ($v, $codigo) => [
                 'codigo'  => (string) $codigo,

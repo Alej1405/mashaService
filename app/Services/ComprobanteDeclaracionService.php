@@ -81,8 +81,14 @@ class ComprobanteDeclaracionService
         $diferencias = $this->diferencias($d->datos['casilleros'] ?? [], $lectura['casilleros'] ?? []);
 
         if ($diferencias) {
+            // Si lo que no cuadra es lo que viene del mes anterior, el problema está en
+            // ese mes, no en este: se dice qué hacer.
+            $arrastre = collect($diferencias)->pluck('codigo')->intersect(['483', '605', '606', '607', '608'])->isNotEmpty();
+
             return ['ok' => false, 'diferencias' => $diferencias,
-                    'error' => 'Los valores del comprobante no son los que generó el ERP.'];
+                    'error' => 'Los valores de la declaración no son los que calculó el ERP.'
+                        . ($arrastre ? ' El saldo del mes anterior no cuadra: sube primero la declaración presentada de ese mes '
+                            . '(Declaraciones → Cargar declaraciones presentadas), luego «Volver a calcular» este mes y vuelve a subir esta.' : '')];
         }
 
         $archivo = sprintf('declaraciones/%d/comprobantes/f104-%d-%02d-%s.pdf',
@@ -115,7 +121,10 @@ class ComprobanteDeclaracionService
      */
     private function diferencias(array $erp, array $sri): array
     {
-        $codigos = collect(array_keys($erp))->merge(array_keys($sri))->map(fn ($c) => (string) $c)->unique()->sort(SORT_NUMERIC);
+        // Solo las casillas que trae la declaración del SRI: el formulario vigente ya no
+        // tiene algunas que el ERP calcula (los conteos 111, 113, 115…), y una casilla
+        // ausente no es un cero que contradiga al ERP.
+        $codigos = collect(array_keys($sri))->map(fn ($c) => (string) $c)->unique()->sort(SORT_NUMERIC);
         $salida = [];
 
         foreach ($codigos as $codigo) {
