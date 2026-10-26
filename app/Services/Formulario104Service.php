@@ -48,13 +48,18 @@ class Formulario104Service
         $this->compras($empresaId, $desde, $hasta, $c, $avisos);
         $this->delPortal($empresaId, $anio, $mes, $c, $avisos);
         $this->retencionesEfectuadas($empresaId, $desde, $hasta, $c);
+        $this->ivaComoElPortal($empresaId, $hasta, $c, $avisos);
         $this->arrastres($empresaId, $anio, $mes, $c, $avisos);
         $this->liquidar($c);
 
         $empresa = DB::table('empresas')->where('id', $empresaId)->first();
 
+        // El factor de proporcionalidad lleva cuatro decimales; el resto, dos.
+        $casilleros = array_map(fn ($v) => round((float) $v, 2), $c);
+        $casilleros['563'] = round((float) $c['563'], 4);
+
         return [
-            'casilleros' => array_map(fn ($v) => round((float) $v, 2), $c),
+            'casilleros' => $casilleros,
             'avisos'     => $avisos,
             'periodo'    => sprintf('%02d/%d', $mes, $anio),
             'ruc'        => $empresa->ruc ?? null,
@@ -304,6 +309,35 @@ class Formulario104Service
         }
     }
 
+    /**
+     * El IVA de cada línea como lo calcula el formulario: base neta por la tarifa.
+     *
+     * Sumar el IVA de cada factura da centavos distintos (septiembre 2026 de Rivet:
+     * 58,87 sumando facturas, 58,89 en el portal) y el comprobante del SRI manda.
+     * Solo la tarifa general; la de 5 % y la variable turística siguen sumadas.
+     */
+    private function ivaComoElPortal(int $empresaId, Carbon $hasta, array &$c, array &$avisos): void
+    {
+        $tarifa = \App\Models\TarifaIva::generalEn($hasta, $empresaId)?->porcentaje;
+
+        if ($tarifa === null) {
+            $avisos[] = 'No hay tarifa general de IVA vigente a ' . $hasta->format('d/m/Y')
+                . ': el IVA se tomó sumando las facturas y puede diferir en centavos del portal.';
+
+            return;
+        }
+
+        $t = (float) $tarifa / 100;
+
+        foreach (['421' => '411', '422' => '412', '520' => '510', '521' => '511', '522' => '512'] as $iva => $base) {
+            $c[$iva] = round((float) $c[$base] * $t, 2);
+        }
+
+        $c['429'] = $c['421'] + $c['422'] + $c['430'] + $c['445'] + $c['423'] - $c['424'];
+        $c['529'] = $c['520'] + $c['521'] + $c['534'] + $c['560'] + $c['522'] + $c['523']
+            + $c['524'] + $c['525'] + $c['526'] - $c['527'];
+    }
+
     /** La liquidación: proporcionalidad, impuesto causado y lo que se paga. */
     private function liquidar(array &$c): void
     {
@@ -312,26 +346,23 @@ class Formulario104Service
         $c['499'] = $c['483'] + $c['484'];
 
         /*
-         * Factor de proporcionalidad.
+         * Factor de proporcionalidad, como lo calcula el formulario del SRI:
+         * (411+412+420+435+415+416+417+418) / 419.
          *
-         * Existe para las empresas que venden unas cosas gravadas y otras no:
-         * solo esa proporción del IVA de compras es crédito tributario.
+         * Sin ventas (419 = 0) el portal pone el factor en 0,0000: el IVA de las
+         * compras de ese mes no entra al crédito (564 = 0), la 565 queda en 0 y
+         * el saldo para el próximo mes es el que se traía. Así lo dice el
+         * comprobante de septiembre 2026 de Rivet (serial 873119599526). Antes el
+         * ERP ponía el factor en 1 y sumaba crédito que el SRI no reconoce.
          *
-         * Un mes sin ventas NO es ese caso. El crédito no se pierde: se acumula
-         * y viaja al mes siguiente. Poner el factor en cero cuando no hay
-         * ventas manda todo el IVA al gasto y le cuesta dinero real a la
-         * empresa cada mes que pasa.
-         *
-         * Marco: skill `contabilidad-ec`, crédito tributario del IVA.
+         * Marco: skill `declaraciones-sri-ec`, el comprobante del SRI manda.
          */
         $conDerecho = $c['411'] + $c['412'] + $c['420'] + $c['435'] + $c['415'] + $c['416'] + $c['417'] + $c['418'];
-        $c['563'] = $c['419'] > 0
-            ? round($conDerecho / $c['419'], 4)
-            : 1.0;   // sin ventas, el crédito es íntegro
+        $c['563'] = $c['419'] > 0 ? round($conDerecho / $c['419'], 4) : 0.0;
 
         $ivaCompras = $c['520'] + $c['521'] + $c['534'] + $c['560'] + $c['523'] + $c['524'] + $c['525'] + $c['526'] - $c['527'];
         $c['564'] = round($ivaCompras * $c['563'], 2);
-        $c['565'] = round($ivaCompras - $c['564'], 2);
+        $c['565'] = $c['419'] > 0 ? round($ivaCompras - $c['564'], 2) : 0.0;
 
         $diferencia = round($c['499'] - $c['564'], 2);
         $c['601'] = max($diferencia, 0);
