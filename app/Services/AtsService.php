@@ -144,7 +144,7 @@ class AtsService
 
         // Lo que llegó del portal y nadie registró no existe en la contabilidad.
         // pendientes() bloquea la generación antes de llegar aquí; esto queda por si acaso.
-        $sinRegistrar = $this->pendientes($empresaId, $anio, $mes);
+        $sinRegistrar = $this->pendientes($empresaId, $desde->year, $desde->month);
         if ($sinRegistrar > 0) {
             $avisos[] = "{$sinRegistrar} facturas del portal de este mes no están registradas: no entran al ATS "
                 . 'hasta clasificarlas en «Clasificar comprobantes», y el ATS no cuadraría con el 104.';
