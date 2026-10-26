@@ -150,7 +150,7 @@
                             · vence {{ $p['vence']->format('d/m/Y') }}
                         @endif
                         @if ($p['debe_ats'])
-                            · ATS {{ $p['ats']?->presentado_en ? 'presentado' : ($p['ats']?->estado === 'listo' ? 'generado, falta presentar' : 'sin generar') }}
+                            · ATS {{ $p['ats']?->presentado_en ? 'presentado' : ($p['ats']?->estado === 'listo' ? 'generado, falta presentar' : ($p['antes'] ? 'sin confirmación cargada' : 'sin generar')) }}
                         @endif
                     </p>
                 </div>
