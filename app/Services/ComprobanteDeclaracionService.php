@@ -40,7 +40,7 @@ class ComprobanteDeclaracionService
         $lectura = $this->servicio->leerDeclaracionPdf($pdf, $nombre);
 
         if (! ($lectura['ok'] ?? false)) {
-            return ['ok' => false, 'error' => 'No se pudo leer el PDF: ' . ($lectura['error'] ?? 'sin detalle') . '.'];
+            return ['ok' => false, 'error' => 'No se pudo leer el PDF: ' . rtrim($lectura['error'] ?? 'sin detalle', '. ') . '.'];
         }
 
         $cab = $lectura['cabecera'] ?? [];
