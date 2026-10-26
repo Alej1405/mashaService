@@ -264,6 +264,47 @@ class Declaraciones extends Page
             });
     }
 
+    /**
+     * Sube la «Confirmación de Presentación de Archivo – ATS» del portal. La misma
+     * auditoría que el 104: el ATS queda presentado solo con el documento del SRI.
+     */
+    public function subirConfirmacionAtsAction(): Action
+    {
+        return Action::make('subirConfirmacionAts')
+            ->label('Subir la confirmación del SRI')
+            ->modalHeading(fn (array $arguments) => 'Confirmación del ATS · '
+                . Declaracion::where('empresa_id', Filament::getTenant()->id)->find($arguments['id'] ?? 0)?->periodo)
+            ->modalDescription('El PDF «Confirmación de Presentación de Archivo – ATS» que muestra el portal al '
+                . 'subir el anexo. Se comprueba que sea de esta empresa y de este mes. El SRI valida el archivo '
+                . 'en las 48 horas siguientes: si llega un archivo de errores, el anexo se corrige y se vuelve a subir.')
+            ->modalSubmitActionLabel('Comprobar y registrar')
+            ->form([
+                \Filament\Forms\Components\FileUpload::make('pdf')
+                    ->label('Confirmación en PDF')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->maxSize(5120)
+                    ->storeFiles(false)
+                    ->required(),
+            ])
+            ->action(function (array $data, array $arguments, Action $action) {
+                $declaracion = Declaracion::where('empresa_id', Filament::getTenant()->id)
+                    ->where('tipo', 'ats')->findOrFail($arguments['id'] ?? 0);
+                $pdf = is_array($data['pdf']) ? reset($data['pdf']) : $data['pdf'];
+
+                $r = app(\App\Services\ConfirmacionAtsService::class)
+                    ->registrar($declaracion, $pdf->get(), $pdf->getClientOriginalName(), auth()->id());
+                $pdf->delete();
+
+                if (! $r['ok']) {
+                    Notification::make()->title('No se registró la confirmación')->body($r['error'])->danger()->persistent()->send();
+                    $action->halt();
+                }
+
+                Notification::make()->title('ATS presentado')
+                    ->body("{$declaracion->periodo} quedó presentado. El SRI lo valida en 48 horas.")->success()->send();
+            });
+    }
+
     /** Baja el XML ya generado. */
     public function descargar(int $id)
     {

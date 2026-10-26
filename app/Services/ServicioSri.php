@@ -214,6 +214,18 @@ class ServicioSri
      */
     public function leerDeclaracionPdf(string $contenido, string $nombre = ''): array
     {
+        return $this->leerPdf('/declaracion/leer', $contenido, $nombre);
+    }
+
+    /** La confirmación de presentación del ATS que da el portal: RUC, período y fecha y hora. */
+    public function leerConfirmacionAts(string $contenido, string $nombre = ''): array
+    {
+        return $this->leerPdf('/ats/confirmacion/leer', $contenido, $nombre);
+    }
+
+    /** Lo común de los lectores de PDF del SRI. */
+    private function leerPdf(string $ruta, string $contenido, string $nombre): array
+    {
         if (! $this->configurado()) {
             return ['ok' => false, 'error' => 'El microservicio de declaraciones no está configurado.'];
         }
@@ -221,7 +233,7 @@ class ServicioSri
         try {
             $r = Http::timeout(120)->acceptJson()
                 ->withToken($this->token ?? config('services.sri.token'))
-                ->post($this->url() . '/declaracion/leer', [
+                ->post($this->url() . $ruta, [
                     'archivo_base64' => base64_encode($contenido),
                     'nombre'         => $nombre,
                 ]);
@@ -236,7 +248,7 @@ class ServicioSri
 
             return ['ok' => true] + $r->json();
         } catch (\Throwable $e) {
-            Log::error('microservicio SRI: no se pudo leer la declaración', ['error' => $e->getMessage()]);
+            Log::error('microservicio SRI: no se pudo leer el PDF', ['ruta' => $ruta, 'error' => $e->getMessage()]);
 
             return ['ok' => false, 'error' => 'Sin respuesta del servicio: ' . str($e->getMessage())->limit(120)];
         }

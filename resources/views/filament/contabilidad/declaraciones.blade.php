@@ -50,12 +50,14 @@
 
         @forelse ($pedidos as $d)
             @php
-                $tono = match ($d->estado) {
-                    'listo' => 'ok', 'error' => 'da', 'procesando' => 'wa', default => 'n',
+                // Generado no es presentado: el chip dice cuál de los dos es.
+                $tono = match (true) {
+                    $d->presentado_en !== null => 'ok', $d->estado === 'listo' => 'wa',
+                    $d->estado === 'error' => 'da', $d->estado === 'procesando' => 'wa', default => 'n',
                 };
-                $texto = match ($d->estado) {
-                    'listo' => 'Listo', 'error' => 'Falló',
-                    'procesando' => 'Generando…', default => 'En cola',
+                $texto = match (true) {
+                    $d->presentado_en !== null => 'Presentado', $d->estado === 'listo' => 'Falta presentar',
+                    $d->estado === 'error' => 'Falló', $d->estado === 'procesando' => 'Generando…', default => 'En cola',
                 };
             @endphp
             <div class="ct-fila">
@@ -86,6 +88,15 @@
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0">
                     @if ($d->tipo === 'f104' && $d->estado === 'listo' && ! $d->presentado_en)
                         <a class="ct-btn-descarga" href="{{ \App\Filament\Contabilidad\Pages\Cumplimiento::getUrl() }}">Qué declarar</a>
+                    @endif
+                    {{-- El ATS queda presentado solo con la confirmación del portal, igual que el 104. --}}
+                    @if ($d->tipo === 'ats' && $d->estado === 'listo' && ! $d->presentado_en)
+                        <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+                                wire:click="mountAction('subirConfirmacionAts', { id: {{ $d->id }} })">
+                            Subir la confirmación del SRI
+                        </button>
+                    @elseif ($d->tipo === 'ats' && ($d->datos['confirmacion'] ?? null))
+                        <span class="ct-fila-s">presentado el {{ \Illuminate\Support\Carbon::parse($d->datos['confirmacion']['presentado_en'])->format('d/m/Y H:i') }} · el SRI valida en 48 horas</span>
                     @endif
                     {{-- Solo el ATS se descarga: el 104 se escribe en el portal, aunque uno viejo tenga XML guardado. --}}
                     @if ($d->archivo && $d->tipo !== 'f104')
