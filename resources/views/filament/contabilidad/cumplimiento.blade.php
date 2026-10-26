@@ -36,24 +36,22 @@
 
             <div class="ct-declarar">
                 @if (! $dAhora || ! in_array($dAhora->estado, ['listo', 'pendiente', 'procesando'], true))
-                    <p class="ct-paso"><span>1</span> Calcula la declaración con lo registrado en el ERP.</p>
+                    <p class="ct-paso"><b>1</b><span>Calcula la declaración con lo registrado en el ERP.</span></p>
                     <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                             wire:click="pedir({{ $al['anio'] }}, {{ $al['mes'] }})" wire:loading.attr="disabled" wire:target="pedir">
                         Calcular la declaración
                     </button>
                 @elseif ($dAhora->estado !== 'listo')
-                    <p class="ct-paso"><span>1</span> Calculando la declaración… esta página se actualiza sola.</p>
+                    <p class="ct-paso"><b>1</b><span>Calculando la declaración… esta página se actualiza sola.</span></p>
                 @else
-                    <p class="ct-paso"><span>1</span>
-                        Entra a <a href="https://srienlinea.sri.gob.ec" target="_blank" rel="noopener">SRI en línea</a>
-                        con el RUC y la clave de la empresa, y abre la declaración del IVA de {{ $al['etiqueta'] }}.
-                    </p>
-                    <p class="ct-paso"><span>2</span> Escribe en el formulario estas casillas. Las que no aparecen aquí se quedan en cero.</p>
+                    <p class="ct-paso"><b>1</b><span>Entra a <a href="https://srienlinea.sri.gob.ec" target="_blank" rel="noopener">SRI en línea</a>
+                        con el RUC y la clave de la empresa, y abre la declaración del IVA de {{ $al['etiqueta'] }}.</span></p>
+                    <p class="ct-paso"><b>2</b><span>Escribe en el formulario estas casillas. Las que no aparecen aquí se quedan en cero.</span></p>
 
                     @include('filament.contabilidad.parciales.casillas-104', ['guia' => $ahora['guia']])
 
-                    <p class="ct-paso" style="margin-top:16px"><span>3</span> Antes de enviar, los totales del portal deben ser los de arriba. Si uno no coincide, revisa lo que escribiste.</p>
-                    <p class="ct-paso"><span>4</span> Envía la declaración, descarga el comprobante en PDF y súbelo aquí. Con eso el mes queda presentado y este aviso se apaga.</p>
+                    <p class="ct-paso" style="margin-top:16px"><b>3</b><span>Antes de enviar, los totales del portal deben ser los de arriba. Si uno no coincide, revisa lo que escribiste.</span></p>
+                    <p class="ct-paso"><b>4</b><span>Envía la declaración, descarga el comprobante en PDF y súbelo aquí. Con eso el mes queda presentado y este aviso se apaga.</span></p>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
                         <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                 wire:click="mountAction('subirComprobante', { id: {{ $dAhora->id }} })">

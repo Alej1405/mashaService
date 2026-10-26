@@ -79,7 +79,7 @@
     .ct-ahora.es-urgente > header { background:#fef2f2; }
     .ct-ahora-tit { margin:0; font-size:17px; font-weight:700; color:var(--t); }
     .ct-paso { display:flex; gap:10px; align-items:baseline; margin:10px 0 4px; font-size:14px; color:var(--t); line-height:1.5; }
-    .ct-paso > span { flex:0 0 22px; height:22px; border-radius:999px; background:var(--t); color:#fff;
+    .ct-paso > b { flex:0 0 22px; height:22px; border-radius:999px; background:var(--t); color:#fff;
         font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
     .ct-paso a { color:var(--ac); font-weight:600; }
     .ct-casilla-total { grid-template-columns:52px 1fr auto; }
