@@ -44,6 +44,9 @@ class CompletarFacturas extends Component
     /** producto_proveedor_id => propuesta del clasificador (valor, etiqueta, motivo, confianza) */
     public array $propuestas = [];
 
+    /** compra_id => tipo_gasto_id: toda la factura a un mismo tipo de gasto (p. ej. una factura médica). */
+    public array $gastoTodas = [];
+
     /** compra_id => 'credito' | 'efectivo:2' | ... cuando se cambia lo que dice el XML */
     public array $pagoCompra = [];
 
@@ -204,6 +207,23 @@ class CompletarFacturas extends Component
     }
 
     /** Registra una factura con lo que se eligió en su fila: productos nuevos y, si falta, el pago. */
+    /** Pone el mismo tipo de gasto en todas las líneas nuevas de esa factura. */
+    public function updatedGastoTodas($tipoGastoId, $compraId): void
+    {
+        if (! $tipoGastoId) {
+            return;
+        }
+
+        $compra = app(ComprasElectronicasPendientes::class)->compras(Filament::getTenant()->id)
+            ->with('items.productoProveedor')->findOrFail((int) $compraId);
+
+        foreach ($compra->items as $linea) {
+            if ($linea->productoProveedor && ! $linea->productoProveedor->estaConfigurado()) {
+                $this->producto[$linea->productoProveedor->id] = "gasto:{$tipoGastoId}";
+            }
+        }
+    }
+
     public function registrar(int $compraId, bool $avisar = true): bool
     {
         $compra = app(ComprasElectronicasPendientes::class)->compras(Filament::getTenant()->id)

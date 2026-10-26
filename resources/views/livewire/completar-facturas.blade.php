@@ -109,6 +109,19 @@
                     </span>
                 </div>
 
+                {{-- Una factura que es un solo gasto (p. ej. médica): un tipo para todas sus líneas. --}}
+                @if ($c->items->contains(fn ($l) => $l->productoProveedor && ! $l->productoProveedor->estaConfigurado()))
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+                        <span class="ct-fila-s" style="margin:0">Toda la factura a un tipo de gasto:</span>
+                        <select wire:model.live="gastoTodas.{{ $c->id }}" class="ct-select" style="flex:0 1 320px" aria-label="Toda la factura a un tipo de gasto">
+                            <option value="">— línea por línea —</option>
+                            @foreach ($tiposGasto as $id => $nombre)
+                                <option value="{{ $id }}">{{ $nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
                 <ul class="ct-lineas" style="margin:0">
                     @foreach ($c->items as $l)
                         @php $p = $l->productoProveedor; $nuevo = $p && ! $p->estaConfigurado(); @endphp
