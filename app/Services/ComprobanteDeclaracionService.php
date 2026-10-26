@@ -40,7 +40,14 @@ class ComprobanteDeclaracionService
         $lectura = $this->servicio->leerDeclaracionPdf($pdf, $nombre);
 
         if (! ($lectura['ok'] ?? false)) {
-            return ['ok' => false, 'error' => 'No se pudo leer el PDF: ' . rtrim($lectura['error'] ?? 'sin detalle', '. ') . '.'];
+            // El «Comprobante electrónico para pago» trae el texto codificado y no tiene
+            // casillas: es el error más probable, así que se dice qué subir en su lugar.
+            $esComprobanteDePago = str_contains((string) ($lectura['error'] ?? ''), 'glifos');
+
+            return ['ok' => false, 'error' => $esComprobanteDePago
+                ? 'Ese PDF parece el «Comprobante electrónico para pago», que no trae las casillas. Sube la '
+                    . 'declaración: en SRI en línea → Declaraciones presentadas, descarga la del mes (el PDF de varias páginas).'
+                : 'No se pudo leer el PDF: ' . rtrim($lectura['error'] ?? 'sin detalle', '. ') . '.'];
         }
 
         $cab = $lectura['cabecera'] ?? [];

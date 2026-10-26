@@ -51,11 +51,12 @@
                     @include('filament.contabilidad.parciales.casillas-104', ['guia' => $ahora['guia']])
 
                     <p class="ct-paso" style="margin-top:16px"><b>3</b><span>Antes de enviar, los totales del portal deben ser los de arriba. Si uno no coincide, revisa lo que escribiste.</span></p>
-                    <p class="ct-paso"><b>4</b><span>Envía la declaración, descarga el comprobante en PDF y súbelo aquí. Con eso el mes queda presentado y este aviso se apaga.</span></p>
+                    <p class="ct-paso"><b>4</b><span>Envía la declaración. El portal te entrega un «Comprobante electrónico para pago»: guárdalo, pero <strong>no es el que se sube aquí</strong>, porque no trae las casillas.</span></p>
+                    <p class="ct-paso"><b>5</b><span>En SRI en línea entra a <strong>Declaraciones presentadas</strong>, descarga la declaración de {{ $al['etiqueta'] }} (el PDF de varias páginas con todas las casillas) y súbela aquí. El ERP la compara casilla por casilla con lo que calculó; si cuadra, el mes queda presentado, se cierra y este aviso se apaga.</span></p>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
                         <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                 wire:click="mountAction('subirComprobante', { id: {{ $dAhora->id }} })">
-                            Subir comprobante del SRI
+                            Subir la declaración presentada
                         </button>
                         <button type="button" class="ct-pestana" wire:click="pedir({{ $al['anio'] }}, {{ $al['mes'] }})"
                                 wire:loading.attr="disabled" wire:target="pedir"
@@ -171,7 +172,7 @@
                         </button>
                         <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
                                 wire:click="mountAction('subirComprobante', { id: {{ $d->id }} })">
-                            Subir comprobante del SRI
+                            Subir la declaración presentada
                         </button>
                     @elseif ($d?->presentado_en && ($d->datos['comprobante'] ?? null))
                         <span class="ct-fila-s">
@@ -198,7 +199,7 @@
                         <li>En el portal del SRI abre la declaración del IVA de {{ $p['etiqueta'] }}.</li>
                         <li>Escribe estas casillas. Las demás se quedan en cero.</li>
                         <li>Antes de enviar, el portal debe mostrarte los totales de abajo.</li>
-                        <li>Al terminar, sube aquí el comprobante en PDF.</li>
+                        <li>Al terminar, en SRI en línea → Declaraciones presentadas, descarga la declaración del mes (la de varias páginas con las casillas, no el comprobante de pago) y súbela aquí.</li>
                     </ol>
 
                     @include('filament.contabilidad.parciales.casillas-104', ['guia' => $declarar])

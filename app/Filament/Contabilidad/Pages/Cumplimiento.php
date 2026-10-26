@@ -152,16 +152,17 @@ class Cumplimiento extends Page
     public function subirComprobanteAction(): Action
     {
         return Action::make('subirComprobante')
-            ->label('Subir comprobante del SRI')
-            ->modalHeading(fn (array $arguments) => 'Comprobante del 104 · '
+            ->label('Subir la declaración presentada')
+            ->modalHeading(fn (array $arguments) => 'Declaración presentada del 104 · '
                 . Declaracion::where('empresa_id', Filament::getTenant()->id)->find($arguments['id'] ?? 0)?->periodo)
-            ->modalDescription('El PDF que te da el portal al terminar la declaración. Se comprueba que sea de '
-                . 'esta empresa y de este mes, y que sus valores sean los que generó el ERP. Con eso el mes '
-                . 'queda presentado y cerrado.')
+            ->modalDescription('Descárgala en SRI en línea → Declaraciones presentadas: es el PDF de varias '
+                . 'páginas con todas las casillas. El «Comprobante electrónico para pago» no sirve, porque no '
+                . 'las trae. Se comprueba que sea de esta empresa y de este mes, y que cada casilla sea la que '
+                . 'calculó el ERP. Con eso el mes queda presentado y cerrado.')
             ->modalSubmitActionLabel('Comprobar y registrar')
             ->form([
                 \Filament\Forms\Components\FileUpload::make('pdf')
-                    ->label('Comprobante en PDF')
+                    ->label('Declaración en PDF')
                     ->acceptedFileTypes(['application/pdf'])
                     ->maxSize(5120)
                     // Se lee en memoria y el servicio lo guarda donde corresponde:
@@ -185,7 +186,7 @@ class Cumplimiento extends Page
                             . ' y el comprobante ' . number_format($x['sri'], 2, ',', '.');
                     }
 
-                    Notification::make()->title('No se registró el comprobante')->body($cuerpo)->danger()->persistent()->send();
+                    Notification::make()->title('No se registró la declaración')->body($cuerpo)->danger()->persistent()->send();
                     $action->halt();
                 }
 

@@ -136,9 +136,11 @@ class Declaraciones extends Page
             ->icon('heroicon-o-document-arrow-up')
             ->color('gray')
             ->modalHeading('Subir los comprobantes del portal')
-            ->modalDescription('Sube de golpe todos los PDF que te descargues del SRI. De cada uno '
-                . 'se leen sus casilleros, y con ellos el crédito tributario que va de un mes al '
-                . 'siguiente. Los de otra empresa o de otro formulario se rechazan solos.')
+            ->modalDescription('Las declaraciones que se descargan en SRI en línea → Declaraciones '
+                . 'presentadas (el PDF de varias páginas con las casillas, no el comprobante de pago). Puedes '
+                . 'subir varias de golpe. De cada una se leen sus casillas y el crédito tributario que va de un '
+                . 'mes al siguiente. Si un mes se marcó presentado sin su declaración, esta reemplaza lo que '
+                . 'había calculado el ERP. Las de otra empresa o de otro formulario se rechazan solas.')
             ->modalSubmitActionLabel('Subir y leer')
             ->form([
                 \Filament\Forms\Components\FileUpload::make('archivos')
@@ -186,6 +188,7 @@ class Declaraciones extends Page
 
                 $cadena = $r['cadena'] ?? [];
                 $cuerpo = "{$r['cargadas']} cargadas"
+                    . (($r['reemplazadas'] ?? []) ? ' · reemplazadas con lo presentado: ' . implode(', ', $r['reemplazadas']) : '')
                     . ($r['repetidas'] ? " · {$r['repetidas']} ya estaban" : '')
                     . (count($r['rechazadas']) ? ' · ' . count($r['rechazadas']) . ' rechazadas' : '');
 
@@ -207,9 +210,9 @@ class Declaraciones extends Page
                 }
 
                 Notification::make()
-                    ->title($r['cargadas'] ? 'Declaraciones cargadas al histórico' : 'No se cargó ninguna')
+                    ->title(($r['cargadas'] || ($r['reemplazadas'] ?? [])) ? 'Declaraciones cargadas al histórico' : 'No se cargó ninguna')
                     ->body($cuerpo)
-                    ->{$r['cargadas'] ? 'success' : 'warning'}()
+                    ->{($r['cargadas'] || ($r['reemplazadas'] ?? [])) ? 'success' : 'warning'}()
                     ->persistent()
                     ->send();
             });

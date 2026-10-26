@@ -35,6 +35,7 @@ class ImportadorDeclaracionesPdf
 
         $cargadas = 0;
         $repetidas = 0;
+        $reemplazadas = [];
         $rechazadas = [];
         $avisos = [];
 
@@ -77,13 +78,39 @@ class ImportadorDeclaracionesPdf
                 ->where(fn ($q) => $q->cargadas()->orWhereNotNull('presentado_en'))
                 ->first();
 
+            $resumen = $lectura['resumen'] ?? [];
+
+            // Un mes que se marcó presentado sin la declaración del SRI (el botón de
+            // antes) tiene los valores que calculó el ERP, no los que constan en el
+            // SRI. La declaración presentada manda: reemplaza sus casillas y su
+            // crédito, que es lo que arrastra el mes siguiente.
+            if ($ya && ! $ya->es_cargada && empty($ya->datos['comprobante'])) {
+                $ya->update([
+                    'presentado_en'            => $cab['fecha_recaudacion'] ?? $ya->presentado_en,
+                    'comprobante_presentacion' => $cab['numero_serial'] ?? null,
+                    'valor_pagado'             => $resumen['total_pagado'] ?? 0,
+                    'datos' => ['casilleros' => $lectura['casilleros'] ?? [], 'cabecera' => $cab,
+                        'comprobante' => [
+                            'serial'             => $cab['numero_serial'] ?? null,
+                            'codigo_verificador' => $cab['codigo_verificador'] ?? null,
+                            'fecha_recaudacion'  => $cab['fecha_recaudacion'] ?? null,
+                            'subido_por'         => $usuarioId,
+                            'subido_en'          => now()->toDateTimeString(),
+                        ],
+                        'calculado_por_el_erp' => $ya->datos['casilleros'] ?? []],
+                    'avisos' => ['Valores reemplazados por la declaración presentada en el SRI: lo que había '
+                        . 'calculado el ERP queda guardado aparte para compararlo.'],
+                ]);
+                $reemplazadas[] = $ya->periodo;
+
+                continue;
+            }
+
             if ($ya) {
                 $repetidas++;
 
                 continue;
             }
-
-            $resumen = $lectura['resumen'] ?? [];
 
             Declaracion::create([
                 'empresa_id'    => $empresaId,
@@ -112,6 +139,7 @@ class ImportadorDeclaracionesPdf
         return [
             'cargadas'   => $cargadas,
             'repetidas'  => $repetidas,
+            'reemplazadas' => $reemplazadas,
             'rechazadas' => $rechazadas,
             'avisos'     => $avisos,
             'cadena'     => $this->verificarCadena($empresaId),
