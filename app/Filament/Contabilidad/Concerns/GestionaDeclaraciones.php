@@ -28,11 +28,31 @@ trait GestionaDeclaraciones
         $existente = Declaracion::where('empresa_id', $empresaId)->where('tipo', $tipo)
             ->where('anio', $anio)->where('mes', $mes)->latest('id')->first();
 
-        if ($existente?->presentado_en) {
+        // El ATS no se genera con facturas sin registrar: saldría incompleto.
+        if ($tipo === 'ats' && ($faltan = app(\App\Services\AtsService::class)->pendientes($empresaId, $anio, $mes)) > 0) {
+            Notification::make()->title('Todavía no se puede generar el ATS')
+                ->body(sprintf('%d facturas de %02d/%d no están registradas. Regístralas en «Clasificar comprobantes» y luego genéralo.', $faltan, $mes, $anio))
+                ->danger()->persistent()
+                ->actions([\Filament\Notifications\Actions\Action::make('clasificar')->label('Ir a Clasificar comprobantes')
+                    ->url(\App\Filament\Contabilidad\Pages\ClasificarComprobantes::getUrl(['anio' => $anio, 'mes' => $mes, 'vista' => 'por_registrar']))])
+                ->send();
+
+            return;
+        }
+
+        // Un 104 presentado se corrige con sustitutiva. El ATS sí se vuelve a subir: el
+        // nuevo reemplaza al anterior en el SRI, y aquí queda constancia de lo reemplazado.
+        if ($existente?->presentado_en && $tipo !== 'ats') {
             Notification::make()->title('Ese mes ya está presentado')
                 ->body('Para cambiarlo hace falta una declaración sustitutiva.')->warning()->send();
 
             return;
+        }
+
+        if ($existente?->presentado_en && $tipo === 'ats') {
+            $anterior = $existente->datos['confirmacion']['presentado_en'] ?? $existente->presentado_en->toDateString();
+            $existente->fill(['presentado_en' => null, 'avisos' => array_merge($existente->avisos ?? [],
+                ["Reemplaza al ATS presentado el {$anterior}: hay que subir este y su nueva confirmación."])]);
         }
 
         $declaracion = $existente ?? new Declaracion(['empresa_id' => $empresaId, 'tipo' => $tipo, 'anio' => $anio, 'mes' => $mes]);

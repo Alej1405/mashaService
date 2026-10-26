@@ -323,6 +323,12 @@ Route::middleware(['web', 'auth'])->get('/contabilidad/declaracion/{declaracion}
         $modelo->forceFill(['descargado_en' => now(), 'descargado_por' => auth()->id()])->save();
     }
 
+    // Un ATS con facturas sin registrar no se entrega: saldría incompleto.
+    if ($modelo->tipo === 'ats') {
+        $faltan = app(\App\Services\AtsService::class)->pendientes($modelo->empresa_id, $modelo->anio, $modelo->mes);
+        abort_if($faltan > 0, 409, "Hay {$faltan} facturas de {$modelo->periodo} sin registrar: regístralas y vuelve a generar el ATS.");
+    }
+
     // El ATS se sube al portal empaquetado: ATmmaaaa.zip con ATmmaaaa.xml adentro
     // (Ficha Técnica ATS, 1.2). Solo se aceptan archivos comprimidos.
     if ($modelo->tipo === 'ats') {

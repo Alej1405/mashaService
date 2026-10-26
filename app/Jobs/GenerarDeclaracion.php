@@ -52,6 +52,16 @@ class GenerarDeclaracion implements ShouldQueue
 
         $declaracion->update(['estado' => 'procesando']);
 
+        // Un ATS con facturas sin registrar no se genera: saldría incompleto.
+        if ($declaracion->tipo === 'ats' && ($faltan = $ats->pendientes($declaracion->empresa_id, $declaracion->anio, $declaracion->mes)) > 0) {
+            $declaracion->update(['estado' => 'error', 'archivo' => null, 'generado_en' => now(),
+                'mensaje' => "No se generó: {$faltan} facturas de {$declaracion->periodo} no están registradas. "
+                    . 'Regístralas en «Clasificar comprobantes» y vuelve a generarlo.']);
+            $declaracion->solicitante?->notify(new DeclaracionLista($declaracion));
+
+            return;
+        }
+
         // 1 · el ERP calcula, porque aquí están los asientos
         $datos = match ($declaracion->tipo) {
             'f104' => $f104->calcular($declaracion->empresa_id, $declaracion->anio, $declaracion->mes),

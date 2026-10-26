@@ -30,6 +30,25 @@ class AtsService
      * @return array{cabecera: array, compras: array, ventas: array,
      *               ventasEstablecimiento: array, anulados: array, avisos: array}
      */
+    /**
+     * Facturas del mes que todavía no están registradas: las del portal sin clasificar
+     * (con o sin detalle traído del SRI) y las compras electrónicas que esperan en
+     * borrador. Con una sola, el ATS no se genera: saldría incompleto y no cuadraría
+     * con el 104 (agosto 2026 de Rivet se presentó sin 29 facturas por no bloquearlo).
+     */
+    public function pendientes(int $empresaId, int $anio, int $mes): int
+    {
+        $desde = \Illuminate\Support\Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
+        $hasta = \Illuminate\Support\Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
+
+        return DB::table('comprobantes_sri')->where('empresa_id', $empresaId)
+                ->whereNull('conciliado_con')->whereNull('destino')
+                ->whereBetween('fecha_emision', [$desde, $hasta])->count()
+            + DB::table('purchases')->where('empresa_id', $empresaId)
+                ->where('status', 'borrador')->where('origen', '!=', 'manual')
+                ->whereBetween('date', [$desde, $hasta])->count();
+    }
+
     public function datos(int $empresaId, int $anio, int $mes): array
     {
         $desde = Carbon::create($anio, $mes, 1)->startOfMonth();
@@ -123,14 +142,9 @@ class AtsService
             ->selectRaw('false as es_inventario')
             ->get();
 
-        // Lo que llegó del portal y nadie registró no existe en la contabilidad, y
-        // por eso tampoco está aquí. Se avisa: el 104 sí lo suma.
-        $sinRegistrar = DB::table('comprobantes_sri')->where('empresa_id', $empresaId)
-            ->where('origen', 'recibido')->whereNull('conciliado_con')
-            ->whereBetween('fecha_emision', [$desde, $hasta])->count();
-        $sinRegistrar += DB::table('purchases')->where('empresa_id', $empresaId)
-            ->where('status', 'borrador')->where('origen', '!=', 'manual')
-            ->whereBetween('date', [$desde, $hasta])->count();
+        // Lo que llegó del portal y nadie registró no existe en la contabilidad.
+        // pendientes() bloquea la generación antes de llegar aquí; esto queda por si acaso.
+        $sinRegistrar = $this->pendientes($empresaId, $anio, $mes);
         if ($sinRegistrar > 0) {
             $avisos[] = "{$sinRegistrar} facturas del portal de este mes no están registradas: no entran al ATS "
                 . 'hasta clasificarlas en «Clasificar comprobantes», y el ATS no cuadraría con el 104.';

@@ -3,9 +3,33 @@
     confirmación. Lo usan Cumplimiento y Declaraciones (las dos con GestionaDeclaraciones).
     Recibe $ats (Declaracion|null), $anio, $mes y $etiqueta.
 --}}
-@php $zip = sprintf('AT%02d%d.zip', $mes, $anio); @endphp
+@php
+    $zip = sprintf('AT%02d%d.zip', $mes, $anio);
+    // Con una sola factura sin registrar el ATS saldría incompleto: no se genera ni se descarga.
+    $faltan = app(\App\Services\AtsService::class)->pendientes(\Filament\Facades\Filament::getTenant()->id, $anio, $mes);
+    $urlClasificar = \App\Filament\Contabilidad\Pages\ClasificarComprobantes::getUrl(['anio' => $anio, 'mes' => $mes, 'vista' => 'por_registrar']);
+@endphp
 
-@if ($ats?->presentado_en)
+@if ($faltan > 0)
+    @if ($ats?->presentado_en)
+        <p class="ct-paso" style="color:var(--da)"><b>!</b><span>El ATS presentado el {{ $ats->presentado_en->format('d/m/Y') }}
+            salió <strong>sin {{ $faltan }} {{ $faltan === 1 ? 'factura' : 'facturas' }}</strong> que siguen sin registrar.
+            Regístralas, vuelve a generarlo y súbelo otra vez al SRI: el nuevo reemplaza al anterior.</span></p>
+    @else
+        <p class="ct-paso" style="color:var(--da)"><b>!</b><span>Todavía no se puede generar: {{ $faltan }}
+            {{ $faltan === 1 ? 'factura' : 'facturas' }} de {{ $etiqueta }} no {{ $faltan === 1 ? 'está registrada' : 'están registradas' }}.
+            Un ATS sin ellas saldría incompleto y no cuadraría con el 104.</span></p>
+    @endif
+    <a class="ct-btn-descarga" href="{{ $urlClasificar }}">Registrar las {{ $faltan === 1 ? 'factura' : $faltan . ' facturas' }} en Clasificar comprobantes</a>
+@elseif ($ats?->presentado_en && ($ats->datos['incompleto'] ?? 0) > 0)
+    {{-- Lo presentado salió sin facturas que ya están registradas: hay que reemplazarlo. --}}
+    <p class="ct-paso" style="color:var(--da)"><b>!</b><span>El ATS presentado el {{ $ats->presentado_en->format('d/m/Y') }}
+        salió sin {{ $ats->datos['incompleto'] }} facturas, que ya están registradas. Vuelve a generarlo y súbelo otra vez al SRI.</span></p>
+    <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+            wire:click="pedir({{ $anio }}, {{ $mes }}, 'ats')" wire:loading.attr="disabled" wire:target="pedir">
+        Volver a generar el ATS
+    </button>
+@elseif ($ats?->presentado_en)
     <p class="ct-paso ct-paso-hecho"><b>✓</b><span>ATS presentado el
         {{ \Illuminate\Support\Carbon::parse($ats->datos['confirmacion']['presentado_en'] ?? $ats->presentado_en)->format('d/m/Y H:i') }}.
         El SRI lo valida en 48 horas: si llega un archivo de errores, se corrige, se genera de nuevo y se vuelve a subir.</span></p>
