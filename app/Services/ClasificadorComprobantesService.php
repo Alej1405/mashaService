@@ -412,6 +412,45 @@ class ClasificadorComprobantesService
      * el inventario por su código o por su nombre. Si alguna no se reconoce, no
      * se adivina: se pide a mano.
      */
+    /**
+     * La cabecera del XML manda sobre la suma de las líneas, igual que en las compras:
+     * la diferencia de centavos va a la línea más grande. Todo en numeric (bcmath).
+     */
+    private function cuadrarVentaConLaFactura(Sale $venta, array $impuestos): void
+    {
+        $base = '0.00';
+        $iva = '0.00';
+        foreach ($impuestos as $imp) {
+            if (($imp['codigo'] ?? '') !== '2') {
+                continue;
+            }
+            $base = bcadd($base, (string) $imp['base_imponible'], 2);
+            if (! in_array($imp['codigo_porcentaje'] ?? '', ComprobanteSri::IVA_SIN_TARIFA, true)) {
+                $iva = bcadd($iva, (string) $imp['valor'], 2);
+            }
+        }
+
+        $ajustar = function (string $columna, string $cabecera) use ($venta) {
+            $dif = bcsub($cabecera, (string) $venta->items()->sum($columna), 2);
+            $linea = $venta->items()->where($columna, '>', 0)->orderByDesc($columna)->first();
+
+            if (bccomp($cabecera, '0', 2) > 0 && bccomp($dif, '0', 2) !== 0 && bccomp(ltrim($dif, '-'), '0.05', 2) <= 0 && $linea) {
+                $linea->forceFill([
+                    $columna => bcadd((string) $linea->{$columna}, $dif, 2),
+                    'total'  => bcadd((string) $linea->total, $dif, 2),
+                ])->saveQuietly();
+            }
+        };
+        $ajustar('subtotal', $base);
+        $ajustar('iva_monto', $iva);
+
+        $venta->forceFill([
+            'subtotal' => (string) $venta->items()->sum('subtotal'),
+            'iva'      => (string) $venta->items()->sum('iva_monto'),
+            'total'    => (string) $venta->items()->sum('total'),
+        ])->saveQuietly();
+    }
+
     private function ventaConDetalle(ComprobanteSri $c, array $xml, ?string $pago): array
     {
         $lineas = [];
@@ -438,11 +477,13 @@ class ClasificadorComprobantesService
                 continue;
             }
 
+            // El IVA de la línea, tal como lo dice el XML: con numeric, no con float.
             $iva = collect($d['impuestos'] ?? [])->where('codigo', '2')
                 ->reject(fn ($i) => in_array($i['codigo_porcentaje'] ?? '', ComprobanteSri::IVA_SIN_TARIFA, true))
-                ->sum(fn ($i) => (float) $i['valor']);
+                ->reduce(fn ($s, $i) => bcadd($s, (string) $i['valor'], 2), '0.00');
             $cantidad = (float) $d['cantidad'] ?: 1.0;
-            $lineas[] = [$item, $cantidad, round((float) $d['subtotal'] / $cantidad, 4), $iva > 0];
+            $lineas[] = [$item, $cantidad, round((float) $d['subtotal'] / $cantidad, 4), bccomp($iva, '0', 2) > 0,
+                         bcadd((string) $d['subtotal'], '0', 2), $iva];
         }
 
         if ($sinReconocer || ! $lineas) {
@@ -483,12 +524,16 @@ class ClasificadorComprobantesService
                 'notas'          => 'Del portal del SRI, con el detalle de la factura',
             ] + $medio);
 
-            foreach ($lineas as [$item, $cantidad, $precio, $conIva]) {
-                SaleItem::create([
+            foreach ($lineas as [$item, $cantidad, $precio, $conIva, $subtotal, $ivaLinea]) {
+                $linea = SaleItem::create([
                     'sale_id' => $venta->id, 'inventory_item_id' => $item->id, 'tipo_item' => 'producto',
                     'cantidad' => $cantidad, 'precio_unitario' => $precio, 'aplica_iva' => $conIva,
                 ]);
+                // La línea vale lo que dice el XML: no se recalcula.
+                $linea->forceFill(['subtotal' => $subtotal, 'iva_monto' => $ivaLinea, 'total' => bcadd($subtotal, $ivaLinea, 2)])->saveQuietly();
             }
+
+            $this->cuadrarVentaConLaFactura($venta, $xml['impuestos'] ?? []);
 
             $venta->refresh();
             if (abs((float) $venta->iva - (float) $c->iva) > 0.01) {

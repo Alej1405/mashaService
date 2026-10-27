@@ -7,7 +7,7 @@
         <header>
             <div>
                 <h2 class="ct-tit">Subir facturas en XML</h2>
-                <p class="ct-pie2">Varios a la vez o un .zip. Nada se registra al subir: cada factura queda {{ $conLista ? 'abajo' : 'en «Listas para registrar»' }} con lo que dice su XML, para auditarla.</p>
+                <p class="ct-pie2">Varios a la vez o un .zip. Las compras quedan {{ $conLista ? 'abajo' : 'en «Listas para registrar»' }} con lo que dice su XML, para auditarlas. Las ventas se registran al subir, con el cobro que elijas.</p>
             </div>
         </header>
         <div class="ct-fila" style="flex-wrap:wrap; gap:10px">
@@ -48,6 +48,7 @@
                 @if (! empty($resultado['texto']))
                     <span class="ct-chip ct-chip-ok">{{ $resultado['texto'] }}</span>
                 @else
+                    @if ($resultado['nuevas'] ?? 0) <span class="ct-chip ct-chip-ok">{{ $resultado['nuevas'] }} {{ $resultado['nuevas'] === 1 ? 'venta registrada' : 'ventas registradas' }} con su asiento</span> @endif
                     @if ($resultado['registradas']) <span class="ct-chip ct-chip-ok">{{ $resultado['registradas'] }} ya estaban registradas</span> @endif
                     @if ($resultado['esperan']) <span class="ct-chip ct-chip-wa">{{ $resultado['esperan'] }} {{ $conLista ? 'por auditar abajo' : 'pasaron a «Listas para registrar»' }}</span> @endif
                     @if (count($resultado['fallos'])) <span class="ct-chip ct-chip-da">{{ count($resultado['fallos']) }} no se pudieron</span> @endif

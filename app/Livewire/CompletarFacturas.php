@@ -120,6 +120,7 @@ class CompletarFacturas extends Component
         $cuenta = $this->resultado && ! isset($this->resultado['texto'])
             ? $this->resultado
             : ['registradas' => 0, 'esperan' => 0, 'fallos' => [], 'resto' => 0];
+        $cuenta['nuevas'] ??= 0;
 
         foreach (array_slice($contenidos, 0, self::POR_SUBIDA, true) as $nombre => $xml) {
             $r = $servicio->registrarDesdeXml($empresaId, $xml, null, auth()->id(), $this->cobroVentas ?: null);
@@ -133,6 +134,8 @@ class CompletarFacturas extends Component
                 $cuenta['fallos'][] = ($r['numero'] ?? $nombre) . ': ' . $r['error'];
             } elseif (($r['estado'] ?? '') === 'pendiente') {
                 $cuenta['esperan']++;
+            } elseif (isset($r['documento'])) {
+                $cuenta['nuevas']++; // una venta: se registra al subir, con su asiento
             } else {
                 $cuenta['registradas']++; // ya estaba en el ERP: el XML queda de respaldo
             }
