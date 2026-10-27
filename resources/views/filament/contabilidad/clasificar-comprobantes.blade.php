@@ -280,7 +280,7 @@
                 <div class="ct-fila">
                     <div>
                         <p class="ct-fila-t">{{ ucfirst(\Illuminate\Support\Carbon::createFromFormat('Y-m', $m->mes)->locale('es')->translatedFormat('F Y')) }}</p>
-                        <p class="ct-fila-s">{{ $m->total }} comprobantes del portal
+                        <p class="ct-fila-s">{{ $m->cantidad }} {{ $m->cantidad == 1 ? 'comprobante' : 'comprobantes' }} del portal
                             @if ($m->pendientes > 0) · {{ $m->pendientes }} sin registrar @endif</p>
                     </div>
                     @if ($m->pendientes > 0)

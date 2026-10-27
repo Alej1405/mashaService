@@ -471,7 +471,7 @@ class ClasificarComprobantes extends Page
             ->when($this->anio, fn ($q) => $q->whereYear('comprobantes_sri.fecha_emision', $this->anio))
             ->leftJoin('purchases as p', fn ($j) => $j->on('p.id', '=', 'comprobantes_sri.conciliado_id')
                 ->where('comprobantes_sri.conciliado_con', '=', 'purchase'))
-            ->selectRaw("to_char(comprobantes_sri.fecha_emision, 'YYYY-MM') as mes, count(*) as total, "
+            ->selectRaw("to_char(comprobantes_sri.fecha_emision, 'YYYY-MM') as mes, count(*) as cantidad, "
                 . "sum(case when (comprobantes_sri.conciliado_con is null and comprobantes_sri.destino is null) "
                 . "or p.status = 'borrador' then 1 else 0 end) as pendientes")
             ->groupBy('mes')->orderByDesc('mes')->limit(12)->get();
