@@ -192,6 +192,21 @@ class SuperciasService
                 'celdas' => $celdas, 'derivadas' => $derivadas];
     }
 
+    /** Contenido del archivo de un estado, listo para guardar como .txt */
+    public function archivo(int $empresaId, int $anio, string $estado): string
+    {
+        // El archivo sale de lo mismo que la pantalla: si saliera de otro cálculo, un día dirían cosas distintas.
+        $salida = [];
+        foreach ($this->estado($empresaId, $anio, $estado) as $linea) {
+            $valor = number_format($linea['actual'], 2, '.', '');
+            $salida[] = $linea['columna']
+                ? "{$linea['columna']} {$linea['codigo']} {$valor}"
+                : "{$linea['codigo']} {$valor}";
+        }
+
+        return implode("\n", $salida) . "\n";
+    }
+
     public function juegoCompleto(int $empresaId, int $anio): array
     {
         $archivos = [];
