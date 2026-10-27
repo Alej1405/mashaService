@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\DB;
+
 use App\Models\CatalogoSupercias;
 use App\Models\JournalEntryLine;
 use Illuminate\Support\Collection;
@@ -64,6 +66,64 @@ class SuperciasService
     }
 
     /**
+     * El costo de ventas con la fórmula de inventarios que pide la Superintendencia:
+     * inventario inicial + compras − inventario final, por clase. El inventario final de
+     * cada clase es el mismo del balance; así lo cruza la Superintendencia (1010301 con 5010108).
+     *
+     * El producto terminado que entró como saldo de cuadre es inventario que ya existía:
+     * suma al inicial.
+     */
+    private function conCostoPorInventarios(int $empresaId, int $anio, array $saldos): array
+    {
+        $saldos = array_filter($saldos, fn ($c) => ! str_starts_with((string) $c, '50101'), ARRAY_FILTER_USE_KEY);
+
+        $mov = fn (string $cuenta, string $condicion) => (float) DB::table('journal_entry_lines as l')
+            ->join('journal_entries as j', 'j.id', '=', 'l.journal_entry_id')
+            ->join('account_plans as a', 'a.id', '=', 'l.account_plan_id')
+            ->where('j.empresa_id', $empresaId)->where('j.status', 'confirmado')->where('a.code', $cuenta)
+            ->whereRaw($condicion, [$anio])
+            ->sum(DB::raw('l.debe - l.haber'));
+        $antes  = fn (string $c) => $mov($c, 'extract(year from j.fecha) < ?');
+        $alFin  = fn (string $c) => $mov($c, 'extract(year from j.fecha) <= ?');
+        $entra  = fn (string $c, array $tipos) => (float) DB::table('journal_entry_lines as l')
+            ->join('journal_entries as j', 'j.id', '=', 'l.journal_entry_id')
+            ->join('account_plans as a', 'a.id', '=', 'l.account_plan_id')
+            ->where('j.empresa_id', $empresaId)->where('j.status', 'confirmado')->where('a.code', $c)
+            ->whereYear('j.fecha', $anio)->whereIn('j.referencia_tipo', $tipos)->sum('l.debe');
+
+        // Materia prima: inicial + compras locales − final.
+        $saldos['5010105'] = round($antes('1.1.03.02'), 2);
+        $saldos['5010106'] = round($entra('1.1.03.02', ['purchase']), 2);
+        $saldos['5010108'] = round(-$alFin('1.1.03.02'), 2);
+        // Producto terminado: inicial (con el saldo de cuadre) − final.
+        $saldos['5010111'] = round($antes('1.1.03.04') + $entra('1.1.03.04', ['saldo_cuadre']), 2);
+        $saldos['5010112'] = round(-$alFin('1.1.03.04'), 2);
+
+        return $saldos;
+    }
+
+    /**
+     * La cadena del resultado (600 → 707 → 801). Con pérdida no hay participación ni
+     * impuesto causado; 707 es el mismo resultado que el balance lleva en 30701/30702.
+     */
+    private function conResultadoDelPeriodo(array $totales, array $saldos): array
+    {
+        $resultado = 0.0;
+        foreach ($saldos as $codigo => $valor) {
+            $resultado += match (((string) $codigo)[0]) { '4' => $valor, '5' => -$valor, default => 0 };
+        }
+        $resultado = round($resultado, 2);
+        $participacion = $resultado > 0 ? round($resultado * 0.15, 2) : 0.0;
+
+        $totales['600'] = $resultado;
+        $totales['601'] = $participacion;
+        $totales['602'] = $totales['604'] = $totales['607'] = round($resultado - $participacion, 2);
+        $totales['707'] = $totales['801'] = $totales['80101'] = $totales['607'];
+
+        return $totales;
+    }
+
+    /**
      * Los saldos de las cuentas hijas suben a sus padres: el catálogo es
      * jerárquico y el portal espera los totales llenos.
      */
@@ -97,14 +157,17 @@ class SuperciasService
     {
         $lineas = CatalogoSupercias::where('estado', $estado)->orderBy('orden')->get();
 
-        $saldos = fn (int $a) => $estado === 'situacion_financiera'
-            ? $this->conResultado($this->saldosPorCodigo($empresaId, $a))
-            : $this->saldosPorCodigo($empresaId, $a);
+        $saldos = fn (int $a) => match ($estado) {
+            'situacion_financiera' => $this->conResultado($this->saldosPorCodigo($empresaId, $a)),
+            'resultado_integral'   => $this->conCostoPorInventarios($empresaId, $a, $this->saldosPorCodigo($empresaId, $a)),
+            default                => $this->saldosPorCodigo($empresaId, $a),
+        };
 
         // El flujo de efectivo y los cambios en el patrimonio no salen de saldos consolidados.
         $valores = fn (int $a) => match ($estado) {
             'flujo_efectivo'     => app(FlujoEfectivoService::class)->calcular($empresaId, $a),
             'cambios_patrimonio' => $this->cambiosEnPatrimonio($empresaId, $a)['celdas'],
+            'resultado_integral' => $this->conResultadoDelPeriodo($this->consolidar($saldos($a), $lineas), $saldos($a)),
             default              => $this->consolidar($saldos($a), $lineas),
         };
 
