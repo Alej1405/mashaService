@@ -33,7 +33,9 @@ class SuperciasService
             ->selectRaw('c.codigo_supercias as codigo, c.nature, sum(journal_entry_lines.debe) as debe, sum(journal_entry_lines.haber) as haber')
             ->get()
             ->reduce(function (array $acc, $f) {
-                $valor = $f->nature === 'deudora'
+                // El signo lo pone la sección del catálogo, no la naturaleza de la cuenta:
+                // una correctora (depreciación acumulada, pérdidas) resta en su sección.
+                $valor = in_array($f->codigo[0], ['1', '5'], true)
                     ? (float) $f->debe - (float) $f->haber
                     : (float) $f->haber - (float) $f->debe;
 
@@ -41,6 +43,24 @@ class SuperciasService
 
                 return $acc;
             }, []);
+    }
+
+    /**
+     * El balance lleva el resultado del ejercicio en el patrimonio (307). Mientras no
+     * se cierra, sale de ingresos menos costos y gastos; cerrado, esas cuentas quedan
+     * en cero y el resultado ya está en 3.7, así que no se cuenta dos veces.
+     */
+    private function conResultado(array $saldos): array
+    {
+        $resultado = 0.0;
+        foreach ($saldos as $codigo => $valor) {
+            $resultado += match ((string) $codigo[0]) { '4' => $valor, '5' => -$valor, default => 0 };
+        }
+
+        $codigo = $resultado >= 0 ? '30701' : '30702';
+        $saldos[$codigo] = round(($saldos[$codigo] ?? 0) + $resultado, 2);
+
+        return $saldos;
     }
 
     /**
@@ -77,8 +97,12 @@ class SuperciasService
     {
         $lineas = CatalogoSupercias::where('estado', $estado)->orderBy('orden')->get();
 
-        $actual   = $this->consolidar($this->saldosPorCodigo($empresaId, $anio), $lineas);
-        $anterior = $this->consolidar($this->saldosPorCodigo($empresaId, $anio - 1), $lineas);
+        $saldos = fn (int $a) => $estado === 'situacion_financiera'
+            ? $this->conResultado($this->saldosPorCodigo($empresaId, $a))
+            : $this->saldosPorCodigo($empresaId, $a);
+
+        $actual   = $this->consolidar($saldos($anio), $lineas);
+        $anterior = $this->consolidar($saldos($anio - 1), $lineas);
 
         return $lineas->map(fn ($l) => [
             'codigo'      => $l->codigo,
