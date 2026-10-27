@@ -51,12 +51,23 @@ class LibroDiarioExport
     /** El mismo libro en PDF, que es como lo pide la Superintendencia. */
     public function pdf(string $filename): StreamedResponse
     {
+        // Un año de asientos son decenas de páginas: más memoria y tiempo solo para esto.
+        ini_set('memory_limit', '512M');
+        set_time_limit(180);
+
         $empresa = \App\Models\Empresa::withoutGlobalScopes()->find($this->empresaId);
         $periodo = 'Del ' . \Carbon\Carbon::parse($this->fechaDesde)->format('d/m/Y') . ' al ' . \Carbon\Carbon::parse($this->fechaHasta)->format('d/m/Y');
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.libro-diario', ['empresa' => $empresa, 'periodo' => $periodo, 'asientos' => $this->getData()])
             ->setPaper('a4');
 
-        return response()->streamDownload(fn () => print($pdf->output()), $filename, ['Content-Type' => 'application/pdf']);
+        // El total de páginas solo se conoce al terminar: se numera sobre el PDF ya armado.
+        $dompdf = $pdf->getDomPDF();
+        $dompdf->render();
+        $canvas = $dompdf->getCanvas();
+        $canvas->page_text($canvas->get_width() - 110, $canvas->get_height() - 30, 'Página {PAGE_NUM} de {PAGE_COUNT}',
+            $dompdf->getFontMetrics()->getFont('DejaVu Sans'), 7, [0.42, 0.45, 0.5]);
+
+        return response()->streamDownload(fn () => print($dompdf->output()), $filename, ['Content-Type' => 'application/pdf']);
     }
 
     public function download(string $filename): StreamedResponse

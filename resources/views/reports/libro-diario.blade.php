@@ -10,7 +10,6 @@
         header h1 { margin: 0; font-size: 12px; }
         header p { margin: 1px 0 0; font-size: 8.5px; color: #4b5563; }
         footer { position: fixed; bottom: -34px; left: 0; right: 0; font-size: 7.5px; color: #6b7280; }
-        footer .pagina:after { content: "Página " counter(page) " de " counter(pages); }
         table { width: 100%; border-collapse: collapse; }
         th { background: #1e3a5f; color: #fff; padding: 4px; text-align: left; font-size: 8px; }
         td { padding: 2px 4px; vertical-align: top; }
@@ -29,7 +28,6 @@
     </header>
     <footer>
         <span>Generado el {{ now()->format('d/m/Y H:i') }}</span>
-        <span class="pagina" style="float:right"></span>
     </footer>
 
     @php $money = fn ($n) => number_format((float) $n, 2, ',', '.'); $totalDebe = 0; $totalHaber = 0; @endphp
