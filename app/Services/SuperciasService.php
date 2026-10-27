@@ -101,17 +101,27 @@ class SuperciasService
             ? $this->conResultado($this->saldosPorCodigo($empresaId, $a))
             : $this->saldosPorCodigo($empresaId, $a);
 
-        $actual   = $this->consolidar($saldos($anio), $lineas);
-        $anterior = $this->consolidar($saldos($anio - 1), $lineas);
+        // El flujo de efectivo y los cambios en el patrimonio no salen de saldos consolidados.
+        $valores = fn (int $a) => match ($estado) {
+            'flujo_efectivo'     => app(FlujoEfectivoService::class)->calcular($empresaId, $a),
+            'cambios_patrimonio' => $this->cambiosEnPatrimonio($empresaId, $a)['celdas'],
+            default              => $this->consolidar($saldos($a), $lineas),
+        };
+
+        $actual   = $valores($anio);
+        $anterior = $valores($anio - 1);
+
+        // En la matriz del patrimonio cada línea es una celda: columna × concepto.
+        $de = fn (array $v, $l) => $estado === 'cambios_patrimonio' ? ($v[$l->columna][$l->codigo] ?? 0) : ($v[$l->codigo] ?? 0);
 
         return $lineas->map(fn ($l) => [
             'codigo'      => $l->codigo,
             'nombre'      => $l->nombre,
             'nivel'       => (int) $l->nivel,
             'columna'     => $l->columna,
-            'actual'      => round($actual[$l->codigo] ?? 0, 2),
-            'anterior'    => round($anterior[$l->codigo] ?? 0, 2),
-            'tiene_valor' => abs($actual[$l->codigo] ?? 0) > 0.001 || abs($anterior[$l->codigo] ?? 0) > 0.001,
+            'actual'      => round($de($actual, $l), 2),
+            'anterior'    => round($de($anterior, $l), 2),
+            'tiene_valor' => abs($de($actual, $l)) > 0.001 || abs($de($anterior, $l)) > 0.001,
         ])->all();
     }
 
@@ -142,23 +152,39 @@ class SuperciasService
             ->map(fn ($l) => ['codigo' => $l->columna, 'nombre' => $l->nombre_columna ?: $l->columna])
             ->values()->all();
 
-        // Los tres movimientos que salen del libro diario.
-        $saldoFinal   = $this->saldosDeConceptos($empresaId, $anio, $conceptos);
-        $saldoInicial = $this->saldosDeConceptos($empresaId, $anio - 1, $conceptos);
-        $resultado    = app(ContabilidadService::class)->saldos($empresaId, "{$anio}-12-31", $anio)['resultado'];
+        // Del libro diario salen los saldos al inicio y al final de cada concepto (con el
+        // resultado del año en 307) y lo que cambió en el año, repartido por su origen:
+        // capital, aportes, resultado del ejercicio y otros cambios. Inicial + cambios = final.
+        $final   = $this->conResultado($this->saldosPorCodigo($empresaId, $anio));
+        $inicial = $this->conResultado($this->saldosPorCodigo($empresaId, $anio - 1));
+        $columnaDe = fn (string $codigo) => match (true) {
+            str_starts_with($codigo, '307') => '990210',
+            str_starts_with($codigo, '302') => '990202',
+            str_starts_with($codigo, '301') => '990201',
+            default                         => '990209',
+        };
 
-        $derivadas = ['99', '9901', '990101', '990210'];
+        $derivadas = ['99', '9901', '990101', '9902', '990201', '990202', '990209', '990210'];
         $celdas = [];
 
         foreach ($conceptos as $c) {
+            $suma = array_fill_keys($derivadas, 0.0);
+            foreach (array_unique(array_merge(array_keys($final), array_keys($inicial))) as $codigo) {
+                $codigo = (string) $codigo;
+                if ($codigo[0] !== '3' || ! str_starts_with($codigo, $c['codigo'])) {
+                    continue;
+                }
+                $fin = $final[$codigo] ?? 0.0;
+                $ini = $inicial[$codigo] ?? 0.0;
+                $suma['99'] += $fin;
+                $suma['990101'] += $ini;
+                $suma['9901'] += $ini;
+                $suma[$columnaDe($codigo)] += $fin - $ini;
+                $suma['9902'] += $fin - $ini;
+            }
+
             foreach ($columnas as $col) {
-                $celdas[$col['codigo']][$c['codigo']] = match ($col['codigo']) {
-                    '99'      => $saldoFinal[$c['codigo']] ?? 0.0,
-                    '9901', '990101' => $saldoInicial[$c['codigo']] ?? 0.0,
-                    // El resultado del año va a la línea de ganancias acumuladas.
-                    '990210'  => in_array($c['codigo'], ['30601', '30602'], true) ? round($resultado, 2) : 0.0,
-                    default   => 0.0,
-                };
+                $celdas[$col['codigo']][$c['codigo']] = round($suma[$col['codigo']] ?? 0.0, 2);
             }
         }
 
@@ -166,45 +192,6 @@ class SuperciasService
                 'celdas' => $celdas, 'derivadas' => $derivadas];
     }
 
-    /** Saldo de cada concepto patrimonial en un ejercicio. */
-    private function saldosDeConceptos(int $empresaId, int $anio, array $conceptos): array
-    {
-        $saldos = $this->saldosPorCodigo($empresaId, $anio);
-        $totales = [];
-
-        foreach ($conceptos as $c) {
-            $suma = 0.0;
-
-            foreach ($saldos as $codigo => $valor) {
-                if (str_starts_with((string) $codigo, $c['codigo'])) {
-                    $suma += $valor;
-                }
-            }
-
-            $totales[$c['codigo']] = round($suma, 2);
-        }
-
-        return $totales;
-    }
-
-    /** Contenido del archivo de un estado, listo para guardar como .txt */
-    public function archivo(int $empresaId, int $anio, string $estado): string
-    {
-        $lineas = CatalogoSupercias::where('estado', $estado)->orderBy('orden')->get();
-        $totales = $this->consolidar($this->saldosPorCodigo($empresaId, $anio), $lineas);
-
-        $salida = [];
-        foreach ($lineas as $linea) {
-            $valor = number_format($totales[$linea->codigo] ?? 0, 2, '.', '');
-            $salida[] = $linea->columna
-                ? "{$linea->columna} {$linea->codigo} {$valor}"
-                : "{$linea->codigo} {$valor}";
-        }
-
-        return implode("\n", $salida) . "\n";
-    }
-
-    /** Los cuatro archivos del juego completo. */
     public function juegoCompleto(int $empresaId, int $anio): array
     {
         $archivos = [];
