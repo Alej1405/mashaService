@@ -192,7 +192,7 @@ class ClasificadorComprobantesService
      *
      * @return array{ok: bool, numero?: string, estado?: string, detalle?: string, error?: string}
      */
-    public function registrarDesdeXml(int $empresaId, string $xml, ?string $pago, ?int $usuarioId = null): array
+    public function registrarDesdeXml(int $empresaId, string $xml, ?string $pago, ?int $usuarioId = null, ?string $cobroVenta = null): array
     {
         $lectura = app(ServicioSri::class)->leerXmlComprobante($xml);
 
@@ -210,6 +210,11 @@ class ClasificadorComprobantesService
 
         if ($c->conciliado_con) {
             return ['numero' => $c->numero] + $this->completarConXml($c, $lectura['comprobante'], $xml);
+        }
+
+        // Una venta toma el cobro elegido al subir; una compra, el suyo.
+        if ($c->origen === 'emitido') {
+            $pago = $pago ?: $cobroVenta;
         }
 
         // Está en el listado del portal: autorizada.

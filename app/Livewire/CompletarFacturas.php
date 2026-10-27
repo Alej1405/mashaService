@@ -38,6 +38,9 @@ class CompletarFacturas extends Component
     /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
     public array $xmls = [];
 
+    /** Cómo se cobraron las ventas que se suben en XML ('transferencia:1', ...); vacío = a crédito. */
+    public string $cobroVentas = '';
+
     /** producto_proveedor_id => 'item:12' | 'gasto:5' | 'nuevo:insumo' | 'nuevo:materia_prima' */
     public array $producto = [];
 
@@ -119,7 +122,7 @@ class CompletarFacturas extends Component
             : ['registradas' => 0, 'esperan' => 0, 'fallos' => [], 'resto' => 0];
 
         foreach (array_slice($contenidos, 0, self::POR_SUBIDA, true) as $nombre => $xml) {
-            $r = $servicio->registrarDesdeXml($empresaId, $xml, null, auth()->id());
+            $r = $servicio->registrarDesdeXml($empresaId, $xml, null, auth()->id(), $this->cobroVentas ?: null);
 
             // Sin el listado del portal, la factura entra igual si el SRI todavía la tiene.
             if (! ($r['ok'] ?? false) && str_contains($r['error'] ?? '', 'no está en el listado')) {

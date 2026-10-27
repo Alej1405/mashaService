@@ -30,6 +30,16 @@
                 <span x-show="! total"><strong>Elegir XML o .zip</strong> · se registran al soltarlos</span>
                 <span x-show="total" x-cloak>Leyendo y registrando… <span x-text="enviados"></span> de <span x-text="total"></span></span>
             </label>
+            <label class="ct-fila-s" style="display:flex; flex-direction:column; gap:4px; flex:1 1 240px; margin:0">
+                Las ventas que subas se cobraron:
+                <select wire:model.live="cobroVentas" class="ct-select" aria-label="Cómo se cobraron las ventas">
+                    <option value="">A crédito (por cobrar)</option>
+                    @foreach ($medios as $valor => $etiqueta)
+                        @continue($valor === 'credito')
+                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
+            </label>
         </div>
         @error('xmls.*') <p class="ct-fila-s" style="color:var(--da); padding:0 18px 12px">{{ $message }}</p> @enderror
 
