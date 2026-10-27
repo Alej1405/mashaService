@@ -15,6 +15,7 @@ class StoreProduct extends Model
     protected $fillable = [
         'empresa_id',
         'store_category_id',
+        'product_presentation_id',
         'nombre',
         'slug',
         'sku',
@@ -82,6 +83,12 @@ class StoreProduct extends Model
             $i++;
         }
         return $slug;
+    }
+
+    /** La presentación de la que nace este producto (solo en el plan completo). */
+    public function productPresentation(): BelongsTo
+    {
+        return $this->belongsTo(ProductPresentation::class);
     }
 
     public function storeCategory(): BelongsTo

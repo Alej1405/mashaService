@@ -9,6 +9,7 @@ class ProductFormulaLine extends Model
 {
     protected $fillable = [
         'presentation_id',
+        'product_design_id',
         'inventory_item_id',
         'item_request_id',
         'cantidad',

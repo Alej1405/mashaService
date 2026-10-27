@@ -4,6 +4,7 @@ namespace App\Filament\Operaciones\Resources;
 
 use App\Filament\Operaciones\Resources\ProductDesignResource\Pages;
 use App\Models\InventoryItem;
+use App\Models\ProductPresentation;
 use App\Models\MeasurementUnit;
 use App\Models\ProductDesign;
 use App\Models\StoreCategory;
@@ -126,23 +127,55 @@ class ProductDesignResource extends Resource
                     Tab::make('Presentaciones y Fórmulas')
                         ->icon('heroicon-o-rectangle-stack')
                         ->schema([
+                            Section::make('Fórmula del producto')
+                                ->description('Una sola fórmula para todas las presentaciones, con materias primas e insumos del inventario, para la cantidad base (el pedido mínimo).')
+                                ->schema([
+                                    TextInput::make('cantidad_base')
+                                        ->label('Cantidad base')
+                                        ->numeric()
+                                        ->placeholder('1')
+                                        ->columnSpan(1),
+                                    Select::make('unidad_base_id')
+                                        ->label('Unidad de la cantidad base')
+                                        ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
+                                        ->searchable()
+                                        ->columnSpan(1),
+                                    self::lineasFormula()->columnSpanFull(),
+                                ])
+                                ->columns(4)
+                                ->collapsible()
+                                ->columnSpanFull(),
                             Repeater::make('presentations')
                                 ->relationship()
-                                ->label(fn (callable $get) => $get('tiene_multiples_presentaciones')
-                                    ? 'Presentaciones del Producto'
-                                    : 'Fórmula del Producto')
+                                ->label('Presentaciones: cada una se vende como un producto')
                                 ->maxItems(fn (callable $get) => $get('tiene_multiples_presentaciones') ? null : 1)
                                 ->addActionLabel(fn (callable $get) => $get('tiene_multiples_presentaciones')
                                     ? '+ Agregar presentación'
-                                    : '+ Definir fórmula')
+                                    : '+ Definir presentación')
                                 ->defaultItems(0)
                                 ->schema([
                                     TextInput::make('nombre')
-                                        ->label('Nombre / Tamaño')
-                                        ->required(fn (callable $get) => (bool) $get('../../tiene_multiples_presentaciones'))
-                                        ->placeholder('250ml, 500ml, Talla S, Unidad...')
-                                        ->visible(fn (callable $get) => (bool) $get('../../tiene_multiples_presentaciones'))
+                                        ->label('Nombre como se factura')
+                                        ->helperText('El mismo nombre del producto en el SRI: así se llama en el inventario y en la tienda.')
+                                        ->required()
+                                        ->placeholder('MARACUYA LITRO')
                                         ->columnSpan(2),
+                                    TextInput::make('codigo_sri')
+                                        ->label('Código del SRI')
+                                        ->helperText('Código principal del producto en el SRI: con él se reconocen las facturas.')
+                                        ->maxLength(50)
+                                        ->distinct()
+                                        ->rules([fn (?ProductPresentation $record) => function (string $attribute, $value, \Closure $fail) use ($record) {
+                                            if (filled($value) && ProductPresentation::codigoSriUsado($value, Filament::getTenant()->id, $record?->id)) {
+                                                $fail("El código {$value} ya es de otra presentación.");
+                                            }
+                                        }])
+                                        ->columnSpan(1),
+                                    TextInput::make('capacidad')
+                                        ->label('Capacidad')
+                                        ->numeric()
+                                        ->helperText('Cuánto de la cantidad base de la fórmula lleva una unidad. Ej.: base 1 litro, galón = 3,785.')
+                                        ->columnSpan(1),
                                     Select::make('measurement_unit_id')
                                         ->label('Unidad de Medida')
                                         ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
@@ -154,7 +187,6 @@ class ProductDesignResource extends Resource
                                         ])
                                         ->createOptionUsing(fn (array $data): int =>
                                             MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey())
-                                        ->visible(fn (callable $get) => (bool) $get('../../tiene_multiples_presentaciones'))
                                         ->columnSpan(1),
                                     TextInput::make('cantidad_minima_produccion')
                                         ->label('Lote base')
@@ -171,176 +203,10 @@ class ProductDesignResource extends Resource
                                         ->visible(fn (callable $get) => (bool) $get('../../tiene_multiples_presentaciones'))
                                         ->columnSpan(1),
 
-                                    Section::make('Fórmula / Insumos')
-                                        ->description('Ingredientes o materiales necesarios para producir una unidad de esta presentación.')
+                                    Section::make('Envase')
+                                        ->description('Lo que lleva una unidad de esta presentación además de la fórmula: botella, tapa, etiqueta…')
                                         ->schema([
-                                            Repeater::make('formulaLines')
-                                                ->relationship()
-                                                ->label('')
-                                                ->schema([
-                                                    // ── Insumo ──────────────────────────────────────────────
-                                                    Select::make('inventory_item_id')
-                                                        ->label('Insumo / Materia Prima')
-                                                        ->options(fn () => InventoryItem::where('activo', true)
-                                                            ->whereIn('type', ['insumo', 'materia_prima'])
-                                                            ->get()
-                                                            ->mapWithKeys(fn ($item) => [
-                                                                $item->id => "{$item->codigo} — {$item->nombre}",
-                                                            ]))
-                                                        ->searchable()
-                                                        ->nullable()
-                                                        ->placeholder('Seleccionar insumo existente...')
-                                                        ->live()
-                                                        ->createOptionModalHeading('Nuevo Insumo / Materia Prima')
-                                                        ->createOptionForm([
-                                                            TextInput::make('nombre')
-                                                                ->label('Nombre')
-                                                                ->required()
-                                                                ->maxLength(150)
-                                                                ->columnSpanFull(),
-                                                            Select::make('type')
-                                                                ->label('Tipo')
-                                                                ->options([
-                                                                    'insumo'        => 'Insumo',
-                                                                    'materia_prima' => 'Materia Prima',
-                                                                ])
-                                                                ->required(),
-                                                            TextInput::make('purchase_price')
-                                                                ->label('Precio de Compra (aprox.)')
-                                                                ->numeric()
-                                                                ->prefix('$')
-                                                                ->required()
-                                                                ->helperText('Puede ser un valor aproximado y ajustarlo luego.'),
-                                                            Select::make('measurement_unit_id')
-                                                                ->label('Unidad de Stock')
-                                                                ->helperText('Ej: gramo (g), mililitro (ml), unidad...')
-                                                                ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
-                                                                ->searchable()
-                                                                ->live()
-                                                                ->required(),
-                                                            Select::make('purchase_unit_id')
-                                                                ->label('Unidad de Compra')
-                                                                ->helperText('Ej: kilogramo (kg), litro (L)... Si compras y usas en la misma unidad, deja vacío.')
-                                                                ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
-                                                                ->searchable()
-                                                                ->nullable()
-                                                                ->live(),
-                                                            TextInput::make('conversion_factor')
-                                                                ->label('Factor de Conversión')
-                                                                ->helperText('¿Cuántas unidades de stock hay en una unidad de compra? Ej: 1 kg = 1000 g → factor 1000')
-                                                                ->numeric()
-                                                                ->default(1)
-                                                                ->required(),
-                                                        ])
-                                                        ->columns(2)
-                                                        ->createOptionUsing(function (array $data): int {
-                                                            return InventoryItem::create([
-                                                                ...$data,
-                                                                'empresa_id'  => Filament::getTenant()->id,
-                                                                'activo'      => true,
-                                                                'stock_actual' => 0,
-                                                            ])->getKey();
-                                                        })
-                                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                            $item = InventoryItem::find($state);
-                                                            if (!$item) {
-                                                                $set('_factor', 1);
-                                                                $set('_precio_compra', 0);
-                                                                $set('_pu_label', '');
-                                                                $set('_su_label', '');
-                                                                $set('measurement_unit_id', null);
-                                                                $set('costo_estimado', 0);
-                                                                return;
-                                                            }
-                                                            $set('_factor', (float) ($item->conversion_factor ?? 1));
-                                                            $set('_precio_compra', (float) $item->purchase_price);
-                                                            $set('_pu_label', $item->purchaseUnit?->abreviatura ?? $item->measurementUnit?->abreviatura ?? '');
-                                                            $set('_su_label', $item->measurementUnit?->abreviatura ?? '');
-                                                            $set('measurement_unit_id', $item->measurement_unit_id);
-                                                            self::calcularCostoLinea($get, $set);
-                                                        })
-                                                        ->columnSpan(4),
-
-                                                    // ── Cantidad ────────────────────────────────────────────
-                                                    TextInput::make('cantidad')
-                                                        ->label('Cantidad')
-                                                        ->numeric()
-                                                        ->required()
-                                                        ->live(onBlur: true)
-                                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                                            self::calcularCostoLinea($get, $set);
-                                                        })
-                                                        ->columnSpan(2),
-
-                                                    // ── Unidad (auto-cargada del ítem, editable) ────────────
-                                                    Select::make('measurement_unit_id')
-                                                        ->label('Unidad')
-                                                        ->options(fn () => MeasurementUnit::pluck('abreviatura', 'id'))
-                                                        ->searchable()
-                                                        ->createOptionModalHeading('Nueva Unidad')
-                                                        ->createOptionForm([
-                                                            TextInput::make('nombre')->label('Nombre')->required(),
-                                                            TextInput::make('abreviatura')->label('Abreviatura')->maxLength(10),
-                                                        ])
-                                                        ->createOptionUsing(fn (array $data): int =>
-                                                            MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey())
-                                                        ->columnSpan(2),
-
-                                                    // ── Es subproducto ──────────────────────────────────────
-                                                    Toggle::make('es_subproducto_manufacturado')
-                                                        ->label('Subproducto')
-                                                        ->inline(false)
-                                                        ->columnSpan(1),
-
-                                                    // ── Campos ocultos de conversión ────────────────────────
-                                                    \Filament\Forms\Components\Hidden::make('_factor')->default(1),
-                                                    \Filament\Forms\Components\Hidden::make('_precio_compra')->default(0),
-                                                    \Filament\Forms\Components\Hidden::make('_pu_label')->default(''),
-                                                    \Filament\Forms\Components\Hidden::make('_su_label')->default(''),
-                                                    \Filament\Forms\Components\Hidden::make('costo_estimado')->default(0),
-
-                                                    // ── Conversión de unidades (solo si hay factor ≠ 1) ─────
-                                                    \Filament\Forms\Components\Placeholder::make('_conv_display')
-                                                        ->label('Equivale en compra')
-                                                        ->columnSpan(3)
-                                                        ->visible(fn (callable $get) => (float) ($get('_factor') ?? 1) != 1.0 && (float) ($get('cantidad') ?? 0) > 0)
-                                                        ->content(function (callable $get) {
-                                                            $qty    = (float) ($get('cantidad') ?? 0);
-                                                            $factor = (float) ($get('_factor') ?? 1);
-                                                            $su     = $get('_su_label') ?: '?';
-                                                            $pu     = $get('_pu_label') ?: '?';
-                                                            $enCompra = $factor > 0 ? round($qty / $factor, 6) : 0;
-                                                            return "{$qty} {$su}  =  " . number_format($enCompra, 4) . " {$pu}";
-                                                        }),
-
-                                                    // ── Costo estimado ──────────────────────────────────────
-                                                    \Filament\Forms\Components\Placeholder::make('_costo_display')
-                                                        ->label('Costo estimado')
-                                                        ->columnSpan(3)
-                                                        ->visible(fn (callable $get) => (float) ($get('_precio_compra') ?? 0) > 0)
-                                                        ->content(function (callable $get) {
-                                                            $qty          = (float) ($get('cantidad') ?? 0);
-                                                            $precioCompra = (float) ($get('_precio_compra') ?? 0);
-                                                            $factor       = max((float) ($get('_factor') ?? 1), 0.000001);
-                                                            $pu           = $get('_pu_label') ?: '?';
-                                                            $su           = $get('_su_label') ?: '?';
-                                                            // Fórmula: (precio_compra ÷ factor) × cantidad
-                                                            $precioStock  = $precioCompra / $factor;
-                                                            $costo        = round($qty * $precioStock, 2);
-                                                            return '$ ' . number_format($costo, 2)
-                                                                . "  ($" . number_format($precioCompra, 2) . " / {$factor} {$su}/{$pu}"
-                                                                . " × {$qty} {$su})";
-                                                        }),
-
-                                                    // ── Notas ───────────────────────────────────────────────
-                                                    Textarea::make('notas')
-                                                        ->label('Notas')
-                                                        ->rows(2)
-                                                        ->columnSpanFull(),
-                                                ])
-                                                ->columns(12)
-                                                ->addActionLabel('+ Agregar insumo')
-                                                ->defaultItems(0),
+                                            self::lineasFormula(),
                                         ])
                                         ->collapsible()
                                         ->columnSpanFull(),
@@ -348,12 +214,7 @@ class ProductDesignResource extends Resource
                                 ])
                                 ->columns(6)
                                 ->defaultItems(0)
-                                ->itemLabel(function (array $state, callable $get): string {
-                                    if (!$get('tiene_multiples_presentaciones')) {
-                                        return 'Fórmula';
-                                    }
-                                    return $state['nombre'] ?? 'Nueva presentación';
-                                })
+                                ->itemLabel(fn (array $state): string => trim(($state['nombre'] ?? '') . ' ' . ($state['codigo_sri'] ?? '')) ?: 'Nueva presentación')
                                 ->collapsible()
                                 ->columnSpanFull(),
                         ]),
@@ -648,7 +509,9 @@ class ProductDesignResource extends Resource
                                                 $presNombre    = $pres['nombre'] ?? ('Presentación ' . $pIdx);
                                                 $costoMat      = self::costoLote($pres['formulaLines'] ?? []);
                                                 $lote          = max((float) ($pres['cantidad_minima_produccion'] ?? 1), 0.0001);
-                                                $matPorUnidad  = $costoMat / $lote;
+                                                $base          = (float) ($get('cantidad_base') ?? 0);
+                                                $receta        = $base > 0 ? self::costoLote($get('formulaLines') ?? []) / $base * (float) ($pres['capacidad'] ?? 0) : 0;
+                                                $matPorUnidad  = $costoMat / $lote + $receta;
                                                 $costoTotal    = $matPorUnidad + $porUnidadTotal;
                                                 $rows .= "<tr class='border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800'>
                                                     <td class='py-2 pr-4 text-sm font-semibold' colspan='2'>" . e($presNombre) . " — Costo Total / Unidad</td>
@@ -729,6 +592,178 @@ class ProductDesignResource extends Resource
      * Calcula el costo de una línea de fórmula usando $get() del repeater.
      * Lee precio y factor directo del ítem en BD para evitar depender de campos ocultos.
      */
+    /** Las líneas de una fórmula: las mismas para la del producto y para el envase. */
+    public static function lineasFormula(): Repeater
+    {
+        return Repeater::make('formulaLines')
+                                                ->relationship()
+                                                ->label('')
+                                                ->schema([
+                                                    // ── Insumo ──────────────────────────────────────────────
+                                                    Select::make('inventory_item_id')
+                                                        ->label('Insumo / Materia Prima')
+                                                        ->options(fn () => InventoryItem::where('activo', true)
+                                                            ->whereIn('type', ['insumo', 'materia_prima'])
+                                                            ->get()
+                                                            ->mapWithKeys(fn ($item) => [
+                                                                $item->id => "{$item->codigo} — {$item->nombre}",
+                                                            ]))
+                                                        ->searchable()
+                                                        ->nullable()
+                                                        ->placeholder('Seleccionar insumo existente...')
+                                                        ->live()
+                                                        ->createOptionModalHeading('Nuevo Insumo / Materia Prima')
+                                                        ->createOptionForm([
+                                                            TextInput::make('nombre')
+                                                                ->label('Nombre')
+                                                                ->required()
+                                                                ->maxLength(150)
+                                                                ->columnSpanFull(),
+                                                            Select::make('type')
+                                                                ->label('Tipo')
+                                                                ->options([
+                                                                    'insumo'        => 'Insumo',
+                                                                    'materia_prima' => 'Materia Prima',
+                                                                ])
+                                                                ->required(),
+                                                            TextInput::make('purchase_price')
+                                                                ->label('Precio de Compra (aprox.)')
+                                                                ->numeric()
+                                                                ->prefix('$')
+                                                                ->required()
+                                                                ->helperText('Puede ser un valor aproximado y ajustarlo luego.'),
+                                                            Select::make('measurement_unit_id')
+                                                                ->label('Unidad de Stock')
+                                                                ->helperText('Ej: gramo (g), mililitro (ml), unidad...')
+                                                                ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
+                                                                ->searchable()
+                                                                ->live()
+                                                                ->required(),
+                                                            Select::make('purchase_unit_id')
+                                                                ->label('Unidad de Compra')
+                                                                ->helperText('Ej: kilogramo (kg), litro (L)... Si compras y usas en la misma unidad, deja vacío.')
+                                                                ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
+                                                                ->searchable()
+                                                                ->nullable()
+                                                                ->live(),
+                                                            TextInput::make('conversion_factor')
+                                                                ->label('Factor de Conversión')
+                                                                ->helperText('¿Cuántas unidades de stock hay en una unidad de compra? Ej: 1 kg = 1000 g → factor 1000')
+                                                                ->numeric()
+                                                                ->default(1)
+                                                                ->required(),
+                                                        ])
+                                                        ->columns(2)
+                                                        ->createOptionUsing(function (array $data): int {
+                                                            return InventoryItem::create([
+                                                                ...$data,
+                                                                'empresa_id'  => Filament::getTenant()->id,
+                                                                'activo'      => true,
+                                                                'stock_actual' => 0,
+                                                            ])->getKey();
+                                                        })
+                                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                                            $item = InventoryItem::find($state);
+                                                            if (!$item) {
+                                                                $set('_factor', 1);
+                                                                $set('_precio_compra', 0);
+                                                                $set('_pu_label', '');
+                                                                $set('_su_label', '');
+                                                                $set('measurement_unit_id', null);
+                                                                $set('costo_estimado', 0);
+                                                                return;
+                                                            }
+                                                            $set('_factor', (float) ($item->conversion_factor ?? 1));
+                                                            $set('_precio_compra', (float) $item->purchase_price);
+                                                            $set('_pu_label', $item->purchaseUnit?->abreviatura ?? $item->measurementUnit?->abreviatura ?? '');
+                                                            $set('_su_label', $item->measurementUnit?->abreviatura ?? '');
+                                                            $set('measurement_unit_id', $item->measurement_unit_id);
+                                                            self::calcularCostoLinea($get, $set);
+                                                        })
+                                                        ->columnSpan(4),
+
+                                                    // ── Cantidad ────────────────────────────────────────────
+                                                    TextInput::make('cantidad')
+                                                        ->label('Cantidad')
+                                                        ->numeric()
+                                                        ->required()
+                                                        ->live(onBlur: true)
+                                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                                            self::calcularCostoLinea($get, $set);
+                                                        })
+                                                        ->columnSpan(2),
+
+                                                    // ── Unidad (auto-cargada del ítem, editable) ────────────
+                                                    Select::make('measurement_unit_id')
+                                                        ->label('Unidad')
+                                                        ->options(fn () => MeasurementUnit::pluck('abreviatura', 'id'))
+                                                        ->searchable()
+                                                        ->createOptionModalHeading('Nueva Unidad')
+                                                        ->createOptionForm([
+                                                            TextInput::make('nombre')->label('Nombre')->required(),
+                                                            TextInput::make('abreviatura')->label('Abreviatura')->maxLength(10),
+                                                        ])
+                                                        ->createOptionUsing(fn (array $data): int =>
+                                                            MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey())
+                                                        ->columnSpan(2),
+
+                                                    // ── Es subproducto ──────────────────────────────────────
+                                                    Toggle::make('es_subproducto_manufacturado')
+                                                        ->label('Subproducto')
+                                                        ->inline(false)
+                                                        ->columnSpan(1),
+
+                                                    // ── Campos ocultos de conversión ────────────────────────
+                                                    \Filament\Forms\Components\Hidden::make('_factor')->default(1),
+                                                    \Filament\Forms\Components\Hidden::make('_precio_compra')->default(0),
+                                                    \Filament\Forms\Components\Hidden::make('_pu_label')->default(''),
+                                                    \Filament\Forms\Components\Hidden::make('_su_label')->default(''),
+                                                    \Filament\Forms\Components\Hidden::make('costo_estimado')->default(0),
+
+                                                    // ── Conversión de unidades (solo si hay factor ≠ 1) ─────
+                                                    \Filament\Forms\Components\Placeholder::make('_conv_display')
+                                                        ->label('Equivale en compra')
+                                                        ->columnSpan(3)
+                                                        ->visible(fn (callable $get) => (float) ($get('_factor') ?? 1) != 1.0 && (float) ($get('cantidad') ?? 0) > 0)
+                                                        ->content(function (callable $get) {
+                                                            $qty    = (float) ($get('cantidad') ?? 0);
+                                                            $factor = (float) ($get('_factor') ?? 1);
+                                                            $su     = $get('_su_label') ?: '?';
+                                                            $pu     = $get('_pu_label') ?: '?';
+                                                            $enCompra = $factor > 0 ? round($qty / $factor, 6) : 0;
+                                                            return "{$qty} {$su}  =  " . number_format($enCompra, 4) . " {$pu}";
+                                                        }),
+
+                                                    // ── Costo estimado ──────────────────────────────────────
+                                                    \Filament\Forms\Components\Placeholder::make('_costo_display')
+                                                        ->label('Costo estimado')
+                                                        ->columnSpan(3)
+                                                        ->visible(fn (callable $get) => (float) ($get('_precio_compra') ?? 0) > 0)
+                                                        ->content(function (callable $get) {
+                                                            $qty          = (float) ($get('cantidad') ?? 0);
+                                                            $precioCompra = (float) ($get('_precio_compra') ?? 0);
+                                                            $factor       = max((float) ($get('_factor') ?? 1), 0.000001);
+                                                            $pu           = $get('_pu_label') ?: '?';
+                                                            $su           = $get('_su_label') ?: '?';
+                                                            // Fórmula: (precio_compra ÷ factor) × cantidad
+                                                            $precioStock  = $precioCompra / $factor;
+                                                            $costo        = round($qty * $precioStock, 2);
+                                                            return '$ ' . number_format($costo, 2)
+                                                                . "  ($" . number_format($precioCompra, 2) . " / {$factor} {$su}/{$pu}"
+                                                                . " × {$qty} {$su})";
+                                                        }),
+
+                                                    // ── Notas ───────────────────────────────────────────────
+                                                    Textarea::make('notas')
+                                                        ->label('Notas')
+                                                        ->rows(2)
+                                                        ->columnSpanFull(),
+                                                ])
+                                                ->columns(12)
+                                                ->addActionLabel('+ Agregar insumo')
+                                                ->defaultItems(0);
+    }
+
     public static function calcularCostoLinea(callable $get, callable $set): void
     {
         $qty    = (float) ($get('cantidad') ?? 0);

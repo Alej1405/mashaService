@@ -414,13 +414,21 @@ class ClasificadorComprobantesService
 
         foreach ($xml['detalles'] ?? [] as $d) {
             $codigo = trim((string) ($d['codigo'] ?? ''));
-            $item = InventoryItem::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)
+
+            // Primero la presentación con ese código del SRI: es lo que se vendió.
+            $presentacion = $codigo !== '' ? \App\Models\ProductPresentation::where('codigo_sri', $codigo)
+                ->whereNotNull('inventory_item_id')
+                ->whereHas('productDesign', fn ($q) => $q->withoutGlobalScopes()->where('empresa_id', $c->empresa_id))
+                ->first() : null;
+
+            $item = $presentacion ? InventoryItem::withoutGlobalScopes()->find($presentacion->inventory_item_id) : null;
+            $item ??= InventoryItem::withoutGlobalScopes()->where('empresa_id', $c->empresa_id)
                 ->where(fn ($q) => $q->when($codigo !== '', fn ($q) => $q->where('codigo', $codigo))
                     ->orWhereRaw('lower(nombre) = ?', [mb_strtolower(trim((string) $d['descripcion']))]))
                 ->first();
 
             if (! $item) {
-                $sinReconocer[] = $d['descripcion'];
+                $sinReconocer[] = $d['descripcion'] . ($codigo !== '' ? " (código {$codigo})" : '');
 
                 continue;
             }
@@ -436,7 +444,7 @@ class ClasificadorComprobantesService
             $c->update(['desglose' => 'sin_detalle']);
 
             return ['ok' => false, 'manual' => true, 'error' => 'No reconozco en el inventario: '
-                . implode(', ', array_slice($sinReconocer, 0, 3)) . '. Di a mano qué se vendió.'];
+                . implode(', ', array_slice($sinReconocer, 0, 3)) . '. Crea su presentación con ese código del SRI en Diseño de producto.'];
         }
 
         $comprador = $xml['comprador'] ?? [];

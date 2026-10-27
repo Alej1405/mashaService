@@ -39,6 +39,8 @@ class ProductDesign extends Model
         'aplica_ice',
         'ice_categoria',
         'ice_porcentaje',
+        'cantidad_base',
+        'unidad_base_id',
     ];
 
     protected $casts = [
@@ -57,6 +59,7 @@ class ProductDesign extends Model
         'meta_ganancia'                   => 'decimal:2',
         'aplica_ice'                      => 'boolean',
         'ice_porcentaje'                  => 'decimal:2',
+        'cantidad_base'                   => 'decimal:4',
     ];
 
     public function storeCategory(): BelongsTo
@@ -67,6 +70,17 @@ class ProductDesign extends Model
     public function inventoryItem(): BelongsTo
     {
         return $this->belongsTo(InventoryItem::class);
+    }
+
+    /** La fórmula del producto, para su cantidad base. */
+    public function formulaLines(): HasMany
+    {
+        return $this->hasMany(ProductFormulaLine::class, 'product_design_id');
+    }
+
+    public function unidadBase(): BelongsTo
+    {
+        return $this->belongsTo(MeasurementUnit::class, 'unidad_base_id');
     }
 
     public function presentations(): HasMany
