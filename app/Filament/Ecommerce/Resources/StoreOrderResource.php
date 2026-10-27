@@ -78,6 +78,15 @@ class StoreOrderResource extends Resource
                 ->required()->native(false)
                 ->visible(fn (string $operation) => $operation === 'edit'),
             Textarea::make('notas_cliente')->label('Notas')->rows(3)->columnSpanFull(),
+            \Filament\Forms\Components\Placeholder::make('historial')
+                ->label('Historial del pedido')
+                ->visible(fn (string $operation) => $operation === 'edit')
+                ->content(fn (?StoreOrder $record) => new \Illuminate\Support\HtmlString($record?->historial->isNotEmpty()
+                    ? '<ol style="margin:0;padding-left:18px">' . $record->historial->map(fn ($h) => '<li>'
+                        . e(ucfirst($h->estado)) . ' · ' . $h->ocurrido_en->format('d/m/Y H:i')
+                        . ($h->user ? ' · ' . e($h->user->name) : '') . ($h->nota ? ' · ' . e($h->nota) : '') . '</li>')->join('') . '</ol>'
+                    : 'Sin pasos registrados todavía.'))
+                ->columnSpanFull(),
         ]);
     }
 

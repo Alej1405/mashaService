@@ -455,7 +455,16 @@ class ClasificadorComprobantesService
         );
         $medio = MedioPago::atributos($pago);
 
-        return DB::transaction(function () use ($c, $cliente, $medio, $lineas) {
+        // Antes del inicio de gestión, con el modo de cuadre encendido, la venta se registra
+        // de atrás hacia adelante: saldo, venta y pedido entregado con su historial.
+        $historica = app(ContabilidadService::class)->permiteCuadre($c->empresa_id, $c->fecha_emision->copy()) ? app(VentaHistorica::class) : null;
+
+        return DB::transaction(function () use ($c, $cliente, $medio, $lineas, $historica) {
+            foreach ($historica ? $lineas : [] as [$item, $cantidad, $precio]) {
+                $historica->saldo($c, $item, $cantidad, $precio);
+                $item->refresh();
+            }
+
             $venta = Sale::withoutGlobalScopes()->create([
                 'empresa_id'     => $c->empresa_id,
                 'referencia'     => $c->numero,
@@ -488,6 +497,8 @@ class ClasificadorComprobantesService
                 throw new \RuntimeException('La venta no generó asiento: '
                     . ($venta->error_contable_msg ?: 'revisa el mapeo contable del producto.'));
             }
+
+            $historica?->pedido($c, $venta, $cliente, $lineas);
 
             return ['ok' => true, 'documento' => 'sale', 'id' => $venta->id,
                     'detalle' => "venta {$c->numero} con el detalle de la factura"];

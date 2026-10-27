@@ -67,6 +67,14 @@ class StoreOrder extends Model
         return $this->belongsTo(StoreCoupon::class, 'store_coupon_id');
     }
 
+    /** true cuando quien crea el pedido escribe su historial (un registro histórico). */
+    public bool $historialManual = false;
+
+    public function historial(): HasMany
+    {
+        return $this->hasMany(StoreOrderHistorial::class)->orderBy('ocurrido_en')->orderBy('id');
+    }
+
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);
