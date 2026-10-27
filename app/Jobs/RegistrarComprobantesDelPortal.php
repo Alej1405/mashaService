@@ -103,6 +103,24 @@ class RegistrarComprobantesDelPortal implements ShouldQueue
             $this->avance($cuenta);
         }
 
+        // Las ventas se registran en su fila (hay que decir cómo se cobraron), pero si el
+        // SRI no entrega su detalle tienen que pasar a «Falta el detalle» para subir su XML.
+        $ventas = ComprobanteSri::where('empresa_id', $this->empresaId)->where('origen', 'emitido')
+            ->sinClasificar()
+            ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+            ->when($this->anio && $this->mes, fn ($q) => $q->whereMonth('fecha_emision', $this->mes))
+            ->where(fn ($q) => $q->whereNull('desglose')->orWhereNotIn('desglose', ClasificadorComprobantesService::SIN_DETALLE))
+            ->get();
+
+        foreach ($ventas as $c) {
+            $r = $c->clave_acceso ? app(\App\Services\ServicioSri::class)->autorizacionComprobante($c->clave_acceso) : [];
+
+            if (! ($r['ok'] ?? false) || ($r['estado'] ?? '') !== 'AUTORIZADO') {
+                $c->update(['desglose' => 'sin_xml']);
+                $cuenta['manuales']++;
+            }
+        }
+
         $cuenta['corriendo'] = false;
         $this->avance($cuenta);
 
