@@ -118,7 +118,9 @@ class SuperciasService
         $totales['600'] = $resultado;
         $totales['601'] = $participacion;
         $totales['602'] = $totales['604'] = $totales['607'] = round($resultado - $participacion, 2);
-        $totales['707'] = $totales['801'] = $totales['80101'] = $totales['607'];
+        $totales['707'] = $totales['801'] = $totales['607'];
+        // La Superintendencia pide la parte de los propietarios siempre en positivo, aun con pérdida.
+        $totales['80101'] = abs($totales['801']);
 
         return $totales;
     }
