@@ -69,7 +69,7 @@ class InformesSupercias extends Page
             fechaHasta:    "{$this->anio}-12-31",
             tipo:          null,
             nombreEmpresa: $empresa->name,
-        ))->download("{$this->anio}_LIBRO_DIARIO.xlsx");
+        ))->pdf("{$this->anio}_LIBRO_DIARIO.pdf");
     }
 
     public function descargarJuego(): StreamedResponse

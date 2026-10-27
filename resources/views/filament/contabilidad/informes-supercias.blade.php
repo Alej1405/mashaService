@@ -45,14 +45,14 @@
             @endforeach
                 <tr>
                     <td data-col="Estado"><strong>Libro diario</strong></td>
-                    <td data-col="Archivo" style="font-family:ui-monospace,monospace;font-size:13px">{{ $anio }}_LIBRO_DIARIO.xlsx</td>
+                    <td data-col="Archivo" style="font-family:ui-monospace,monospace;font-size:13px">{{ $anio }}_LIBRO_DIARIO.pdf</td>
                     <td class="num" data-col="Líneas">{{ $asientos }} asientos</td>
                     <td class="num" data-col="Con valor">
                         <span class="ct-chip ct-chip-{{ $asientos ? 'ok' : 'wa' }}">{{ $asientos }}</span>
                     </td>
                     <td data-col="" style="text-align:right">
                         <button type="button" wire:click="descargarDiario" class="ct-chip ct-chip-n" style="border:0;cursor:pointer">
-                            Descargar .xlsx
+                            Descargar .pdf
                         </button>
                     </td>
                 </tr>

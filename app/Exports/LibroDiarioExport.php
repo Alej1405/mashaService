@@ -48,6 +48,17 @@ class LibroDiarioExport
             ->get();
     }
 
+    /** El mismo libro en PDF, que es como lo pide la Superintendencia. */
+    public function pdf(string $filename): StreamedResponse
+    {
+        $empresa = \App\Models\Empresa::withoutGlobalScopes()->find($this->empresaId);
+        $periodo = 'Del ' . \Carbon\Carbon::parse($this->fechaDesde)->format('d/m/Y') . ' al ' . \Carbon\Carbon::parse($this->fechaHasta)->format('d/m/Y');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.libro-diario', ['empresa' => $empresa, 'periodo' => $periodo, 'asientos' => $this->getData()])
+            ->setPaper('a4');
+
+        return response()->streamDownload(fn () => print($pdf->output()), $filename, ['Content-Type' => 'application/pdf']);
+    }
+
     public function download(string $filename): StreamedResponse
     {
         $entries = $this->getData();
