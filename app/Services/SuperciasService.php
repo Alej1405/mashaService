@@ -224,19 +224,17 @@ class SuperciasService
     /** Cuántas líneas del archivo salen con valor, para no subir un archivo en ceros. */
     public function resumen(int $empresaId, int $anio): array
     {
-        $saldos = $this->saldosPorCodigo($empresaId, $anio);
         $resumen = [];
 
+        // Cuenta lo mismo que sale en el archivo: las líneas del estado con valor en el año.
         foreach (CatalogoSupercias::ESTADOS as $estado => $etiqueta) {
-            $lineas = CatalogoSupercias::where('estado', $estado)->orderBy('orden')->get();
-            $totales = $this->consolidar($saldos, $lineas);
-            $conValor = count(array_filter($totales, fn ($v) => abs($v) > 0.001));
+            $lineas = $this->estado($empresaId, $anio, $estado);
 
             $resumen[$estado] = [
                 'etiqueta' => $etiqueta,
                 'archivo'  => CatalogoSupercias::ARCHIVOS[$estado],
-                'lineas'   => $lineas->count(),
-                'conValor' => $conValor,
+                'lineas'   => count($lineas),
+                'conValor' => count(array_filter($lineas, fn ($l) => abs($l['actual']) > 0.001)),
             ];
         }
 
