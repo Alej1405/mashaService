@@ -204,7 +204,10 @@ class SuperciasService
                 : "{$linea['codigo']} {$valor}";
         }
 
-        return implode("\n", $salida) . "\n";
+        // Así vienen los formatos oficiales: el de cambios en el patrimonio en LF, los otros tres en CRLF.
+        $salto = $estado === 'cambios_patrimonio' ? "\n" : "\r\n";
+
+        return implode($salto, $salida) . $salto;
     }
 
     public function juegoCompleto(int $empresaId, int $anio): array
