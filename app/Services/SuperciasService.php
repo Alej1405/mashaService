@@ -35,7 +35,7 @@ class SuperciasService
             ->reduce(function (array $acc, $f) {
                 // El signo lo pone la sección del catálogo, no la naturaleza de la cuenta:
                 // una correctora (depreciación acumulada, pérdidas) resta en su sección.
-                $valor = in_array($f->codigo[0], ['1', '5'], true)
+                $valor = in_array(((string) $f->codigo)[0], ['1', '5'], true)
                     ? (float) $f->debe - (float) $f->haber
                     : (float) $f->haber - (float) $f->debe;
 
@@ -54,7 +54,7 @@ class SuperciasService
     {
         $resultado = 0.0;
         foreach ($saldos as $codigo => $valor) {
-            $resultado += match ((string) $codigo[0]) { '4' => $valor, '5' => -$valor, default => 0 };
+            $resultado += match (((string) $codigo)[0]) { '4' => $valor, '5' => -$valor, default => 0 };
         }
 
         $codigo = $resultado >= 0 ? '30701' : '30702';
