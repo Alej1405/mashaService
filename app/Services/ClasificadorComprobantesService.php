@@ -505,7 +505,7 @@ class ClasificadorComprobantesService
         // de atrás hacia adelante: saldo, venta y pedido entregado con su historial.
         $historica = app(ContabilidadService::class)->permiteCuadre($c->empresa_id, $c->fecha_emision->copy()) ? app(VentaHistorica::class) : null;
 
-        return DB::transaction(function () use ($c, $cliente, $medio, $lineas, $historica) {
+        return DB::transaction(function () use ($c, $xml, $cliente, $medio, $lineas, $historica) {
             foreach ($historica ? $lineas : [] as [$item, $cantidad, $precio]) {
                 $historica->saldo($c, $item, $cantidad, $precio);
                 $item->refresh();
