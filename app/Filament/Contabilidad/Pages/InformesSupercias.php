@@ -58,6 +58,20 @@ class InformesSupercias extends Page
         );
     }
 
+    /** El libro diario del ejercicio, que la Superintendencia también pide. */
+    public function descargarDiario(): StreamedResponse
+    {
+        $empresa = Filament::getTenant();
+
+        return (new \App\Exports\LibroDiarioExport(
+            empresaId:     $empresa->id,
+            fechaDesde:    "{$this->anio}-01-01",
+            fechaHasta:    "{$this->anio}-12-31",
+            tipo:          null,
+            nombreEmpresa: $empresa->name,
+        ))->download("{$this->anio}_LIBRO_DIARIO.xlsx");
+    }
+
     public function descargarJuego(): StreamedResponse
     {
         $empresa = Filament::getTenant();
@@ -90,6 +104,8 @@ class InformesSupercias extends Page
             'anio'        => $this->anio,
             'resumen'     => $scvs->resumen($empresa->id, $this->anio),
             'sinCodigo'   => $scvs->cuentasSinCodigo($empresa->id),
+            'asientos'    => \App\Models\JournalEntry::withoutGlobalScopes()->where('empresa_id', $empresa->id)
+                ->where('status', 'confirmado')->whereYear('fecha', $this->anio)->count(),
             'muestra'     => collect(explode("\n", $scvs->archivo($empresa->id, $this->anio, 'situacion_financiera')))
                                 ->filter()->take(12)->all(),
         ];
