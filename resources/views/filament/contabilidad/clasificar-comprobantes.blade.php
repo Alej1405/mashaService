@@ -41,6 +41,18 @@
         </div>
     @endif
 
+    {{-- Compras o ventas del período elegido. --}}
+    <div class="ct-barra" role="tablist" aria-label="Compras o ventas">
+        @foreach ([null => 'Compras y ventas', 'compras' => 'Compras', 'ventas' => 'Ventas'] as $clave => $etiqueta)
+            @php $n = $clave === 'compras' ? $porTipo->compras : ($clave === 'ventas' ? $porTipo->ventas : $porTipo->compras + $porTipo->ventas); @endphp
+            <button type="button" role="tab" aria-selected="{{ $tipo === ($clave ?: null) ? 'true' : 'false' }}"
+                    class="ct-pestana {{ $tipo === ($clave ?: null) ? 'es-activa' : '' }}"
+                    wire:click="$set('tipo', {{ $clave ? "'{$clave}'" : 'null' }})">
+                {{ $etiqueta }} · {{ $n }}
+            </button>
+        @endforeach
+    </div>
+
     {{-- Proveedor: se filtran sus facturas y se registran todas de una con un solo pago. --}}
     @if ($proveedores->count() > 1 || $proveedor)
         <div class="ct-barra">
@@ -217,7 +229,7 @@
     @endif
 
     {{-- ── Listas para registrar: con su detalle; se elige el pago y se registran ── --}}
-    @if ($vista === 'esperan')
+    @if ($vista === 'esperan' && $tipo !== 'ventas')
         @livewire(\App\Livewire\CompletarFacturas::class, ['proveedor' => $proveedor, 'anio' => $anio, 'mes' => $mes], key('listas'))
     @endif
 

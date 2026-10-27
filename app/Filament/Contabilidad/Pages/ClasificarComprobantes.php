@@ -60,6 +60,10 @@ class ClasificarComprobantes extends Page
     #[\Livewire\Attributes\Url]
     public ?string $proveedor = null;
 
+    /** Compras (recibidas) o ventas (emitidas); null = las dos. Queda en la URL. */
+    #[\Livewire\Attributes\Url]
+    public ?string $tipo = null;
+
     /**
      * Qué parte de la bandeja se mira. Cada una es un estado del detalle:
      *   por_registrar · todavía no se trae su detalle del SRI
@@ -111,6 +115,12 @@ class ClasificarComprobantes extends Page
     public function updatedMes(): void
     {
         $this->mes = $this->anio && $this->mes >= 1 && $this->mes <= 12 ? $this->mes : null;
+        $this->cargar();
+    }
+
+    public function updatedTipo(): void
+    {
+        $this->tipo = in_array($this->tipo, ['compras', 'ventas'], true) ? $this->tipo : null;
         $this->cargar();
     }
 
@@ -214,7 +224,8 @@ class ClasificarComprobantes extends Page
     {
         return $q->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
             ->when($this->anio && $this->mes, fn ($q) => $q->whereMonth('fecha_emision', $this->mes))
-            ->when($this->proveedor, fn ($q) => $q->where('identificacion', $this->proveedor));
+            ->when($this->proveedor, fn ($q) => $q->where('identificacion', $this->proveedor))
+            ->when($this->tipo, fn ($q) => $q->where('origen', $this->tipo === 'ventas' ? 'emitido' : 'recibido'));
     }
 
     /**
@@ -438,6 +449,12 @@ class ClasificarComprobantes extends Page
 
         return [
             'conteos'    => $this->conteos($empresa->id),
+            // Cuántas compras y ventas hay en el año y mes elegidos, para el filtro.
+            'porTipo'    => ComprobanteSri::where('empresa_id', $empresa->id)
+                ->when($this->anio, fn ($q) => $q->whereYear('fecha_emision', $this->anio))
+                ->when($this->anio && $this->mes, fn ($q) => $q->whereMonth('fecha_emision', $this->mes))
+                ->selectRaw("count(*) filter (where origen = 'recibido') as compras, count(*) filter (where origen = 'emitido') as ventas")
+                ->toBase()->first(),
             'registradas' => $registradas,
             'detalle'    => $detalle,
             'empresa'    => $empresa,
