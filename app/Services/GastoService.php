@@ -301,6 +301,11 @@ class GastoService
                     continue;
                 }
 
+                // Un activo no se deprecia antes del mes en que se adquirió.
+                if ($activo->fecha_compra && Carbon::parse($activo->fecha_compra)->startOfMonth()->greaterThan(Carbon::create($anio, $mes, 1))) {
+                    continue;
+                }
+
                 $ya = Depreciacion::where('inventory_item_id', $activo->id)
                     ->where('anio', $anio)->where('mes', $mes)->exists();
 

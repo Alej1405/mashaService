@@ -143,8 +143,11 @@ class AccountingService
                 if ($tipoGasto && ! $cuentaGasto) {
                     throw new Exception("El tipo de gasto «{$tipoGasto->nombre}» no tiene cuenta en el plan de esta empresa ({$tipoGasto->codigo_cuenta}).");
                 }
-                $cuentaItem = $cuentaGasto
-                    ? AccountPlan::findOrFail($cuentaGasto)
+                // Un activo fijo trae su propia cuenta (maquinaria, muebles, cómputo): el
+                // tipo 'activo_fijo' no tiene mapeo y caía en el global, que es Bancos.
+                $cuentaActivo = $tipoItem === 'activo_fijo' ? $item->inventoryItem->account_plan_id : null;
+                $cuentaItem = $cuentaGasto || $cuentaActivo
+                    ? AccountPlan::findOrFail($cuentaGasto ?: $cuentaActivo)
                     : self::getMapeo($purchase->empresa_id, $tipoItem, $tipoMovimiento);
 
                 JournalEntryLine::create([
