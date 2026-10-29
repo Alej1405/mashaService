@@ -43,9 +43,13 @@ PRODUCT.md
 /logsErp.md
 /memory/
 
-# Documentación y notas: ningún .md va al repo.
+# Documentación y notas: ningún .md va al repo, salvo el README.
 # Se quedan en disco para trabajar, pero no se publican.
 *.md
+!README.md
 
 # Volcados de base de datos: nunca al repo.
 *.sql
+
+# Mapa de trabajo con Figma: local, no va al repo.
+figma.map.json
