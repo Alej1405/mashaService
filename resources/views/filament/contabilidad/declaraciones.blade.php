@@ -109,6 +109,55 @@
         @endforeach
     </section>
 
+    {{-- REBEFICS: anual, con corte al 31 de diciembre --}}
+    <section class="ct-panel" @if (collect($rebefics)->contains(fn ($d) => in_array($d?->estado, ['pendiente', 'procesando'], true))) wire:poll.10s @endif>
+        <header>
+            <div>
+                <h2 class="ct-tit">REBEFICS · beneficiarios finales</h2>
+                <p class="ct-pie2">Anual, con corte al 31 de diciembre: socios, administrador y beneficiarios finales</p>
+            </div>
+        </header>
+        @foreach ($rebefics as $anio => $d)
+            @php
+                [$tono, $texto] = match (true) {
+                    (bool) $d?->presentado_en => ['ok', 'Presentado'],
+                    in_array($d?->estado, ['pendiente', 'procesando'], true) => ['wa', 'Generando…'],
+                    $d?->estado === 'listo' => ['wa', 'Listo para descargar'],
+                    $d?->estado === 'error' => ['da', 'Falló'],
+                    default => ['da', 'Sin generar'],
+                };
+            @endphp
+            <div class="ct-fila" style="align-items:flex-start">
+                <div style="min-width:0; flex:1">
+                    <p class="ct-fila-t">Ejercicio {{ $anio }}</p>
+                    @if ($d?->mensaje)
+                        <p class="ct-fila-s" style="color:var(--da)">{{ $d->mensaje }}</p>
+                    @endif
+                    @foreach ($d?->avisos ?? [] as $aviso)
+                        <p class="ct-fila-s" style="color:var(--wa)">{{ $aviso }}</p>
+                    @endforeach
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+                        @if ($d?->estado === 'listo' && $d->archivo)
+                            <a class="ct-btn-descarga" href="{{ route('contabilidad.declaracion', $d->id) }}">Descargar REBEFICS{{ $anio }}.zip</a>
+                        @endif
+                        @unless (in_array($d?->estado, ['pendiente', 'procesando'], true) || $d?->presentado_en)
+                            <button type="button" class="{{ $d ? 'ct-pestana' : 'ct-btn-descarga' }}" style="{{ $d ? '' : 'border:0;cursor:pointer' }}"
+                                    wire:click="pedir({{ $anio }}, 0, 'rebefics')" wire:loading.attr="disabled" wire:target="pedir">
+                                {{ $d ? 'Volver a generar' : 'Generar el REBEFICS' }}
+                            </button>
+                        @endunless
+                    </div>
+                    @if ($d?->estado === 'listo')
+                        <p class="ct-paso"><b>2</b><span>En <a href="https://srienlinea.sri.gob.ec" target="_blank" rel="noopener">SRI en línea</a>
+                            entra a <strong>Anexos → REBEFICS → Carga de archivo xml</strong> y sube el zip. En 48 horas revisa el
+                            <strong>talón resumen</strong> o la <strong>consulta de archivo de errores</strong>.</span></p>
+                    @endif
+                </div>
+                <span class="ct-chip ct-chip-{{ $tono }}" style="flex-shrink:0">{{ $texto }}</span>
+            </div>
+        @endforeach
+    </section>
+
     {{-- Lo pedido: se refresca solo mientras haya algo en la cola --}}
     <section class="ct-panel"
              @if ($pedidos->whereIn('estado', ['pendiente', 'procesando'])->isNotEmpty())

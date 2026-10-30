@@ -38,6 +38,7 @@ class Declaracion extends Model
         'f104' => 'Formulario 104 · IVA',
         'ats'  => 'Anexo transaccional',
         'f103' => 'Formulario 103 · retenciones',
+        'rebefics' => 'REBEFICS · beneficiarios finales',
     ];
 
     protected static function booted(): void

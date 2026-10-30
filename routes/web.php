@@ -329,11 +329,16 @@ Route::middleware(['web', 'auth'])->get('/contabilidad/declaracion/{declaracion}
         abort_if($faltan > 0, 409, "Hay {$faltan} facturas de {$modelo->periodo} sin registrar: regístralas y vuelve a generar el ATS.");
     }
 
-    // El ATS se sube al portal empaquetado: ATmmaaaa.zip con ATmmaaaa.xml adentro
-    // (Ficha Técnica ATS, 1.2). Solo se aceptan archivos comprimidos.
-    if ($modelo->tipo === 'ats') {
-        $nombre = sprintf('AT%02d%d', $modelo->mes, $modelo->anio);
-        $zip = tempnam(sys_get_temp_dir(), 'ats');
+    // Los anexos se suben al portal comprimidos: el ATS como ATmmaaaa.zip con ATmmaaaa.xml
+    // adentro (Ficha Técnica ATS, 1.2) y el REBEFICS igual («Carga de archivo xml»).
+    $nombre = match ($modelo->tipo) {
+        'ats'      => sprintf('AT%02d%d', $modelo->mes, $modelo->anio),
+        'rebefics' => "REBEFICS{$modelo->anio}",
+        default    => null,
+    };
+
+    if ($nombre) {
+        $zip = tempnam(sys_get_temp_dir(), 'anexo');
         $paquete = new \ZipArchive();
         $paquete->open($zip, \ZipArchive::OVERWRITE);
         $paquete->addFromString("{$nombre}.xml", \Illuminate\Support\Facades\Storage::disk('local')->get($modelo->archivo));

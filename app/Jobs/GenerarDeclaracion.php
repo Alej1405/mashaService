@@ -66,14 +66,17 @@ class GenerarDeclaracion implements ShouldQueue
         $datos = match ($declaracion->tipo) {
             'f104' => $f104->calcular($declaracion->empresa_id, $declaracion->anio, $declaracion->mes),
             'ats'  => $ats->datos($declaracion->empresa_id, $declaracion->anio, $declaracion->mes),
+            'rebefics' => app(\App\Services\RebeficsService::class)->datos($declaracion->empresa_id, $declaracion->anio),
             default => throw new \InvalidArgumentException("No sé generar {$declaracion->tipo}."),
         };
 
-        // 2 · el microservicio escribe el XML del ATS, sin tocar la base. El 104
-        // termina aquí: se declara escribiendo sus casillas en el portal.
-        $respuesta = $declaracion->tipo === 'f104'
-            ? ['ok' => true, 'xml' => null]
-            : $servicio->ats($datos);
+        // 2 · el microservicio escribe el XML, sin tocar la base. El 104 termina
+        // aquí: se declara escribiendo sus casillas en el portal.
+        $respuesta = match ($declaracion->tipo) {
+            'f104'     => ['ok' => true, 'xml' => null],
+            'rebefics' => $servicio->rebefics($datos),
+            default    => $servicio->ats($datos),
+        };
 
         $archivo = null;
 

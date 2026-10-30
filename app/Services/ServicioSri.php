@@ -126,6 +126,12 @@ class ServicioSri
         return $this->generar('/ats/xml', $datos);
     }
 
+    /** Manda socios, administradores y beneficiarios; recibe el XML del REBEFICS. */
+    public function rebefics(array $datos): array
+    {
+        return $this->generar('/rebefics/xml', $datos);
+    }
+
     /** Lo común de las dos: pedir el XML y no romper el ERP si no hay servicio. */
     private function generar(string $ruta, array $cuerpo): array
     {
