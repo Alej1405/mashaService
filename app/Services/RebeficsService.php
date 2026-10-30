@@ -45,20 +45,19 @@ class RebeficsService
         $accionistas = [];
         foreach ($socios as $s) {
             $accionistas[] = $this->relacionado($ruc, $s->identificacion, $s->nombre, '10',
-                number_format((float) $s->participacion, 2, '.', ''), $s->residencia_fiscal ?: '593');
+                $this->porcentaje($s->participacion), $s->residencia_fiscal ?: '593');
         }
         foreach ($administradores as $a) {
             $accionistas[] = $this->relacionado($ruc, $a->identificacion, $a->nombre, '05', '0', '593');
         }
 
         $beneficiarios = $socios->map(fn (Socio $s) => [
-            'esPersonaNatural'     => 'SI',
             'tipoIdentificacion'   => $this->tipoId($s->identificacion),
             'numeroIdentificacion' => $s->identificacion,
             ...$this->nombres($s->nombre),
             'fechaNacimiento'      => $s->fecha_nacimiento?->format('d/m/Y'),
             'porPropiedad'         => 'SI',
-            'porcentajePropiedad'  => number_format((float) $s->participacion, 2, '.', ''),
+            'porcentajePropiedad'  => $this->porcentaje($s->participacion),
             'porOtrosMotivos'      => '09',
             'porOtrosRelacionados' => 'NA',
             'porAdministracion'    => 'NO',
@@ -125,6 +124,12 @@ class RebeficsService
             'parteRelacionadaInformante'    => 'SI',
             'paisResidenciaFiscal'          => $pais,
         ];
+    }
+
+    /** Sin decimales sobrantes («100», «33.5»): así los aceptó el portal; porcentajePropiedad admite 3 caracteres. */
+    private function porcentaje($valor): string
+    {
+        return rtrim(rtrim(number_format((float) $valor, 6, '.', ''), '0'), '.');
     }
 
     private function tipoId(string $id): string
