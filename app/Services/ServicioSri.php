@@ -132,6 +132,12 @@ class ServicioSri
         return $this->generar('/rebefics/xml', $datos);
     }
 
+    /** Manda las utilidades del ejercicio; recibe el XML del anexo de dividendos. */
+    public function adi(array $datos): array
+    {
+        return $this->generar('/adi/xml', $datos);
+    }
+
     /** Lo común de las dos: pedir el XML y no romper el ERP si no hay servicio. */
     private function generar(string $ruta, array $cuerpo): array
     {

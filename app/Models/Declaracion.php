@@ -39,6 +39,7 @@ class Declaracion extends Model
         'ats'  => 'Anexo transaccional',
         'f103' => 'Formulario 103 · retenciones',
         'rebefics' => 'REBEFICS · beneficiarios finales',
+        'adi'      => 'ADI · anexo de dividendos',
     ];
 
     protected static function booted(): void

@@ -109,15 +109,22 @@
         @endforeach
     </section>
 
-    {{-- REBEFICS: anual, con corte al 31 de diciembre --}}
-    <section class="ct-panel" @if (collect($rebefics)->contains(fn ($d) => in_array($d?->estado, ['pendiente', 'procesando'], true))) wire:poll.10s @endif>
+    {{-- Anexos anuales (REBEFICS y ADI): corte al 31 de diciembre, juntos para presentarlos a la vez --}}
+    @php
+        $anexosAnuales = [
+            'rebefics' => ['REBEFICS · beneficiarios finales', 'socios, administrador y beneficiarios finales', 'REBEFICS', 'REBEFICS%d.zip'],
+            'adi'      => ['ADI · anexo de dividendos', 'utilidades del ejercicio y dividendos distribuidos', 'Anexo de Dividendos', 'ADI-%d.zip'],
+        ];
+    @endphp
+    <section class="ct-panel" @if (collect($anuales)->flatten()->contains(fn ($d) => in_array($d?->estado, ['pendiente', 'procesando'], true))) wire:poll.10s @endif>
         <header>
             <div>
-                <h2 class="ct-tit">REBEFICS · beneficiarios finales</h2>
-                <p class="ct-pie2">Anual, con corte al 31 de diciembre: socios, administrador y beneficiarios finales</p>
+                <h2 class="ct-tit">Anexos anuales</h2>
+                <p class="ct-pie2">Con corte al 31 de diciembre: se generan, se descargan y se suben en SRI en línea → Anexos</p>
             </div>
         </header>
-        @foreach ($rebefics as $anio => $d)
+        @foreach ($anexosAnuales as $tipo => [$tituloAnexo, $contenido, $menuSri, $zip])
+        @foreach ($anuales[$tipo] as $anio => $d)
             @php
                 [$tono, $texto] = match (true) {
                     (bool) $d?->presentado_en => ['ok', 'Presentado'],
@@ -129,7 +136,8 @@
             @endphp
             <div class="ct-fila" style="align-items:flex-start">
                 <div style="min-width:0; flex:1">
-                    <p class="ct-fila-t">Ejercicio {{ $anio }}</p>
+                    <p class="ct-fila-t">{{ $tituloAnexo }} · {{ $anio }}</p>
+                    <p class="ct-fila-s">{{ ucfirst($contenido) }}</p>
                     @if ($d?->mensaje)
                         <p class="ct-fila-s" style="color:var(--da)">{{ $d->mensaje }}</p>
                     @endif
@@ -138,23 +146,24 @@
                     @endforeach
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
                         @if ($d?->estado === 'listo' && $d->archivo)
-                            <a class="ct-btn-descarga" href="{{ route('contabilidad.declaracion', $d->id) }}">Descargar REBEFICS{{ $anio }}.zip</a>
+                            <a class="ct-btn-descarga" href="{{ route('contabilidad.declaracion', $d->id) }}">Descargar {{ sprintf($zip, $anio) }}</a>
                         @endif
                         @unless (in_array($d?->estado, ['pendiente', 'procesando'], true) || $d?->presentado_en)
                             <button type="button" class="{{ $d ? 'ct-pestana' : 'ct-btn-descarga' }}" style="{{ $d ? '' : 'border:0;cursor:pointer' }}"
-                                    wire:click="pedir({{ $anio }}, 0, 'rebefics')" wire:loading.attr="disabled" wire:target="pedir">
-                                {{ $d ? 'Volver a generar' : 'Generar el REBEFICS' }}
+                                    wire:click="pedir({{ $anio }}, 0, '{{ $tipo }}')" wire:loading.attr="disabled" wire:target="pedir">
+                                {{ $d ? 'Volver a generar' : 'Generar' }}
                             </button>
                         @endunless
                     </div>
                     @if ($d?->estado === 'listo')
                         <p class="ct-paso"><b>2</b><span>En <a href="https://srienlinea.sri.gob.ec" target="_blank" rel="noopener">SRI en línea</a>
-                            entra a <strong>Anexos → REBEFICS → Carga de archivo xml</strong> y sube el zip. En 48 horas revisa el
+                            entra a <strong>Anexos → {{ $menuSri }} → Carga de archivo</strong> y sube el zip. En 48 horas revisa el
                             <strong>talón resumen</strong> o la <strong>consulta de archivo de errores</strong>.</span></p>
                     @endif
                 </div>
                 <span class="ct-chip ct-chip-{{ $tono }}" style="flex-shrink:0">{{ $texto }}</span>
             </div>
+        @endforeach
         @endforeach
     </section>
 

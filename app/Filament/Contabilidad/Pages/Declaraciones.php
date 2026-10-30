@@ -321,18 +321,18 @@ class Declaraciones extends Page
             'servicio'   => app(ServicioSri::class)->salud(),
             'anio101'    => $anio,
             'conceptos'  => $this->conceptos101($anio),
-            // El ATS y el REBEFICS tienen su propio bloque; aquí queda lo demás.
-            'pedidos'    => Declaracion::where('empresa_id', $empresa->id)->whereNotIn('tipo', ['ats', 'rebefics'])
+            // El ATS y los anexos anuales tienen su propio bloque; aquí queda lo demás.
+            'pedidos'    => Declaracion::where('empresa_id', $empresa->id)->whereNotIn('tipo', ['ats', 'rebefics', 'adi'])
                 ->latest('id')->limit(12)->get(),
             'aniosAts'   => \App\Models\ComprobanteSri::where('empresa_id', $empresa->id)
                 ->selectRaw('distinct extract(year from fecha_emision)::int as anio')->pluck('anio')
                 ->push(now()->subMonth()->year)->unique()->sortDesc()->values()->all(),
             'mesesAts'   => $this->mesesAts($empresa->id, (int) $this->anioAts),
-            // El REBEFICS es anual con corte al 31 de diciembre: se pide el del año cerrado
-            // y quedan a la vista los que ya se generaron.
-            'rebefics'   => Declaracion::where('empresa_id', $empresa->id)->where('tipo', 'rebefics')
-                ->orderBy('id')->get()->keyBy('anio')
-                ->union([now()->year - 1 => null])->sortKeysDesc()->all(),
+            // Los anexos anuales (corte al 31 de diciembre): se pide el del año cerrado y
+            // quedan a la vista los que ya se generaron.
+            'anuales'    => collect(['rebefics', 'adi'])->mapWithKeys(fn ($tipo) => [$tipo => Declaracion::where('empresa_id', $empresa->id)
+                ->where('tipo', $tipo)->orderBy('id')->get()->keyBy('anio')
+                ->union([now()->year - 1 => null])->sortKeysDesc()->all()])->all(),
             'cadena'     => app(\App\Services\ImportadorDeclaracionesPdf::class)
                 ->verificarCadena($empresa->id),
         ];

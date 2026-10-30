@@ -327,7 +327,7 @@ class AtsService
      * nombre con que se creó la empresa en el ERP. Sale de la última declaración leída
      * del portal; sin ninguna, se usa el nombre de la empresa.
      */
-    private function razonSocialDelSri(int $empresaId): ?string
+    public function razonSocialDelSri(int $empresaId): ?string
     {
         $razon = \App\Models\Declaracion::where('empresa_id', $empresaId)
             ->whereNotNull('datos->cabecera->razon_social')

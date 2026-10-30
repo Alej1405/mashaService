@@ -67,6 +67,7 @@ class GenerarDeclaracion implements ShouldQueue
             'f104' => $f104->calcular($declaracion->empresa_id, $declaracion->anio, $declaracion->mes),
             'ats'  => $ats->datos($declaracion->empresa_id, $declaracion->anio, $declaracion->mes),
             'rebefics' => app(\App\Services\RebeficsService::class)->datos($declaracion->empresa_id, $declaracion->anio),
+            'adi'      => app(\App\Services\AdiService::class)->datos($declaracion->empresa_id, $declaracion->anio),
             default => throw new \InvalidArgumentException("No sé generar {$declaracion->tipo}."),
         };
 
@@ -75,6 +76,7 @@ class GenerarDeclaracion implements ShouldQueue
         $respuesta = match ($declaracion->tipo) {
             'f104'     => ['ok' => true, 'xml' => null],
             'rebefics' => $servicio->rebefics($datos),
+            'adi'      => $servicio->adi($datos),
             default    => $servicio->ats($datos),
         };
 

@@ -330,10 +330,11 @@ Route::middleware(['web', 'auth'])->get('/contabilidad/declaracion/{declaracion}
     }
 
     // Los anexos se suben al portal comprimidos: el ATS como ATmmaaaa.zip con ATmmaaaa.xml
-    // adentro (Ficha Técnica ATS, 1.2) y el REBEFICS igual («Carga de archivo xml»).
+    // adentro (Ficha Técnica ATS, 1.2); el REBEFICS y el ADI igual.
     $nombre = match ($modelo->tipo) {
         'ats'      => sprintf('AT%02d%d', $modelo->mes, $modelo->anio),
         'rebefics' => "REBEFICS{$modelo->anio}",
+        'adi'      => "ADI-{$modelo->anio}",   // ficha técnica ADI, 1.1
         default    => null,
     };
 
