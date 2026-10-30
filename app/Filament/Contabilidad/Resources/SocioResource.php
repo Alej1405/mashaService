@@ -39,7 +39,47 @@ class SocioResource extends Resource
             Forms\Components\TextInput::make('participacion')->label('Participación')->numeric()->suffix('%')->default(0),
             Forms\Components\TextInput::make('capital')->label('Capital suscrito')->numeric()->prefix('$')->default(0),
             Forms\Components\Toggle::make('activo')->label('Vigente')->default(true),
+
+            // Lo que el REBEFICS pide de la persona natural que es beneficiaria final.
+            Forms\Components\Section::make('Beneficiario final · REBEFICS')
+                ->description('Persona natural con participación: el SRI pide su nacimiento, su país y su domicilio con los códigos de sus tablas.')
+                ->columns(2)->collapsible()
+                ->schema([
+                    Forms\Components\DatePicker::make('fecha_nacimiento')->label('Fecha de nacimiento')->maxDate(now()),
+                    Forms\Components\Select::make('pais_nacionalidad')->label('Nacionalidad')->searchable()
+                        ->options(fn () => self::catalogo('5'))->default('593'),
+                    Forms\Components\Select::make('residencia_fiscal')->label('Residencia fiscal')->searchable()
+                        ->options(fn () => self::catalogo('5'))->default('593')->live(),
+                    Forms\Components\Select::make('provincia')->label('Provincia')->searchable()
+                        ->options(fn () => self::catalogo('adm_provincia'))->live()
+                        ->afterStateUpdated(function (Forms\Set $set) {
+                            $set('canton', null);
+                            $set('parroquia', null);
+                        })
+                        ->visible(fn (Forms\Get $get) => $get('residencia_fiscal') === '593'),
+                    Forms\Components\Select::make('canton')->label('Cantón')->searchable()
+                        ->options(fn (Forms\Get $get) => self::catalogo('adm_canton', $get('provincia')))->live()
+                        ->afterStateUpdated(fn (Forms\Set $set) => $set('parroquia', null))
+                        ->visible(fn (Forms\Get $get) => $get('residencia_fiscal') === '593'),
+                    Forms\Components\Select::make('parroquia')->label('Parroquia')->searchable()
+                        ->options(fn (Forms\Get $get) => self::catalogo('adm_parroquia', $get('canton')))
+                        ->visible(fn (Forms\Get $get) => $get('residencia_fiscal') === '593'),
+                    Forms\Components\TextInput::make('calle')->label('Calle')->maxLength(100),
+                    Forms\Components\TextInput::make('numero')->label('Número')->maxLength(10)
+                        ->helperText('Si no tiene, SN'),
+                    Forms\Components\TextInput::make('interseccion')->label('Intersección')->maxLength(100),
+                    Forms\Components\TextInput::make('codigo_postal')->label('Código postal')->numeric()->maxLength(10),
+                    Forms\Components\TextInput::make('referencia')->label('Referencia')->maxLength(100)->columnSpanFull(),
+                ]),
         ]);
+    }
+
+    /** Códigos de una tabla del REBEFICS; con `$grupo`, solo los hijos de ese código (cantones de una provincia…). */
+    private static function catalogo(string $tabla, ?string $grupo = null): array
+    {
+        return \App\Models\CatalogoSri::de('rebefics', $tabla)
+            ->when(func_num_args() > 1, fn ($q) => $q->where('grupo', $grupo ?? '-'))
+            ->orderBy('descripcion')->pluck('descripcion', 'codigo')->all();
     }
 
     public static function table(Table $table): Table

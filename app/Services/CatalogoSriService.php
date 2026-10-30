@@ -174,6 +174,50 @@ class CatalogoSriService
         ];
     }
 
+    /**
+     * Carga el JSON de un anexo (`database/data/sri/<anexo>.json`) con upsert.
+     *
+     * Las tablas de `$reemplazar` se borran antes: sirve cuando una tabla se cargó
+     * mal y sus códigos viejos no deben quedar sueltos.
+     */
+    public function cargar(string $anexo, array $reemplazar = []): int
+    {
+        $filas = json_decode(file_get_contents(database_path("data/sri/{$anexo}.json")), true) ?: [];
+
+        if ($reemplazar) {
+            CatalogoSri::where('anexo', $anexo)->whereIn('tabla', $reemplazar)->delete();
+        }
+
+        foreach (array_chunk($filas, 400) as $lote) {
+            CatalogoSri::query()->upsert(
+                array_map(fn (array $f) => [
+                    'anexo'          => $f['anexo'],
+                    'tabla'          => $f['tabla'],
+                    'nombre_tabla'   => $f['nombre_tabla'] ?? null,
+                    'codigo'         => $f['codigo'],
+                    'descripcion'    => $f['descripcion'] ?? null,
+                    'porcentaje'     => isset($f['porcentaje']) ? mb_substr((string) $f['porcentaje'], 0, 200) : null,
+                    'grupo'          => $f['grupo'] ?? null,
+                    'compatible_con' => $f['compatible_con'] ?? null,
+                    'formula'        => $f['formula'] ?? null,
+                    'vigente_desde'  => $f['desde'] ?? '1900-01-01',
+                    'vigente_hasta'  => $f['hasta'] ?? null,
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ], $lote),
+                ['anexo', 'tabla', 'codigo', 'vigente_desde'],
+                ['nombre_tabla', 'descripcion', 'porcentaje', 'grupo', 'compatible_con', 'formula', 'vigente_hasta', 'updated_at'],
+            );
+        }
+
+        // Los desplegables se cachean un día por fecha: se olvida el de hoy de cada tabla cargada.
+        foreach (array_unique(array_column($filas, 'tabla')) as $tabla) {
+            Cache::forget("sri:{$anexo}:{$tabla}:" . now()->toDateString());
+        }
+
+        return count($filas);
+    }
+
     /** Cuántos códigos hay cargados por anexo: sirve para saber si falta sembrar. */
     public function inventario(): array
     {

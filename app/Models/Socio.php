@@ -10,7 +10,10 @@ class Socio extends Model
 {
     use HasEmpresa;
 
-    protected $fillable = ['empresa_id','tipo_identificacion','identificacion','nombre','nacionalidad','participacion','capital','activo'];
+    protected $fillable = ['empresa_id','tipo_identificacion','identificacion','nombre','nacionalidad','participacion','capital','activo',
+        // Beneficiario final (REBEFICS)
+        'fecha_nacimiento','pais_nacionalidad','residencia_fiscal','provincia','canton','parroquia',
+        'calle','numero','interseccion','codigo_postal','referencia'];
 
-    protected $casts = ['participacion' => 'decimal:2', 'capital' => 'decimal:2', 'activo' => 'boolean'];
+    protected $casts = ['participacion' => 'decimal:2', 'capital' => 'decimal:2', 'activo' => 'boolean', 'fecha_nacimiento' => 'date'];
 }

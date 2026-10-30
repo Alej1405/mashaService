@@ -200,6 +200,17 @@ class Empresa extends Model implements HasName
         return $this->hasMany(Supplier::class, 'empresa_id');
     }
 
+    /** Filament crea los socios y administradores desde estas relaciones del tenant. */
+    public function socios(): HasMany
+    {
+        return $this->hasMany(Socio::class, 'empresa_id');
+    }
+
+    public function administradores(): HasMany
+    {
+        return $this->hasMany(Administrador::class, 'empresa_id');
+    }
+
     public function measurementUnits(): HasMany
     {
         return $this->hasMany(MeasurementUnit::class, 'empresa_id');
