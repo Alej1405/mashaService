@@ -36,13 +36,86 @@
         </div>
     @endif
 
+    {{-- El ATS, mes por mes: lo pendiente arriba, con sus pasos; verde solo lo presentado --}}
+    @php
+        $pendientesAts = collect($mesesAts)->filter(fn ($m) => ! $m['ats']?->presentado_en);
+        $presentadosAts = collect($mesesAts)->filter(fn ($m) => $m['ats']?->presentado_en)->reverse();
+        $generando = $pendientesAts->contains(fn ($m) => in_array($m['ats']?->estado, ['pendiente', 'procesando'], true));
+    @endphp
+    <section class="ct-panel" @if ($generando) wire:poll.10s @endif>
+        <header>
+            <div>
+                <h2 class="ct-tit">Anexo transaccional · {{ $anioAts }}</h2>
+                <p class="ct-pie2">
+                    {{ $pendientesAts->count() }} {{ $pendientesAts->count() === 1 ? 'mes pendiente' : 'meses pendientes' }}
+                    · {{ $presentadosAts->count() }} presentados
+                </p>
+            </div>
+            @if (count($aniosAts) > 1)
+                <div class="ct-tabs" role="tablist" aria-label="Año">
+                    @foreach ($aniosAts as $a)
+                        <button type="button" role="tab" aria-selected="{{ $anioAts === $a ? 'true' : 'false' }}"
+                                class="ct-pestana {{ $anioAts === $a ? 'es-activa' : '' }}"
+                                wire:click="$set('anioAts', {{ $a }})">{{ $a }}</button>
+                    @endforeach
+                </div>
+            @endif
+        </header>
+
+        @forelse ($pendientesAts as $m)
+            @php
+                [$tono, $texto] = match (true) {
+                    in_array($m['ats']?->estado, ['pendiente', 'procesando'], true) => ['wa', 'Generando…'],
+                    $m['ats']?->estado === 'listo' => ['wa', 'Listo para descargar'],
+                    $m['ats']?->estado === 'error' => ['da', 'Falló'],
+                    default => ['da', 'Sin generar'],
+                };
+            @endphp
+            <div class="ct-fila" style="align-items:flex-start">
+                <div style="min-width:0; flex:1">
+                    <p class="ct-fila-t">{{ $m['etiqueta'] }}</p>
+                    <p class="ct-fila-s">
+                        @if ($m['f104']?->presentado_en)
+                            104 presentado · serial {{ $m['f104']->comprobante_presentacion ?? '—' }}
+                            @unless ($m['f104']->archivo_pdf) · <span style="color:var(--wa)">sin constancia en PDF</span> @endunless
+                        @else
+                            <span style="color:var(--wa)">104 sin presentar</span>
+                        @endif
+                    </p>
+                    <div style="margin-top:6px">
+                        @include('filament.contabilidad.parciales.ats-pasos', ['ats' => $m['ats'], 'anio' => $m['anio'], 'mes' => $m['mes'], 'etiqueta' => $m['etiqueta']])
+                    </div>
+                </div>
+                <span class="ct-chip ct-chip-{{ $tono }}" style="flex-shrink:0">{{ $texto }}</span>
+            </div>
+        @empty
+            <p class="ct-vacio">Todos los ATS de {{ $anioAts }} están presentados.</p>
+        @endforelse
+
+        @foreach ($presentadosAts as $m)
+            <div class="ct-fila">
+                <div style="min-width:0">
+                    <p class="ct-fila-t">{{ $m['etiqueta'] }}</p>
+                    <p class="ct-fila-s">ATS presentado el {{ $m['ats']->presentado_en->format('d/m/Y') }}
+                        @if ($m['ats']->archivo_pdf) · confirmación del SRI guardada @endif</p>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; flex-shrink:0">
+                    @if ($m['ats']->archivo)
+                        <a class="ct-pestana" href="{{ route('contabilidad.declaracion', $m['ats']->id) }}">Descargar el presentado</a>
+                    @endif
+                    <span class="ct-chip ct-chip-ok">Presentado</span>
+                </div>
+            </div>
+        @endforeach
+    </section>
+
     {{-- Lo pedido: se refresca solo mientras haya algo en la cola --}}
     <section class="ct-panel"
              @if ($pedidos->whereIn('estado', ['pendiente', 'procesando'])->isNotEmpty())
                  wire:poll.10s
              @endif>
         <header>
-            <h2 class="ct-tit">Declaraciones pedidas</h2>
+            <h2 class="ct-tit">Otras declaraciones</h2>
             <span class="ct-pie2">
                 {{ $pedidos->whereIn('estado', ['pendiente', 'procesando'])->count() }} en cola
             </span>
@@ -83,12 +156,6 @@
                     @endforeach
                     @if ($d->mensaje && $d->tipo !== 'ats')
                         <p class="ct-fila-s" style="color:var(--da)">{{ $d->mensaje }}</p>
-                    @endif
-                    {{-- El ATS se presenta aquí mismo, con los mismos pasos que en Cumplimiento. --}}
-                    @if ($d->tipo === 'ats' && $d->mes)
-                        <div style="margin-top:8px">
-                            @include('filament.contabilidad.parciales.ats-pasos', ['ats' => $d, 'anio' => $d->anio, 'mes' => $d->mes, 'etiqueta' => $d->periodo])
-                        </div>
                     @endif
                 </div>
                 <div style="display:flex; align-items:center; gap:10px; flex-shrink:0">

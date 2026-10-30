@@ -32,6 +32,51 @@ class Declaraciones extends Page
     protected static ?int    $navigationSort  = 2;
     protected static string  $view            = 'filament.contabilidad.declaraciones';
 
+    /** El año cuyos ATS se muestran, mes por mes. */
+    public ?int $anioAts = null;
+
+    public function mount(): void
+    {
+        $this->anioAts ??= now()->subMonth()->year;
+    }
+
+    /**
+     * Los meses del año con algo que declarar, cada uno con su ATS y su 104.
+     *
+     * Un mes aparece desde que tiene comprobantes del portal o una declaración; el
+     * mes en curso no, porque todavía no se cierra. Pendiente es todo ATS sin
+     * presentar: verde solo cuando consta presentado.
+     */
+    private function mesesAts(int $empresaId, int $anio): array
+    {
+        $hasta = $anio < now()->year ? 12 : now()->subMonth()->month;
+        if ($anio > now()->subMonth()->year) {
+            return [];
+        }
+
+        $conDatos = \App\Models\ComprobanteSri::where('empresa_id', $empresaId)->whereYear('fecha_emision', $anio)
+            ->selectRaw('distinct extract(month from fecha_emision)::int as mes')->pluck('mes')
+            ->merge(Declaracion::where('empresa_id', $empresaId)->where('anio', $anio)->whereNotNull('mes')->pluck('mes'));
+        $desde = $conDatos->min();
+
+        if (! $desde || $desde > $hasta) {
+            return [];
+        }
+
+        $ultima = fn (string $tipo) => Declaracion::where('empresa_id', $empresaId)->where('tipo', $tipo)
+            ->where('anio', $anio)->orderBy('id')->get()->keyBy('mes');
+        $ats = $ultima('ats');
+        $f104 = $ultima('f104');
+
+        return collect(range($desde, $hasta))->map(fn ($m) => [
+            'anio'     => $anio,
+            'mes'      => $m,
+            'etiqueta' => ucfirst(Carbon::create($anio, $m, 1)->locale('es')->translatedFormat('F Y')),
+            'ats'      => $ats->get($m),
+            'f104'     => $f104->get($m),
+        ])->all();
+    }
+
     public static function canAccess(): bool
     {
         return \App\Helpers\PlanHelper::hasModule('finanzas');
@@ -276,8 +321,13 @@ class Declaraciones extends Page
             'servicio'   => app(ServicioSri::class)->salud(),
             'anio101'    => $anio,
             'conceptos'  => $this->conceptos101($anio),
-            'pedidos'    => Declaracion::where('empresa_id', $empresa->id)
+            // El ATS tiene su propio bloque, mes por mes; aquí queda lo demás.
+            'pedidos'    => Declaracion::where('empresa_id', $empresa->id)->where('tipo', '!=', 'ats')
                 ->latest('id')->limit(12)->get(),
+            'aniosAts'   => \App\Models\ComprobanteSri::where('empresa_id', $empresa->id)
+                ->selectRaw('distinct extract(year from fecha_emision)::int as anio')->pluck('anio')
+                ->push(now()->subMonth()->year)->unique()->sortDesc()->values()->all(),
+            'mesesAts'   => $this->mesesAts($empresa->id, (int) $this->anioAts),
             'cadena'     => app(\App\Services\ImportadorDeclaracionesPdf::class)
                 ->verificarCadena($empresa->id),
         ];
