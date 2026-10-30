@@ -58,7 +58,9 @@ class LibroDiarioExport
         $empresa = \App\Models\Empresa::withoutGlobalScopes()->find($this->empresaId);
         $periodo = 'Del ' . \Carbon\Carbon::parse($this->fechaDesde)->format('d/m/Y') . ' al ' . \Carbon\Carbon::parse($this->fechaHasta)->format('d/m/Y');
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.libro-diario', ['empresa' => $empresa, 'periodo' => $periodo, 'asientos' => $this->getData()])
-            ->setPaper('a4');
+            ->setPaper('a4')
+            // Solo los caracteres usados de la fuente: entera pesa ~850 KB y el portal acepta 200 KB por página.
+            ->setOption('isFontSubsettingEnabled', true);
 
         // El total de páginas solo se conoce al terminar: se numera sobre el PDF ya armado.
         $dompdf = $pdf->getDomPDF();

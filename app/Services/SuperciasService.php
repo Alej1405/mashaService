@@ -115,6 +115,8 @@ class SuperciasService
         $resultado = round($resultado, 2);
         $participacion = $resultado > 0 ? round($resultado * 0.15, 2) : 0.0;
 
+        // El portal cruza 402 = 401 − 501; no sale de ninguna cuenta, se calcula.
+        $totales['402'] = round(($totales['401'] ?? 0) - ($totales['501'] ?? 0), 2);
         $totales['600'] = $resultado;
         $totales['601'] = $participacion;
         $totales['602'] = $totales['604'] = $totales['607'] = round($resultado - $participacion, 2);
