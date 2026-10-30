@@ -192,6 +192,7 @@ class Declaraciones extends Page
                 $cadena = $r['cadena'] ?? [];
                 $cuerpo = "{$r['cargadas']} cargadas"
                     . (($r['reemplazadas'] ?? []) ? ' · reemplazadas con lo presentado: ' . implode(', ', $r['reemplazadas']) : '')
+                    . (($r['archivadas'] ?? []) ? ' · constancia archivada: ' . implode(', ', $r['archivadas']) : '')
                     . ($r['repetidas'] ? " · {$r['repetidas']} ya estaban" : '')
                     . (count($r['rechazadas']) ? ' · ' . count($r['rechazadas']) . ' rechazadas' : '');
 

@@ -291,7 +291,7 @@
             @foreach ($meses as $m)
                 <div class="ct-fila">
                     <div>
-                        <p class="ct-fila-t">{{ ucfirst(\Illuminate\Support\Carbon::createFromFormat('Y-m', $m->mes)->locale('es')->translatedFormat('F Y')) }}</p>
+                        <p class="ct-fila-t">{{ ucfirst(\Illuminate\Support\Carbon::createFromFormat('!Y-m', $m->mes)->locale('es')->translatedFormat('F Y')) }}</p>
                         <p class="ct-fila-s">{{ $m->num_comprobantes }} {{ $m->num_comprobantes == 1 ? 'comprobante' : 'comprobantes' }} del portal
                             @if ($m->pendientes > 0) · {{ $m->pendientes }} sin registrar @endif</p>
                     </div>

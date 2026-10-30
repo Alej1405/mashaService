@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Declaracion;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Sube al histórico las declaraciones que la empresa ya presentó.
@@ -36,6 +37,7 @@ class ImportadorDeclaracionesPdf
         $cargadas = 0;
         $repetidas = 0;
         $reemplazadas = [];
+        $archivadas = [];
         $rechazadas = [];
         $avisos = [];
 
@@ -97,6 +99,7 @@ class ImportadorDeclaracionesPdf
             // crédito, que es lo que arrastra el mes siguiente.
             if ($ya && ! $ya->es_cargada && empty($ya->datos['comprobante'])) {
                 $ya->update([
+                    'archivo_pdf'              => $this->archivar($empresaId, $cab, $archivo['contenido']),
                     'presentado_en'            => $cab['fecha_recaudacion'] ?? $ya->presentado_en,
                     'comprobante_presentacion' => $cab['numero_serial'] ?? null,
                     'valor_pagado'             => $resumen['total_pagado'] ?? 0,
@@ -118,7 +121,13 @@ class ImportadorDeclaracionesPdf
             }
 
             if ($ya) {
-                $repetidas++;
+                // Ya estaba, pero sin su constancia: se archiva el PDF, que es la prueba de lo presentado.
+                if (! $ya->archivo_pdf && in_array($ya->comprobante_presentacion, [null, $cab['numero_serial'] ?? null], true)) {
+                    $ya->update(['archivo_pdf' => $this->archivar($empresaId, $cab, $archivo['contenido'])]);
+                    $archivadas[] = $ya->periodo;
+                } else {
+                    $repetidas++;
+                }
 
                 continue;
             }
@@ -133,6 +142,7 @@ class ImportadorDeclaracionesPdf
                 'generado_en'   => $cab['fecha_recaudacion'] ?? null,
                 'presentado_en' => $cab['fecha_recaudacion'] ?? null,
                 'comprobante_presentacion' => $cab['numero_serial'] ?? null,
+                'archivo_pdf'   => $this->archivar($empresaId, $cab, $archivo['contenido']),
                 'valor_pagado'  => $resumen['total_pagado'] ?? 0,
                 'solicitado_por' => $usuarioId,
                 // Los 152 casilleros, no un resumen: de ahí sale todo lo demás.
@@ -149,12 +159,23 @@ class ImportadorDeclaracionesPdf
 
         return [
             'cargadas'   => $cargadas,
+            'archivadas' => $archivadas,
             'repetidas'  => $repetidas,
             'reemplazadas' => $reemplazadas,
             'rechazadas' => $rechazadas,
             'avisos'     => $avisos,
             'cadena'     => $this->verificarCadena($empresaId),
         ];
+    }
+
+    /** Guarda el PDF de la declaración en el mismo sitio que usa Cumplimiento. */
+    private function archivar(int $empresaId, array $cab, string $contenido): string
+    {
+        $ruta = sprintf('declaraciones/%d/comprobantes/f104-%d-%02d-%s.pdf',
+            $empresaId, $cab['anio'], $cab['mes'], $cab['numero_serial'] ?? 'sin-serial');
+        Storage::disk('local')->put($ruta, $contenido);
+
+        return $ruta;
     }
 
     /**
