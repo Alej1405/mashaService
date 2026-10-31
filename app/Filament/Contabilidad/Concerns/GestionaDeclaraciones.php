@@ -110,6 +110,52 @@ trait GestionaDeclaraciones
     }
 
     /**
+     * Sube la validación del SRI de un anexo anual (REBEFICS, ADI): el talón resumen o la
+     * confirmación de carga en PDF. Queda archivada junto al anexo y lo da por presentado.
+     *
+     * A diferencia del ATS, todavía no se lee el PDF por dentro: no hay un ejemplo de su
+     * formato. Se guarda tal cual y la fecha la pone quien lo sube.
+     */
+    public function subirValidacionAnexoAction(): Action
+    {
+        return Action::make('subirValidacionAnexo')
+            ->label('Subir la validación del SRI')
+            ->modalHeading(fn (array $arguments) => 'Validación del SRI · '
+                . (($d = Declaracion::where('empresa_id', Filament::getTenant()->id)->find($arguments['id'] ?? 0))
+                    ? (Declaracion::TIPOS[$d->tipo] ?? $d->tipo) . ' ' . $d->anio : ''))
+            ->modalDescription('El talón resumen o la confirmación de carga que entrega SRI en línea, en PDF. '
+                . 'Queda guardado con el anexo y el anexo pasa a presentado.')
+            ->modalSubmitActionLabel('Guardar y dar por presentado')
+            ->form([
+                \Filament\Forms\Components\FileUpload::make('pdf')
+                    ->label('Validación en PDF')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->maxSize(5120)
+                    ->storeFiles(false)
+                    ->required(),
+                \Filament\Forms\Components\DatePicker::make('fecha')
+                    ->label('Fecha en que se subió al SRI')
+                    ->default(now())->maxDate(now())->required(),
+            ])
+            ->action(function (array $data, array $arguments) {
+                $declaracion = Declaracion::where('empresa_id', Filament::getTenant()->id)
+                    ->whereIn('tipo', ['rebefics', 'adi'])->findOrFail($arguments['id'] ?? 0);
+                $pdf = is_array($data['pdf']) ? reset($data['pdf']) : $data['pdf'];
+
+                $archivo = sprintf('declaraciones/%d/comprobantes/%s-%d-validacion.pdf',
+                    $declaracion->empresa_id, $declaracion->tipo, $declaracion->anio);
+                \Illuminate\Support\Facades\Storage::disk('local')->put($archivo, $pdf->get());
+                $pdf->delete();
+
+                $declaracion->update(['archivo_pdf' => $archivo, 'presentado_en' => $data['fecha']]);
+
+                Notification::make()->title('Anexo presentado')
+                    ->body((Declaracion::TIPOS[$declaracion->tipo] ?? $declaracion->tipo) . " {$declaracion->anio}: la validación del SRI quedó guardada.")
+                    ->success()->send();
+            });
+    }
+
+    /**
      * Sube de golpe las confirmaciones del ATS de cualquier mes, también de los que el ERP
      * no generó (meses anteriores o presentados por fuera). El mes sale de cada PDF.
      */

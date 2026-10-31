@@ -37,6 +37,10 @@ class AdiService
 
         $avisos = ['El ERP todavía no registra la junta que distribuye dividendos: lo distribuido va en cero. '
             . 'Si se repartieron utilidades, este anexo no está completo.'];
+        if ($utilidad > 0) {
+            $avisos[] = 'Con utilidad, la sección B todavía no está confirmada con el portal (en 2025 se presentó en cero, '
+                . 'sin ella). Si el SRI la rechaza, revisa la «Consulta de archivos de error» y avisa a soporte.';
+        }
         if ($resultado < 0) {
             $avisos[] = 'El ejercicio cerró con pérdida (' . number_format($resultado, 2, ',', '.') . '): no hay utilidad que informar.';
         }

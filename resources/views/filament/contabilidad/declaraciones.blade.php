@@ -155,10 +155,19 @@
                             </button>
                         @endunless
                     </div>
-                    @if ($d?->estado === 'listo')
+                    @if ($d?->estado === 'listo' && ! $d->presentado_en)
                         <p class="ct-paso"><b>2</b><span>En <a href="https://srienlinea.sri.gob.ec" target="_blank" rel="noopener">SRI en línea</a>
                             entra a <strong>Anexos → {{ $menuSri }} → Carga de archivo</strong> y sube el zip. En 48 horas revisa el
                             <strong>talón resumen</strong> o la <strong>consulta de archivo de errores</strong>.</span></p>
+                    @endif
+                    @if ($d?->estado === 'listo' && ! $d->archivo_pdf)
+                        <p class="ct-paso"><b>3</b><span>Cuando el SRI lo valide, guarda el talón resumen en PDF y súbelo aquí.</span></p>
+                        <button type="button" class="ct-btn-descarga" style="border:0;cursor:pointer"
+                                wire:click="mountAction('subirValidacionAnexo', { id: {{ $d->id }} })">
+                            Subir la validación del SRI
+                        </button>
+                    @elseif ($d?->archivo_pdf)
+                        <p class="ct-paso ct-paso-hecho"><b>✓</b><span>Presentado el {{ $d->presentado_en?->format('d/m/Y') }}: la validación del SRI quedó guardada.</span></p>
                     @endif
                 </div>
                 <span class="ct-chip ct-chip-{{ $tono }}" style="flex-shrink:0">{{ $texto }}</span>
