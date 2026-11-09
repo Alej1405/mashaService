@@ -117,6 +117,18 @@ class CierreEjercicio extends Page
         $inicio = $empresa->inicio_gestion_erp?->copy()->startOfMonth();
         $ultimoMes = $anio === now()->year ? now()->month : 12;
 
+        // Los meses empiezan cuando empieza la empresa: el primer asiento o el primer 104.
+        $primero = collect([
+            JournalEntry::withoutGlobalScopes()->where('empresa_id', $empresa->id)->min('fecha'),
+            \App\Models\Declaracion::withoutGlobalScopes()->where('empresa_id', $empresa->id)->where('tipo', 'f104')
+                ->selectRaw("min(make_date(anio, mes, 1)) as f")->value('f'),
+        ])->filter()->map(fn ($f) => \Illuminate\Support\Carbon::parse($f))->min();
+        $primerMes = match (true) {
+            ! $primero || $primero->year < $anio => 1,
+            $primero->year > $anio               => $ultimoMes + 1,
+            default                              => $primero->month,
+        };
+
         // Asientos y sumas mes a mes del ejercicio en curso.
         $meses = JournalEntry::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
@@ -139,6 +151,7 @@ class CierreEjercicio extends Page
         return [
             'anio'         => $anio,
             'anios'        => $anios,
+            'primerMes'    => $primerMes,
             'ultimoMes'    => $ultimoMes,
             'inicio'       => $inicio,
             'meses'        => $meses,

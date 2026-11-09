@@ -34,7 +34,7 @@
         <table class="ct-tabla">
             <thead><tr><th>Mes</th><th>Asientos</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th>Estado</th><th></th></tr></thead>
             <tbody>
-            @for ($n = 1; $n <= $ultimoMes; $n++)
+            @for ($n = $primerMes; $n <= $ultimoMes; $n++)
                 @php
                     $m = $meses[$n] ?? null;
                     $p = $periodos[$n] ?? null;
