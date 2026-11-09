@@ -33,6 +33,26 @@ class ContabilidadService
     public const PYME_VENTAS  = 5_000_000;
 
     /**
+     * Las líneas que cuentan para el ejercicio, hasta una fecha.
+     *
+     * Activo, pasivo y patrimonio (1, 2, 3) se acumulan desde el inicio: el saldo de
+     * diciembre es el de enero siguiente. Ingresos, costos y gastos (4, 5, 6) son solo
+     * del año. El asiento de cierre del propio año no entra: si entrara, dejaría los
+     * resultados en cero y el estado de resultados ya presentado daría distinto.
+     * La consulta debe unir journal_entries como «a» y account_plans como «c».
+     */
+    public function delEjercicio($query, int $anio, string $hasta)
+    {
+        return $query->whereDate('a.fecha', '<=', $hasta)
+            ->where(fn ($q) => $q
+                ->where(fn ($b) => $b->whereRaw("left(c.code, 1) in ('1', '2', '3')")
+                    ->where(fn ($x) => $x->where('a.tipo', '<>', 'cierre')->orWhereYear('a.fecha', '<>', $anio)))
+                ->orWhere(fn ($r) => $r->whereRaw("left(c.code, 1) in ('4', '5', '6')")
+                    ->whereYear('a.fecha', $anio)
+                    ->where('a.tipo', '<>', 'cierre')));
+    }
+
+    /**
      * Saldos por grupo del plan de cuentas a una fecha.
      *
      * @return array{activo: float, pasivo: float, patrimonio: float, ingresos: float, costos: float, gastos: float, resultado: float}
@@ -42,13 +62,13 @@ class ContabilidadService
         $hasta ??= now()->toDateString();
         $anio  ??= Carbon::parse($hasta)->year;
 
-        $filas = JournalEntryLine::query()
-            ->join('journal_entries as a', 'a.id', '=', 'journal_entry_lines.journal_entry_id')
-            ->join('account_plans as c', 'c.id', '=', 'journal_entry_lines.account_plan_id')
-            ->where('a.empresa_id', $empresaId)
-            ->where('a.status', 'confirmado')
-            ->whereDate('a.fecha', '<=', $hasta)
-            ->whereYear('a.fecha', $anio)
+        $filas = $this->delEjercicio(
+            JournalEntryLine::query()
+                ->join('journal_entries as a', 'a.id', '=', 'journal_entry_lines.journal_entry_id')
+                ->join('account_plans as c', 'c.id', '=', 'journal_entry_lines.account_plan_id')
+                ->where('a.empresa_id', $empresaId)
+                ->where('a.status', 'confirmado'),
+            $anio, $hasta)
             ->groupBy(DB::raw('left(c.code, 1)'))
             ->selectRaw('left(c.code, 1) as grupo, sum(journal_entry_lines.debe) as debe, sum(journal_entry_lines.haber) as haber')
             ->get();
@@ -161,13 +181,17 @@ class ContabilidadService
     }
 
     /**
-     * Cierra el ejercicio: comprueba, salda resultados contra patrimonio y
-     * bloquea. Sin esto, nada impide tocar un año ya presentado a la SCVS.
+     * Cierra el ejercicio contable.
+     *
+     * Comprueba que el año esté listo (meses cerrados, nada descuadrado ni en
+     * borrador), lleva el resultado al patrimonio con el asiento de cierre al 31/12,
+     * lo pasa a resultados acumulados el 01/01 siguiente y bloquea el año.
+     * Marco: skill `contabilidad-ec`, cierre de ejercicio.
      */
     public function cerrarEjercicio(int $empresaId, int $anio): EjercicioContable
     {
         return DB::transaction(function () use ($empresaId, $anio) {
-            $ejercicio = EjercicioContable::firstOrCreate(
+            $ejercicio = EjercicioContable::withoutGlobalScopes()->firstOrCreate(
                 ['empresa_id' => $empresaId, 'anio' => $anio],
                 ['resultado' => 0],
             );
@@ -176,27 +200,186 @@ class ContabilidadService
                 throw new \RuntimeException("El ejercicio {$anio} ya está cerrado.");
             }
 
-            $descuadrados = JournalEntry::withoutGlobalScopes()
-                ->where('empresa_id', $empresaId)
-                ->whereYear('fecha', $anio)
-                ->where('status', 'confirmado')
-                ->where('esta_cuadrado', false)
-                ->count();
+            $delAnio = fn () => JournalEntry::withoutGlobalScopes()
+                ->where('empresa_id', $empresaId)->whereYear('fecha', $anio);
 
-            if ($descuadrados) {
-                throw new \RuntimeException("Hay {$descuadrados} asiento(s) descuadrado(s) en {$anio}: no se puede cerrar.");
+            if ($n = $delAnio()->where('status', 'confirmado')->where('esta_cuadrado', false)->count()) {
+                throw new \RuntimeException("Hay {$n} asiento(s) descuadrado(s) en {$anio}: no se puede cerrar.");
             }
 
-            $saldos = $this->saldos($empresaId, "{$anio}-12-31", $anio);
+            if ($n = $delAnio()->where('status', 'borrador')->count()) {
+                throw new \RuntimeException("Hay {$n} asiento(s) en borrador en {$anio}: confírmalos o anúlalos antes de cerrar.");
+            }
+
+            if ($abiertos = $this->mesesAbiertos($empresaId, $anio)) {
+                throw new \RuntimeException('Faltan meses por cerrar: ' . implode(', ', $abiertos) . '.');
+            }
+
+            $resultado = $this->saldos($empresaId, "{$anio}-12-31", $anio)['resultado'];
+            $asiento   = $this->asientoDeCierre($empresaId, $anio, $ejercicio->id);
+            $this->resultadoAAcumulados($empresaId, $anio, $resultado, $ejercicio->id);
 
             $ejercicio->update([
-                'resultado'  => $saldos['resultado'],
-                'cerrado_en' => now(),
-                'cerrado_por' => auth()->id(),
+                'resultado'         => $resultado,
+                'asiento_cierre_id' => $asiento?->id,
+                'cerrado_en'        => now(),
+                'cerrado_por'       => auth()->id(),
             ]);
 
             return $ejercicio->fresh();
         });
+    }
+
+    /**
+     * Primer mes del año en que la empresa tiene actividad: su primer asiento o su
+     * primer 104. Antes de eso no hay nada que cerrar. Devuelve 13 si el año es
+     * anterior a toda actividad.
+     */
+    public function primerMesConActividad(int $empresaId, int $anio): int
+    {
+        $primero = collect([
+            JournalEntry::withoutGlobalScopes()->where('empresa_id', $empresaId)->min('fecha'),
+            \App\Models\Declaracion::withoutGlobalScopes()->where('empresa_id', $empresaId)->where('tipo', 'f104')
+                ->selectRaw('min(make_date(anio, mes, 1)) as f')->value('f'),
+        ])->filter()->map(fn ($f) => Carbon::parse($f))->min();
+
+        return match (true) {
+            ! $primero || $primero->year < $anio => 1,
+            $primero->year > $anio               => 13,
+            default                              => $primero->month,
+        };
+    }
+
+    /** Meses con actividad del año que siguen abiertos, como «08/2025». */
+    public function mesesAbiertos(int $empresaId, int $anio): array
+    {
+        $cerrados = PeriodoContable::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)->where('anio', $anio)
+            ->whereNotNull('cerrado_en')->pluck('mes')->map(fn ($m) => (int) $m)->all();
+
+        return collect(range($this->primerMesConActividad($empresaId, $anio), 12))
+            ->reject(fn ($m) => $m > 12 || in_array($m, $cerrados, true))
+            ->map(fn ($m) => sprintf('%02d/%d', $m, $anio))
+            ->values()->all();
+    }
+
+    /**
+     * Asiento de cierre al 31/12: salda cada cuenta de ingresos, costos y gastos y
+     * lleva la diferencia a la 3.7.01 (ganancia) o a la 3.7.02 (pérdida).
+     */
+    private function asientoDeCierre(int $empresaId, int $anio, int $ejercicioId): ?JournalEntry
+    {
+        $cuentas = JournalEntryLine::query()
+            ->join('journal_entries as a', 'a.id', '=', 'journal_entry_lines.journal_entry_id')
+            ->join('account_plans as c', 'c.id', '=', 'journal_entry_lines.account_plan_id')
+            ->where('a.empresa_id', $empresaId)
+            ->where('a.status', 'confirmado')
+            ->whereYear('a.fecha', $anio)
+            ->where('a.tipo', '<>', 'cierre')
+            ->whereRaw("left(c.code, 1) in ('4', '5', '6')")
+            ->groupBy('journal_entry_lines.account_plan_id')
+            ->selectRaw('journal_entry_lines.account_plan_id as cuenta, sum(journal_entry_lines.debe) as debe, sum(journal_entry_lines.haber) as haber')
+            ->get();
+
+        // Cada cuenta se salda con su saldo al lado contrario.
+        $lineas = [];
+        $resultado = '0.00';                       // haber − debe: positivo es ganancia
+        foreach ($cuentas as $c) {
+            $saldo = bcsub((string) $c->haber, (string) $c->debe, 2);
+            if (bccomp($saldo, '0', 2) === 0) {
+                continue;
+            }
+            $lineas[] = bccomp($saldo, '0', 2) > 0
+                ? [$c->cuenta, $saldo, '0.00']
+                : [$c->cuenta, '0.00', bcmul($saldo, '-1', 2)];
+            $resultado = bcadd($resultado, $saldo, 2);
+        }
+
+        if (! $lineas) {
+            return null;
+        }
+
+        $ganancia = bccomp($resultado, '0', 2) >= 0;
+        $lineas[] = $ganancia
+            ? [$this->cuentaDelPlan($empresaId, '3.7.01')->id, '0.00', $resultado]
+            : [$this->cuentaDelPlan($empresaId, '3.7.02')->id, bcmul($resultado, '-1', 2), '0.00'];
+
+        return $this->asientoAutomatico($empresaId, "{$anio}-12-31", 'cierre', $ejercicioId,
+            "Cierre del ejercicio {$anio}: resultados a patrimonio", $lineas);
+    }
+
+    /**
+     * El 01/01 siguiente, el resultado del año pasa de «resultados del ejercicio»
+     * (3.7) a «resultados acumulados» (3.6). Es de tipo apertura: pertenece al año
+     * nuevo y sí cuenta en su balance.
+     */
+    private function resultadoAAcumulados(int $empresaId, int $anio, float $resultado, int $ejercicioId): void
+    {
+        $valor = number_format(abs($resultado), 2, '.', '');
+        if (bccomp($valor, '0', 2) === 0) {
+            return;
+        }
+
+        $lineas = $resultado > 0
+            ? [[$this->cuentaDelPlan($empresaId, '3.7.01')->id, $valor, '0.00'],
+               [$this->cuentaDelPlan($empresaId, '3.6.01')->id, '0.00', $valor]]
+            : [[$this->cuentaDelPlan($empresaId, '3.6.02')->id, $valor, '0.00'],
+               [$this->cuentaDelPlan($empresaId, '3.7.02')->id, '0.00', $valor]];
+
+        $this->asientoAutomatico($empresaId, ($anio + 1) . '-01-01', 'apertura', $ejercicioId,
+            "Resultado del ejercicio {$anio} a resultados acumulados", $lineas);
+    }
+
+    /** Cuenta del plan estándar de la empresa por su código, o un error que dice cuál falta. */
+    private function cuentaDelPlan(int $empresaId, string $codigo): AccountPlan
+    {
+        return AccountPlan::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)->where('code', $codigo)->where('accepts_movements', true)
+            ->first()
+            ?? throw new \RuntimeException("Falta la cuenta {$codigo} en el plan de cuentas de la empresa.");
+    }
+
+    /**
+     * Guarda un asiento del cierre ya confirmado. Las líneas son [cuenta, debe, haber]
+     * en texto con dos decimales; el cuadre se calcula, no se declara.
+     */
+    private function asientoAutomatico(int $empresaId, string $fecha, string $tipo, int $ejercicioId, string $descripcion, array $lineas): JournalEntry
+    {
+        $debe  = array_reduce($lineas, fn ($t, $l) => bcadd($t, $l[1], 2), '0.00');
+        $haber = array_reduce($lineas, fn ($t, $l) => bcadd($t, $l[2], 2), '0.00');
+
+        if (bccomp($debe, $haber, 2) !== 0) {
+            throw new \RuntimeException("El asiento «{$descripcion}» no cuadra: debe {$debe}, haber {$haber}.");
+        }
+
+        $asiento = JournalEntry::create([
+            'empresa_id'      => $empresaId,
+            'fecha'           => $fecha,
+            'descripcion'     => $descripcion,
+            'tipo'            => $tipo,
+            'origen'          => 'automatico',
+            'referencia_tipo' => 'ejercicio',
+            'referencia_id'   => $ejercicioId,
+            'status'          => 'confirmado',
+            'total_debe'      => $debe,
+            'total_haber'     => $haber,
+            'esta_cuadrado'   => true,
+            'confirmado_por'  => auth()->id(),
+            'confirmado_at'   => now(),
+        ]);
+
+        foreach ($lineas as $i => [$cuenta, $d, $h]) {
+            JournalEntryLine::create([
+                'journal_entry_id' => $asiento->id,
+                'account_plan_id'  => $cuenta,
+                'descripcion'      => $descripcion,
+                'debe'             => $d,
+                'haber'            => $h,
+                'orden'            => $i + 1,
+            ]);
+        }
+
+        return $asiento;
     }
 
     /** Un ejercicio cerrado no admite movimientos nuevos. */

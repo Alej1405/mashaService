@@ -24,12 +24,14 @@ class SuperciasService
     /** Saldo por código de Supercías en un ejercicio. */
     public function saldosPorCodigo(int $empresaId, int $anio): array
     {
-        return JournalEntryLine::query()
-            ->join('journal_entries as a', 'a.id', '=', 'journal_entry_lines.journal_entry_id')
-            ->join('account_plans as c', 'c.id', '=', 'journal_entry_lines.account_plan_id')
-            ->where('a.empresa_id', $empresaId)
-            ->where('a.status', 'confirmado')
-            ->whereYear('a.fecha', $anio)
+        // Mismo criterio que los saldos del módulo: balance acumulado, resultados del año.
+        return app(ContabilidadService::class)->delEjercicio(
+            JournalEntryLine::query()
+                ->join('journal_entries as a', 'a.id', '=', 'journal_entry_lines.journal_entry_id')
+                ->join('account_plans as c', 'c.id', '=', 'journal_entry_lines.account_plan_id')
+                ->where('a.empresa_id', $empresaId)
+                ->where('a.status', 'confirmado'),
+            $anio, "{$anio}-12-31")
             ->whereNotNull('c.codigo_supercias')
             ->groupBy('c.codigo_supercias', 'c.nature')
             ->selectRaw('c.codigo_supercias as codigo, c.nature, sum(journal_entry_lines.debe) as debe, sum(journal_entry_lines.haber) as haber')

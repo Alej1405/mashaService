@@ -157,6 +157,8 @@ class EstadoResultados extends Page implements HasForms
                         ->where('empresa_id', $empresaId)
                         ->where('status', 'confirmado')
                         ->where('esta_cuadrado', true)
+                        // El asiento de cierre deja los resultados en cero: no es del estado de resultados.
+                        ->where('tipo', '<>', 'cierre')
                         ->when($fechaDesde, fn ($q) => $q->whereDate('fecha', '>=', $fechaDesde))
                         ->when($fechaHasta,  fn ($q) => $q->whereDate('fecha', '<=', $fechaHasta))
                     );

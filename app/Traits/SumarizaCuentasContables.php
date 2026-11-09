@@ -18,6 +18,8 @@ trait SumarizaCuentasContables
             ->where('journal_entries.empresa_id', $empresaId)
             ->where('journal_entries.status', 'confirmado')
             ->where('journal_entries.esta_cuadrado', true)
+            // Solo suma resultados: el asiento de cierre los dejaría en cero.
+            ->where('journal_entries.tipo', '<>', 'cierre')
             ->whereBetween('journal_entries.fecha', [$desde->toDateString(), $hasta->toDateString()])
             ->where(function ($q) use ($codes) {
                 foreach ($codes as $c) {

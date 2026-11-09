@@ -43,16 +43,20 @@ class CierreEjercicio extends Page
     {
         return [
             Action::make('cerrar')
-                ->label('Cerrar el ejercicio ' . now()->year)
+                ->label(fn () => 'Cerrar el ejercicio ' . $this->anio)
                 ->icon('heroicon-o-lock-closed')
-                ->visible(fn () => $this->anio === now()->year)
+                ->visible(fn () => ! EjercicioContable::withoutGlobalScopes()
+                    ->where('empresa_id', Filament::getTenant()->id)->where('anio', $this->anio)
+                    ->whereNotNull('cerrado_en')->exists())
                 ->requiresConfirmation()
-                ->modalHeading('Cerrar el ejercicio ' . now()->year)
-                ->modalDescription('Después de cerrarlo no se podrán registrar asientos con fecha de este año. Se comprueba que todo cuadre antes de bloquear.')
+                ->modalHeading(fn () => 'Cerrar el ejercicio ' . $this->anio)
+                ->modalDescription('Se comprueba que todos los meses estén cerrados y que nada esté descuadrado ni en borrador. '
+                    . 'Se genera el asiento de cierre al 31/12, el resultado pasa a resultados acumulados el 01/01 siguiente '
+                    . 'y el año queda bloqueado.')
                 ->modalSubmitActionLabel('Cerrar el ejercicio')
                 ->action(function () {
                     try {
-                        $e = app(ContabilidadService::class)->cerrarEjercicio(Filament::getTenant()->id, now()->year);
+                        $e = app(ContabilidadService::class)->cerrarEjercicio(Filament::getTenant()->id, $this->anio);
 
                         Notification::make()
                             ->title('Ejercicio ' . $e->anio . ' cerrado')
@@ -118,16 +122,7 @@ class CierreEjercicio extends Page
         $ultimoMes = $anio === now()->year ? now()->month : 12;
 
         // Los meses empiezan cuando empieza la empresa: el primer asiento o el primer 104.
-        $primero = collect([
-            JournalEntry::withoutGlobalScopes()->where('empresa_id', $empresa->id)->min('fecha'),
-            \App\Models\Declaracion::withoutGlobalScopes()->where('empresa_id', $empresa->id)->where('tipo', 'f104')
-                ->selectRaw("min(make_date(anio, mes, 1)) as f")->value('f'),
-        ])->filter()->map(fn ($f) => \Illuminate\Support\Carbon::parse($f))->min();
-        $primerMes = match (true) {
-            ! $primero || $primero->year < $anio => 1,
-            $primero->year > $anio               => $ultimoMes + 1,
-            default                              => $primero->month,
-        };
+        $primerMes = app(ContabilidadService::class)->primerMesConActividad($empresa->id, $anio);
 
         // Asientos y sumas mes a mes del ejercicio en curso.
         $meses = JournalEntry::withoutGlobalScopes()
