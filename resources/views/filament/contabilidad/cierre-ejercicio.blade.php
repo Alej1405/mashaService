@@ -25,26 +25,42 @@
     </div>
 
     <section class="ct-panel">
-        <header><h2 class="ct-tit">Periodos del ejercicio {{ $anio }}</h2></header>
+        <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <h2 class="ct-tit">Periodos del ejercicio {{ $anio }}</h2>
+            <select wire:model.live="anio" class="ct-select" aria-label="Año">
+                @foreach ($anios as $a)<option value="{{ $a }}">{{ $a }}</option>@endforeach
+            </select>
+        </header>
         <table class="ct-tabla">
-            <thead><tr><th>Mes</th><th>Asientos</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Mes</th><th>Asientos</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th>Estado</th><th></th></tr></thead>
             <tbody>
-            @forelse ($meses as $m)
-                @php $p = $periodos[(int) $m->mes] ?? null; @endphp
+            @for ($n = 1; $n <= $ultimoMes; $n++)
+                @php
+                    $m = $meses[$n] ?? null;
+                    $p = $periodos[$n] ?? null;
+                    $antes = $inicio && \Illuminate\Support\Carbon::create($anio, $n, 1)->lessThan($inicio);
+                @endphp
                 <tr>
-                    <td data-col="Mes">{{ $nombres[(int) $m->mes] }}</td>
-                    <td data-col="Asientos">{{ $m->asientos }}</td>
-                    <td class="num" data-col="Debe">{{ $money($m->debe) }}</td>
-                    <td class="num" data-col="Haber">{{ $money($m->haber) }}</td>
+                    <td data-col="Mes">{{ $nombres[$n] }}</td>
+                    <td data-col="Asientos">{{ $m->asientos ?? 0 }}</td>
+                    <td class="num" data-col="Debe">{{ $money($m->debe ?? 0) }}</td>
+                    <td class="num" data-col="Haber">{{ $money($m->haber ?? 0) }}</td>
                     <td data-col="Estado">
                         <span class="ct-chip ct-chip-{{ $p?->cerrado_en ? 'ok' : 'wa' }}">
-                            {{ $p?->cerrado_en ? 'Cerrado' : 'Abierto' }}
+                            {{ $p?->cerrado_en ? ($p->motivo === 'cuadre' ? 'Cerrado en el cuadre' : 'Cerrado') : 'Abierto' }}
                         </span>
                     </td>
+                    <td data-col="" style="text-align:right">
+                        @if (! $p?->cerrado_en && $antes)
+                            <button type="button" class="ct-btn-descarga" wire:click="mountAction('cerrarMes', { mes: {{ $n }} })">Cerrar mes</button>
+                        @elseif ($p?->cerrado_en && $p->motivo === 'cuadre')
+                            <button type="button" class="ct-chip ct-chip-wa" style="cursor:pointer;border:0" wire:click="mountAction('reabrirMes', { mes: {{ $n }} })">Reabrir</button>
+                        @elseif (! $p?->cerrado_en)
+                            <span class="ct-fila-s">se cierra con su 104</span>
+                        @endif
+                    </td>
                 </tr>
-            @empty
-                <tr><td colspan="5" style="text-align:center;color:var(--m);padding:26px">Sin asientos confirmados este año.</td></tr>
-            @endforelse
+            @endfor
             </tbody>
         </table>
     </section>

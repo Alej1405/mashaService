@@ -281,6 +281,50 @@ class ContabilidadService
     }
 
     /**
+     * Cierra a mano un mes anterior al inicio de gestión, ya cuadrado.
+     *
+     * Esos meses no los cierra el 104: su declaración se cargó o se cuadró en modo
+     * cuadre. Se exige solo lo que hace falta para cerrar: la declaración del mes
+     * registrada y ningún asiento descuadrado. Desde el inicio de gestión el mes
+     * se cierra al registrar el 104 en Cumplimiento, con su auditoría completa.
+     */
+    public function cerrarMesCuadre(int $empresaId, int $anio, int $mes): PeriodoContable
+    {
+        $empresa = \App\Models\Empresa::withoutGlobalScopes()->findOrFail($empresaId);
+        $momento = Carbon::create($anio, $mes, 1);
+
+        if (! $empresa->inicio_gestion_erp || ! $momento->lessThan(Carbon::parse($empresa->inicio_gestion_erp)->startOfMonth())) {
+            throw new \RuntimeException('Este mes es de la gestión del ERP: se cierra al registrar su 104 en Cumplimiento.');
+        }
+
+        if ($this->mesCerrado($empresaId, $anio, $mes)) {
+            throw new \RuntimeException(sprintf('El período %02d/%d ya está cerrado.', $mes, $anio));
+        }
+
+        $declaracion = \App\Models\Declaracion::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)->where('tipo', 'f104')
+            ->where('anio', $anio)->where('mes', $mes)
+            ->latest('id')->first();
+
+        if (! $declaracion) {
+            throw new \RuntimeException(sprintf('Falta registrar el 104 de %02d/%d en Cumplimiento: sin lo presentado no hay contra qué cuadrar.', $mes, $anio));
+        }
+
+        $descuadrados = JournalEntry::withoutGlobalScopes()
+            ->where('empresa_id', $empresaId)
+            ->whereYear('fecha', $anio)->whereMonth('fecha', $mes)
+            ->where('status', 'confirmado')
+            ->where('esta_cuadrado', false)
+            ->count();
+
+        if ($descuadrados) {
+            throw new \RuntimeException(sprintf('Hay %d asiento(s) descuadrado(s) en %02d/%d: corrígelos antes de cerrar.', $descuadrados, $mes, $anio));
+        }
+
+        return $this->cerrarMes($empresaId, $anio, $mes, $declaracion->id, 'cuadre');
+    }
+
+    /**
      * Reabre un mes. Solo para corregir un cierre hecho por error: lo que ya se
      * presentó al SRI se corrige con una sustitutiva, no reabriendo.
      */
