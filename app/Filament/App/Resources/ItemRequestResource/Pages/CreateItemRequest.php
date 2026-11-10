@@ -7,6 +7,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateItemRequest extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ItemRequestResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array

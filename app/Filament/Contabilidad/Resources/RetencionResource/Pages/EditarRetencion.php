@@ -7,6 +7,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditarRetencion extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = RetencionResource::class;
 
     protected function mutateFormDataBeforeSave(array $data): array

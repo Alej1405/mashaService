@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditCashSession extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = CashSessionResource::class;
 
     protected function getHeaderActions(): array

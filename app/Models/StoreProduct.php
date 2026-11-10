@@ -68,6 +68,15 @@ class StoreProduct extends Model
         parent::boot();
 
         static::saving(function (self $model) {
+            // Si su producto (diseño) es de un solo cliente, la presentación lo respeta.
+            $diseno = $model->product_presentation_id
+                ? ProductDesign::withoutGlobalScopes()->whereHas('presentations', fn ($q) => $q->whereKey($model->product_presentation_id))->first()
+                : null;
+            if ($diseno?->visibilidad === 'exclusivo') {
+                $model->visibilidad = 'exclusivo';
+                $model->customer_id = $diseno->customer_id;
+            }
+
             // Un general no guarda cliente: si se cambia de exclusivo a general, se suelta.
             if ($model->visibilidad !== 'exclusivo') {
                 $model->visibilidad = 'general';

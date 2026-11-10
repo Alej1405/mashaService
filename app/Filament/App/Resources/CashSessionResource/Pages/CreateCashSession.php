@@ -8,5 +8,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateCashSession extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = CashSessionResource::class;
 }

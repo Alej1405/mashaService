@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditCreditCard extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = CreditCardResource::class;
 
     protected function getHeaderActions(): array

@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateProductionOrder extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ProductionOrderResource::class;
 }

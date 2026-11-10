@@ -7,6 +7,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditRole extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     use SyncsModuleKeys;
 
     protected static string $resource = RoleResource::class;

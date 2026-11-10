@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditAccountPlan extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = AccountPlanResource::class;
 
     protected function getHeaderActions(): array

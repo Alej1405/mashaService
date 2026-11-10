@@ -11,6 +11,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class GestionFeaturesPage extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = EmpresaServiciosResource::class;
 
     protected static ?string $title = 'Gestión de Módulos';

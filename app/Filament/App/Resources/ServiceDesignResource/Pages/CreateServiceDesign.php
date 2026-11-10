@@ -9,6 +9,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateServiceDesign extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ServiceDesignResource::class;
 
     protected function afterCreate(): void

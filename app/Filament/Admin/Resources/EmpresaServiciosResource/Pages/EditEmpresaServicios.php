@@ -13,6 +13,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditEmpresaServicios extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = EmpresaServiciosResource::class;
 
     protected function getHeaderActions(): array

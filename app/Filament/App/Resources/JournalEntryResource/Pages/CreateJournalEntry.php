@@ -8,5 +8,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateJournalEntry extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = JournalEntryResource::class;
 }

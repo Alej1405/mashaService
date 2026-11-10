@@ -7,6 +7,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditServicePlan extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ServicePlanResource::class;
 
     protected function getHeaderActions(): array

@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditSupplier extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = SupplierResource::class;
 
     protected function getHeaderActions(): array

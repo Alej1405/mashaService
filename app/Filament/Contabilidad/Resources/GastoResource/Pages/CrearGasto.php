@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CrearGasto extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = GastoResource::class;
 }

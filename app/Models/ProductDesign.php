@@ -18,6 +18,8 @@ class ProductDesign extends Model
         'nombre',
         'categoria',
         'store_category_id',
+        'visibilidad',
+        'customer_id',
         'inventory_item_id',
         'precio_distribuidor',
         'margen_distribuidor',
@@ -61,6 +63,25 @@ class ProductDesign extends Model
         'ice_porcentaje'                  => 'decimal:2',
         'cantidad_base'                   => 'decimal:4',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $d) {
+            if ($d->visibilidad !== 'exclusivo') {
+                $d->visibilidad = 'general';
+                $d->customer_id = null;
+            }
+        });
+
+        // Las presentaciones son lo que se vende: en la tienda heredan quién las ve.
+        static::saved(function (self $d) {
+            if ($d->wasChanged(['visibilidad', 'customer_id'])) {
+                StoreProduct::withoutGlobalScopes()
+                    ->whereIn('product_presentation_id', $d->presentations()->pluck('id'))
+                    ->update(['visibilidad' => $d->visibilidad, 'customer_id' => $d->customer_id]);
+            }
+        });
+    }
 
     public function storeCategory(): BelongsTo
     {

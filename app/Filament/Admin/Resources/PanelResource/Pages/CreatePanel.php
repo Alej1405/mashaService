@@ -7,6 +7,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreatePanel extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     use SyncsModuleKeys;
 
     protected static string $resource = PanelResource::class;

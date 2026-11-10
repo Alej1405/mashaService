@@ -7,6 +7,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateEmpresaServicios extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = EmpresaServiciosResource::class;
 
     protected function getCreatedNotificationTitle(): ?string

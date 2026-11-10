@@ -10,6 +10,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditServiceDesign extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ServiceDesignResource::class;
 
     protected function getHeaderActions(): array

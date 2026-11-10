@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditProductDesign extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ProductDesignResource::class;
 
     protected function getHeaderActions(): array

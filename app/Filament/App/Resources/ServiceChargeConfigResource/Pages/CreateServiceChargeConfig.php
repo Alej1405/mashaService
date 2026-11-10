@@ -8,6 +8,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateServiceChargeConfig extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ServiceChargeConfigResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array

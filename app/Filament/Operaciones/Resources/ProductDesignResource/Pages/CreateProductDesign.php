@@ -7,6 +7,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateProductDesign extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ProductDesignResource::class;
 
     protected function mutateFormDataBeforeSave(array $data): array

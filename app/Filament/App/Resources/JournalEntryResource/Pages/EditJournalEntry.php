@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditJournalEntry extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = JournalEntryResource::class;
 
     protected function getHeaderActions(): array

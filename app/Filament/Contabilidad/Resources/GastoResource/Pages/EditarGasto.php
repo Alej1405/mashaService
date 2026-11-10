@@ -7,5 +7,7 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditarGasto extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = GastoResource::class;
 }

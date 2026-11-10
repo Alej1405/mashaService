@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditServiceChargeConfig extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = ServiceChargeConfigResource::class;
 
     protected function getHeaderActions(): array

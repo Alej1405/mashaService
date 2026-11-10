@@ -96,6 +96,7 @@ class ProductDesignResource extends Resource
                                     ])->getKey();
                                 })
                                 ->columnSpan(1),
+                            ...\App\Filament\Compartido\VisibilidadProducto::campos(),
                             Toggle::make('activo')
                                 ->label('Activo')
                                 ->default(true)

@@ -8,6 +8,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditMeasurementUnit extends EditRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = MeasurementUnitResource::class;
 
     protected function getHeaderActions(): array

@@ -7,6 +7,8 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CrearRetencion extends CreateRecord
 {
+    use \App\Filament\Concerns\RegresaAlListado;
+
     protected static string $resource = RetencionResource::class;
 
     /** Los totales se recalculan de las líneas, no se escriben. */

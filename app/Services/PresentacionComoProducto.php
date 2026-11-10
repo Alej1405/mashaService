@@ -36,6 +36,8 @@ class PresentacionComoProducto
                 'sku'                     => $p->codigo_sri,
                 'precio_venta'            => (float) $p->pvp_estimado,
                 'publicado'               => false,
+                'visibilidad'             => $diseno->visibilidad,
+                'customer_id'             => $diseno->customer_id,
             ]);
 
             // El stock de la tienda es el del ítem de la presentación.
