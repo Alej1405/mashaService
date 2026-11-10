@@ -14,6 +14,7 @@ class ProductPresentation extends Model
         'nombre',
         'codigo_sri',
         'capacidad',
+        'graduacion_alcoholica',
         'inventory_item_id',
         'measurement_unit_id',
         'activa',
@@ -31,6 +32,7 @@ class ProductPresentation extends Model
         'pvp_estimado'              => 'decimal:4',
         'costo_estandar'            => 'decimal:4',
         'capacidad'                 => 'decimal:4',
+        'graduacion_alcoholica'     => 'decimal:2',
         'costo_calculado_en'        => 'datetime',
     ];
 
@@ -45,7 +47,37 @@ class ProductPresentation extends Model
      */
     protected static function booted(): void
     {
+        // El código del SRI se genera solo si no se escribió uno (los que ya están
+        // en facturas se respetan).
+        static::saving(function (self $p) {
+            if (blank($p->codigo_sri)) {
+                $p->codigo_sri = static::generarCodigoSri($p);
+            }
+        });
+
         static::saved(fn (self $p) => app(\App\Services\PresentacionComoProducto::class)->sincronizar($p));
+    }
+
+    /**
+     * Siglas del producto, capacidad y graduación: Ron Dorado 750 a 40° → RD-750-40.
+     * Si ya existe en la empresa, se numera: RD-750-40-2.
+     */
+    public static function generarCodigoSri(self $p): string
+    {
+        $diseno = ProductDesign::withoutGlobalScopes()->find($p->product_design_id);
+        $nombre = \Illuminate\Support\Str::ascii($diseno?->nombre ?: $p->nombre ?: 'PROD');
+        $siglas = collect(preg_split('/[^A-Za-z0-9]+/', strtoupper($nombre), -1, PREG_SPLIT_NO_EMPTY))
+            ->map(fn ($palabra) => $palabra[0])->take(4)->join('') ?: 'P';
+
+        $entero = fn ($v) => $v === null || (float) $v == 0.0 ? null : rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+        $base = collect([$siglas, $entero($p->capacidad), $entero($p->graduacion_alcoholica)])->filter()->join('-');
+
+        $codigo = $base;
+        for ($n = 2; $diseno && static::codigoSriUsado($codigo, $diseno->empresa_id, $p->id); $n++) {
+            $codigo = "{$base}-{$n}";
+        }
+
+        return $codigo;
     }
 
     /** ¿Otra presentación de la empresa ya usa este código del SRI? */

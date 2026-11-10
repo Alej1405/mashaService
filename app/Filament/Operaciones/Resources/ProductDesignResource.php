@@ -154,40 +154,7 @@ class ProductDesignResource extends Resource
                                     : '+ Definir presentación')
                                 ->defaultItems(0)
                                 ->schema([
-                                    TextInput::make('nombre')
-                                        ->label('Nombre como se factura')
-                                        ->helperText('El mismo nombre del producto en el SRI: así se llama en el inventario y en la tienda.')
-                                        ->required()
-                                        ->placeholder('MARACUYA LITRO')
-                                        ->columnSpan(2),
-                                    TextInput::make('codigo_sri')
-                                        ->label('Código del SRI')
-                                        ->helperText('Código principal del producto en el SRI: con él se reconocen las facturas.')
-                                        ->maxLength(50)
-                                        ->distinct()
-                                        ->rules([fn (?ProductPresentation $record) => function (string $attribute, $value, \Closure $fail) use ($record) {
-                                            if (filled($value) && ProductPresentation::codigoSriUsado($value, Filament::getTenant()->id, $record?->id)) {
-                                                $fail("El código {$value} ya es de otra presentación.");
-                                            }
-                                        }])
-                                        ->columnSpan(1),
-                                    TextInput::make('capacidad')
-                                        ->label('Capacidad')
-                                        ->numeric()
-                                        ->helperText('Cuánto de la cantidad base de la fórmula lleva una unidad. Ej.: base 1 litro, galón = 3,785.')
-                                        ->columnSpan(1),
-                                    Select::make('measurement_unit_id')
-                                        ->label('Unidad de Medida')
-                                        ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
-                                        ->searchable()
-                                        ->createOptionModalHeading('Nueva Unidad de Medida')
-                                        ->createOptionForm([
-                                            TextInput::make('nombre')->label('Nombre')->required(),
-                                            TextInput::make('abreviatura')->label('Abreviatura')->maxLength(10),
-                                        ])
-                                        ->createOptionUsing(fn (array $data): int =>
-                                            MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey())
-                                        ->columnSpan(1),
+                                    ...self::camposPresentacion(),
                                     TextInput::make('cantidad_minima_produccion')
                                         ->label('Lote base')
                                         ->numeric()
@@ -1322,4 +1289,56 @@ class ProductDesignResource extends Resource
 
         return ['escenarios' => $escenarios, 'peQty' => $peQty];
     }
+
+    /**
+     * Los datos de una presentación: nombre con que se factura, código del SRI
+     * (se genera solo), graduación, capacidad y unidad. Los usan el diseño de
+     * producto y la creación de productos del catálogo y de la tienda.
+     */
+    public static function camposPresentacion(): array
+    {
+        return [
+            TextInput::make('nombre')
+                ->label('Nombre como se factura')
+                ->helperText('El mismo nombre del producto en el SRI: así se llama en el inventario y en la tienda.')
+                ->required()
+                ->placeholder('MARACUYA LITRO')
+                ->columnSpan(2),
+            TextInput::make('codigo_sri')
+                ->label('Código del SRI')
+                ->helperText('Con él se reconocen las facturas. Déjalo vacío y se genera solo.')
+                ->maxLength(50)
+                ->distinct()
+                ->rules([fn (?ProductPresentation $record) => function (string $attribute, $value, \Closure $fail) use ($record) {
+                    if (filled($value) && ProductPresentation::codigoSriUsado($value, Filament::getTenant()->id, $record?->id)) {
+                        $fail("El código {$value} ya es de otra presentación.");
+                    }
+                }])
+                ->columnSpan(1),
+            TextInput::make('graduacion_alcoholica')
+                ->label('Graduación alcohólica')
+                ->numeric()->minValue(0)->maxValue(100)->step(0.1)
+                ->suffix('% vol')
+                ->helperText('Vacía si no lleva alcohol.')
+                ->columnSpan(1),
+            TextInput::make('capacidad')
+                ->label('Capacidad')
+                ->numeric()
+                ->helperText('Cuánto de la cantidad base de la fórmula lleva una unidad. Ej.: base 1 litro, galón = 3,785.')
+                ->columnSpan(1),
+            Select::make('measurement_unit_id')
+                ->label('Unidad de Medida')
+                ->options(fn () => MeasurementUnit::pluck('nombre', 'id'))
+                ->searchable()
+                ->createOptionModalHeading('Nueva Unidad de Medida')
+                ->createOptionForm([
+                    TextInput::make('nombre')->label('Nombre')->required(),
+                    TextInput::make('abreviatura')->label('Abreviatura')->maxLength(10),
+                ])
+                ->createOptionUsing(fn (array $data): int =>
+                    MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey())
+                ->columnSpan(1),
+        ];
+    }
+
 }
