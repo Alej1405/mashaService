@@ -14,7 +14,7 @@ class ProduccionJornada extends Model
     protected $table = 'produccion_jornadas';
 
     protected $fillable = [
-        'empresa_id', 'store_order_id', 'numero', 'inicio', 'fin', 'personas',
+        'empresa_id', 'store_order_id', 'numero', 'inicio', 'fin', 'motivo_cierre', 'personas',
         'tarifa_hora', 'horas', 'costo_mano_obra', 'iniciada_por', 'cerrada_por',
     ];
 

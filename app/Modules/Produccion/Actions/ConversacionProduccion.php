@@ -44,6 +44,7 @@ final class ConversacionProduccion
                 'elegir'   => $this->elegir($empresa, $texto, $md),
                 'pedido'   => $this->accion($pedido, $texto, $usuario),
                 'personas' => $this->personas($pedido, $texto, $usuario),
+                'motivo'   => $this->motivo($pedido, $texto, $md, $usuario),
                 'termino'  => $this->termino($pedido, $texto),
                 'notas'    => $this->notas($pedido, $texto),
                 'lote'     => $this->lote($pedido, $texto, $md, $usuario),
@@ -111,13 +112,31 @@ final class ConversacionProduccion
         }
 
         if ($this->produccion->jornadaAbierta($pedido)) {
-            $j = $this->produccion->cerrarJornada($pedido, $usuario);
-
-            return $this->r("✅ Jornada {$j->numero} cerrada: {$this->num($j->horas)} h × {$j->personas} personas = $" . number_format((float) $j->costo_mano_obra, 2)
-                . " de mano de obra.\n\n¿Se terminó todo el pedido?\n1. Sí, terminado\n2. No, continúa en otra jornada", ['sub' => 'termino', 'id' => $pedido->id]);
+            // La hora de cierre es la de este momento, aunque el motivo llegue después.
+            return $this->r("¿Por qué se cierra la jornada?\n1. Almuerzo\n2. Fin del día\n3. Se terminó materia prima o insumo\nO escribe el motivo.",
+                ['sub' => 'motivo', 'id' => $pedido->id, 'fin' => now()->toIso8601String()]);
         }
 
         return $this->r('¿Cuántas personas van a trabajar en esta jornada? Responde con un número.', ['sub' => 'personas', 'id' => $pedido->id]);
+    }
+
+    private function motivo(?StoreOrder $pedido, string $texto, array $md, User $usuario): array
+    {
+        $motivo = match ($texto) {
+            '1'     => 'Almuerzo',
+            '2'     => 'Fin del día',
+            '3'     => 'Se terminó materia prima o insumo',
+            default => $texto,
+        };
+
+        if ($motivo === '') {
+            return $this->r('Escribe el motivo o responde 1, 2 o 3.', $md);
+        }
+
+        $j = $this->produccion->cerrarJornada($pedido, $usuario, $motivo, \Illuminate\Support\Carbon::parse($md['fin'] ?? now()));
+
+        return $this->r("✅ Jornada {$j->numero} cerrada ({$j->motivo_cierre}): {$this->num($j->horas)} h × {$j->personas} personas = $" . number_format((float) $j->costo_mano_obra, 2)
+            . " de mano de obra.\n\n¿Se terminó todo el pedido?\n1. Sí, terminado\n2. No, continúa en otra jornada", ['sub' => 'termino', 'id' => $pedido->id]);
     }
 
     private function personas(?StoreOrder $pedido, string $texto, User $usuario): array

@@ -103,18 +103,21 @@ final class ProduccionDePedido
         return $jornada;
     }
 
-    public function cerrarJornada(StoreOrder $pedido, User $usuario): ProduccionJornada
+    /** Cierra la jornada abierta a la hora $fin (cuando se pidió cerrar) con su motivo. */
+    public function cerrarJornada(StoreOrder $pedido, User $usuario, string $motivo, ?Carbon $fin = null): ProduccionJornada
     {
         $jornada = $this->jornadaAbierta($pedido)
             ?? throw new \RuntimeException('Este pedido no tiene una jornada abierta.');
 
-        $fin = now();
+        $fin ??= now();
         $horas = round($jornada->inicio->diffInMinutes($fin) / 60, 2);
 
         $jornada->update([
             'fin'             => $fin,
+            'motivo_cierre'   => \Illuminate\Support\Str::limit(trim($motivo), 255, ''),
             'horas'           => $horas,
-            'costo_mano_obra' => round($horas * $jornada->personas * (float) $jornada->tarifa_hora, 2),
+            // Dinero con aritmética decimal y redondeo a la mitad hacia arriba: 9,045 → 9,05.
+            'costo_mano_obra' => bcadd(bcmul(bcmul(number_format($horas, 2, '.', ''), (string) $jornada->personas, 4), (string) $jornada->tarifa_hora, 4), '0.005', 2),
             'cerrada_por'     => $usuario->id,
         ]);
 

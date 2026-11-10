@@ -58,6 +58,7 @@
                                 – {{ $j->fin ? $j->fin->timezone('America/Guayaquil')->format('H:i') . ' · ' . $fmt($j->horas) . ' h' : 'abierta' }}
                                 · {{ $j->personas }} {{ $j->personas === 1 ? 'persona' : 'personas' }}
                                 @if($j->fin) · $ {{ number_format((float) $j->costo_mano_obra, 2, ',', '.') }} @endif
+                                @if($j->motivo_cierre) · {{ $j->motivo_cierre }} @endif
                                 · {{ $j->iniciadaPor?->name }}
                             </p>
                         @endforeach
