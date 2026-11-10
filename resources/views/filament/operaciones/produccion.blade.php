@@ -1,4 +1,68 @@
 <x-filament-panels::page>
+@include('filament.operaciones._estilos')
+
+{{-- Pedidos de clientes: se fabrican bajo pedido. --}}
+@if($pedidos->isNotEmpty())
+    @php
+        $estadoPedido = ['pendiente' => 'Por planificar', 'receptado' => 'Planificado', 'procesando' => 'En producción', 'producido' => 'Terminado'];
+        $fmt = fn ($n, $d = 2) => rtrim(rtrim(number_format((float) $n, $d, ',', '.'), '0'), ',');
+    @endphp
+    <div class="op" style="margin-bottom:28px">
+        @foreach($pedidos as $pedido)
+            @php
+                $ordenes = $pedido->productionOrders;
+                $cerradas = $pedido->jornadas->whereNotNull('fin');
+                $abierta = $pedido->jornadas->firstWhere('fin', null);
+                $inicioPlan = $ordenes->min('fecha'); $finPlan = $ordenes->max('fecha_fin');
+            @endphp
+            <section class="op-panel">
+                <header>
+                    <div>
+                        <p class="op-fila-titulo" style="font-size:15px">{{ $pedido->numero }} · {{ $pedido->customer?->nombre_completo ?? 'Cliente' }}</p>
+                        <p class="op-fila-sub">
+                            {{ $inicioPlan ? 'Previsto del ' . \Illuminate\Support\Carbon::parse($inicioPlan)->format('d/m/Y') . ' al ' . \Illuminate\Support\Carbon::parse($finPlan)->format('d/m/Y') : 'Sin fechas: planifícalo' }}
+                            · Mano de obra {{ $fmt($cerradas->sum(fn ($j) => (float) $j->horas * $j->personas)) }} h-persona · $ {{ number_format((float) $cerradas->sum('costo_mano_obra'), 2, ',', '.') }}
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center">
+                        <span class="op-chip" @if($pedido->estado === 'producido') style="background:#ecfdf5;color:var(--op-ok)" @endif>{{ $estadoPedido[$pedido->estado] ?? $pedido->estado }}</span>
+                        @if(in_array($pedido->estado, ['pendiente', 'receptado'], true))
+                            <button type="button" class="op-btn {{ $pedido->estado === 'pendiente' ? 'op-btn-principal' : '' }}"
+                                    wire:click="mountAction('planificarPedido', {{ \Illuminate\Support\Js::from(['pedido_id' => $pedido->id, 'numero' => $pedido->numero]) }})">
+                                {{ $pedido->estado === 'pendiente' ? 'Planificar' : 'Cambiar fechas' }}
+                            </button>
+                        @endif
+                    </div>
+                </header>
+                @foreach($ordenes as $o)
+                    <div class="op-fila">
+                        <div style="min-width:0">
+                            <p class="op-fila-titulo">{{ $o->productPresentation?->nombre ?? 'Producto' }} × {{ $fmt($o->cantidad_producida, 4) }}</p>
+                            <p class="op-fila-sub">{{ $o->referencia }} · {{ str_replace('_', ' ', $o->estado) }}@if($o->lote) · lote <strong>{{ $o->lote }}</strong>@endif</p>
+                        </div>
+                    </div>
+                @endforeach
+                @if($pedido->jornadas->isNotEmpty())
+                    <div class="op-fila" style="display:block">
+                        @foreach($pedido->jornadas as $j)
+                            <p class="op-fila-sub" style="margin:2px 0">
+                                Jornada {{ $j->numero }}: {{ $j->inicio->timezone('America/Guayaquil')->format('d/m H:i') }}
+                                – {{ $j->fin ? $j->fin->timezone('America/Guayaquil')->format('H:i') . ' · ' . $fmt($j->horas) . ' h' : 'abierta' }}
+                                · {{ $j->personas }} {{ $j->personas === 1 ? 'persona' : 'personas' }}
+                                @if($j->fin) · $ {{ number_format((float) $j->costo_mano_obra, 2, ',', '.') }} @endif
+                                · {{ $j->iniciadaPor?->name }}
+                            </p>
+                        @endforeach
+                        @if($ordenes->first()?->notas_cierre)
+                            <p class="op-fila-sub" style="margin-top:6px">Nota de cierre: {{ $ordenes->first()->notas_cierre }}</p>
+                        @endif
+                    </div>
+                @endif
+            </section>
+        @endforeach
+        <p class="op-hint">Las jornadas, el cierre y los lotes se registran desde Telegram con /produccion.</p>
+    </div>
+@endif
 
 @php
     $estadoConfig = [
@@ -13,7 +77,7 @@
     $ordenGrupos = ['en_proceso', 'sin_stock', 'en_proyecto', 'finalizado', 'despachado'];
 @endphp
 
-@if($planes->isEmpty())
+@if($planes->isEmpty() && $pedidos->isEmpty())
     <div class="flex flex-col items-center justify-center py-24 text-center">
         <x-heroicon-o-cog-6-tooth class="w-14 h-14 text-gray-300 mb-4" />
         <p class="text-base font-semibold text-gray-600">Sin planes de producción</p>

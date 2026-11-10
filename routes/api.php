@@ -190,6 +190,10 @@ Route::prefix('n8n/v1')
                 Route::post('{recurso}/{id}/imagen',   [N8nRecursoController::class, 'imagen'])->defaults('modulo', 'cms')->whereNumber('id');
             });
 
+            // Módulo Producción: jornadas, cierre y lotes de los pedidos (bajo pedido).
+            Route::post('produccion/mensaje', [\App\Http\Controllers\Api\N8n\ProduccionController::class, 'mensaje'])
+                ->middleware(N8nRequireModule::class . ':produccion');
+
             // Módulo Soporte: abierto a todo usuario con sesión (no depende del plan).
             // Tickets, su hilo y adjuntos (imágenes o archivos) de ida y vuelta.
             Route::prefix('soporte')->group(function () {

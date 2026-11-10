@@ -35,7 +35,7 @@ class Empresa extends Model implements HasName
     protected $fillable = [
         // Desde cuándo el ERP responde por las declaraciones de esta empresa,
         // y cada cuánto declara el IVA. No es la fecha de constitución.
-        'inicio_gestion_erp', 'periodicidad_iva',
+        'inicio_gestion_erp', 'periodicidad_iva', 'costo_hora_mano_obra',
         // Modo «Cuadre de gestión anterior»: quién lo encendió y cuándo (null = apagado).
         'modo_cuadre_en', 'modo_cuadre_por',
         'name', 'email', 'website_url', 'slug', 'activo',

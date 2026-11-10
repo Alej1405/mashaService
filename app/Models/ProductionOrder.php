@@ -21,6 +21,8 @@ class ProductionOrder extends Model
         'fecha_fin'          => 'date',
         'cantidad_producida' => 'decimal:4',
         'costo_total'        => 'decimal:4',
+        'inicio_real'        => 'datetime',
+        'fin_real'           => 'datetime',
     ];
 
     protected static function boot()
@@ -68,6 +70,12 @@ class ProductionOrder extends Model
                 }
             }
         });
+    }
+
+    /** El pedido del que nace (producción bajo pedido). */
+    public function pedido(): BelongsTo
+    {
+        return $this->belongsTo(StoreOrder::class, 'store_order_id');
     }
 
     public function plan(): BelongsTo

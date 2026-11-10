@@ -26,8 +26,9 @@ class StoreOrderService
         ?string $notes = null,
         string $origen = 'cliente',
         bool $soloExclusivos = false,
+        bool $bajoPedido = false,
     ): StoreOrder {
-        return DB::transaction(function () use ($empresa, $customer, $items, $shippingAddress, $couponCode, $notes, $origen, $soloExclusivos) {
+        return DB::transaction(function () use ($empresa, $customer, $items, $shippingAddress, $couponCode, $notes, $origen, $soloExclusivos, $bajoPedido) {
             $subtotal   = 0;
             $orderItems = [];
 
@@ -45,7 +46,8 @@ class StoreOrderService
 
                 // Stock leído del inventario real (store_product_stock → inventory_items).
                 // Sin items enlazados el producto es "bajo pedido": no se valida stock.
-                if ($product->gestiona_stock && (float) ($product->stock_disponible ?? 0) < $qty) {
+                // Bajo pedido no se mira el stock: lo que falte se fabrica.
+                if (! $bajoPedido && $product->gestiona_stock && (float) ($product->stock_disponible ?? 0) < $qty) {
                     throw new \Exception("Stock insuficiente para: {$product->nombre} (disponible: " . ($product->stock_disponible ?? 0) . ")");
                 }
 

@@ -70,7 +70,7 @@ class StoreOrderResource extends Resource
 
             // ── GESTIÓN (solo al editar) ────────────────────────────────────
             Select::make('estado')->label('Estado')
-                ->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','receptado'=>'Receptado','procesando'=>'Procesando','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])
+                ->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','receptado'=>'Receptado','procesando'=>'Procesando','producido'=>'Producido','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])
                 ->required()->native(false)
                 ->visible(fn (string $operation) => $operation === 'edit'),
             Select::make('estado_pago')->label('Estado de Pago')
@@ -112,7 +112,7 @@ class StoreOrderResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                SelectFilter::make('estado')->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','receptado'=>'Receptado','procesando'=>'Procesando','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])->native(false),
+                SelectFilter::make('estado')->options(['pendiente'=>'Pendiente','pagado'=>'Pagado','receptado'=>'Receptado','procesando'=>'Procesando','producido'=>'Producido','enviado'=>'Enviado','entregado'=>'Entregado','cancelado'=>'Cancelado'])->native(false),
                 SelectFilter::make('estado_pago')->options(['pendiente'=>'Pendiente','aprobado'=>'Aprobado','fallido'=>'Fallido','reembolsado'=>'Reembolsado'])->native(false),
             ])
             ->actions([

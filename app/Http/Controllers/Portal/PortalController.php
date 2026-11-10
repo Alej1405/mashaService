@@ -146,7 +146,13 @@ class PortalController extends Controller
                 notes:           $data['notas'] ?? null,
                 origen:          'cliente',
                 soloExclusivos:  true,
+                bajoPedido:      true,
             );
+
+            // Se fabrica bajo pedido: nacen sus órdenes de producción y se avisa a la empresa.
+            $produccion = app(\App\Modules\Ecommerce\Actions\GenerarOrdenProduccionPedido::class)->handle($order);
+            app(\App\Modules\Ecommerce\Actions\NotificarPedido::class)
+                ->nuevo($order->fresh(['customer', 'orderItems']), $produccion['ordenes'], $produccion['sin_diseno']);
         } catch (\Throwable $e) {
             return back()->withErrors(['items' => $e->getMessage()])->withInput();
         }

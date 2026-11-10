@@ -2,35 +2,64 @@
 
 namespace App\Modules\Ecommerce\Actions;
 
+use App\Models\ProductionOrder;
 use App\Models\StoreOrder;
 use App\Shared\Attributes\Documentado;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 /**
- * STUB — solo MAPEADO. Cuando un pedido receptado no tiene stock suficiente, aquí
- * se generará la orden de producción (PROD-YYYY-#####) por cada producto faltante,
- * enlazada al pedido. El módulo Producción todavía NO está en alcance, así que por
- * ahora únicamente se registra la intención, sin efectos contables ni de inventario.
+ * Se fabrica bajo pedido: cada línea del pedido genera su orden de producción
+ * (PROD-AAAA-#####) en borrador, ligada al pedido, por la presentación y la
+ * cantidad pedidas. Los materiales y el consumo se definen en Producción.
  *
- * Punto de extensión: al habilitar Producción, crear la ProductionOrder real aquí.
+ * Idempotente: si la línea ya tiene su orden, no se crea otra. Una línea cuyo
+ * producto no tiene presentación (sin diseño) no se puede producir y se informa.
  */
 #[Documentado(
     grupo: 'Tienda',
-    descripcion: 'STUB mapeado: registra que un pedido receptado requiere producción por falta de stock. La creación real de la orden de producción se implementará con el módulo Producción.',
+    descripcion: 'Genera las órdenes de producción de un pedido, una por línea, en borrador y ligadas al pedido.',
     tipo: 'action',
 )]
 final class GenerarOrdenProduccionPedido
 {
     /**
-     * @param array<int, array{producto:string, cantidad:float, motivo:string}> $faltantes
+     * @param array<int, array{producto:string}>|null $soloEstos nombres de producto (recepción); null = todo el pedido
+     * @return array{ordenes: Collection<int,ProductionOrder>, sin_diseno: array<int,string>}
      */
-    public function handle(StoreOrder $order, array $faltantes): void
+    public function handle(StoreOrder $order, ?array $soloEstos = null): array
     {
-        // TODO(Producción): crear ProductionOrder por cada faltante y enlazar al pedido.
-        Log::info('Pedido receptado requiere producción (mapeado, sin implementar)', [
-            'empresa_id' => $order->empresa_id,
-            'pedido'     => $order->numero,
-            'faltantes'  => $faltantes,
-        ]);
+        $order->loadMissing('customer', 'orderItems.product.productPresentation');
+        $nombres = $soloEstos === null ? null : array_column($soloEstos, 'producto');
+
+        $ordenes = collect();
+        $sinDiseno = [];
+
+        foreach ($order->orderItems as $linea) {
+            $presentacion = $linea->product?->productPresentation;
+
+            if ($nombres !== null && ! in_array($linea->product?->nombre, $nombres, true)) {
+                continue;
+            }
+
+            if (! $presentacion) {
+                $sinDiseno[] = $linea->nombre_snapshot;
+                continue;
+            }
+
+            $ordenes->push(ProductionOrder::withoutGlobalScopes()->firstOrCreate(
+                ['store_order_id' => $order->id, 'product_presentation_id' => $presentacion->id],
+                [
+                    'empresa_id'         => $order->empresa_id,
+                    'fecha'              => now()->toDateString(),
+                    'inventory_item_id'  => $presentacion->inventory_item_id ?: $linea->inventory_item_id,
+                    'cantidad_producida' => (float) $linea->cantidad,
+                    'costo_total'        => 0,
+                    'estado'             => 'borrador',
+                    'notas'              => "Pedido {$order->numero} · " . ($order->customer?->nombre_completo ?? 'Cliente'),
+                ],
+            ));
+        }
+
+        return ['ordenes' => $ordenes, 'sin_diseno' => $sinDiseno];
     }
 }

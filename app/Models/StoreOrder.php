@@ -75,6 +75,18 @@ class StoreOrder extends Model
         return $this->hasMany(StoreOrderHistorial::class)->orderBy('ocurrido_en')->orderBy('id');
     }
 
+    /** Órdenes de producción del pedido: se fabrica bajo pedido. */
+    public function productionOrders(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProductionOrder::class, 'store_order_id');
+    }
+
+    /** Jornadas de trabajo del pedido, en orden. */
+    public function jornadas(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProduccionJornada::class, 'store_order_id')->orderBy('numero');
+    }
+
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);

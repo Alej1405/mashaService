@@ -431,7 +431,40 @@ class ProduccionPage extends Page
             ->orderBy('fecha_inicio')
             ->get();
 
-        return compact('planes');
+        // Pedidos que se fabrican bajo pedido: llegan desde el portal de clientes.
+        $pedidos = \App\Models\StoreOrder::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)
+            ->whereIn('estado', ['pendiente', 'receptado', 'procesando', 'producido'])
+            ->whereHas('productionOrders')
+            ->with(['customer', 'productionOrders.productPresentation', 'jornadas.iniciadaPor'])
+            ->orderByRaw("CASE estado WHEN 'procesando' THEN 1 WHEN 'receptado' THEN 2 WHEN 'pendiente' THEN 3 ELSE 4 END")
+            ->orderBy('created_at')
+            ->get();
+
+        return compact('planes', 'pedidos');
+    }
+
+    /** Fechas previstas de inicio y fin de la producción de un pedido. */
+    public function planificarPedidoAction(): Action
+    {
+        return Action::make('planificarPedido')
+            ->modalHeading(fn (array $arguments) => 'Planificar ' . ($arguments['numero'] ?? 'pedido'))
+            ->modalDescription('Al planificarlo por primera vez se avisa al cliente que su pedido fue receptado y está en planificación.')
+            ->modalSubmitActionLabel('Guardar fechas')
+            ->fillForm(function (array $arguments) {
+                $o = \App\Models\ProductionOrder::withoutGlobalScopes()->where('store_order_id', $arguments['pedido_id'] ?? 0);
+                return ['inicio' => (clone $o)->min('fecha'), 'fin' => (clone $o)->max('fecha_fin')];
+            })
+            ->form([
+                \Filament\Forms\Components\DatePicker::make('inicio')->label('Inicio de producción')->required()->native(false)->displayFormat('d/m/Y'),
+                \Filament\Forms\Components\DatePicker::make('fin')->label('Fin de producción')->required()->native(false)->displayFormat('d/m/Y')->afterOrEqual('inicio'),
+            ])
+            ->action(function (array $data, array $arguments) {
+                $pedido = \App\Models\StoreOrder::withoutGlobalScopes()
+                    ->where('empresa_id', Filament::getTenant()->id)->findOrFail($arguments['pedido_id'] ?? 0);
+                app(\App\Modules\Produccion\Actions\ProduccionDePedido::class)->planificar($pedido, $data['inicio'], $data['fin']);
+                Notification::make()->title("{$pedido->numero} planificado")->success()->send();
+            });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
