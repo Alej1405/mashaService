@@ -60,8 +60,7 @@ class PortalController extends Controller
 
         $catalogoProductos = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->where('publicado', true)
-            ->visiblePara($customer)
+            ->exclusivosDe($customer)
             ->orderBy('nombre')
             ->get();
 
@@ -91,7 +90,7 @@ class PortalController extends Controller
         return view('portal.orders', compact('empresa', 'customer', 'orders'));
     }
 
-    /** Formulario para armar un pedido nuevo con el catálogo publicado de la empresa. */
+    /** Formulario para armar un pedido nuevo con los productos exclusivos del cliente. */
     public function orderCreate(Request $request, string $slug)
     {
         $empresa  = $this->empresa($slug);
@@ -99,8 +98,7 @@ class PortalController extends Controller
 
         $productos = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
-            ->where('publicado', true)
-            ->visiblePara($customer)
+            ->exclusivosDe($customer)
             ->with('storeCategory')
             ->orderBy('nombre')
             ->get();
@@ -147,6 +145,7 @@ class PortalController extends Controller
                 couponCode:      null,
                 notes:           $data['notas'] ?? null,
                 origen:          'cliente',
+                soloExclusivos:  true,
             );
         } catch (\Throwable $e) {
             return back()->withErrors(['items' => $e->getMessage()])->withInput();

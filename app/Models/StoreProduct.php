@@ -114,6 +114,12 @@ class StoreProduct extends Model
                 ->where('visibilidad', 'exclusivo')->where('customer_id', $cliente->id))));
     }
 
+    /** Los productos que son solo de este cliente: lo que ve y pide en su portal. */
+    public function scopeExclusivosDe(Builder $query, Customer $cliente): Builder
+    {
+        return $query->where('visibilidad', 'exclusivo')->where('customer_id', $cliente->id);
+    }
+
     private static function uniqueSlug(int $empresaId, string $base): string
     {
         $slug = $base;

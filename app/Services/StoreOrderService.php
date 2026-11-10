@@ -24,9 +24,10 @@ class StoreOrderService
         array $shippingAddress,
         ?string $couponCode = null,
         ?string $notes = null,
-        string $origen = 'cliente'
+        string $origen = 'cliente',
+        bool $soloExclusivos = false,
     ): StoreOrder {
-        return DB::transaction(function () use ($empresa, $customer, $items, $shippingAddress, $couponCode, $notes, $origen) {
+        return DB::transaction(function () use ($empresa, $customer, $items, $shippingAddress, $couponCode, $notes, $origen, $soloExclusivos) {
             $subtotal   = 0;
             $orderItems = [];
 
@@ -34,8 +35,9 @@ class StoreOrderService
                 $product = StoreProduct::withoutGlobalScopes()
                     ->where('empresa_id', $empresa->id)
                     ->where('id', $item['store_product_id'])
-                    ->where('publicado', true)
-                    ->visiblePara($customer)
+                    ->when($soloExclusivos,
+                        fn ($q) => $q->exclusivosDe($customer),
+                        fn ($q) => $q->where('publicado', true)->visiblePara($customer))
                     ->first()
                     ?? throw new \Exception('Uno de los productos ya no está disponible para ti. Revisa el pedido.');
 
