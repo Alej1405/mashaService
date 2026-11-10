@@ -14,6 +14,18 @@ class AuthenticateStoreCustomer
             return redirect()->route('portal.login', ['slug' => $request->route('slug')]);
         }
 
+        // La sesión es de un cliente de UNA tienda: con otro slug no ve ni pide nada ajeno.
+        $deEstaTienda = \App\Models\Customer::withoutGlobalScopes()
+            ->whereKey($request->session()->get('portal_customer_id'))
+            ->whereHas('empresa', fn ($q) => $q->where('slug', $request->route('slug')))
+            ->exists();
+
+        if (! $deEstaTienda) {
+            $request->session()->forget('portal_customer_id');
+
+            return redirect()->route('portal.login', ['slug' => $request->route('slug')]);
+        }
+
         return $next($request);
     }
 }

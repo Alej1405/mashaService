@@ -36,7 +36,8 @@ class StoreOrderService
                     ->where('id', $item['store_product_id'])
                     ->where('publicado', true)
                     ->visiblePara($customer)
-                    ->firstOrFail();
+                    ->first()
+                    ?? throw new \Exception('Uno de los productos ya no está disponible para ti. Revisa el pedido.');
 
                 $qty = (float) $item['cantidad'];
 
@@ -55,9 +56,14 @@ class StoreOrderService
                 $lineTotal  = $precioAplicado * $qty;
                 $subtotal  += $lineTotal;
 
+                // La línea apunta al ítem que se vende: el de su presentación o el primero enlazado.
+                $inventarioId = $product->productPresentation?->inventory_item_id
+                    ?? $product->stockItems()->value('inventory_item_id')
+                    ?? throw new \Exception("{$product->nombre} no tiene inventario enlazado: no se puede pedir todavía.");
+
                 $orderItems[] = [
                     'store_product_id'  => $product->id,
-                    'inventory_item_id' => null,
+                    'inventory_item_id' => $inventarioId,
                     'nombre_snapshot'   => $product->nombre,
                     'precio_unitario'   => $precioAplicado,
                     'cantidad'          => $qty,
@@ -124,7 +130,8 @@ class StoreOrderService
             // ── Cliente ERP genérico para ventas online ──────────────────
             // Sales requiere customer_id NOT NULL. Usamos un cliente
             // "Consumidor Final" que representa todas las ventas online.
-            $customer = Customer::withoutGlobalScopes()->firstOrCreate(
+            // La venta es del cliente que pidió; consumidor final solo si el pedido no tiene cliente.
+            $customer = Customer::withoutGlobalScopes()->find($order->customer_id) ?? Customer::withoutGlobalScopes()->firstOrCreate(
                 [
                     'empresa_id'            => $order->empresa_id,
                     'numero_identificacion' => '9999999999',

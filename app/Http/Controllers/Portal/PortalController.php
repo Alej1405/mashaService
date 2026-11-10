@@ -61,6 +61,7 @@ class PortalController extends Controller
         $catalogoProductos = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
+            ->visiblePara($customer)
             ->orderBy('nombre')
             ->get();
 
@@ -99,6 +100,7 @@ class PortalController extends Controller
         $productos = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
+            ->visiblePara($customer)
             ->with('storeCategory')
             ->orderBy('nombre')
             ->get();
