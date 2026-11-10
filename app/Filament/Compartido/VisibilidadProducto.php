@@ -8,6 +8,9 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Get;
+use Filament\Notifications\Notification;
+use Filament\Tables\Actions\BulkAction;
+use Illuminate\Database\Eloquent\Collection;
 use Filament\Tables\Columns\TextColumn;
 
 /**
@@ -50,5 +53,33 @@ final class VisibilidadProducto
                 ? 'Solo ' . ($record->cliente?->nombre_completo ?? 'un cliente')
                 : 'General')
             ->color(fn (string $state) => $state === 'exclusivo' ? 'warning' : 'gray');
+    }
+
+    /** Acción masiva: la misma visibilidad para todos los productos seleccionados. */
+    public static function accionMasiva(): BulkAction
+    {
+        return BulkAction::make('visibilidad')
+            ->label('Cambiar quién los ve')
+            ->icon('heroicon-o-eye')
+            ->modalHeading('Quién ve los productos seleccionados')
+            ->modalSubmitActionLabel('Aplicar')
+            ->form(self::campos())
+            ->action(function (Collection $records, array $data) {
+                $records->each(fn (StoreProduct $p) => $p->update([
+                    'visibilidad' => $data['visibilidad'],
+                    'customer_id' => $data['customer_id'] ?? null,
+                ]));
+
+                $n = $records->count();
+                $cliente = ($data['visibilidad'] === 'exclusivo')
+                    ? Customer::withoutGlobalScopes()->find($data['customer_id'])?->nombre_completo
+                    : null;
+
+                Notification::make()
+                    ->title($n === 1 ? '1 producto actualizado' : "{$n} productos actualizados")
+                    ->body($cliente ? "Ahora solo los ve {$cliente}." : 'Ahora los ven todos los clientes.')
+                    ->success()->send();
+            })
+            ->deselectRecordsAfterCompletion();
     }
 }

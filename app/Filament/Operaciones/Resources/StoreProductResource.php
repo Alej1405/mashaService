@@ -340,6 +340,9 @@ class StoreProductResource extends Resource
             ->actions([
                 EditAction::make(),
                 DeleteAction::make(),
+            ])
+            ->bulkActions([
+                \App\Filament\Compartido\VisibilidadProducto::accionMasiva(),
             ]);
     }
 
