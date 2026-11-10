@@ -35,6 +35,7 @@ class StoreOrderService
                     ->where('empresa_id', $empresa->id)
                     ->where('id', $item['store_product_id'])
                     ->where('publicado', true)
+                    ->visiblePara($customer)
                     ->firstOrFail();
 
                 $qty = (float) $item['cantidad'];

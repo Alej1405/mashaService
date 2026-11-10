@@ -53,6 +53,7 @@ class StoreProductResource extends Resource
                     TextInput::make('sku')->label('SKU')->maxLength(100)->columnSpan(1)
                         ->helperText('Código único de referencia del producto (Stock Keeping Unit). Sirve para identificarlo en inventario y ventas. Ej: CAM-ROJ-M.'),
                     Toggle::make('publicado')->label('Publicado')->default(true)->columnSpan(1),
+                    ...\App\Filament\Compartido\VisibilidadProducto::campos(),
                     RichEditor::make('descripcion')->label('Descripción')
                         ->toolbarButtons(['bold','italic','bulletList','orderedList','link','undo','redo'])
                         ->columnSpanFull(),
@@ -164,6 +165,7 @@ class StoreProductResource extends Resource
                     ->color(fn (StoreProduct $record): string => ! $record->gestiona_stock
                         ? 'gray'
                         : ((int) $record->stock_disponible <= 0 ? 'danger' : ((int) $record->stock_disponible < 5 ? 'warning' : 'success'))),
+                \App\Filament\Compartido\VisibilidadProducto::columna(),
                 IconColumn::make('publicado')->label('Publicado')->boolean(),
             ])
             ->defaultSort('created_at', 'desc')

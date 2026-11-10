@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasEmpresa;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,6 +31,8 @@ class StoreProduct extends Model
         'meta_titulo',
         'meta_descripcion',
         'publicado',
+        'visibilidad',
+        'customer_id',
         'destacado',
         'orden',
     ];
@@ -49,6 +52,11 @@ class StoreProduct extends Model
      * INSERT; un null explícito (campo vacío del form, payload de la API) lo ignora y
      * revienta contra la constraint. Aquí se normalizan antes de tocar la base.
      */
+    public const VISIBILIDADES = [
+        'general'   => 'General · lo ven todos los clientes',
+        'exclusivo' => 'Exclusivo · solo un cliente',
+    ];
+
     private const SIN_NULOS = [
         'precio_distribuidor'          => 0,
         'cantidad_minima_distribuidor' => 1,
@@ -60,6 +68,12 @@ class StoreProduct extends Model
         parent::boot();
 
         static::saving(function (self $model) {
+            // Un general no guarda cliente: si se cambia de exclusivo a general, se suelta.
+            if ($model->visibilidad !== 'exclusivo') {
+                $model->visibilidad = 'general';
+                $model->customer_id = null;
+            }
+
             foreach (self::SIN_NULOS as $columna => $porDefecto) {
                 if ($model->{$columna} === null) {
                     $model->{$columna} = $porDefecto;
@@ -72,6 +86,23 @@ class StoreProduct extends Model
                 $model->slug = static::uniqueSlug($model->empresa_id, Str::slug($model->nombre));
             }
         });
+    }
+
+    /** El cliente al que pertenece un producto exclusivo. */
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    /**
+     * Lo que puede ver y pedir quien entra a la tienda: los generales, y los
+     * exclusivos solo si son suyos. Sin sesión, solo los generales.
+     */
+    public function scopeVisiblePara(Builder $query, ?Customer $cliente): Builder
+    {
+        return $query->where(fn ($q) => $q->where('visibilidad', 'general')
+            ->when($cliente, fn ($q) => $q->orWhere(fn ($e) => $e
+                ->where('visibilidad', 'exclusivo')->where('customer_id', $cliente->id))));
     }
 
     private static function uniqueSlug(int $empresaId, string $base): string

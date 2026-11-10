@@ -3,12 +3,24 @@
 namespace App\Http\Controllers\Api\Store;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\StoreProduct;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StoreProductController extends Controller
 {
+    /**
+     * El cliente que consulta, si mandó su token. Estas rutas son públicas: sin
+     * sesión se ven solo los productos generales; con sesión, también los suyos.
+     */
+    private function cliente(Request $request): ?Customer
+    {
+        $usuario = auth('sanctum')->user();
+
+        return $usuario instanceof Customer && $usuario->empresa_id === app('store.empresa')->id ? $usuario : null;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $empresa = app('store.empresa');
@@ -16,7 +28,8 @@ class StoreProductController extends Controller
         $query = StoreProduct::withoutGlobalScopes()
             ->with(['storeCategory', 'imagenes'])
             ->where('empresa_id', $empresa->id)
-            ->where('publicado', true);
+            ->where('publicado', true)
+            ->visiblePara($this->cliente($request));
 
         if ($request->filled('category')) {
             $query->whereHas('storeCategory', fn ($q) => $q->where('slug', $request->category));
@@ -57,6 +70,7 @@ class StoreProductController extends Controller
             ->with(['storeCategory', 'imagenes'])
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
+            ->visiblePara($this->cliente($request))
             ->where('destacado', true)
             ->orderBy('orden')
             ->limit(12)
@@ -80,6 +94,7 @@ class StoreProductController extends Controller
             ->where('empresa_id', $empresa->id)
             ->where('slug', $slug)
             ->where('publicado', true)
+            ->visiblePara($this->cliente($request))
             ->firstOrFail();
 
         return response()->json($product);
@@ -109,6 +124,7 @@ class StoreProductController extends Controller
             ->with(['storeCategory', 'imagenes'])
             ->where('empresa_id', $empresa->id)
             ->where('publicado', true)
+            ->visiblePara($this->cliente($request))
             ->where('id', '!=', $product->id)
             ->where('store_category_id', $product->store_category_id)
             ->limit(6)

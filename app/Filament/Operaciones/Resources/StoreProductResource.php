@@ -118,6 +118,7 @@ class StoreProductResource extends Resource
                             Toggle::make('destacado')
                                 ->label('Destacado')
                                 ->helperText('Aparece en la sección de productos destacados del Home.'),
+                            ...\App\Filament\Compartido\VisibilidadProducto::campos(),
                             TextInput::make('orden')
                                 ->label('Orden')
                                 ->numeric()
@@ -323,6 +324,7 @@ class StoreProductResource extends Resource
                     ->label('Precio')
                     ->money('USD')
                     ->sortable(),
+                \App\Filament\Compartido\VisibilidadProducto::columna(),
                 IconColumn::make('publicado')
                     ->label('Publicado')
                     ->boolean(),
