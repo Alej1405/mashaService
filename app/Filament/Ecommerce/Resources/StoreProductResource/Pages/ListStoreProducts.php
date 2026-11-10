@@ -12,7 +12,6 @@ class ListStoreProducts extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        // Un producto nace con sus presentaciones, como en Diseño de producto.
-        return [\App\Filament\Compartido\CrearProducto::accion()];
+        return [Actions\CreateAction::make()];
     }
 }
