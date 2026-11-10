@@ -91,7 +91,8 @@ final class ConversacionProduccion
         $plan = $pedido->productionOrders->min('fecha');
 
         $texto = "📦 {$pedido->numero} · " . ($pedido->customer?->nombre_completo ?? 'Cliente') . "\n"
-            . $pedido->orderItems->map(fn ($i) => '• ' . Str::limit($i->nombre_snapshot, 40) . ' × ' . $this->num($i->cantidad))->implode("\n") . "\n"
+            . $pedido->orderItems->map(fn ($i) => '• ' . Str::limit($i->nombre_snapshot, 40) . ' × ' . $this->num($i->cantidad)
+                . ($i->nota ? "\n   📝 " . Str::limit($i->nota, 200) : ''))->implode("\n") . "\n"
             . 'Estado: ' . $this->estado($pedido)
             . ($plan ? ' · inicio previsto ' . \Illuminate\Support\Carbon::parse($plan)->format('d/m/Y') : '') . "\n"
             . "Jornadas cerradas: {$mo['jornadas']} · {$this->num($mo['horas_persona'])} horas-persona · $" . number_format($mo['costo'], 2) . "\n\n"
@@ -147,7 +148,8 @@ final class ConversacionProduccion
     private function notas(?StoreOrder $pedido, string $texto): array
     {
         $notas = in_array(mb_strtolower($texto), ['no', 'ninguna', 'sin notas'], true) ? null : Str::limit($texto, 1000, '');
-        $pendientes = $pedido->productionOrders()->whereNotIn('estado', ['terminado', 'completado'])->pluck('id')->all();
+        $pendientes = $pedido->productionOrders()->whereNotIn('estado', ['terminado', 'completado'])
+            ->with('lineas')->get()->flatMap->lineas->pluck('id')->all();
 
         return $this->pedirLote($pedido, ['sub' => 'lote', 'id' => $pedido->id, 'notas' => $notas, 'pendientes' => $pendientes, 'lotes' => []]);
     }
@@ -166,21 +168,20 @@ final class ConversacionProduccion
         }
 
         $this->produccion->terminar($pedido, $md['notas'] ?? null, $md['lotes'], $usuario);
-        $pedido->load('productionOrders.productPresentation');
+        $lineas = $pedido->productionOrders()->with('lineas')->get()->flatMap->lineas;
 
         return $this->r("🎉 {$pedido->numero} terminado.\n"
-            . $pedido->productionOrders->map(fn ($o) => '• ' . ($o->productPresentation?->nombre ?? $o->referencia) . ': lote ' . $o->lote)->implode("\n")
+            . $lineas->map(fn ($l) => "• {$l->descripcion}: lote {$l->lote}")->implode("\n")
             . "\nSe avisó al cliente por correo.", ['sub' => 'lista'], true);
     }
 
     private function pedirLote(StoreOrder $pedido, array $md, string $aviso = ''): array
     {
-        $orden = $pedido->productionOrders()->with('productPresentation')->find($md['pendientes'][0] ?? 0);
+        $linea = \App\Models\ProductionOrderLinea::whereHas('orden', fn ($q) => $q->where('store_order_id', $pedido->id))
+            ->find($md['pendientes'][0] ?? 0);
 
-        return $this->r(($aviso ? "⚠️ {$aviso}\n" : '') . '🏷️ Lote de entrega de ' . ($orden?->productPresentation?->nombre ?? $orden?->referencia)
-            . ' × ' . $this->num($orden?->cantidad_producida) . ':', $md);
+        return $this->r(($aviso ? "⚠️ {$aviso}\n" : '') . "🏷️ Lote de entrega de {$linea?->descripcion} × " . $this->num($linea?->cantidad) . ':', $md);
     }
-
     private function estado(StoreOrder $p): string
     {
         return match ($p->estado) {

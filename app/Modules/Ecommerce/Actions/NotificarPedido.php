@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  */
 #[Documentado(
     grupo: 'Tienda',
-    descripcion: 'Avisa un pedido nuevo en la campana del ERP y por Telegram, con sus órdenes de producción.',
+    descripcion: 'Avisa un pedido nuevo en la campana del ERP y por Telegram, con su orden de producción.',
     tipo: 'action',
 )]
 final class NotificarPedido
@@ -38,7 +38,7 @@ final class NotificarPedido
         $total = '$' . number_format((float) $order->total, 2);
 
         Notification::make()->title("Nuevo pedido · {$cliente}")
-            ->body("{$order->numero} por {$total}. Órdenes de producción: " . ($ordenes->pluck('referencia')->join(', ') ?: 'ninguna') . '.')
+            ->body("{$order->numero} por {$total}. Orden de producción: " . ($ordenes->pluck('referencia')->join(', ') ?: 'ninguna') . '.')
             ->icon('heroicon-o-shopping-bag')->iconColor('success')
             ->sendToDatabase($usuarios);
 
@@ -50,13 +50,14 @@ final class NotificarPedido
         $m = fn ($n) => '$' . number_format((float) $n, 2);
         $lineas = $order->orderItems->map(fn ($i) => '• ' . Str::limit((string) $i->nombre_snapshot, 40)
             . ' × ' . rtrim(rtrim(number_format((float) $i->cantidad, 4, '.', ''), '0'), '.')
-            . ' = ' . $m($i->subtotal))->implode("\n");
+            . ' = ' . $m($i->subtotal)
+            . ($i->nota ? "\n   📝 " . Str::limit($i->nota, 200) : ''))->implode("\n");
 
         $texto = "🛒 Nuevo pedido {$order->numero}\n"
             . ($order->customer?->nombre_completo ?? 'Cliente') . "\n\n"
             . $lineas . "\n\n"
             . "Total {$m($order->total)}\n\n"
-            . '🏭 Órdenes de producción: ' . ($ordenes->pluck('referencia')->join(', ') ?: 'ninguna');
+            . '🏭 Orden de producción: ' . ($ordenes->pluck('referencia')->join(', ') ?: 'ninguna');
 
         if ($sinDiseno) {
             $texto .= "\n⚠️ Sin diseño de producto, no se pudo programar: " . implode(', ', $sinDiseno) . '.';

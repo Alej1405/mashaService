@@ -6,18 +6,18 @@ use App\Models\ProductionOrder;
 use App\Models\StoreOrder;
 use App\Shared\Attributes\Documentado;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Se fabrica bajo pedido: cada línea del pedido genera su orden de producción
- * (PROD-AAAA-#####) en borrador, ligada al pedido, por la presentación y la
- * cantidad pedidas. Los materiales y el consumo se definen en Producción.
+ * Se fabrica bajo pedido: el pedido genera UNA orden de producción (PROD-AAAA-#####)
+ * en borrador, y cada producto pedido es una línea de esa orden con su cantidad.
  *
- * Idempotente: si la línea ya tiene su orden, no se crea otra. Una línea cuyo
- * producto no tiene presentación (sin diseño) no se puede producir y se informa.
+ * Idempotente: una línea del pedido no se agrega dos veces. Un producto sin
+ * presentación (sin diseño) no se puede producir y se informa.
  */
 #[Documentado(
     grupo: 'Tienda',
-    descripcion: 'Genera las órdenes de producción de un pedido, una por línea, en borrador y ligadas al pedido.',
+    descripcion: 'Genera la orden de producción de un pedido, con una línea por producto pedido.',
     tipo: 'action',
 )]
 final class GenerarOrdenProduccionPedido
@@ -31,35 +31,55 @@ final class GenerarOrdenProduccionPedido
         $order->loadMissing('customer', 'orderItems.product.productPresentation');
         $nombres = $soloEstos === null ? null : array_column($soloEstos, 'producto');
 
-        $ordenes = collect();
+        $lineas = [];
         $sinDiseno = [];
 
-        foreach ($order->orderItems as $linea) {
-            $presentacion = $linea->product?->productPresentation;
-
-            if ($nombres !== null && ! in_array($linea->product?->nombre, $nombres, true)) {
+        foreach ($order->orderItems as $item) {
+            if ($nombres !== null && ! in_array($item->product?->nombre, $nombres, true)) {
                 continue;
             }
 
+            $presentacion = $item->product?->productPresentation;
             if (! $presentacion) {
-                $sinDiseno[] = $linea->nombre_snapshot;
+                $sinDiseno[] = $item->nombre_snapshot;
                 continue;
             }
 
-            $ordenes->push(ProductionOrder::withoutGlobalScopes()->firstOrCreate(
-                ['store_order_id' => $order->id, 'product_presentation_id' => $presentacion->id],
+            $lineas[] = [$item, $presentacion];
+        }
+
+        if (! $lineas) {
+            return ['ordenes' => collect(), 'sin_diseno' => $sinDiseno];
+        }
+
+        $orden = DB::transaction(function () use ($order, $lineas) {
+            $orden = ProductionOrder::withoutGlobalScopes()->firstOrCreate(
+                ['store_order_id' => $order->id],
                 [
                     'empresa_id'         => $order->empresa_id,
                     'fecha'              => now()->toDateString(),
-                    'inventory_item_id'  => $presentacion->inventory_item_id ?: $linea->inventory_item_id,
-                    'cantidad_producida' => (float) $linea->cantidad,
+                    'cantidad_producida' => 0,
                     'costo_total'        => 0,
                     'estado'             => 'borrador',
                     'notas'              => "Pedido {$order->numero} · " . ($order->customer?->nombre_completo ?? 'Cliente'),
                 ],
-            ));
-        }
+            );
 
-        return ['ordenes' => $ordenes, 'sin_diseno' => $sinDiseno];
+            foreach ($lineas as [$item, $presentacion]) {
+                $orden->lineas()->firstOrCreate(['store_order_item_id' => $item->id], [
+                    'product_presentation_id' => $presentacion->id,
+                    'inventory_item_id'       => $presentacion->inventory_item_id ?: $item->inventory_item_id,
+                    'descripcion'             => $presentacion->nombre ?: $item->nombre_snapshot,
+                    'cantidad'                => (float) $item->cantidad,
+                ]);
+            }
+
+            // Unidades totales de la orden: la suma de sus líneas.
+            $orden->update(['cantidad_producida' => $orden->lineas()->sum('cantidad')]);
+
+            return $orden;
+        });
+
+        return ['ordenes' => collect([$orden]), 'sin_diseno' => $sinDiseno];
     }
 }

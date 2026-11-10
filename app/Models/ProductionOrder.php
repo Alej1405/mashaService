@@ -72,6 +72,12 @@ class ProductionOrder extends Model
         });
     }
 
+    /** Los productos de la orden de un pedido, cada uno con su lote. */
+    public function lineas(): HasMany
+    {
+        return $this->hasMany(ProductionOrderLinea::class, 'production_order_id')->orderBy('id');
+    }
+
     /** El pedido del que nace (producción bajo pedido). */
     public function pedido(): BelongsTo
     {

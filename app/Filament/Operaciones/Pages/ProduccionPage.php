@@ -436,7 +436,7 @@ class ProduccionPage extends Page
             ->where('empresa_id', $empresa->id)
             ->whereIn('estado', ['pendiente', 'receptado', 'procesando', 'producido'])
             ->whereHas('productionOrders')
-            ->with(['customer', 'productionOrders.productPresentation', 'jornadas.iniciadaPor'])
+            ->with(['customer', 'productionOrders.lineas.itemPedido', 'jornadas.iniciadaPor'])
             ->orderByRaw("CASE estado WHEN 'procesando' THEN 1 WHEN 'receptado' THEN 2 WHEN 'pendiente' THEN 3 ELSE 4 END")
             ->orderBy('created_at')
             ->get();

@@ -56,10 +56,10 @@ class PedidoProduccionMail extends Mailable
                     self::INICIO    => "Empezamos a producir tu pedido {$p->numero}. Te avisaremos cuando esté listo.",
                     default         => "Terminamos de producir tu pedido {$p->numero}. Estos son los lotes con los que se entrega:",
                 },
-                'lineas'  => $ordenes->map(fn ($o) => [
-                    'producto' => $o->productPresentation?->nombre ?? 'Producto',
-                    'cantidad' => $this->cantidad($o->cantidad_producida),
-                    'lote'     => $this->momento === self::TERMINADO ? $o->lote : null,
+                'lineas'  => $ordenes->flatMap->lineas->map(fn ($l) => [
+                    'producto' => $l->descripcion,
+                    'cantidad' => $this->cantidad($l->cantidad),
+                    'lote'     => $this->momento === self::TERMINADO ? $l->lote : null,
                 ])->values()->all(),
                 'nota'    => $this->momento === self::TERMINADO ? $ordenes->first()?->notas_cierre : null,
                 'url'     => route('portal.orders.show', [$p->empresa->slug, $p->id]),

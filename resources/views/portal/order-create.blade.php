@@ -58,6 +58,17 @@
                                 <span class="text-[10px] uppercase tracking-wide text-gray-400">{{ $p->storeCategory->nombre }}</span>
                             @endif
                             <p class="text-sm font-medium text-gray-800 leading-tight line-clamp-2">{{ $p->nombre }}</p>
+                            @php
+                                $pres = $p->productPresentation;
+                                $num = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, ',', '.'), '0'), ',');
+                                $detalle = collect([
+                                    $pres?->capacidad ? $num($pres->capacidad) . ' ' . ($pres->measurementUnit?->abreviatura ?: $pres->measurementUnit?->nombre) : null,
+                                    $pres?->graduacion_alcoholica !== null ? $num($pres->graduacion_alcoholica) . ' % vol' : null,
+                                ])->filter()->join(' · ');
+                            @endphp
+                            @if($detalle)
+                                <p class="text-xs text-gray-500 mt-0.5">{{ $detalle }}</p>
+                            @endif
                             <p class="text-sm font-semibold text-gray-900 mt-1">${{ number_format($p->precio_venta, 2) }}</p>
                         </div>
 
@@ -78,6 +89,11 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             </button>
                         </div>
+
+                        {{-- Nota de este producto: aparece al agregarlo --}}
+                        <textarea x-show="qty({{ $p->id }}) > 0" x-cloak x-model="notas[{{ $p->id }}]" rows="2" maxlength="500"
+                                  class="w-full rounded-lg border-gray-200 text-xs focus:border-indigo-500 focus:ring-indigo-500"
+                                  placeholder="Nota para este producto (opcional), p. ej. etiqueta verde" aria-label="Nota para {{ $p->nombre }}"></textarea>
                     </div>
                 </div>
             @endforeach
@@ -96,6 +112,7 @@
             <span class="hidden">
                 <input type="hidden" :name="`items[${linea.id}][id]`" :value="linea.id">
                 <input type="hidden" :name="`items[${linea.id}][cantidad]`" :value="linea.cantidad">
+                <input type="hidden" :name="`items[${linea.id}][nota]`" :value="notas[linea.id] || ''">
             </span>
         </template>
 
@@ -127,6 +144,7 @@
         return {
             productos: productos,
             cart: {},
+            notas: {},
             qty(id) { return this.cart[id] || 0; },
             inc(id) { this.cart[id] = this.qty(id) + 1; },
             dec(id) { var n = this.qty(id) - 1; if (n <= 0) { delete this.cart[id]; } else { this.cart[id] = n; } },

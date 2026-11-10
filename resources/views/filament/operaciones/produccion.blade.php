@@ -35,12 +35,20 @@
                     </div>
                 </header>
                 @foreach($ordenes as $o)
-                    <div class="op-fila">
-                        <div style="min-width:0">
-                            <p class="op-fila-titulo">{{ $o->productPresentation?->nombre ?? 'Producto' }} × {{ $fmt($o->cantidad_producida, 4) }}</p>
-                            <p class="op-fila-sub">{{ $o->referencia }} · {{ str_replace('_', ' ', $o->estado) }}@if($o->lote) · lote <strong>{{ $o->lote }}</strong>@endif</p>
-                        </div>
+                    <div class="op-fila" style="background:#f8fafc">
+                        <p class="op-fila-sub" style="margin:0"><strong>{{ $o->referencia }}</strong> · {{ str_replace('_', ' ', $o->estado) }} · {{ $o->lineas->count() }} {{ $o->lineas->count() === 1 ? 'producto' : 'productos' }}</p>
                     </div>
+                    @foreach($o->lineas as $l)
+                        <div class="op-fila">
+                            <div style="min-width:0">
+                                <p class="op-fila-titulo">{{ $l->descripcion }} × {{ $fmt($l->cantidad, 4) }}</p>
+                                <p class="op-fila-sub">@if($l->lote)Lote <strong>{{ $l->lote }}</strong>@else Lote por asignar al terminar @endif</p>
+                                @if($l->itemPedido?->nota)
+                                    <p class="op-fila-sub" style="color:var(--op-warn)">Nota del cliente: {{ $l->itemPedido->nota }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
                 @endforeach
                 @if($pedido->jornadas->isNotEmpty())
                     <div class="op-fila" style="display:block">

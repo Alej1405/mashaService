@@ -99,7 +99,7 @@ class PortalController extends Controller
         $productos = StoreProduct::withoutGlobalScopes()
             ->where('empresa_id', $empresa->id)
             ->exclusivosDe($customer)
-            ->with('storeCategory')
+            ->with('storeCategory', 'productPresentation.measurementUnit')
             ->orderBy('nombre')
             ->get();
 
@@ -116,13 +116,14 @@ class PortalController extends Controller
             'items'            => 'required|array|min:1',
             'items.*.id'       => 'required|integer',
             'items.*.cantidad' => 'required|numeric|min:1',
+            'items.*.nota'     => 'nullable|string|max:500',
             'notas'            => 'nullable|string|max:500',
         ]);
 
         // Solo líneas con cantidad real, en el formato que espera el servicio.
         $items = collect($data['items'])
             ->filter(fn ($i) => (float) $i['cantidad'] > 0)
-            ->map(fn ($i) => ['store_product_id' => (int) $i['id'], 'cantidad' => (float) $i['cantidad']])
+            ->map(fn ($i) => ['store_product_id' => (int) $i['id'], 'cantidad' => (float) $i['cantidad'], 'nota' => $i['nota'] ?? null])
             ->values()
             ->all();
 

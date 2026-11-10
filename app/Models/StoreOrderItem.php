@@ -15,6 +15,7 @@ class StoreOrderItem extends Model
         'precio_unitario',
         'cantidad',
         'subtotal',
+        'nota',
     ];
 
     protected $casts = [

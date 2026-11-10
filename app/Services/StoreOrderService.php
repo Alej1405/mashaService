@@ -72,6 +72,7 @@ class StoreOrderService
                     'precio_unitario'   => $precioAplicado,
                     'cantidad'          => $qty,
                     'subtotal'          => $lineTotal,
+                    'nota'              => filled($item['nota'] ?? null) ? trim($item['nota']) : null,
                 ];
             }
 

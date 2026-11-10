@@ -121,25 +121,27 @@ final class ProduccionDePedido
         return $jornada->fresh();
     }
 
-    /** @param array<int,string> $lotes production_order_id => lote */
+    /** @param array<int,string> $lotes production_order_linea_id => lote */
     public function terminar(StoreOrder $pedido, ?string $notas, array $lotes, User $usuario): void
     {
         if ($this->jornadaAbierta($pedido)) {
             throw new \RuntimeException('Cierra la jornada abierta antes de terminar el pedido.');
         }
 
-        $ordenes = $pedido->productionOrders()->whereNotIn('estado', ['terminado', 'completado'])->get();
-        foreach ($ordenes as $o) {
-            if (blank($lotes[$o->id] ?? null)) {
-                throw new \RuntimeException('Falta el lote de ' . ($o->productPresentation?->nombre ?? $o->referencia) . '.');
+        $ordenes = $pedido->productionOrders()->whereNotIn('estado', ['terminado', 'completado'])->with('lineas')->get();
+        foreach ($ordenes->flatMap->lineas as $l) {
+            if (blank($lotes[$l->id] ?? null)) {
+                throw new \RuntimeException("Falta el lote de {$l->descripcion}.");
             }
         }
 
         DB::transaction(function () use ($pedido, $notas, $lotes, $usuario, $ordenes) {
             foreach ($ordenes as $o) {
+                foreach ($o->lineas as $l) {
+                    $l->update(['lote' => trim($lotes[$l->id])]);
+                }
                 $o->update([
                     'estado'        => 'terminado',
-                    'lote'          => trim($lotes[$o->id]),
                     'fin_real'      => now(),
                     'notas_cierre'  => $notas,
                     'terminado_por' => $usuario->id,
@@ -165,7 +167,7 @@ final class ProduccionDePedido
 
     private function avisar(StoreOrder $pedido, string $momento): void
     {
-        $pedido->loadMissing('empresa', 'customer', 'productionOrders.productPresentation');
+        $pedido->loadMissing('empresa', 'customer', 'productionOrders.lineas');
         $correo = $pedido->customer?->email;
 
         if (! $correo) {
@@ -173,7 +175,7 @@ final class ProduccionDePedido
         }
 
         try {
-            Mail::to($correo)->send(new PedidoProduccionMail($pedido->fresh(['empresa', 'customer', 'productionOrders.productPresentation']), $momento));
+            Mail::to($correo)->send(new PedidoProduccionMail($pedido->fresh(['empresa', 'customer', 'productionOrders.lineas']), $momento));
         } catch (\Throwable $e) {
             // El registro de producción no falla porque el correo no salga.
             Log::error('No se pudo avisar al cliente del pedido', ['pedido' => $pedido->numero, 'momento' => $momento, 'error' => $e->getMessage()]);

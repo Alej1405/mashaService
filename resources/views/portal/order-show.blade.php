@@ -28,6 +28,9 @@
                 <div class="flex-1">
                     <p class="text-sm font-medium text-gray-800">{{ $item->product?->nombre ?? 'Producto eliminado' }}</p>
                     <p class="text-xs text-gray-500">Cantidad: {{ $item->cantidad }} × ${{ number_format($item->precio_unitario, 2) }}</p>
+                    @if($item->nota)
+                        <p class="text-xs text-gray-600 mt-1">Nota: {{ $item->nota }}</p>
+                    @endif
                 </div>
                 <p class="text-sm font-semibold text-gray-800">${{ number_format($item->subtotal, 2) }}</p>
             </div>
