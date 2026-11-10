@@ -8,6 +8,7 @@ use App\Models\ProductoProveedor;
 use App\Models\TipoGasto;
 use App\Modules\Compras\Actions\ConfirmarCompraElectronica;
 use App\Modules\Compras\Queries\ComprasElectronicasPendientes;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -75,6 +76,36 @@ class ProductosPorConfigurar extends Page
                 ? "{$confirmadas} " . ($confirmadas === 1 ? 'compra quedó registrada' : 'compras quedaron registradas') . ' con su entrada al inventario.'
                 : 'Las próximas facturas de este producto entran solas.')
             ->success()->send();
+    }
+
+    /**
+     * Crea el ítem que falta sin salir de la pantalla y deja el producto
+     * configurado con él. El formulario es el de creación rápida de Inventario.
+     */
+    public function crearItemAction(): Action
+    {
+        return Action::make('crearItem')
+            ->model(InventoryItem::class)
+            ->modalHeading('Crear ítem del inventario')
+            ->modalDescription(fn (array $arguments) => 'Para «' . ($this->producto($arguments['id'] ?? 0)?->descripcion ?? '') . '». Al guardar, sus compras entran al kardex con este ítem.')
+            ->modalSubmitActionLabel('Crear y configurar')
+            ->modalWidth('lg')
+            ->form(InventarioResource::getQuickCreateFormSchema())
+            ->fillForm(fn (array $arguments) => [
+                'nombre'         => $this->producto($arguments['id'] ?? 0)?->descripcion,
+                'purchase_price' => (float) ($this->producto($arguments['id'] ?? 0)?->ultimo_precio ?? 0),
+            ])
+            ->action(function (array $data, array $arguments) {
+                $item = InventoryItem::create([...$data, 'empresa_id' => Filament::getTenant()->id]);
+
+                $this->eleccion[(int) $arguments['id']] = 'item:' . $item->id;
+                $this->guardar((int) $arguments['id']);
+            });
+    }
+
+    private function producto(int $id): ?ProductoProveedor
+    {
+        return app(ComprasElectronicasPendientes::class)->productos(Filament::getTenant()->id)->find($id);
     }
 
     protected function getViewData(): array

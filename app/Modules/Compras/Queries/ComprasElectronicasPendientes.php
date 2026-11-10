@@ -28,7 +28,10 @@ final class ComprasElectronicasPendientes
 
     public function productos(int $empresaId): Builder
     {
+        // Solo lo que está en una compra de la empresa: los productos de una factura
+        // marcada como personal nunca llegan a compra y no hay nada que configurar.
         return ProductoProveedor::withoutGlobalScopes()->where('empresa_id', $empresaId)
-            ->whereNull('inventory_item_id')->whereNull('tipo_gasto_id');
+            ->whereNull('inventory_item_id')->whereNull('tipo_gasto_id')
+            ->whereHas('lineas');
     }
 }

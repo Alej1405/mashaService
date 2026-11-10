@@ -97,7 +97,7 @@
     .ppc-grupo-meta { display:flex; align-items:center; gap:10px; font-size:12px; font-weight:600; color:var(--op-muted);
                       font-variant-numeric:tabular-nums; }
 
-    .ppc-fila { display:grid; grid-template-columns:minmax(0,1fr) 340px auto; align-items:center; gap:14px;
+    .ppc-fila { display:grid; grid-template-columns:minmax(0,1fr) 300px auto auto; align-items:center; gap:14px;
                 padding:12px 18px; border-bottom:1px solid var(--op-border-soft); transition:background-color .15s ease; }
     .ppc-fila:last-child { border-bottom:0; }
     .ppc-fila:hover { background:#fbfcfe; }
@@ -110,6 +110,9 @@
     .ppc-espera { color:var(--op-warn); font-weight:700; }
     .ppc-select { width:100%; }
     .ppc-guardar { min-width:112px; justify-content:center; }
+    .ppc-crear { color:var(--op-accent); border-color:#c7d2fe; background:#eef2ff; transition:transform .12s ease, background-color .15s ease; }
+    .ppc-crear:hover { background:#e0e7ff; }
+    .ppc-crear:focus-visible { outline:2px solid var(--op-accent); outline-offset:2px; }
     .ppc-guardar:disabled { opacity:.6; cursor:progress; }
     .ppc-guardar:focus-visible, .ppc-select:focus-visible { outline:2px solid var(--op-accent); outline-offset:2px; }
     .ppc-sin-resultados { background:var(--op-surface); border:1px dashed var(--op-border); border-radius:var(--op-r); }

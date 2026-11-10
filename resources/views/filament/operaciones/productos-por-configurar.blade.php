@@ -45,7 +45,7 @@
                 </h2>
                 <p class="ppc-ayuda">
                     Di qué es cada uno una sola vez. Si es mercadería o insumo, elige su ítem: la compra entra al kardex y recalcula el costo promedio.
-                    Si el ítem no existe, créalo en <a href="{{ $urlInventario }}">Inventario</a> y vuelve.
+                    Si el ítem no existe, créalo aquí mismo con «Crear ítem».
                 </p>
             </div>
             <label class="ppc-buscar">
@@ -92,6 +92,12 @@
                         <select wire:model="eleccion.{{ $p->id }}" class="op-select ppc-select" aria-label="Qué es {{ $p->descripcion }}">
                             {!! $opciones !!}
                         </select>
+
+                        <button type="button" class="op-btn ppc-crear" wire:click="mountAction('crearItem', { id: {{ $p->id }} })"
+                                title="Crear un ítem nuevo para este producto">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11" stroke-linecap="round"/></svg>
+                            Crear ítem
+                        </button>
 
                         <button type="button" class="op-btn op-btn-principal ppc-guardar"
                                 wire:click="guardar({{ $p->id }})" wire:loading.attr="disabled" wire:target="guardar({{ $p->id }})">
