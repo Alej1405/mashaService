@@ -131,6 +131,13 @@ class AccountingService
             };
 
             foreach ($purchase->items as $item) {
+                // Lo que no se paga no cuenta: una línea a valor cero (el envase en que
+                // viene el producto) no genera asiento ni movimiento de kardex. Entrar
+                // al kardex a costo cero lo rompería; aquí ni siquiera se intenta.
+                if ((float) $item->subtotal <= 0 && (float) $item->iva_monto <= 0) {
+                    continue;
+                }
+
                 // Items sin inventory_item_id: gasto genérico sin seguimiento de stock
                 $tipoItem = $item->inventoryItem?->type ?? 'global';
                 $descItem = $item->inventoryItem?->nombre ?? ($item->descripcion ?? 'Gasto');
