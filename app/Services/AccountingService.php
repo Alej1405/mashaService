@@ -468,6 +468,68 @@ class AccountingService
                     $cuentaCosto = self::getMapeo($sale->empresa_id, $tipoItemMapa, 'costo_venta');
                     $cuentaInventario = self::getMapeo($sale->empresa_id, $tipoItemMapa, 'compra_contado');
 
+                    // Se facturó más de lo que el kardex tenía: el producto existió
+                    // aunque su producción no se registró. Una factura emitida y cobrada
+                    // se registra siempre; en vez de bloquear, se ingresa el faltante
+                    // como SOBRANTE de inventario (Dr inventario / Cr otros ingresos,
+                    // mapeo ajuste_sobrante) al costo de su fórmula, para que la venta
+                    // salga costeada y el kardex no quede en negativo. No consume
+                    // materia prima —el detalle de qué se produjo se concilia después—.
+                    // Si no hay con qué costear (ni promedio, ni fórmula, ni compra), la
+                    // venta se registra igual y el saldo queda para cuadrar.
+                    $faltante = round((float) $item->cantidad - (float) $item->inventoryItem->stock_actual, 4);
+                    if ($faltante > 0) {
+                        $costoRepo = (float) $item->inventoryItem->costo_promedio;
+                        if ($costoRepo <= 0) {
+                            // Sin costo real todavía: el costo estándar de su fórmula.
+                            $formula = \App\Models\ProductPresentation::withoutGlobalScopes()
+                                ->where('inventory_item_id', $item->inventory_item_id)
+                                ->where('costo_estandar', '>', 0)->first();
+                            $costoRepo = (float) ($formula->costo_estandar ?? $item->inventoryItem->purchase_price ?? 0);
+                        }
+
+                        if ($costoRepo > 0) {
+                            $valorSobrante = round($faltante * $costoRepo, 4);
+
+                            app(KardexService::class)->registrar([
+                                'item'            => $item->inventoryItem,
+                                'motivo'          => 'ajuste_sobrante',
+                                'cantidad'        => $faltante,
+                                'costo_unitario'  => $costoRepo,
+                                'fecha'           => $sale->fecha,
+                                'ubicacion_id'    => $item->inventoryItem->ubicacion_almacen_id,
+                                'documento'       => 'Sobrante por venta sin stock ' . $sale->referencia,
+                                'referencia_tipo' => 'sale',
+                                'referencia_id'   => $sale->id,
+                                'asiento_id'      => $journalEntry->id,
+                            ]);
+
+                            // Dr inventario / Cr otros ingresos, en el mismo asiento: cuadra.
+                            JournalEntryLine::create([
+                                'journal_entry_id' => $journalEntry->id,
+                                'account_plan_id'  => $cuentaInventario->id,
+                                'descripcion'      => 'Ingreso por sobrante - ' . $item->inventoryItem->nombre,
+                                'debe'             => $valorSobrante,
+                                'haber'            => 0,
+                                'orden'            => $orden++,
+                            ]);
+                            $totalDebe += $valorSobrante;
+
+                            JournalEntryLine::create([
+                                'journal_entry_id' => $journalEntry->id,
+                                'account_plan_id'  => self::getMapeo($sale->empresa_id, $tipoItemMapa, 'ajuste_sobrante')->id,
+                                'descripcion'      => 'Sobrante de inventario - ' . $item->inventoryItem->nombre,
+                                'debe'             => 0,
+                                'haber'            => $valorSobrante,
+                                'orden'            => $orden++,
+                            ]);
+                            $totalHaber += $valorSobrante;
+
+                            // Ya hay stock y costo: la salida de abajo se valora bien.
+                            $item->inventoryItem->refresh();
+                        }
+                    }
+
                     // El costo de la salida sale del kardex, no del precio de la
                     // ficha: el promedio ponderado es el único método admitido
                     // por NIIF de los que el sistema puede sostener.
@@ -521,10 +583,9 @@ class AccountingService
                         'motivo'            => 'venta',
                     ]);
 
-                    // Validar stock
-                    if ((float)$item->inventoryItem->stock_actual < (float)$item->cantidad) {
-                        throw new \Exception("Stock insuficiente para " . $item->inventoryItem->nombre . ": disponible " . $item->inventoryItem->stock_actual . ", requerido " . $item->cantidad);
-                    }
+                    // Ya no se bloquea por stock: si faltaba, arriba entró como
+                    // sobrante; y si no se pudo costear, la factura se registra igual
+                    // y el saldo se cuadra después. Una venta real nunca se detiene.
 
                     // El saldo y su valor bajan juntos: si solo baja la cantidad,
                     // el inventario contable queda inflado.
