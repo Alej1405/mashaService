@@ -298,9 +298,6 @@ final class RegistrarCompraElectronica
         $iva = 0.0;
 
         foreach ($detalles as $d) {
-            $codigo = trim((string) ($d['codigo'] ?? '')) ?: Str::limit(Str::slug($d['descripcion']), 100, '');
-            $producto = $this->producto($compra->empresa_id, $proveedorId, $codigo, $d);
-
             $base = round((float) $d['subtotal'], 2);
             $ivaLinea = 0.0;
             $otros = 0.0;
@@ -313,6 +310,17 @@ final class RegistrarCompraElectronica
                 }
             }
             $base = round($base + $otros, 2);
+
+            // El envase en que viene el producto llega en la factura a valor cero: el
+            // proveedor lo lista por su gestión de inventario, no porque se cobre. No
+            // es una línea de la compra ni un producto por configurar. Sin valor no
+            // suma al total, y omitirla no mueve el cuadre contra la cabecera del XML.
+            if (round($base + $ivaLinea, 2) <= 0) {
+                continue;
+            }
+
+            $codigo = trim((string) ($d['codigo'] ?? '')) ?: Str::limit(Str::slug($d['descripcion']), 100, '');
+            $producto = $this->producto($compra->empresa_id, $proveedorId, $codigo, $d);
             $cantidad = (float) $d['cantidad'] ?: 1.0;
 
             $linea = new PurchaseItem([
