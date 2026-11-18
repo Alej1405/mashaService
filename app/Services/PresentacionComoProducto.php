@@ -25,7 +25,13 @@ class PresentacionComoProducto
             return;
         }
 
-        $item = $this->item($p, $diseno->empresa_id);
+        $item = $this->item($p, $diseno->empresa_id, (bool) $diseno->es_semielaborado);
+
+        // Un semielaborado (materia prima procesada) no se vende: solo tiene su
+        // ítem de inventario para usarse dentro de otras recetas, sin producto de tienda.
+        if ($diseno->es_semielaborado) {
+            return;
+        }
 
         if (! $p->storeProduct()->withoutGlobalScopes()->exists()) {
             $producto = StoreProduct::withoutGlobalScopes()->create([
@@ -48,7 +54,7 @@ class PresentacionComoProducto
         }
     }
 
-    private function item(ProductPresentation $p, int $empresaId): InventoryItem
+    private function item(ProductPresentation $p, int $empresaId, bool $esSemielaborado = false): InventoryItem
     {
         $datos = array_filter([
             'nombre' => $p->nombre,
@@ -72,7 +78,7 @@ class PresentacionComoProducto
 
         $item = InventoryItem::withoutGlobalScopes()->create($datos + [
             'empresa_id'              => $empresaId,
-            'type'                    => 'producto_terminado',
+            'type'                    => $esSemielaborado ? 'materia_prima' : 'producto_terminado',
             'product_presentation_id' => $p->id,
             'sale_price'              => (float) $p->pvp_estimado,
             'activo'                  => true,

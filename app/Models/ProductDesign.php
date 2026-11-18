@@ -17,6 +17,7 @@ class ProductDesign extends Model
         'empresa_id',
         'nombre',
         'categoria',
+        'es_semielaborado',
         'store_category_id',
         'visibilidad',
         'customer_id',
@@ -46,6 +47,7 @@ class ProductDesign extends Model
     ];
 
     protected $casts = [
+        'es_semielaborado'                => 'boolean',
         'activo'                          => 'boolean',
         'publicado_catalogo'              => 'boolean',
         'tiene_multiples_presentaciones'  => 'boolean',

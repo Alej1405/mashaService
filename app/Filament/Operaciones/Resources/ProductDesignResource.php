@@ -115,6 +115,12 @@ class ProductDesignResource extends Resource
                                 ->live()
                                 ->inline(false)
                                 ->columnSpan(2),
+                            Toggle::make('es_semielaborado')
+                                ->label('Materia prima procesada')
+                                ->helperText('Es un semielaborado (ej. azúcar pulverizada): se fabrica con su receta y solo se usa dentro de otras fórmulas. No se publica en la tienda.')
+                                ->default(false)
+                                ->inline(false)
+                                ->columnSpan(2),
                             RichEditor::make('propuesta_valor')
                                 ->label('Propuesta de Valor')
                                 ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'h2', 'h3'])
