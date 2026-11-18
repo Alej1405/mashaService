@@ -54,6 +54,12 @@ class ProductDesignResource extends Resource
         return static::canAccess();
     }
 
+    /** El catálogo de productos no muestra semielaborados: viven en su propia pantalla. */
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()->where('es_semielaborado', false);
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -113,12 +119,6 @@ class ProductDesignResource extends Resource
                                 ->helperText('Ej: 250ml, 500ml, 1L. Si el producto es solo en una presentación, deja esto desactivado.')
                                 ->default(false)
                                 ->live()
-                                ->inline(false)
-                                ->columnSpan(2),
-                            Toggle::make('es_semielaborado')
-                                ->label('Materia prima procesada')
-                                ->helperText('Es un semielaborado (ej. azúcar pulverizada): se fabrica con su receta y solo se usa dentro de otras fórmulas. No se publica en la tienda.')
-                                ->default(false)
                                 ->inline(false)
                                 ->columnSpan(2),
                             RichEditor::make('propuesta_valor')

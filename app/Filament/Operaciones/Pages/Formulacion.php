@@ -51,7 +51,16 @@ class Formulacion extends Page
 
     public function mount(): void
     {
-        $this->presentacionId = $this->presentaciones()->keys()->first();
+        $presentaciones = $this->presentaciones();
+
+        // Si se llega desde el botón «Receta» de una materia prima procesada,
+        // se abre ya posicionado en esa presentación.
+        $pedida = (int) request('presentacion');
+
+        $this->presentacionId = ($pedida && $presentaciones->has($pedida))
+            ? $pedida
+            : $presentaciones->keys()->first();
+
         $this->calcular();
     }
 
@@ -146,6 +155,30 @@ class Formulacion extends Page
             ]);
     }
 
+    /** Las mismas presentaciones, separadas en Productos y Materias primas procesadas. */
+    public function presentacionesAgrupadas(): array
+    {
+        $empresa = Filament::getTenant();
+
+        $grupos = ProductPresentation::whereHas('productDesign', fn ($q) => $q->where('empresa_id', $empresa->id))
+            ->with('productDesign')
+            ->get()
+            ->groupBy(fn (ProductPresentation $p) => $p->productDesign?->es_semielaborado ? 'Materias primas procesadas' : 'Productos')
+            ->map(fn ($g) => $g->mapWithKeys(fn (ProductPresentation $p) => [
+                $p->id => ($p->productDesign?->nombre ?? '—') . ' · ' . $p->nombre,
+            ])->toArray());
+
+        // Productos primero, semielaborados después.
+        $ordenado = [];
+        foreach (['Productos', 'Materias primas procesadas'] as $grupo) {
+            if (! empty($grupos[$grupo])) {
+                $ordenado[$grupo] = $grupos[$grupo];
+            }
+        }
+
+        return $ordenado;
+    }
+
     protected function getViewData(): array
     {
         $empresa = Filament::getTenant();
@@ -154,6 +187,7 @@ class Formulacion extends Page
         return [
             'empresa'       => $empresa,
             'presentaciones' => $this->presentaciones(),
+            'presentacionesAgrupadas' => $this->presentacionesAgrupadas(),
             'presentacion'  => $presentacion,
             'lineas'        => $presentacion?->formulaLines ?? collect(),
             'items'         => InventoryItem::withoutGlobalScopes()

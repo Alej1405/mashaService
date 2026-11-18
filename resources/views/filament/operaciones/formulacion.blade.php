@@ -46,8 +46,12 @@
     @else
         <div class="op-barra">
             <select wire:model.live="presentacionId" class="fm-campo" style="flex:1 1 340px; padding:11px 14px; font-size:14px">
-                @foreach ($presentaciones as $id => $nombre)
-                    <option value="{{ $id }}">{{ $nombre }}</option>
+                @foreach ($presentacionesAgrupadas as $grupo => $opciones)
+                    <optgroup label="{{ $grupo }}">
+                        @foreach ($opciones as $id => $nombre)
+                            <option value="{{ $id }}">{{ $nombre }}</option>
+                        @endforeach
+                    </optgroup>
                 @endforeach
             </select>
             @if (($r['ok'] ?? false))
