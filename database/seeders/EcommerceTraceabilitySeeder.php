@@ -248,7 +248,6 @@ class EcommerceTraceabilitySeeder extends Seeder
                 'inventory_item_id'           => $line['inventory_item_id'],
                 'cantidad'                    => $line['cantidad'],
                 'measurement_unit_id'         => $line['measurement_unit_id'],
-                'es_subproducto_manufacturado' => false,
             ]);
         }
     }

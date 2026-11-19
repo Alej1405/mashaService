@@ -616,10 +616,11 @@ class ProductDesignResource extends Resource
                                                     Select::make('inventory_item_id')
                                                         ->label('Insumo / Materia Prima')
                                                         ->options(fn () => InventoryItem::where('activo', true)
-                                                            ->whereIn('type', ['insumo', 'materia_prima'])
+                                                            ->whereIn('type', ['insumo', 'materia_prima', 'materia_prima_procesada'])
+                                                            ->orderBy('type')
                                                             ->get()
                                                             ->mapWithKeys(fn ($item) => [
-                                                                $item->id => "{$item->codigo} — {$item->nombre}",
+                                                                $item->id => ($item->type === 'materia_prima_procesada' ? '⟳ ' : '') . trim("{$item->codigo} — {$item->nombre}"),
                                                             ]))
                                                         ->searchable()
                                                         ->nullable()
@@ -719,12 +720,6 @@ class ProductDesignResource extends Resource
                                                         ->createOptionUsing(fn (array $data): int =>
                                                             MeasurementUnit::create([...$data, 'empresa_id' => Filament::getTenant()->id])->getKey())
                                                         ->columnSpan(2),
-
-                                                    // ── Es subproducto ──────────────────────────────────────
-                                                    Toggle::make('es_subproducto_manufacturado')
-                                                        ->label('Subproducto')
-                                                        ->inline(false)
-                                                        ->columnSpan(1),
 
                                                     // ── Campos ocultos de conversión ────────────────────────
                                                     \Filament\Forms\Components\Hidden::make('_factor')->default(1),

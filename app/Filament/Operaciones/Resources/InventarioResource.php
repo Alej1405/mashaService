@@ -263,6 +263,58 @@ class InventarioResource extends Resource
                             ->columns(2)
                             ->visible(fn (Forms\Get $get) => in_array($get('type'), ['insumo', 'materia_prima'])),
 
+                        Forms\Components\Tabs\Tab::make('Cómo se prepara')
+                            ->schema([
+                                Forms\Components\Toggle::make('solo_bajo_pedido')
+                                    ->label('Se elabora solo cuando hay pedido')
+                                    ->helperText('No se mantiene en stock: se prepara fresco cada vez que un pedido lo necesita. Si lo apagas, se prepara solo lo que falte respecto al stock.')
+                                    ->default(false)
+                                    ->columnSpanFull(),
+                                Forms\Components\Repeater::make('_receta')
+                                    ->label('Receta — qué consume para prepararse')
+                                    ->dehydrated(true)
+                                    ->default([])
+                                    ->afterStateHydrated(function (Forms\Components\Repeater $component, $record) {
+                                        // Al editar: la receta se lee de la presentación del ítem.
+                                        if ($record?->presentation) {
+                                            $component->state(
+                                                $record->presentation->formulaLines
+                                                    ->map(fn ($l) => [
+                                                        'inventory_item_id'   => $l->inventory_item_id,
+                                                        'cantidad'            => (float) $l->cantidad,
+                                                        'measurement_unit_id' => $l->measurement_unit_id,
+                                                    ])->values()->toArray()
+                                            );
+                                        }
+                                    })
+                                    ->schema([
+                                        Forms\Components\Select::make('inventory_item_id')
+                                            ->label('Insumo / Materia prima')
+                                            ->options(fn () => InventoryItem::where('activo', true)
+                                                ->whereIn('type', ['insumo', 'materia_prima'])
+                                                ->orderBy('nombre')
+                                                ->get()
+                                                ->mapWithKeys(fn ($i) => [$i->id => trim("{$i->codigo} — {$i->nombre}")]))
+                                            ->searchable()
+                                            ->required()
+                                            ->columnSpan(3),
+                                        Forms\Components\TextInput::make('cantidad')
+                                            ->label('Cantidad')
+                                            ->numeric()
+                                            ->required()
+                                            ->columnSpan(2),
+                                        Forms\Components\Select::make('measurement_unit_id')
+                                            ->label('Unidad')
+                                            ->options(fn () => MeasurementUnit::where('activo', true)->pluck('abreviatura', 'id'))
+                                            ->searchable()
+                                            ->columnSpan(2),
+                                    ])
+                                    ->columns(7)
+                                    ->addActionLabel('Agregar insumo')
+                                    ->columnSpanFull(),
+                            ])
+                            ->visible(fn (Forms\Get $get) => $get('type') === 'materia_prima_procesada'),
+
                         Forms\Components\Tabs\Tab::make('Contabilidad y Proveedor')
                             ->schema([
                                 Forms\Components\Select::make('supplier_id')

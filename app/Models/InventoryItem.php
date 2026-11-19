@@ -53,6 +53,7 @@ class InventoryItem extends Model
         'foto_path',
         'ubicacion_almacen_id',
         'type',
+        'solo_bajo_pedido',
         'product_presentation_id',
         'measurement_unit_id',
         'purchase_unit_id',
@@ -75,6 +76,7 @@ class InventoryItem extends Model
     protected $casts = [
         'fecha_compra' => 'date',
         'conversion_factor' => 'decimal:6',
+        'solo_bajo_pedido' => 'boolean',
     ];
 
     public function measurementUnit(): BelongsTo

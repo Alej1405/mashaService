@@ -15,7 +15,6 @@ class ProductFormulaLine extends Model
         'cantidad',
         'merma_porcentaje',
         'measurement_unit_id',
-        'es_subproducto_manufacturado',
         'notas',
         'costo_estimado',
     ];
@@ -24,7 +23,6 @@ class ProductFormulaLine extends Model
         'cantidad'                    => 'decimal:6',
         'merma_porcentaje'            => 'decimal:2',
         'costo_estimado'              => 'decimal:4',
-        'es_subproducto_manufacturado' => 'boolean',
     ];
 
     public function presentation(): BelongsTo
