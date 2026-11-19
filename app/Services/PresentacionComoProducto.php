@@ -78,7 +78,7 @@ class PresentacionComoProducto
 
         $item = InventoryItem::withoutGlobalScopes()->create($datos + [
             'empresa_id'              => $empresaId,
-            'type'                    => $esSemielaborado ? 'materia_prima' : 'producto_terminado',
+            'type'                    => $esSemielaborado ? 'materia_prima_procesada' : 'producto_terminado',
             'product_presentation_id' => $p->id,
             'sale_price'              => (float) $p->pvp_estimado,
             'activo'                  => true,

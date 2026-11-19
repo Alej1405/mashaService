@@ -198,7 +198,7 @@ class ProductionOrderResource extends Resource
                             ->schema([
                                 Select::make('inventory_item_id')
                                     ->label('Insumo / Materia Prima')
-                                    ->relationship('inventoryItem', 'nombre', fn ($query) => $query->whereIn('type', ['materia_prima', 'insumo']))
+                                    ->relationship('inventoryItem', 'nombre', fn ($query) => $query->whereIn('type', ['materia_prima', 'materia_prima_procesada', 'insumo']))
                                     ->searchable()
                                     ->preload()
                                     ->required()
