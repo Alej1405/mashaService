@@ -22,22 +22,7 @@ class ListInventario extends ListRecords
                 ->icon('heroicon-o-arrows-right-left')
                 ->url(fn (): string => \App\Filament\Operaciones\Pages\RegistrarMovimiento::getUrl()),
             Actions\CreateAction::make()
-                ->using(function (array $data): InventoryItem {
-                    // La receta del semielaborado no es columna del ítem: se procesa aparte,
-                    // por detrás crea su presentación con esa receta (de ahí la cuesta el micro).
-                    $receta = $data['_receta'] ?? [];
-                    unset($data['_receta']);
-
-                    $data['empresa_id'] = Filament::getTenant()->id;
-                    $item = InventoryItem::create($data);
-
-                    if (($item->type ?? null) === 'materia_prima_procesada') {
-                        app(\App\Modules\Produccion\Services\SincronizarSemielaborado::class)
-                            ->sincronizar($item, is_array($receta) ? $receta : []);
-                    }
-
-                    return $item;
-                }),
+                ->using(fn (array $data): InventoryItem => InventarioResource::guardarConReceta($data)),
         ];
     }
 

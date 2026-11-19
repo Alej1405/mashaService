@@ -490,7 +490,8 @@ class InventarioResource extends Resource
             ->actions([
                 Tables\Actions\ActionGroup::make([
                 Tables\Actions\ViewAction::make()->label('Ficha'),
-                Tables\Actions\EditAction::make()->slideOver(),
+                Tables\Actions\EditAction::make()->slideOver()
+                    ->using(fn ($record, array $data): InventoryItem => static::guardarConReceta($data, $record)),
                 Tables\Actions\Action::make('movimiento')
                     ->label('Registrar movimiento')
                     ->icon('heroicon-o-arrows-right-left')
@@ -532,6 +533,31 @@ class InventarioResource extends Resource
         return [
             //
         ];
+    }
+
+    /**
+     * Guarda el ítem y, si es materia prima procesada, su receta. Lo usan tanto el
+     * botón «Crear» como los «Editar», para no repetir la lógica de la receta.
+     */
+    public static function guardarConReceta(array $data, ?InventoryItem $record = null): InventoryItem
+    {
+        $receta = $data['_receta'] ?? [];
+        unset($data['_receta']);
+
+        if ($record) {
+            $record->update($data);
+            $item = $record;
+        } else {
+            $data['empresa_id'] = \Filament\Facades\Filament::getTenant()->id;
+            $item = InventoryItem::create($data);
+        }
+
+        if ($item->type === 'materia_prima_procesada') {
+            app(\App\Modules\Produccion\Services\SincronizarSemielaborado::class)
+                ->sincronizar($item, is_array($receta) ? $receta : []);
+        }
+
+        return $item;
     }
 
     public static function getPages(): array

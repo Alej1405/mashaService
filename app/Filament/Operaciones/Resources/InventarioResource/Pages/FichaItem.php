@@ -31,7 +31,8 @@ class FichaItem extends ViewRecord
                 ->label('Registrar movimiento')
                 ->icon('heroicon-o-arrows-right-left')
                 ->url(fn (): string => \App\Filament\Operaciones\Pages\RegistrarMovimiento::getUrl() . '?item=' . $this->record->id),
-            Actions\EditAction::make()->label('Editar datos')->slideOver(),
+            Actions\EditAction::make()->label('Editar datos')->slideOver()
+                ->using(fn ($record, array $data) => \App\Filament\Operaciones\Resources\InventarioResource::guardarConReceta($data, $record)),
             Actions\Action::make('etiqueta')
                 ->label('Etiqueta')
                 ->icon('heroicon-o-qr-code')

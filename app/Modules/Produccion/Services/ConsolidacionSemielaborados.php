@@ -67,7 +67,7 @@ class ConsolidacionSemielaborados
                     ->find($item->product_presentation_id)
                 : null;
 
-            $bajoPedido = (bool) ($pres?->productDesign?->solo_bajo_pedido);
+            $bajoPedido = (bool) $item->solo_bajo_pedido;
             $stock      = max(0.0, (float) $item->stock_actual);
 
             // El stock manda: si no es bajo pedido, solo el faltante.
