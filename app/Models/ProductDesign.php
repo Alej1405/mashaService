@@ -18,6 +18,7 @@ class ProductDesign extends Model
         'nombre',
         'categoria',
         'es_semielaborado',
+        'solo_bajo_pedido',
         'store_category_id',
         'visibilidad',
         'customer_id',
@@ -48,6 +49,7 @@ class ProductDesign extends Model
 
     protected $casts = [
         'es_semielaborado'                => 'boolean',
+        'solo_bajo_pedido'                => 'boolean',
         'activo'                          => 'boolean',
         'publicado_catalogo'              => 'boolean',
         'tiene_multiples_presentaciones'  => 'boolean',

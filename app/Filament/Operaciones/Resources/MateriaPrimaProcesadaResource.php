@@ -76,6 +76,12 @@ class MateriaPrimaProcesadaResource extends Resource
                 ->default(true)
                 ->inline(false)
                 ->columnSpan(1),
+            Forms\Components\Toggle::make('solo_bajo_pedido')
+                ->label('Se elabora solo cuando hay pedido')
+                ->helperText('No se mantiene en stock: se prepara fresco cada vez que un pedido lo necesita. Si lo dejas apagado, se prepara solo lo que falte respecto al stock.')
+                ->default(false)
+                ->inline(false)
+                ->columnSpan(2),
         ])->columns(2);
     }
 

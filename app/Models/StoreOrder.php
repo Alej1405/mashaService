@@ -17,6 +17,7 @@ class StoreOrder extends Model
         'numero',
         'origen',
         'estado',
+        'fecha_programada',
         'subtotal',
         'descuento',
         'total',
@@ -30,6 +31,7 @@ class StoreOrder extends Model
     ];
 
     protected $casts = [
+        'fecha_programada' => 'date',
         'subtotal'       => 'decimal:4',
         'descuento'      => 'decimal:4',
         'total'          => 'decimal:4',
