@@ -17,6 +17,30 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(Login::class, \App\Listeners\UpdateLastLogin::class);
 
+        // Regla de la subida temporal de Livewire (config/livewire.php): rechaza
+        // archivos ejecutables por su extensión, la que declara el cliente o la que
+        // se deduce del contenido, y todo archivo que traiga código PHP adentro.
+        \Illuminate\Support\Facades\Validator::extend('archivo_sin_codigo', function ($attribute, $file) {
+            if (! $file instanceof \Illuminate\Http\UploadedFile) {
+                return false;
+            }
+
+            $prohibidas = ['php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'pht', 'phar', 'phps',
+                'shtml', 'cgi', 'pl', 'py', 'sh', 'asp', 'aspx', 'jsp', 'htaccess'];
+
+            $extensiones = [
+                strtolower((string) $file->getClientOriginalExtension()),
+                strtolower((string) $file->guessExtension()),
+            ];
+            if (array_intersect($extensiones, $prohibidas)) {
+                return false;
+            }
+
+            $inicio = (string) @file_get_contents($file->getRealPath(), false, null, 0, 65536);
+
+            return ! preg_match('/<\?(php|=)/i', $inicio);
+        });
+
         // Rate limiter de la superficie n8n: por sesión/chat (todo n8n sale de la
         // misma IP del VPS, así que limitar por IP sería demasiado grueso).
         RateLimiter::for('n8n', function (Request $request) {

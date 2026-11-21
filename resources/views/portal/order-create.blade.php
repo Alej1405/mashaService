@@ -9,6 +9,7 @@
         'nombre'    => $p->nombre,
         'precio'    => (float) $p->precio_venta,
         'categoria' => $p->storeCategory?->nombre,
+        'minimo'    => (float) ($p->productPresentation?->cantidad_minima_produccion ?: 1),
     ])->values();
 @endphp
 
@@ -70,6 +71,9 @@
                                 <p class="text-xs text-gray-500 mt-0.5">{{ $detalle }}</p>
                             @endif
                             <p class="text-sm font-semibold text-gray-900 mt-1">${{ number_format($p->precio_venta, 2) }}</p>
+                            @if($pres && (float) ($pres->cantidad_minima_produccion ?? 0) > 1)
+                                <p class="text-[11px] text-indigo-600 mt-0.5">Pedido mínimo: {{ $num($pres->cantidad_minima_produccion) }}</p>
+                            @endif
                         </div>
 
                         {{-- Stepper --}}
@@ -145,12 +149,19 @@
             productos: productos,
             cart: {},
             notas: {},
+            min(id) {
+                var p = this.productos.find(function (x) { return x.id === id; });
+                return p && p.minimo > 1 ? p.minimo : 1;
+            },
             qty(id) { return this.cart[id] || 0; },
-            inc(id) { this.cart[id] = this.qty(id) + 1; },
-            dec(id) { var n = this.qty(id) - 1; if (n <= 0) { delete this.cart[id]; } else { this.cart[id] = n; } },
+            inc(id) { var m = this.min(id); this.cart[id] = this.qty(id) === 0 ? m : this.qty(id) + 1; },
+            dec(id) { var m = this.min(id); var n = this.qty(id) - 1; if (n < m) { delete this.cart[id]; } else { this.cart[id] = n; } },
             setQty(id, v) {
+                var m = this.min(id);
                 var n = Math.max(0, Math.floor(Number(v) || 0));
-                if (n <= 0) { delete this.cart[id]; } else { this.cart[id] = n; }
+                if (n <= 0) { delete this.cart[id]; }
+                else if (n < m) { this.cart[id] = m; }
+                else { this.cart[id] = n; }
             },
             lineas() {
                 return this.productos

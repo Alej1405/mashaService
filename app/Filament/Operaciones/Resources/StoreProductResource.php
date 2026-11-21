@@ -92,8 +92,14 @@ class StoreProductResource extends Resource
                             TextInput::make('precio_venta')
                                 ->label('PVP (precio público)')
                                 ->numeric()
-                                ->required()
+                                ->required(fn ($record) => ! ($record?->product_presentation_id))
                                 ->prefix('$')
+                                // Si el producto viene de un diseño, el precio se fija allá: aquí solo se lee.
+                                ->disabled(fn ($record) => (bool) $record?->product_presentation_id)
+                                ->dehydrated(fn ($record) => ! ($record?->product_presentation_id))
+                                ->helperText(fn ($record) => $record?->product_presentation_id
+                                    ? 'El precio se define en el Diseño de producto.'
+                                    : null)
                                 ->columnSpan(1),
 
                             TextInput::make('sku')

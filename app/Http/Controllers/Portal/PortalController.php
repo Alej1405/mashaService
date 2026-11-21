@@ -131,6 +131,19 @@ class PortalController extends Controller
             return back()->withErrors(['items' => 'Agrega al menos un producto al pedido.'])->withInput();
         }
 
+        // Cada producto se pide a partir de su mínimo (el lote base), no desde 1.
+        foreach ($items as $linea) {
+            $producto = StoreProduct::withoutGlobalScopes()->with('productPresentation')->find($linea['store_product_id']);
+            $minimo   = (float) ($producto?->productPresentation?->cantidad_minima_produccion ?: 1);
+
+            if ($minimo > 1 && $linea['cantidad'] < $minimo) {
+                $nombre = $producto?->nombre ?? 'un producto';
+                return back()->withErrors([
+                    'items' => "El pedido mínimo de «{$nombre}» es {$minimo}. Ajusta la cantidad.",
+                ])->withInput();
+            }
+        }
+
         // El servicio exige dirección de envío; usamos la del cliente.
         $shipping = [
             'linea1' => $customer->direccion ?: 'Retiro en tienda',
